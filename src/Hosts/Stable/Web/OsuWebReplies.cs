@@ -20,9 +20,9 @@ internal static class OsuWebReplies
 
 	public const int DirectMorePages = 101;
 
-	public static readonly string[] DirectSortTabs = ["Newest", "Top+Rated", "Most+Played"];
-
 	public const int DirectAllModes = -1;
 
 	public const int DirectAllStatuses = 4;
+
+	public static readonly string[] DirectSortTabs = ["Newest", "Top+Rated", "Most+Played"];
 }

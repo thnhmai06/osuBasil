@@ -3,7 +3,7 @@ using System.Collections.Immutable;
 using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Game.Scores;
 
-namespace Basil.Domain.Multiplayer;
+namespace Basil.Domain.Multiplayer.Report.Rounds;
 
 public sealed class RoundTeamScore(
 	GameWinCondition condition,

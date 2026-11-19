@@ -56,18 +56,23 @@ internal static class MonitorMetrics
 		["gc.generations"] = new("Generations", MetricUnit.Bytes,
 			"Size of each part of the heap after the last collection.",
 			[
-				new("Gen 0", "Newly created objects that have not survived a collection yet. It is small after every collection."),
-				new("Gen 1", "Objects that survived one collection; a buffer between short-lived and long-lived data."),
-				new("Gen 2", "Long-lived objects. A size that keeps growing points to a leak."),
-				new("Large objects", "Objects of 85 KB or more, collected together with generation 2. Many of them fragment memory."),
-				new("Pinned objects", "Objects the runtime may not move, such as buffers handed to the operating system.")
+				new MetricPart("Gen 0",
+					"Newly created objects that have not survived a collection yet. It is small after every collection."),
+				new MetricPart("Gen 1",
+					"Objects that survived one collection; a buffer between short-lived and long-lived data."),
+				new MetricPart("Gen 2", "Long-lived objects. A size that keeps growing points to a leak."),
+				new MetricPart("Large objects",
+					"Objects of 85 KB or more, collected together with generation 2. Many of them fragment memory."),
+				new MetricPart("Pinned objects",
+					"Objects the runtime may not move, such as buffers handed to the operating system.")
 			]),
 		["gc.collections"] = new("Collections", MetricUnit.Count,
 			"How many times each generation was collected since the server started.",
 			[
-				new("Gen 0 collections", "How many times generation 0 was collected. It is the cheap, frequent kind and grows fast on a busy server."),
-				new("Gen 1 collections", "How many times generation 1 was collected."),
-				new("Gen 2 collections", "How many full collections ran. Many of them mean memory pressure.")
+				new MetricPart("Gen 0 collections",
+					"How many times generation 0 was collected. It is the cheap, frequent kind and grows fast on a busy server."),
+				new MetricPart("Gen 1 collections", "How many times generation 1 was collected."),
+				new MetricPart("Gen 2 collections", "How many full collections ran. Many of them mean memory pressure.")
 			]),
 		["gc.pauseMilliseconds"] = new("GC pause total", MetricUnit.Milliseconds,
 			"Total time the server stood still for garbage collection since it started. A fast-growing value makes the server feel slow."),
@@ -110,7 +115,8 @@ internal static class MonitorMetrics
 		["application.rooms"] = new("Open rooms", MetricUnit.Count, "Number of multiplayer rooms that exist now."),
 		["application.roundsInProgress"] = new("Rounds playing", MetricUnit.Count,
 			"Number of rooms whose round is running now."),
-		["application.channels"] = new("Chat channels", MetricUnit.Count, "Number of general chat channels that exist now."),
+		["application.channels"] =
+			new("Chat channels", MetricUnit.Count, "Number of general chat channels that exist now."),
 		["application.countdowns"] = new("Countdowns", MetricUnit.Count,
 			"Number of room countdowns that BasilBot is counting down now."),
 		["application.openStreams"] = new("Live streams", MetricUnit.Count,
@@ -157,7 +163,8 @@ internal static class MonitorMetrics
 			"How many times an event handler failed since the server started. It should be 0; anything else means the effect of an event was lost.",
 			Alarm: true),
 		["sessions.stable"] = new("Stable", MetricUnit.Count, "Number of osu! game client sessions open now."),
-		["sessions.stabletourney"] = new("Tourney", MetricUnit.Count, "Number of osu!tourney client sessions open now."),
+		["sessions.stabletourney"] =
+			new("Tourney", MetricUnit.Count, "Number of osu!tourney client sessions open now."),
 		["sessions.irc"] = new("IRC", MetricUnit.Count, "Number of IRC sessions open now."),
 		["sessions.api"] = new("API", MetricUnit.Count, "Number of HTTP API sessions open now."),
 		["connections.*.opened"] = new("Opened", MetricUnit.Count,
@@ -189,7 +196,9 @@ internal static class MonitorMetrics
 		if (key.LastIndexOf('#') is var cut and > 0 && int.TryParse(key[(cut + 1)..], out var index))
 		{
 			var whole = Of(key[..cut]);
-			var part = whole.Parts is { } list && index < list.Count ? list[index] : new MetricPart($"Part {index}", whole.Description);
+			var part = whole.Parts is { } list && index < list.Count
+				? list[index]
+				: new MetricPart($"Part {index}", whole.Description);
 			return whole with { Label = part.Label, Description = part.Description, Parts = null };
 		}
 
@@ -206,7 +215,8 @@ internal static class MonitorMetrics
 
 	public static string Show(MetricInfo info, string value, bool ascii)
 	{
-		if (info.Unit == MetricUnit.Text || !double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number))
+		if (info.Unit == MetricUnit.Text ||
+		    !double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number))
 			return value;
 
 		return info.Unit switch
@@ -214,9 +224,11 @@ internal static class MonitorMetrics
 			MetricUnit.Bytes => Bytes(number),
 			MetricUnit.Percent => $"{number:0.#} %",
 			MetricUnit.Milliseconds => number < 10 ? $"{number:0.00} ms" : $"{number:0} ms",
-			MetricUnit.Microseconds => number < 1000 ? $"{number:0} {(ascii ? "us" : "µs")}" : $"{number / 1000:0.0} ms",
+			MetricUnit.Microseconds =>
+				number < 1000 ? $"{number:0} {(ascii ? "us" : "µs")}" : $"{number / 1000:0.0} ms",
 			MetricUnit.Seconds => Duration(TimeSpan.FromSeconds(number)),
-			_ => number == Math.Floor(number) ? number.ToString("N0", CultureInfo.InvariantCulture)
+			_ => number == Math.Floor(number)
+				? number.ToString("N0", CultureInfo.InvariantCulture)
 				: number.ToString("0.##", CultureInfo.InvariantCulture)
 		};
 	}
@@ -260,7 +272,8 @@ internal static class MonitorMetrics
 
 	private static string Words(string camel)
 	{
-		return string.Concat(camel.Select((c, i) => i > 0 && char.IsUpper(c) ? " " + char.ToLowerInvariant(c) : c.ToString()));
+		return string.Concat(camel.Select((c, i) =>
+			i > 0 && char.IsUpper(c) ? " " + char.ToLowerInvariant(c) : c.ToString()));
 	}
 
 	private static string Capital(string text)

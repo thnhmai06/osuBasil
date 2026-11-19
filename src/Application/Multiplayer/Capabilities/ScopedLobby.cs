@@ -1,15 +1,12 @@
 using Basil.Application.Multiplayer.Objects;
-using Basil.Application.Multiplayer.Objects.Events;
-using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Shared.Privileges;
-using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Objects.Sessions;
-using Basil.Domain.Multiplayer;
-using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
+using Basil.Domain.Multiplayer.Report.Matches;
+using Basil.Domain.Multiplayer.Room;
 using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 
 namespace Basil.Application.Multiplayer.Capabilities;
@@ -108,8 +105,11 @@ public readonly struct ScopedLobby
 		ArgumentNullException.ThrowIfNull(page);
 
 		var scope = this;
-		IReadOnlyList<Room> found = [.. Lobby.Rooms.Values.Where(room => !room.IsClosed && scope.CanView(room) && query.Includes(room))
-			.OrderBy(room => room.Id).Skip(page.Offset).Take(page.Fetch)];
+		IReadOnlyList<Room> found =
+		[
+			.. Lobby.Rooms.Values.Where(room => !room.IsClosed && scope.CanView(room) && query.Includes(room))
+				.OrderBy(room => room.Id).Skip(page.Offset).Take(page.Fetch)
+		];
 		var (items, hasNext) = page.Slice(found);
 		return new Page<Room>(items, hasNext);
 	}

@@ -3,7 +3,6 @@ using System.Globalization;
 using System.Text;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Domain.Beatmaps;
-
 using Basil.Domain.Game.Mechanics;
 using Basil.Infrastructure.Shared.Storage;
 using Basil.Shared.Structures.Cryptography;

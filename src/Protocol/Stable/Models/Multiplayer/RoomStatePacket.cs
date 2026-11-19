@@ -1,5 +1,3 @@
-using Basil.Protocol.Game.Stable.Wire.Packets;
-
 namespace Basil.Protocol.Game.Stable.Models.Multiplayer;
 
 public sealed record RoomStatePacket(

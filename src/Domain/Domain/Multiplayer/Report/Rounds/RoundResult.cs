@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using Basil.Domain.Game.Mechanics;
 using Basil.Shared.Utilities;
 
-namespace Basil.Domain.Multiplayer;
+namespace Basil.Domain.Multiplayer.Report.Rounds;
 
 public abstract class RoundResult : IEquatable<RoundResult>
 {

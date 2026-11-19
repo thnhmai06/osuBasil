@@ -1,6 +1,6 @@
 using Basil.Domain.Game.Mechanics;
 
-namespace Basil.Domain.Multiplayer;
+namespace Basil.Domain.Multiplayer.Room;
 
 public sealed record RoomSettingsChange(
 	string? Name = null,

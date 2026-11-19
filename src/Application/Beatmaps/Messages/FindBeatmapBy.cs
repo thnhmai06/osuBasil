@@ -1,6 +1,5 @@
 using Basil.Domain.Beatmaps;
 using Basil.Shared.Structures.Cryptography;
-
 using Mediator;
 
 namespace Basil.Application.Beatmaps.Messages;

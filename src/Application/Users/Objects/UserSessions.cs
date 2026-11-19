@@ -3,13 +3,11 @@ using System.Collections.Immutable;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Objects.Sessions;
-using Session = Basil.Application.Users.Objects.Sessions.Session;
-using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Domain.Moderation;
-
 using Basil.Domain.Users;
 using Basil.Shared.Structures.Data;
+using Session = Basil.Application.Users.Objects.Sessions.Session;
 
 namespace Basil.Application.Users.Objects;
 
@@ -50,7 +48,7 @@ public sealed class UserSessions
 		return _connections.TryGetValue(connection.Type, out var set) && set.Remove(connection);
 	}
 
-	internal async Task<Page<Basil.Domain.Authentication.Session>> ListAsync(Session viewer, PageRequest page,
+	internal async Task<Page<Domain.Authentication.Session>> ListAsync(Session viewer, PageRequest page,
 		SessionFilter state, IReadOnlyList<SessionType>? types, CancellationToken ct)
 	{
 		var now = _user.Context.Clock.GetUtcNow();
@@ -67,7 +65,7 @@ public sealed class UserSessions
 			ct);
 	}
 
-	internal async Task<(UserOutcome Outcome, Basil.Domain.Authentication.Session? Session)> GetAsync(Session viewer,
+	internal async Task<(UserOutcome Outcome, Domain.Authentication.Session? Session)> GetAsync(Session viewer,
 		long id, CancellationToken ct)
 	{
 		var session = await _user.Context.Sessions.GetAsync(_user.Record, id, ct);

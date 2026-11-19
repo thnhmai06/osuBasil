@@ -1,4 +1,3 @@
-using Basil.Application.Users.Objects;
 using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Users;
 using Mediator;

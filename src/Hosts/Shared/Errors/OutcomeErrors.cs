@@ -1,15 +1,11 @@
-using Basil.Domain.Authentication;
-using Basil.Domain.Chat;
-using Basil.Domain.Users;
 using System.Globalization;
 using Basil.Application.Beatmaps.Objects;
-using Basil.Application.Chat.Objects;
-using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Scores.Objects;
 using Basil.Application.Servers.Objects;
-using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Sessions;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Authentication;
+using Basil.Domain.Chat;
+using Basil.Domain.Multiplayer.Room;
+using Basil.Domain.Users;
 
 namespace Basil.Host.Shared.Errors;
 

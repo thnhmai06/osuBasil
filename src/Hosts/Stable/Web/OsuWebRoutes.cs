@@ -9,13 +9,14 @@ using Basil.Application.Beatmaps.Storage;
 using Basil.Application.Scores.Messages;
 using Basil.Application.Scores.Objects;
 using Basil.Application.Scores.Persistence;
-using Basil.Application.Servers.Messages;
+using Basil.Application.Servers.Messages.Content;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
+using Basil.Domain.Beatmaps;
 using Basil.Domain.Game.Beatmaps;
 using Basil.Domain.Game.Client;
 using Basil.Domain.Game.Mechanics;
@@ -30,7 +31,6 @@ using Basil.Protocol.Game.Stable.Models.Client;
 using Basil.Protocol.Game.Stable.Models.Scores;
 using Basil.Protocol.Game.Stable.Wire.Security;
 using Basil.Shared.Structures.Cryptography;
-using Basil.Domain.Beatmaps;
 using Mediator;
 
 namespace Basil.Host.Stable.Web;
@@ -107,7 +107,8 @@ internal static class OsuWebRoutes
 		web.MapGet("/web/maps/{filename}", GetBeatmapFileAsync)
 			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Listing })
 			.WithSummary("Download the .osu file of a beatmap by its file name.")
-			.WithDescription("The file name is the one osu! gives the difficulty. Answers the file, or 404 when the server does not have it.");
+			.WithDescription(
+				"The file name is the one osu! gives the difficulty. Answers the file, or 404 when the server does not have it.");
 		web.MapPost("/difficulty-rating", GetDifficultyRatingAsync)
 			.WithSummary("Get the star rating of a beatmap.")
 			.WithDescription("""
@@ -120,13 +121,16 @@ internal static class OsuWebRoutes
 			.WithDescription("Query: `u`, `h`. Basil keeps no favourites, so the answer is empty.");
 		web.MapGet("/web/osu-addfavourite.php", AddFavouriteAsync)
 			.WithSummary("Add a beatmapset to the player's favourites.")
-			.WithDescription("Query: `u`, `h`, `a` (set id). Basil keeps no favourites, so nothing is added and the answer is empty.");
+			.WithDescription(
+				"Query: `u`, `h`, `a` (set id). Basil keeps no favourites, so nothing is added and the answer is empty.");
 		web.MapGet("/web/osu-rate.php", RateAsync)
 			.WithSummary("Rate a beatmap, or ask whether the player may.")
-			.WithDescription("Query: `u`, `p` (password hash), `c` (beatmap hash), `v` (the rating). Basil keeps no ratings: the answer is `not ranked`.");
+			.WithDescription(
+				"Query: `u`, `p` (password hash), `c` (beatmap hash), `v` (the rating). Basil keeps no ratings: the answer is `not ranked`.");
 		web.MapPost("/web/osu-comment.php", CommentAsync)
 			.WithSummary("Read or write the comments of a beatmap.")
-			.WithDescription("A form with `u`, `p` and the comment fields. Basil keeps no comments, so the answer is empty.");
+			.WithDescription(
+				"A form with `u`, `p` and the comment fields. Basil keeps no comments, so the answer is empty.");
 		web.MapPost("/users", RegisterAsync)
 			.WithSummary("Register an account, or only check that the details are acceptable.")
 			.WithDescription("""

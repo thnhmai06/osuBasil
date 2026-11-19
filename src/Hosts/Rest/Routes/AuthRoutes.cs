@@ -1,12 +1,10 @@
-using Basil.Domain.Users;
 using System.Text;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Messages;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
-
+using Basil.Domain.Users;
 using Basil.Gateway.RateLimiting;
 using Basil.Host.Rest.Http;
 using Basil.Shared.Structures.Cryptography;
@@ -76,7 +74,7 @@ internal static class AuthRoutes
 	}
 
 	// The session expires once it has been silent this long; every use moves the moment on.
-	private static DateTimeOffset ExpiresAt(Basil.Domain.Authentication.Session session)
+	private static DateTimeOffset ExpiresAt(Session session)
 	{
 		return session.LastActiveAt + session.Type.ExpiresAfter;
 	}

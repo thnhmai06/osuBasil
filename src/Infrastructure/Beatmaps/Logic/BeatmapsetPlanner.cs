@@ -4,7 +4,6 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
 using Basil.Shared.Structures.Cryptography;
 
-
 namespace Basil.Infrastructure.Beatmaps.Logic;
 
 internal sealed class BeatmapsetPlanner(

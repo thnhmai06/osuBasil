@@ -5,21 +5,20 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using Basil.Application.Authentication.Persistence;
-using Basil.Application.Shared.Exceptions;
 using Basil.Application.Users.Capabilities;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Sessions;
-using Session = Basil.Application.Users.Objects.Sessions.Session;
-using SessionState = Basil.Domain.Authentication.Session;
 using Basil.Application.Users.Objects.Events;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Ports;
 using Basil.Domain.Authentication;
 using Basil.Domain.Game.Client;
-using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;
 using Basil.Shared.Utilities;
+using Session = Basil.Application.Users.Objects.Sessions.Session;
+using SessionState = Basil.Domain.Authentication.Session;
 using User = Basil.Application.Users.Objects.User;
 
 namespace Basil.Application.Users.Registry;
@@ -34,17 +33,17 @@ public sealed class UserRegistry
 	private readonly IAccountRules _accounts;
 
 	private readonly ConcurrentDictionary<long, Session> _activity = new();
+	private readonly UserContext _context;
 
 	// Sessions ended here whose end the store has not confirmed yet: their tokens never resume meanwhile.
 	private readonly ConcurrentDictionary<long, byte> _ended = new();
+	private readonly ConcurrentDictionary<int, AccountGate> _gates = new();
+	private readonly ConcurrentDictionary<UserRecord, User> _online = new();
 
 	// Accounts whose stored sessions are being revoked: those started before the revocation never resume meanwhile.
 	private readonly ConcurrentDictionary<int, ImmutableList<Revocation>> _revoking = new();
 	private readonly SessionContext _sessionContext;
 	private readonly ConcurrentDictionary<string, Session> _tokens = new(StringComparer.Ordinal);
-	private readonly UserContext _context;
-	private readonly ConcurrentDictionary<int, AccountGate> _gates = new();
-	private readonly ConcurrentDictionary<UserRecord, User> _online = new();
 
 	internal UserRegistry(IAccountRules accounts, UserContext context, SessionContext sessionContext)
 	{
@@ -252,7 +251,6 @@ public sealed class UserRegistry
 	{
 		if (only is { } id) ConfirmEnded(id);
 		else if (revocation is not null)
-		{
 			while (_revoking.TryGetValue(user.Id, out var list))
 			{
 				var rest = list.Remove(revocation);
@@ -260,7 +258,6 @@ public sealed class UserRegistry
 					    ? _revoking.TryRemove(new KeyValuePair<int, ImmutableList<Revocation>>(user.Id, list))
 					    : _revoking.TryUpdate(user.Id, rest, list)) break;
 			}
-		}
 	}
 
 	private Session NewSession(SessionState state, string token, int utcOffset)

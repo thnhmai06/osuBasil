@@ -81,7 +81,8 @@ public static class OutputExtensions
 
 			string Format(IReadOnlyList<string> cells)
 			{
-				return indent + string.Join("  ", cells.Select((cell, index) => cell.PadRight(widths[index]))).TrimEnd();
+				return indent + string.Join("  ", cells.Select((cell, index) => cell.PadRight(widths[index])))
+					.TrimEnd();
 			}
 
 			output.Write(new OutputLine(OutputKind.Header, Format(header)));

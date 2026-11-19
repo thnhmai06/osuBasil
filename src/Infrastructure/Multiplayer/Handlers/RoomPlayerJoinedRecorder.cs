@@ -1,6 +1,6 @@
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Persistence;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Report.Matches;
 using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;

@@ -1,4 +1,6 @@
-namespace Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Report.Rounds;
+
+namespace Basil.Domain.Multiplayer.Room;
 
 public sealed class RoomRounds
 {

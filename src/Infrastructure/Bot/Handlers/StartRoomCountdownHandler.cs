@@ -1,6 +1,5 @@
 using Basil.Application.Multiplayer.Messages;
-using Basil.Application.Multiplayer.Objects;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Room;
 using Basil.Infrastructure.Bot.Workers;
 using Mediator;
 

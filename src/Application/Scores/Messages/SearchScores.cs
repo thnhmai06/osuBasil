@@ -1,7 +1,5 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Shared.Paging;
-using Basil.Application.Users.Objects;
-using Basil.Domain.Game.Scores;
 using Basil.Domain.Users;
 using Mediator;
 

@@ -1,8 +1,9 @@
 using Basil.Domain.Game.Scores;
+using Basil.Domain.Multiplayer.Report.Rounds;
 using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;
 
-namespace Basil.Domain.Multiplayer;
+namespace Basil.Domain.Multiplayer.Room;
 
 public sealed partial class Room
 {

@@ -1,7 +1,7 @@
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
-using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 
 namespace Basil.Host.Shared.Views;
 

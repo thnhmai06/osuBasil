@@ -17,6 +17,9 @@ internal sealed class MonitorTab : ITabView
 	private const int WarningPercent = 70;
 	private const int ErrorPercent = 90;
 
+	private const int BoxHeight = 8;
+	private const int MinimumGraphHeight = 10;
+
 	// The categories whose measurements all stand inside the graphs, so they get no box.
 	private static readonly string[] GraphCategories = ["stable", "irc", "sessions"];
 
@@ -26,31 +29,29 @@ internal sealed class MonitorTab : ITabView
 		"process.cpuPercent", "process.workingSetBytes", "process.privateMemoryBytes", "process.threads"
 	];
 
-	private const int BoxHeight = 8;
-	private const int MinimumGraphHeight = 10;
-	private readonly WheelAcceleration _wheel;
+	private readonly List<Box> _boxes = [];
+	private readonly Group _detail;
+	private readonly State<int> _detailHeight = new(4);
+	private readonly State<bool> _detailOpen = new(false);
+	private readonly State<string> _detailText = new(string.Empty);
+	private readonly State<string> _detailTitle = new(string.Empty);
 	private readonly Glyphs _glyphs;
+	private readonly List<GridCell> _graphCells = [];
+	private readonly State<int> _graphHeight = new(MinimumGraphHeight);
+	private readonly Dictionary<string, (string Category, MetricLine Line)> _known = [];
 	private readonly DashboardModel _model;
 	private readonly bool _noColor;
+	private readonly Dictionary<string, double> _numbers = [];
+	private readonly Grid _page = new Grid().Stretch();
 	private readonly Palette _palette;
 	private readonly List<GraphPanel> _panels = [];
+	private readonly ScrollViewer _scroll;
 	private readonly Func<(int Columns, int Rows)> _size;
 	private readonly Func<Theme> _theme;
-	private readonly Grid _page = new Grid().Stretch();
-	private readonly List<GridCell> _graphCells = [];
-	private readonly List<Box> _boxes = [];
-	private readonly Dictionary<string, (string Category, MetricLine Line)> _known = [];
-	private readonly Dictionary<string, double> _numbers = [];
-	private readonly State<bool> _detailOpen = new(false);
-	private readonly State<int> _detailHeight = new(4);
-	private readonly State<int> _graphHeight = new(MinimumGraphHeight);
-	private readonly State<string> _detailTitle = new(string.Empty);
-	private readonly State<string> _detailText = new(string.Empty);
-	private readonly Group _detail;
-	private readonly ScrollViewer _scroll;
+	private readonly WheelAcceleration _wheel;
 	private (int Width, int Across, int GraphHeight, int Boxes)? _arranged;
-	private string? _selected;
 	private object? _seen;
+	private string? _selected;
 
 	public MonitorTab(DashboardModel model, ThemeStore themes, Glyphs glyphs, CliOptions options,
 		Func<(int Columns, int Rows)> size, TimeProvider clock)
@@ -68,14 +69,20 @@ internal sealed class MonitorTab : ITabView
 				[() => Pair("Use", Percent(model.Cpu.Latest)), () => Pair("Threads", Plain(Number("process.threads")))],
 				Legend("Process", null)),
 			Panel("RAM", model.Memory, null, () => Math.Max(model.Memory.Max() * 1.1, 1),
-				[() => Pair("In use", Measure("process.workingSetBytes")), () => Pair("Private", Measure("process.privateMemoryBytes"))],
+				[
+					() => Pair("In use", Measure("process.workingSetBytes")),
+					() => Pair("Private", Measure("process.privateMemoryBytes"))
+				],
 				Legend("Process", null)),
 			Panel("Connections", model.ConnectionsOpen, null, () => Math.Max(model.ConnectionsOpen.Max() * 1.1, 1),
-				[() => Pair("Open", Plain(model.ConnectionsOpen.Latest)),
-					() => $"{Pair("Stable", Plain(Open("stable")))}  {Pair("Tourney", Plain(Open("stabletourney")))}",
-					() => $"{Pair("IRC", Plain(Open("irc")))}  {Pair("API", Plain(Open("api")))}"], Legend("Open", null)),
+			[
+				() => Pair("Open", Plain(model.ConnectionsOpen.Latest)),
+				() => $"{Pair("Stable", Plain(Open("stable")))}  {Pair("Tourney", Plain(Open("stabletourney")))}",
+				() => $"{Pair("IRC", Plain(Open("irc")))}  {Pair("API", Plain(Open("api")))}"
+			], Legend("Open", null)),
 			Protocol("Stable", "stable", "polls", () => Number("stable.requestsPerSecond"), "stable"),
-			Panel("Tourney", model.OpenByKind["stabletourney"], null, () => Math.Max(model.OpenByKind["stabletourney"].Max() * 1.1, 1),
+			Panel("Tourney", model.OpenByKind["stabletourney"], null,
+				() => Math.Max(model.OpenByKind["stabletourney"].Max() * 1.1, 1),
 				[() => Pair("Clients", Plain(Open("stabletourney")))], Legend("Clients", null)),
 			Protocol("IRC", "irc", "lines", () => Number("irc.requestsPerSecond"), "irc"),
 			Protocol("API", "api", "requests", () => model.Requests.Latest, "api")
@@ -87,12 +94,14 @@ internal sealed class MonitorTab : ITabView
 			_page.Cells.Add(cell);
 		}
 
-		foreach (var category in DiagnosticsSample.Categories.Where(category => !GraphCategories.Contains(category))) AddBox(category);
+		foreach (var category in DiagnosticsSample.Categories.Where(category => !GraphCategories.Contains(category)))
+			AddBox(category);
 
 		var style = glyphs.Ascii ? GroupStyle.Ascii : GroupStyle.Single;
 		_detail = new Group(new Markup(() => _detailTitle.Value)).Style(style).Padding(new Thickness(1, 0, 1, 0))
 			.Content(new ScrollViewer(new Markup(() => _detailText.Value).Wrap(true)).Stretch()).IsVisible(_detailOpen)
-			.MinHeight(() => _detailHeight.Value).MaxHeight(() => _detailHeight.Value).HorizontalAlignment(Align.Stretch);
+			.MinHeight(() => _detailHeight.Value).MaxHeight(() => _detailHeight.Value)
+			.HorizontalAlignment(Align.Stretch);
 		_scroll = new ScrollViewer(_page).Stretch();
 		_scroll.HorizontalScrollEnabled(false);
 		Arrange();
@@ -169,7 +178,8 @@ internal sealed class MonitorTab : ITabView
 		foreach (var panel in _panels) panel.Refresh();
 		_numbers.Clear();
 		foreach (var (name, value) in _model.Diagnostics)
-			if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number)) _numbers[name] = number;
+			if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number))
+				_numbers[name] = number;
 
 		var items = _model.Diagnostics.Where(line => !InGraph(line.Name)).ToLookup(line => line.Name.Split('.')[0]);
 		foreach (var category in items.Select(group => group.Key).Where(key => _boxes.All(box => box.Category != key)))
@@ -205,13 +215,16 @@ internal sealed class MonitorTab : ITabView
 			if (e.RoutingPhase != RoutingPhase.Preview || e.WheelDelta == 0 || e.Handled) return;
 
 			var up = e.WheelDelta > 0;
-			if (up ? list.Scroll.OffsetY > 0 : list.Scroll.OffsetY < list.Scroll.ExtentHeight - list.Scroll.ViewportHeight) return;
+			if (up
+				    ? list.Scroll.OffsetY > 0
+				    : list.Scroll.OffsetY < list.Scroll.ExtentHeight - list.Scroll.ViewportHeight) return;
 
 			e.Handled = true;
 			var step = _wheel.Step();
 			_scroll.VerticalOffset = Math.Max(_scroll.VerticalOffset + (up ? -step : step), 0);
 		};
-		var group = new Group(MonitorMetrics.Title(category)).Style(_glyphs.Ascii ? GroupStyle.Ascii : GroupStyle.Rounded)
+		var group = new Group(MonitorMetrics.Title(category))
+			.Style(_glyphs.Ascii ? GroupStyle.Ascii : GroupStyle.Rounded)
 			.Content(inner).Stretch();
 		var cell = new GridCell(group);
 		_page.Cells.Add(cell);
@@ -244,7 +257,8 @@ internal sealed class MonitorTab : ITabView
 				{
 					var key = $"{name}#{i}";
 					var part = MonitorMetrics.Of(key);
-					lines.Add(new MetricLine(key, string.Empty, part.Label, MonitorMetrics.Show(part, numbers[i], _glyphs.Ascii), Ink.Text));
+					lines.Add(new MetricLine(key, string.Empty, part.Label,
+						MonitorMetrics.Show(part, numbers[i], _glyphs.Ascii), Ink.Text));
 				}
 
 				continue;
@@ -252,7 +266,9 @@ internal sealed class MonitorTab : ITabView
 
 			var parts = name.Split('.');
 			var group = parts.Length >= 3 ? MonitorMetrics.GroupTitle(parts[1]) : string.Empty;
-			var alarm = info.Alarm && double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number) && number > 0;
+			var alarm = info.Alarm &&
+			            double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number) &&
+			            number > 0;
 			lines.Add(new MetricLine(name, group, info.Label, MonitorMetrics.Show(info, value, _glyphs.Ascii),
 				alarm ? Ink.Warning : Ink.Text));
 		}
@@ -271,7 +287,8 @@ internal sealed class MonitorTab : ITabView
 				lines.Add(new MetricLine(key, string.Empty, MonitorMetrics.Of(key).Label, "not measured", Ink.Muted));
 		}
 
-		if (lines.Count == 0) lines.Add(new MetricLine(string.Empty, string.Empty, "No data yet", string.Empty, Ink.Muted));
+		if (lines.Count == 0)
+			lines.Add(new MetricLine(string.Empty, string.Empty, "No data yet", string.Empty, Ink.Muted));
 
 		return lines;
 	}
@@ -321,9 +338,11 @@ internal sealed class MonitorTab : ITabView
 		var series = _model.OpenByKind[kind];
 		var times = () => _model.Latencies.GetValueOrDefault(latency);
 		return Panel(title, series, null, () => Math.Max(series.Max() * 1.1, 1),
-			[() => $"{Pair("Clients", Plain(series.Latest))}  {Pair(unit, $"{rate():0.#}/s")}",
-				() => $"{Pair("p50", Time(times().P50))}  {Pair("p95", Time(times().P95))}",
-				() => Pair("p99", Time(times().P99))], Legend("Clients", null));
+		[
+			() => $"{Pair("Clients", Plain(series.Latest))}  {Pair(unit, $"{rate():0.#}/s")}",
+			() => $"{Pair("p50", Time(times().P50))}  {Pair("p95", Time(times().P95))}",
+			() => Pair("p99", Time(times().P99))
+		], Legend("Clients", null));
 	}
 
 	private string Legend(string primary, string? secondary)
@@ -338,7 +357,8 @@ internal sealed class MonitorTab : ITabView
 	private static bool InGraph(string name)
 	{
 		return GraphMeasurements.Contains(name) || name.StartsWith("sessions.", StringComparison.Ordinal) ||
-		       name.StartsWith("stable.", StringComparison.Ordinal) || name.StartsWith("irc.", StringComparison.Ordinal);
+		       name.StartsWith("stable.", StringComparison.Ordinal) ||
+		       name.StartsWith("irc.", StringComparison.Ordinal);
 	}
 
 	private double Number(string key)
@@ -353,7 +373,8 @@ internal sealed class MonitorTab : ITabView
 
 	private string Measure(string key)
 	{
-		return MonitorMetrics.Show(MonitorMetrics.Of(key), Number(key).ToString(CultureInfo.InvariantCulture), _glyphs.Ascii);
+		return MonitorMetrics.Show(MonitorMetrics.Of(key), Number(key).ToString(CultureInfo.InvariantCulture),
+			_glyphs.Ascii);
 	}
 
 	private static string Time(double milliseconds)

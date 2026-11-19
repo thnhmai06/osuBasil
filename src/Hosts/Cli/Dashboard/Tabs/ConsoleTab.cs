@@ -3,6 +3,7 @@ using Basil.Host.Cli.Commands;
 using Basil.Host.Cli.Dashboard.Data;
 using Basil.Host.Cli.Dashboard.Shell;
 using Microsoft.Extensions.Logging;
+using XenoAtom.Ansi;
 using XenoAtom.Terminal;
 using XenoAtom.Terminal.UI;
 using XenoAtom.Terminal.UI.Commands;
@@ -21,27 +22,32 @@ internal sealed class ConsoleTab
 	private readonly CancellationTokenSource _cancel = new();
 	private readonly Dialogs _dialogs;
 	private readonly Glyphs _glyphs;
+	private readonly LogControl _log;
 	private readonly LogBuffer _logBuffer;
 	private readonly ILogger _logger;
-	private readonly LogControl _log;
+	private readonly List<string> _past = [];
+	private readonly State<bool> _popupOpen = new(false);
+	private readonly State<int> _popupRows = new(0);
+
+	private readonly State<string>[] _popupText =
+		[.. Enumerable.Range(0, PopupSize).Select(_ => new State<string>(string.Empty))];
+
 	private readonly CommandRunner _runner;
 	private readonly CommandSuggestions _suggestions;
 	private readonly Palette _tokens;
-	private readonly State<bool> _popupOpen = new(false);
-	private readonly State<int> _popupRows = new(0);
-	private readonly State<string>[] _popupText = [.. Enumerable.Range(0, PopupSize).Select(_ => new State<string>(string.Empty))];
-	private readonly List<string> _past = [];
-	private int _pastIndex;
-	private IReadOnlyList<(string Word, string Description)> _items = [];
-	private string _lastText = string.Empty;
-	private int _lastCaret;
+	private TerminalApp? _app;
 	private string _closedAt = string.Empty;
-	private int _replaceStart;
+
+	private Action? _decline;
+	private IReadOnlyList<(string Word, string Description)> _items = [];
+	private int _lastCaret;
+	private string _lastText = string.Empty;
+	private int _pastIndex;
 	private int _replaceLength;
+	private int _replaceStart;
+	private long _seen;
 	private int _selected;
 	private int _top;
-	private TerminalApp? _app;
-	private long _seen;
 
 	public ConsoleTab(LogBuffer logBuffer, CommandRunner runner, CommandSuggestions suggestions, CliOptions options,
 		Glyphs glyphs, Palette tokens, Dialogs dialogs, TimeProvider clock, ILogger logger)
@@ -57,7 +63,7 @@ internal sealed class ConsoleTab
 		var follow = JumpToEndButton.Over(_log, glyphs, JumpToEnd);
 		Prompt = new PromptEditor()
 			.LineMode(PromptEditorLineMode.SingleLine)
-			.PromptMarkup($"[cyan]{XenoAtom.Ansi.AnsiMarkup.Escape(glyphs.Prompt)}[/] ")
+			.PromptMarkup($"[cyan]{AnsiMarkup.Escape(glyphs.Prompt)}[/] ")
 			.CompletionPresentation(PromptEditorCompletionPresentation.None)
 			.EnableGhostCompletion(false)
 			.Highlighter(Highlight)
@@ -85,6 +91,8 @@ internal sealed class ConsoleTab
 	public Visual View { get; }
 
 	public PromptEditor Prompt { get; }
+
+	public bool Asking => _decline is not null;
 
 	public void Attach(TerminalApp app)
 	{
@@ -115,7 +123,8 @@ internal sealed class ConsoleTab
 		}
 
 		var fresh = _logBuffer.Since(_seen, out var total);
-		foreach (var line in fresh.Where(line => line.Level >= LogLevel.Information)) _log.AppendMarkupLine(Format(line));
+		foreach (var line in fresh.Where(line => line.Level >= LogLevel.Information))
+			_log.AppendMarkupLine(Format(line));
 		_seen = total;
 		JumpToEndButton.Sync(_log);
 	}
@@ -200,10 +209,6 @@ internal sealed class ConsoleTab
 		}
 	}
 
-	private Action? _decline;
-
-	public bool Asking => _decline is not null;
-
 	public void Decline()
 	{
 		_decline?.Invoke();
@@ -216,6 +221,7 @@ internal sealed class ConsoleTab
 		_app?.Post(() =>
 		{
 			var dialog = new Dialog().Title("Confirm");
+
 			void Answer(bool yes)
 			{
 				_decline = null;
@@ -226,13 +232,14 @@ internal sealed class ConsoleTab
 			_decline = () => Answer(false);
 
 			dialog.Content(Dialogs.EscapeCloses(dialog, new VStack(new TextBlock(question + " (y/n)"),
-				Dialogs.Buttons(new Button("Yes").Click(() => Answer(true)), new Button("No").Click(() => Answer(false))))
+					Dialogs.Buttons(new Button("Yes").Click(() => Answer(true)),
+						new Button("No").Click(() => Answer(false))))
 				.KeyDown((_, e) =>
-			{
-				if (e.Char is not ('y' or 'Y' or 'n' or 'N')) return;
-				e.Handled = true;
-				Answer(e.Char is 'y' or 'Y');
-			}), () => Answer(false)));
+				{
+					if (e.Char is not ('y' or 'Y' or 'n' or 'N')) return;
+					e.Handled = true;
+					Answer(e.Char is 'y' or 'Y');
+				}), () => Answer(false)));
 			_dialogs.Show(dialog);
 		});
 		return source.Task;
@@ -321,7 +328,9 @@ internal sealed class ConsoleTab
 
 		var text = Prompt.Text ?? string.Empty;
 		var head = text[.._replaceStart];
-		var tail = _replaceStart + _replaceLength <= text.Length ? text[(_replaceStart + _replaceLength)..] : string.Empty;
+		var tail = _replaceStart + _replaceLength <= text.Length
+			? text[(_replaceStart + _replaceLength)..]
+			: string.Empty;
 		// The popup stays closed until the operator types again, so that Enter then runs the line.
 		var accepted = $"{head}{_items[index].Word} {tail}";
 		_closedAt = accepted;
@@ -335,16 +344,28 @@ internal sealed class ConsoleTab
 
 	private void AddPopupKeys(PromptEditor prompt)
 	{
-		bool Open() => _popupOpen.Value && _items.Count > 0;
+		bool Open()
+		{
+			return _popupOpen.Value && _items.Count > 0;
+		}
+
 		prompt.AddCommand(new Command
 		{
 			Id = "console.suggest.up", LabelMarkup = "Previous suggestion", Gesture = new KeyGesture(TerminalKey.Up),
-			Execute = _ => { if (Open()) Move(-1); else Recall(-1); }
+			Execute = _ =>
+			{
+				if (Open()) Move(-1);
+				else Recall(-1);
+			}
 		});
 		prompt.AddCommand(new Command
 		{
 			Id = "console.suggest.down", LabelMarkup = "Next suggestion", Gesture = new KeyGesture(TerminalKey.Down),
-			Execute = _ => { if (Open()) Move(1); else Recall(1); }
+			Execute = _ =>
+			{
+				if (Open()) Move(1);
+				else Recall(1);
+			}
 		});
 		prompt.AddCommand(new Command
 		{
@@ -363,7 +384,8 @@ internal sealed class ConsoleTab
 		});
 		prompt.AddCommand(new Command
 		{
-			Id = "console.suggest.back", LabelMarkup = "Close", Gesture = new KeyGesture(TerminalKey.Left, TerminalModifiers.Alt),
+			Id = "console.suggest.back", LabelMarkup = "Close",
+			Gesture = new KeyGesture(TerminalKey.Left, TerminalModifiers.Alt),
 			CanExecute = _ => Open(), Execute = _ => ClosePopup()
 		});
 		// The editor takes Esc for itself and reports it as canceled: close the popup, else clear the line.
@@ -417,7 +439,8 @@ internal sealed class ConsoleTab
 		public void Write(OutputLine line)
 		{
 			sink?.Invoke(line);
-			var parts = line.Text.Split('\n').Select(part => tab.Format(line with { Text = part.TrimEnd('\r') })).ToList();
+			var parts = line.Text.Split('\n').Select(part => tab.Format(line with { Text = part.TrimEnd('\r') }))
+				.ToList();
 			tab._app?.Post(() =>
 			{
 				foreach (var part in parts) tab._log.AppendMarkupLine(part);

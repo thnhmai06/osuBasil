@@ -1,10 +1,8 @@
 using Basil.Application.Bot.Commands;
-using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Servers.Messages.Channels;
 using Basil.Application.Servers.Objects;
 using Basil.Domain.Chat;
-using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
 using Mediator;
 

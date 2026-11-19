@@ -1,4 +1,3 @@
-using Basil.Application.Shared.Exceptions;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Game.Scores;
 using Basil.Domain.Users;

@@ -2,20 +2,18 @@ using Basil.Application.Shared.Actors;
 using Basil.Application.Users.Capabilities;
 using Basil.Application.Users.Objects.Events;
 using Basil.Domain.Authentication;
-using Basil.Domain.Game.Client;
-
-using Basil.Domain.Users;
 using Basil.Domain.Game.Spectating;
 using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using Basil.Shared.Structures.Data;
 
 namespace Basil.Application.Users.Objects.Sessions;
 
-public abstract class Session(Basil.Domain.Authentication.Session state, string token) : IActor
+public abstract class Session(Domain.Authentication.Session state, string token) : IActor
 {
 	public User User { get; internal set; } = null!;
 
-	public Basil.Domain.Authentication.Session State { get; } = state;
+	public Domain.Authentication.Session State { get; } = state;
 
 	public string Token { get; } = token;
 
@@ -43,7 +41,7 @@ public sealed class StableSession : Session
 	private readonly Lock _spectating = new();
 	private readonly ConcurrentSet<Session> _spectators = [];
 
-	internal StableSession(Basil.Domain.Authentication.Session state, string token, int utcOffset,
+	internal StableSession(Domain.Authentication.Session state, string token, int utcOffset,
 		SessionContext context) : base(state, token)
 	{
 		UtcOffset = utcOffset;
@@ -56,7 +54,7 @@ public sealed class StableSession : Session
 
 	public int UtcOffset { get; }
 
-	public PlayerStatus Status { get; internal set; } = PlayerStatus.Idle;
+	public UserStatus Status { get; internal set; } = UserStatus.Idle;
 
 	public IReadOnlySet<Session> Spectators => _spectators;
 
@@ -133,7 +131,7 @@ public sealed class StableSession : Session
 		return true;
 	}
 
-	internal bool SetStatus(PlayerStatus status)
+	internal bool SetStatus(UserStatus status)
 	{
 		if (!IsOpen || Equals(Status, status)) return false;
 
@@ -145,7 +143,7 @@ public sealed class StableSession : Session
 
 public sealed class TourneySession : Session
 {
-	internal TourneySession(Basil.Domain.Authentication.Session state, string token) : base(state, token)
+	internal TourneySession(Domain.Authentication.Session state, string token) : base(state, token)
 	{
 	}
 
@@ -154,7 +152,7 @@ public sealed class TourneySession : Session
 
 public sealed class IrcSession : Session
 {
-	internal IrcSession(Basil.Domain.Authentication.Session state, string token) : base(state, token)
+	internal IrcSession(Domain.Authentication.Session state, string token) : base(state, token)
 	{
 	}
 
@@ -163,7 +161,7 @@ public sealed class IrcSession : Session
 
 public sealed class ApiSession : Session
 {
-	internal ApiSession(Basil.Domain.Authentication.Session state, string token) : base(state, token)
+	internal ApiSession(Domain.Authentication.Session state, string token) : base(state, token)
 	{
 	}
 
@@ -172,7 +170,7 @@ public sealed class ApiSession : Session
 
 public sealed class OperatorSession : Session
 {
-	internal OperatorSession(Basil.Domain.Authentication.Session state, string token) : base(state, token)
+	internal OperatorSession(Domain.Authentication.Session state, string token) : base(state, token)
 	{
 	}
 

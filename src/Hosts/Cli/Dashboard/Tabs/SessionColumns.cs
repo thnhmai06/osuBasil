@@ -1,4 +1,3 @@
-using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
 using Basil.Host.Cli.Dashboard.Shell;
 
@@ -6,7 +5,8 @@ namespace Basil.Host.Cli.Dashboard.Tabs;
 
 internal static class SessionColumns
 {
-	public static IReadOnlyList<Column<SessionItem>> Of(Func<SessionItem, (string Title, Func<Task<DetailView>> Read)?>? user)
+	public static IReadOnlyList<Column<SessionItem>> Of(
+		Func<SessionItem, (string Title, Func<Task<DetailView>> Read)?>? user)
 	{
 		var columns = new List<Column<SessionItem>>();
 		if (user is not null)

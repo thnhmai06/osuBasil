@@ -1,8 +1,8 @@
-using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Objects.Sessions;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Report.Matches;
+using Basil.Domain.Multiplayer.Room;
 using Mediator;
 
 namespace Basil.Application.Multiplayer.Messages;

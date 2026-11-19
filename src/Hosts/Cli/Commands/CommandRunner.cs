@@ -50,7 +50,8 @@ public sealed class CommandRunner(
 			// The message names the rejected value for the operator; the parameter name the runtime appends is not theirs.
 			var message = exception.ParamName is null
 				? exception.Message
-				: exception.Message.Replace($" (Parameter '{exception.ParamName}')", string.Empty, StringComparison.Ordinal);
+				: exception.Message.Replace($" (Parameter '{exception.ParamName}')", string.Empty,
+					StringComparison.Ordinal);
 			output.Error("invalid", message);
 			return ExitCodes.Invalid;
 		}

@@ -1,7 +1,6 @@
 using Basil.Application.Users.Persistence;
-
-using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Application.Users.Ports;

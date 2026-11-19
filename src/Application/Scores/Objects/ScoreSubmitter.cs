@@ -32,15 +32,17 @@ public sealed class ScoreSubmitter
 		return new ScopedScoreSubmitter(this, actor, actor.EffectivePrivileges(_clock.GetUtcNow()));
 	}
 
-	internal async Task<(ScoreSubmissionOutcome Outcome, SubmissionRejectionReason? Rejection, ScoreReceipt? Receipt)> SubmitAsync(
-		StableSession actor, Submission submission, BeatmapChecksums? beatmap, SubmittedClient client,
-		Stream? replay, CancellationToken ct)
+	internal async Task<(ScoreSubmissionOutcome Outcome, SubmissionRejectionReason? Rejection, ScoreReceipt? Receipt)>
+		SubmitAsync(
+			StableSession actor, Submission submission, BeatmapChecksums? beatmap, SubmittedClient client,
+			Stream? replay, CancellationToken ct)
 	{
 		var checkedBeatmap = beatmap ??
 		                     (Acceptance.AcceptsUnknown(actor.Record, client.BeatmapHash)
 			                     ? new BeatmapChecksums(client.BeatmapHash, null)
 			                     : null);
-		if (checkedBeatmap is null) return (ScoreSubmissionOutcome.Rejected, SubmissionRejectionReason.UnknownBeatmap, null);
+		if (checkedBeatmap is null)
+			return (ScoreSubmissionOutcome.Rejected, SubmissionRejectionReason.UnknownBeatmap, null);
 
 		var outcome = await Recorder.ValidateAndRecordAsync(
 			actor.Record, actor.State.Fingerprint.Client!, submission, checkedBeatmap, client, replay,

@@ -1,7 +1,6 @@
 using Basil.Application.Scores.Objects;
 using Basil.Application.Shared.Actors;
 using Basil.Application.Shared.Privileges;
-using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
 
 namespace Basil.Application.Scores.Capabilities;

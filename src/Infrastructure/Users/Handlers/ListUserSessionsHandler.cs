@@ -1,6 +1,5 @@
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Messages;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Domain.Users;
@@ -9,9 +8,9 @@ using Mediator;
 namespace Basil.Infrastructure.Users.Handlers;
 
 internal sealed class ListUserSessionsHandler(UserRegistry registry)
-	: IRequestHandler<ListUserSessions, (UserOutcome Result, Page<Basil.Domain.Authentication.Session>? Sessions)>
+	: IRequestHandler<ListUserSessions, (UserOutcome Result, Page<Session>? Sessions)>
 {
-	public async ValueTask<(UserOutcome Result, Page<Basil.Domain.Authentication.Session>? Sessions)> Handle(
+	public async ValueTask<(UserOutcome Result, Page<Session>? Sessions)> Handle(
 		ListUserSessions request, CancellationToken ct)
 	{
 		return await registry.ScopeTo(request.Actor, request.Target).Sessions

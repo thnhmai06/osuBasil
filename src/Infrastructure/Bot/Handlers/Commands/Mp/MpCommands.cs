@@ -1,16 +1,13 @@
-using Basil.Domain.Chat;
 using System.Collections.Frozen;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Bot.Commands;
 using Basil.Application.Bot.Commands.Mp;
 using Basil.Application.Bot.Registry;
-using Basil.Application.Bot.Replies;
-using Basil.Application.Chat.Objects;
-using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
+using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using Mediator;
 

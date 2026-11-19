@@ -1,11 +1,9 @@
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Shared.Paging;
-using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Sessions;
-using Basil.Domain.Users;
-using Session = Basil.Application.Users.Objects.Sessions.Session;
 using Basil.Domain.Authentication;
+using Basil.Domain.Users;
 using Mediator;
+using Session = Basil.Application.Users.Objects.Sessions.Session;
 
 namespace Basil.Application.Users.Messages;
 
@@ -15,4 +13,4 @@ public sealed record ListUserSessions(
 	PageRequest Page,
 	SessionFilter State,
 	IReadOnlyList<SessionType>? Types)
-	: IRequest<(UserOutcome Result, Page<Basil.Domain.Authentication.Session>? Sessions)>;
+	: IRequest<(UserOutcome Result, Page<Domain.Authentication.Session>? Sessions)>;

@@ -1,9 +1,7 @@
-using Basil.Domain.Users;
 using System.Text;
 using Basil.Application.Shared.Paging;
-using Basil.Application.Users.Objects;
+using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;
-
 
 namespace Basil.Host.Cli.Commands;
 

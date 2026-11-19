@@ -7,7 +7,6 @@ using Basil.Application.Scores.Storage;
 using Basil.Application.Shared.Exceptions;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Game.Client;
-
 using Basil.Domain.Game.Scores;
 using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;

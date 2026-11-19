@@ -1,13 +1,11 @@
 using Basil.Application.Chat.Capabilities;
 using Basil.Application.Chat.Objects.Events;
-using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Authentication;
-using Session = Basil.Application.Users.Objects.Sessions.Session;
 using Basil.Domain.Chat;
-
-using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using Basil.Shared.Structures.Data;
+using Session = Basil.Application.Users.Objects.Sessions.Session;
 
 namespace Basil.Application.Chat.Objects;
 

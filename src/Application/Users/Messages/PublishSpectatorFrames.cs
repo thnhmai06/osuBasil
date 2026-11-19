@@ -1,5 +1,4 @@
 using Basil.Application.Users.Objects.Sessions;
-using Basil.Domain.Game.Client;
 using Basil.Domain.Game.Spectating;
 using Mediator;
 

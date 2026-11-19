@@ -1,7 +1,6 @@
 using XenoAtom.Terminal;
 using XenoAtom.Terminal.UI;
 using XenoAtom.Terminal.UI.Controls;
-using XenoAtom.Terminal.UI.Input;
 using XenoAtom.Terminal.UI.Scrolling;
 
 namespace Basil.Host.Cli.Dashboard.Shell;
@@ -63,7 +62,8 @@ internal static class WheelScroll
 	private static bool IsOverOther(Visual? origin, Visual host, ScrollViewer target)
 	{
 		for (var visual = origin; visual is not null && !ReferenceEquals(visual, host); visual = visual.Parent)
-			if (visual is LogControl or IScrollable || visual is ScrollViewer other && !ReferenceEquals(other, target))
+			if (visual is LogControl or IScrollable ||
+			    (visual is ScrollViewer other && !ReferenceEquals(other, target)))
 				return true;
 
 		return false;

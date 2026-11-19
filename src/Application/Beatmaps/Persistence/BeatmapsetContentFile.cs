@@ -1,6 +1,5 @@
 using Basil.Shared.Structures.Cryptography;
 
-
 namespace Basil.Application.Beatmaps.Persistence;
 
 public abstract class BeatmapsetContentFile(string name, long length)

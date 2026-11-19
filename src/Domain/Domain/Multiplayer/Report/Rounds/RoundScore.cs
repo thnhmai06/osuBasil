@@ -1,7 +1,7 @@
 using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Game.Scores;
 
-namespace Basil.Domain.Multiplayer;
+namespace Basil.Domain.Multiplayer.Report.Rounds;
 
 public readonly record struct RoundScore
 {

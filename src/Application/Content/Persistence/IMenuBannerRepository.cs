@@ -1,4 +1,3 @@
-using Basil.Application.Shared.Paging;
 using Basil.Domain.Content;
 
 namespace Basil.Application.Content.Persistence;

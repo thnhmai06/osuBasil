@@ -4,7 +4,6 @@ using Basil.Application.Users.Registry;
 using Basil.Host.Cli.Commands;
 using Basil.Host.Cli.Dashboard;
 using Basil.Host.Cli.Dashboard.Data;
-using Basil.Host.Cli.Dashboard.Tabs;
 using Basil.Host.Cli.Shutdown;
 using Basil.Host.Cli.Socket;
 using Microsoft.Extensions.DependencyInjection;
@@ -55,7 +54,8 @@ public static class CliHost
 			services.AddHostedService(provider => provider.GetRequiredService<ControlServer>());
 			services.AddHostedService<ShutdownTicker>();
 			services.AddSingleton(mode);
-			services.AddSingleton<DashboardApp>(provider => new DashboardApp(provider, provider.GetRequiredService<DashboardModel>(),
+			services.AddSingleton<DashboardApp>(provider => new DashboardApp(provider,
+				provider.GetRequiredService<DashboardModel>(),
 				provider.GetRequiredService<DashboardSampler>(),
 				provider.GetRequiredService<CommandRunner>(), provider.GetRequiredService<CommandSuggestions>(),
 				provider.GetRequiredService<ShutdownController>(), provider.GetRequiredService<ThemeStore>(), mode,

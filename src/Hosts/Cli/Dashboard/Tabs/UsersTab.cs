@@ -3,18 +3,29 @@ using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using Basil.Host.Cli.Dashboard.Shell;
 using Mediator;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using XenoAtom.Terminal.UI;
-using Microsoft.Extensions.DependencyInjection;
+using User = Basil.Application.Users.Objects.User;
 
 namespace Basil.Host.Cli.Dashboard.Tabs;
 
-internal sealed record UserItem(int Id, string Name, string Country, string Privileges, ulong Mask,
-	string Connections, string Room, string Managed, string Activity, bool Silenced, ulong Granted);
+internal sealed record UserItem(
+	int Id,
+	string Name,
+	string Country,
+	string Privileges,
+	ulong Mask,
+	string Connections,
+	string Room,
+	string Managed,
+	string Activity,
+	bool Silenced,
+	ulong Granted);
 
 internal sealed class UsersSource(IServiceProvider services, TimeProvider clock) : IListSource<UserItem>
 {
@@ -52,7 +63,7 @@ internal sealed class UsersSource(IServiceProvider services, TimeProvider clock)
 		        countries.Any(c => string.Equals(c.ToAcronym(), country, StringComparison.OrdinalIgnoreCase)));
 	}
 
-	internal static UserItem Item(Lobby lobby, UserRecord record, Basil.Application.Users.Objects.User? user,
+	internal static UserItem Item(Lobby lobby, UserRecord record, User? user,
 		DateTimeOffset now)
 	{
 		var mask = user is null ? (ulong)record.Value.Privileges : (ulong)user.EffectivePrivileges(now);
@@ -78,12 +89,12 @@ internal sealed class UsersSource(IServiceProvider services, TimeProvider clock)
 internal sealed class UsersTab : ITabView, ISelectable, ISearchable
 {
 	private const string Help = """
-		Words match the name (ignoring case) or the exact id.
-		country=usvn     only these countries (two-letter codes, joined)
-		privilege=4      only accounts granted all these privilege flags (number)
-		deleted=1|0|*    only deleted, only existing (the default), or both (owner only)
-		Example: country=vn privilege=4 bob
-		""";
+	                            Words match the name (ignoring case) or the exact id.
+	                            country=usvn     only these countries (two-letter codes, joined)
+	                            privilege=4      only accounts granted all these privilege flags (number)
+	                            deleted=1|0|*    only deleted, only existing (the default), or both (owner only)
+	                            Example: country=vn privilege=4 bob
+	                            """;
 
 	private readonly ListPage<UserItem> _page;
 	private bool _opened;
@@ -93,14 +104,29 @@ internal sealed class UsersTab : ITabView, ISelectable, ISearchable
 	{
 		var colours = options.NoColor;
 		_page = new ListPage<UserItem>("Users", Help,
-		[
-			new Column<UserItem>("ID", 8, u => u.Id.ToString()) { Right = true },
-			new Column<UserItem>("FullName", 16, u => u.Name, u => Role(u.Mask)),
-			new Column<UserItem>("Country", 8, u => u.Country, _ => Ink.Muted),
-			new Column<UserItem>("Privileges", 0, u => u.Privileges, u => Role(u.Mask)),
-			new Column<UserItem>("Connections", 11, u => u.Connections, _ => Ink.Info)
-		], u => u.Id.ToString(), new UsersSource(services, clock),
+			[
+				new Column<UserItem>("ID", 8, u => u.Id.ToString()) { Right = true },
+				new Column<UserItem>("FullName", 16, u => u.Name, u => Role(u.Mask)),
+				new Column<UserItem>("Country", 8, u => u.Country, _ => Ink.Muted),
+				new Column<UserItem>("Privileges", 0, u => u.Privileges, u => Role(u.Mask)),
+				new Column<UserItem>("Connections", 11, u => u.Connections, _ => Ink.Info)
+			], u => u.Id.ToString(), new UsersSource(services, clock),
 			users.Of, glyphs, kit, colours, clock, post, logger);
+	}
+
+	public void FocusSearch()
+	{
+		_page.FocusSearch();
+	}
+
+	public void ShowHelp()
+	{
+		_page.ShowHelp();
+	}
+
+	public void Select(string id)
+	{
+		_page.Select(id);
 	}
 
 	public Visual View => _page.View;
@@ -127,21 +153,6 @@ internal sealed class UsersTab : ITabView, ISelectable, ISearchable
 	public void Refresh()
 	{
 		_page.Refresh();
-	}
-
-	public void FocusSearch()
-	{
-		_page.FocusSearch();
-	}
-
-	public void ShowHelp()
-	{
-		_page.ShowHelp();
-	}
-
-	public void Select(string id)
-	{
-		_page.Select(id);
 	}
 
 	private static Ink Role(ulong mask)

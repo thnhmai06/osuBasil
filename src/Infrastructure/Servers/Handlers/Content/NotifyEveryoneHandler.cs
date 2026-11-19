@@ -1,8 +1,8 @@
-using Basil.Application.Servers.Messages;
+using Basil.Application.Servers.Messages.Content;
 using Basil.Application.Servers.Objects;
 using Mediator;
 
-namespace Basil.Infrastructure.Servers.Handlers;
+namespace Basil.Infrastructure.Servers.Handlers.Content;
 
 internal sealed class NotifyEveryoneHandler(Server server)
 	: IRequestHandler<NotifyEveryone, (ServerOutcome Result, int Sent)>

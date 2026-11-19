@@ -1,15 +1,12 @@
 using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Multiplayer.Messages;
-using Basil.Application.Multiplayer.Objects;
-using Basil.Application.Multiplayer.Objects.Rooms;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Multiplayer.Room;
 using Basil.Domain.Users;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
-using Basil.Domain.Multiplayer;
 using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 using User = Basil.Application.Users.Objects.User;
 
@@ -168,7 +165,8 @@ public static class RoomCommands
 		var beatmap = await services.GetRequiredService<ISender>().Send(new FindBeatmap(body.Beatmap), ct);
 		if (beatmap is null) return RoomOutcome.NoBeatmap;
 
-		var reference = new BeatmapReference(beatmap.Hash, beatmap.Id, beatmap.FullName, beatmap.Metadata.Difficulty.Mode,
+		var reference = new BeatmapReference(beatmap.Hash, beatmap.Id, beatmap.FullName,
+			beatmap.Metadata.Difficulty.Mode,
 			beatmap);
 		return await room.Ask(new ConfigureRoom(room.Actor, room.Room,
 			new RoomSettingsChange(Beatmap: reference, Mode: body.Mode ?? beatmap.Metadata.Difficulty.Mode)), ct);

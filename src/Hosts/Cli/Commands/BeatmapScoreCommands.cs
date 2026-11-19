@@ -3,10 +3,9 @@ using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Scores.Messages;
 using Basil.Application.Scores.Objects;
-using Basil.Application.Servers.Messages;
+using Basil.Application.Servers.Messages.Content;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Shared.Paging;
-using Basil.Domain.Beatmaps;
 using Basil.Domain.Game.Beatmaps;
 using Basil.Host.Shared.Views;
 using Mediator;
@@ -82,7 +81,10 @@ internal static class BeatmapScoreCommands
 		{
 			Pattern = "scores recalculate", Route = "POST /v1/scores/performance/recalculate",
 			Summary = "Calculates the pp of stored scores in the background.",
-			Options = [new OptionDef("all", "Calculate every passed score, not only the ones without pp.", OptionKind.Bool)],
+			Options =
+			[
+				new OptionDef("all", "Calculate every passed score, not only the ones without pp.", OptionKind.Bool)
+			],
 			Run = RecalculateScoresAsync
 		};
 		yield return new CommandDef

@@ -4,7 +4,6 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Basil.Application.Diagnostics.Services;
 using Basil.Application.Multiplayer.Registry;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Users;
 using Basil.Host.Shared.Json;
@@ -45,7 +44,8 @@ public sealed class DashboardSampler(IServiceProvider services, DashboardModel m
 		foreach (var (category, value) in json) Flatten(lines, category, value);
 		// The latest types are replaced by the count of the last minute, which the monitor shows as one measurement.
 		lines.RemoveAll(line => line.Item1 == "exceptions.recent");
-		model.ExceptionsLastMinute = _exceptions.Update((long)Number(json, "exceptions", "total"), RecentExceptions(json),
+		model.ExceptionsLastMinute = _exceptions.Update((long)Number(json, "exceptions", "total"),
+			RecentExceptions(json),
 			clock.GetUtcNow());
 		model.Diagnostics = lines;
 
@@ -87,9 +87,12 @@ public sealed class DashboardSampler(IServiceProvider services, DashboardModel m
 		if (json["http"] is JsonObject { Count: > 0 } hosts)
 		{
 			var windows = hosts.Select(host => host.Value).OfType<JsonObject>().ToList();
+
 			double Worst(string name)
 			{
-				return windows.Count == 0 ? 0 : windows.Max(window => window[name] is JsonValue v && v.TryGetValue<double>(out var n) ? n : 0);
+				return windows.Count == 0
+					? 0
+					: windows.Max(window => window[name] is JsonValue v && v.TryGetValue<double>(out var n) ? n : 0);
 			}
 
 			result["api"] = new Latency(Worst("p50Milliseconds"), Worst("p95Milliseconds"), Worst("p99Milliseconds"));

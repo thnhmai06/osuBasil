@@ -1,6 +1,5 @@
-using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Domain.Game.Mechanics;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Room;
 using Basil.Protocol.Game.Stable.Models.Multiplayer;
 
 namespace Basil.Host.Stable.Support;

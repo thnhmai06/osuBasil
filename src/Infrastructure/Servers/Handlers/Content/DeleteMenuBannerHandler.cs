@@ -1,8 +1,8 @@
-using Basil.Application.Servers.Messages;
+using Basil.Application.Servers.Messages.Content;
 using Basil.Application.Servers.Objects;
 using Mediator;
 
-namespace Basil.Infrastructure.Servers.Handlers;
+namespace Basil.Infrastructure.Servers.Handlers.Content;
 
 internal sealed class DeleteMenuBannerHandler(Server server) : IRequestHandler<DeleteMenuBanner, ServerOutcome>
 {

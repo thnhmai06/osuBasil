@@ -4,7 +4,6 @@ using Basil.Application.Scores.Persistence;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Persistence;
 using Basil.Shared.Structures.Cryptography;
-
 using Mediator;
 
 namespace Basil.Infrastructure.Scores.Handlers;
@@ -32,7 +31,9 @@ internal sealed class SearchScoresHandler(IScoreRepository scores, IBeatmapRepos
 		HashSet<int>? userIds = null;
 		if (request.User is { } reference)
 		{
-			var user = reference.Id is { } id ? await users.GetAsync(id, ct) : await users.GetByNameAsync(reference.Name!, ct);
+			var user = reference.Id is { } id
+				? await users.GetAsync(id, ct)
+				: await users.GetByNameAsync(reference.Name!, ct);
 			if (user is null) return new ScoreListing(ScoreListOutcome.NoUser, null);
 			userIds = [user.Id];
 		}

@@ -3,21 +3,25 @@ using Basil.Application.Authentication.Persistence;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Messages;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
-using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using Basil.Host.Cli.Dashboard.Shell;
-using Basil.Host.Shared.Views;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
-using XenoAtom.Terminal.UI;
 
 namespace Basil.Host.Cli.Dashboard.Tabs;
 
-internal sealed class UserDetails(IServiceProvider services, CommandActions actions, BeatmapDetails beatmaps,
-	CliOptions options, Dialogs dialogs, Glyphs glyphs, TimeProvider clock, Action<string> openChat)
+internal sealed class UserDetails(
+	IServiceProvider services,
+	CommandActions actions,
+	BeatmapDetails beatmaps,
+	CliOptions options,
+	Dialogs dialogs,
+	Glyphs glyphs,
+	TimeProvider clock,
+	Action<string> openChat)
 {
 	private const int RowsShown = 20;
 
@@ -25,7 +29,8 @@ internal sealed class UserDetails(IServiceProvider services, CommandActions acti
 	{
 		var record = await services.GetRequiredService<ISender>().Send(new GetUser(reference));
 		if (record is null)
-			return new DetailView(reference.Name ?? reference.Id?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+			return new DetailView(
+				reference.Name ?? reference.Id?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
 				[("User", "does not exist", Ink.Warning)], []);
 
 		return Of(ItemOf(record));
@@ -98,9 +103,10 @@ internal sealed class UserDetails(IServiceProvider services, CommandActions acti
 		};
 		if (session.Live)
 			actionList.Add(new DetailAction("Close session", () => dialogs.Confirm("Close session",
-				$"Close session {session.Id} of {session.UserName}? The client is disconnected; the API token of " +
-				"this session stops working. The account can sign in again with its password.", "Close session",
-				() => actions.Run($"users {session.UserId} sessions {session.Id} delete")), DetailActionKind.Destructive));
+					$"Close session {session.Id} of {session.UserName}? The client is disconnected; the API token of " +
+					"this session stops working. The account can sign in again with its password.", "Close session",
+					() => actions.Run($"users {session.UserId} sessions {session.Id} delete")),
+				DetailActionKind.Destructive));
 		var id = session.Id.ToString(CultureInfo.InvariantCulture);
 		return new DetailView($"{session.Kind} session {(id.Length > 6 ? id[..4] + "…" : id)}", fields, actionList)
 		{
@@ -121,7 +127,8 @@ internal sealed class UserDetails(IServiceProvider services, CommandActions acti
 			.Send(new GetUserSession(actor, UserReference.ById(userId), id));
 		return outcome == UserOutcome.Ok && record is not null
 			? Of(SessionItem.Of(record, clock.GetUtcNow()))
-			: new DetailView(id.ToString(CultureInfo.InvariantCulture), [("Session", "does not exist", Ink.Warning)], []);
+			: new DetailView(id.ToString(CultureInfo.InvariantCulture), [("Session", "does not exist", Ink.Warning)],
+				[]);
 	}
 
 	// The newest sessions of the account, read once as the console command does, shown as the table of the Sessions tab.
@@ -146,8 +153,10 @@ internal sealed class UserDetails(IServiceProvider services, CommandActions acti
 		var sections = await new ScoresSource(services).LoadAsync($"user:{user.Id}", RowsShown, CancellationToken.None);
 		return new DetailView("Scores", [], [], push => NestedTable.Of(ScoresTab.Columns(null), score =>
 				score.Id.ToString(CultureInfo.InvariantCulture),
-				[.. sections.Select(section => new Section<ScoreItem>(section.Title,
-					section.Items.Count.ToString(CultureInfo.InvariantCulture), section.Items))], glyphs, options.NoColor, clock,
+			[
+				.. sections.Select(section => new Section<ScoreItem>(section.Title,
+					section.Items.Count.ToString(CultureInfo.InvariantCulture), section.Items))
+			], glyphs, options.NoColor, clock,
 			score => push(ScoresTab.Detail(score, this, beatmaps)))) { Reload = () => ScoresAsync(user) };
 	}
 
@@ -167,20 +176,23 @@ internal sealed class UserDetails(IServiceProvider services, CommandActions acti
 		var items = records.Select(ItemOf).ToList();
 		IReadOnlyList<Column<UserItem>> columns =
 		[
-			new Column<UserItem>("ID", 8, u => u.Id.ToString(CultureInfo.InvariantCulture)) { Right = true },
-			new Column<UserItem>("FullName", 0, u => u.Name, u => UserInk.Of((UserPrivileges)u.Mask)),
-			new Column<UserItem>("Country", 8, u => u.Country, _ => Ink.Muted),
-			new Column<UserItem>("Connections", 14, u => u.Connections, _ => Ink.Info)
+			new("ID", 8, u => u.Id.ToString(CultureInfo.InvariantCulture)) { Right = true },
+			new("FullName", 0, u => u.Name, u => UserInk.Of((UserPrivileges)u.Mask)),
+			new("Country", 8, u => u.Country, _ => Ink.Muted),
+			new("Connections", 14, u => u.Connections, _ => Ink.Info)
 		];
-		return new DetailView(title, [], [], push => NestedTable.Of(columns, u => u.Id.ToString(CultureInfo.InvariantCulture),
-			[new Section<UserItem>(title, items.Count.ToString(CultureInfo.InvariantCulture), items)], glyphs, options.NoColor,
+		return new DetailView(title, [], [], push => NestedTable.Of(columns,
+			u => u.Id.ToString(CultureInfo.InvariantCulture),
+			[new Section<UserItem>(title, items.Count.ToString(CultureInfo.InvariantCulture), items)], glyphs,
+			options.NoColor,
 			clock, u => push(Of(u)))) { Reload = () => RelationsAsync(user, friends) };
 	}
 
 	private static Section<SessionItem> GroupOf(SessionType kind, IReadOnlyList<SessionItem> items)
 	{
 		var of = items.Where(item => item.Type == kind).ToList();
-		return new Section<SessionItem>(SessionItem.KindName(kind), of.Count.ToString(CultureInfo.InvariantCulture), of);
+		return new Section<SessionItem>(SessionItem.KindName(kind), of.Count.ToString(CultureInfo.InvariantCulture),
+			of);
 	}
 
 	private void AskSilence(int id)
@@ -196,18 +208,21 @@ internal sealed class UserDetails(IServiceProvider services, CommandActions acti
 	private void EditProfile(UserItem user)
 	{
 		dialogs.Form($"Edit {user.Name}",
-			[new FormField("FullName", user.Name), new FormField("Country", user.Country), new FormField("Away message"),
-				new FormField("Block PMs (yes/no)")], values =>
-			{
-				var line = $"users {user.Id} set";
-				if (values[0].Length > 0 && values[0] != user.Name) line += $" --username {CommandActions.Quote(values[0])}";
-				if (values[1].Length > 0 && !values[1].Equals(user.Country, StringComparison.OrdinalIgnoreCase))
-					line += $" --country {CommandActions.Quote(values[1])}";
-				if (values[2].Length > 0) line += $" --away {CommandActions.Quote(values[2])}";
-				if (values[3].Length > 0) line += $" --pmPrivate {(values[3].StartsWith('y') ? "true" : "false")}";
-				if (line == $"users {user.Id} set") actions.Notify("Nothing was changed.");
-				else actions.Run(line);
-			});
+		[
+			new FormField("FullName", user.Name), new FormField("Country", user.Country), new FormField("Away message"),
+			new FormField("Block PMs (yes/no)")
+		], values =>
+		{
+			var line = $"users {user.Id} set";
+			if (values[0].Length > 0 && values[0] != user.Name)
+				line += $" --username {CommandActions.Quote(values[0])}";
+			if (values[1].Length > 0 && !values[1].Equals(user.Country, StringComparison.OrdinalIgnoreCase))
+				line += $" --country {CommandActions.Quote(values[1])}";
+			if (values[2].Length > 0) line += $" --away {CommandActions.Quote(values[2])}";
+			if (values[3].Length > 0) line += $" --pmPrivate {(values[3].StartsWith('y') ? "true" : "false")}";
+			if (line == $"users {user.Id} set") actions.Notify("Nothing was changed.");
+			else actions.Run(line);
+		});
 	}
 
 	private void AskPassword(UserItem user)

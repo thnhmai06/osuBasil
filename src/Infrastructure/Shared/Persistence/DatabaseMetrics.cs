@@ -15,7 +15,10 @@ public sealed class DatabaseMetrics : DbCommandInterceptor
 	{
 		get
 		{
-			lock (_lock) return _commands;
+			lock (_lock)
+			{
+				return _commands;
+			}
 		}
 	}
 
@@ -24,7 +27,11 @@ public sealed class DatabaseMetrics : DbCommandInterceptor
 	public double Percentile(double fraction)
 	{
 		double[] sorted;
-		lock (_lock) sorted = _recent[..(int)Math.Min(_commands, Window)].Order().ToArray();
+		lock (_lock)
+		{
+			sorted = _recent[..(int)Math.Min(_commands, Window)].Order().ToArray();
+		}
+
 		return sorted.Length == 0 ? 0 : sorted[Math.Min(sorted.Length - 1, (int)(fraction * sorted.Length))];
 	}
 
@@ -83,6 +90,9 @@ public sealed class DatabaseMetrics : DbCommandInterceptor
 
 	private void Record(TimeSpan duration)
 	{
-		lock (_lock) _recent[_commands++ % Window] = duration.TotalMilliseconds;
+		lock (_lock)
+		{
+			_recent[_commands++ % Window] = duration.TotalMilliseconds;
+		}
 	}
 }

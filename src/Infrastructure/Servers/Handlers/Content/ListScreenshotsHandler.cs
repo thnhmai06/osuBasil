@@ -1,9 +1,9 @@
-using Basil.Application.Servers.Messages;
+using Basil.Application.Servers.Messages.Content;
 using Basil.Application.Servers.Objects;
 using Basil.Domain.Content;
 using Mediator;
 
-namespace Basil.Infrastructure.Servers.Handlers;
+namespace Basil.Infrastructure.Servers.Handlers.Content;
 
 internal sealed class ListScreenshotsHandler(Server server)
 	: IRequestHandler<ListScreenshots, (ServerOutcome Result, IReadOnlyList<ContentReference> Screenshots)>

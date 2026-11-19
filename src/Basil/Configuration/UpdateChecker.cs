@@ -22,7 +22,10 @@ internal sealed class UpdateChecker(
 	{
 		get
 		{
-			lock (_gate) return _status;
+			lock (_gate)
+			{
+				return _status;
+			}
 		}
 	}
 
@@ -30,7 +33,10 @@ internal sealed class UpdateChecker(
 	{
 		get
 		{
-			lock (_gate) return _lastCheck;
+			lock (_gate)
+			{
+				return _lastCheck;
+			}
 		}
 	}
 
@@ -38,12 +44,18 @@ internal sealed class UpdateChecker(
 	{
 		await CheckAppAsync(options.CurrentValue, ct);
 		await CheckRulesetsAsync(ct);
-		lock (_gate) _lastCheck = clock.GetUtcNow();
+		lock (_gate)
+		{
+			_lastCheck = clock.GetUtcNow();
+		}
 	}
 
 	private void Set(Func<UpdateReport, UpdateReport> change)
 	{
-		lock (_gate) _status = change(_status);
+		lock (_gate)
+		{
+			_status = change(_status);
+		}
 	}
 
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)

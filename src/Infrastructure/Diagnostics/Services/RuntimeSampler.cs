@@ -15,8 +15,8 @@ internal sealed class RuntimeSampler : IDisposable, IClearTally
 	private readonly ConcurrentDictionary<string, HostWindow> _hosts = new();
 	private readonly HostWindow _irc = new();
 	private readonly MeterListener _listener = new();
-	private readonly HostWindow _stable = new();
 	private readonly ConcurrentQueue<string> _recent = new();
+	private readonly HostWindow _stable = new();
 	private readonly DateTimeOffset _started;
 	private readonly object _sync = new();
 	private Dictionary<string, object> _cache = new();

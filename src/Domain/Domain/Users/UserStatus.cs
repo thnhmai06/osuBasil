@@ -2,9 +2,9 @@ using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Game.Users;
 using Basil.Shared.Structures.Cryptography;
 
-namespace Basil.Domain.Authentication;
+namespace Basil.Domain.Users;
 
-public sealed record PlayerStatus(
+public sealed record UserStatus(
 	UserActivity Activity,
 	string Text,
 	Md5Hash? BeatmapHash,
@@ -12,6 +12,6 @@ public sealed record PlayerStatus(
 	GameMods GameMods,
 	GameMode GameMode)
 {
-	public static readonly PlayerStatus Idle =
+	public static readonly UserStatus Idle =
 		new(UserActivity.Idle, string.Empty, null, null, GameMods.NoMod, GameMode.Standard);
 }

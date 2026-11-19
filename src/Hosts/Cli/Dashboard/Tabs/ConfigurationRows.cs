@@ -12,7 +12,8 @@ internal static partial class ConfigurationRows
 
 	private static readonly string[] EnvironmentPrefixes = ["DOTNET_", "ASPNETCORE_"];
 
-	public static IReadOnlyList<SettingsRow> Of(IConfiguration configuration, IReadOnlyDictionary<string, string> environment)
+	public static IReadOnlyList<SettingsRow> Of(IConfiguration configuration,
+		IReadOnlyDictionary<string, string> environment)
 	{
 		var fromEnvironment = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 		foreach (var name in environment.Keys)
@@ -40,7 +41,8 @@ internal static partial class ConfigurationRows
 
 		foreach (var (name, value) in environment.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase))
 		{
-			var prefix = EnvironmentPrefixes.FirstOrDefault(p => name.StartsWith(p, StringComparison.OrdinalIgnoreCase));
+			var prefix =
+				EnvironmentPrefixes.FirstOrDefault(p => name.StartsWith(p, StringComparison.OrdinalIgnoreCase));
 			rows.Add(new SettingsRow(Environment, prefix, name, prefix is null ? name : name[prefix.Length..],
 				Hide(name, value), SettingsFieldKind.Text, true));
 		}

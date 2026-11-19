@@ -1,5 +1,6 @@
 using Basil.Application.Multiplayer.Persistence;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Report;
+using Basil.Domain.Multiplayer.Report.Matches;
 
 namespace Basil.Infrastructure.Multiplayer.Persistence;
 

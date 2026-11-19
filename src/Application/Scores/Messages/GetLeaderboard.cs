@@ -1,5 +1,4 @@
 using Basil.Domain.Beatmaps;
-
 using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Game.Scores;
 using Basil.Shared.Structures.Cryptography;

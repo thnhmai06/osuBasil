@@ -83,8 +83,8 @@ public sealed class ChatFeed(int capacity = 500, int maxChannels = 200)
 {
 	private readonly Dictionary<string, Channel> _channels = new(StringComparer.OrdinalIgnoreCase);
 	private readonly Lock _gate = new();
-	private long _stamp;
 	private long _revision;
+	private long _stamp;
 
 	public long Revision => Interlocked.Read(ref _revision);
 

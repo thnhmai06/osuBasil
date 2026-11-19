@@ -1,7 +1,6 @@
 using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Domain.Beatmaps;
-
 using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Game.Scores;
 using Basil.Infrastructure.Beatmaps.Storage;
@@ -51,7 +50,8 @@ internal sealed class OsuBeatmapCalculator(
 		var lazerMods = PlayMods(ruleset, mode, mods);
 		var pp = calculator.Calculate(ScoreOf(beatmap, ruleset, mode, lazerMods, hits, combo), attributes).Total;
 		var maxPp = calculator
-			.Calculate(ScoreOf(beatmap, ruleset, mode, lazerMods, PerfectHits(beatmap), attributes.MaxCombo), attributes)
+			.Calculate(ScoreOf(beatmap, ruleset, mode, lazerMods, PerfectHits(beatmap), attributes.MaxCombo),
+				attributes)
 			.Total;
 
 		// A non-finite number is a calculator failure, not a pp.
@@ -92,7 +92,7 @@ internal sealed class OsuBeatmapCalculator(
 		try
 		{
 			var content = await storage.OpenAsync(beatmap.Beatmapset, BeatmapsetFileType.Version,
-				                  $"{beatmap.Hash}.osu") ??
+				              $"{beatmap.Hash}.osu") ??
 			              throw new InvalidOperationException("The server has no file for the beatmap.");
 			await using (content)
 			{

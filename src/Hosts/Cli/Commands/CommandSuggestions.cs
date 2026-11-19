@@ -114,11 +114,13 @@ public sealed class CommandSuggestions(CommandCatalog catalog, ISuggestionSource
 		return ([.. result.Distinct()], start, partial.Length);
 	}
 
-	public (IReadOnlyList<(string Word, string Description)> Items, int ReplaceStart, int ReplaceLength) SuggestDescribed(
-		string line)
+	public (IReadOnlyList<(string Word, string Description)> Items, int ReplaceStart, int ReplaceLength)
+		SuggestDescribed(
+			string line)
 	{
 		var (words, start, length) = Suggest(line);
-		var positional = Words(line[..start]).Select(word => word.Text).TakeWhile(word => !CommandCatalog.IsOption(word))
+		var positional = Words(line[..start]).Select(word => word.Text)
+			.TakeWhile(word => !CommandCatalog.IsOption(word))
 			.ToList();
 		return ([.. words.Select(word => (word, DescribeWord(positional, word)))], start, length);
 	}
@@ -131,12 +133,16 @@ public sealed class CommandSuggestions(CommandCatalog catalog, ISuggestionSource
 
 		if (CommandDef.IsParameter(word))
 			return catalog.Starting(positional).FirstOrDefault(command =>
-				command.Words.Length == positional.Count + 1 && command.Words[positional.Count] == word)?.Summary ?? string.Empty;
+				       command.Words.Length == positional.Count + 1 && command.Words[positional.Count] == word)
+			       ?.Summary ??
+			       string.Empty;
 
 		var typed = new List<string>(positional) { word };
 		var candidates = catalog.Starting(typed).ToList();
 		return candidates.FirstOrDefault(command => Fits(command, typed))?.Summary ??
-		       (candidates.Count > 1 ? $"{candidates.Count} commands" : candidates.FirstOrDefault()?.Summary ?? string.Empty);
+		       (candidates.Count > 1
+			       ? $"{candidates.Count} commands"
+			       : candidates.FirstOrDefault()?.Summary ?? string.Empty);
 	}
 
 	private void AddWordSuggestions(List<string> result, List<string> positional, string partial)

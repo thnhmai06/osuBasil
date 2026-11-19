@@ -3,7 +3,6 @@ using System.Globalization;
 using System.Numerics;
 using System.Reflection;
 using Basil.Domain.Authentication;
-using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
 
 namespace Basil.Host.Cli.Commands;

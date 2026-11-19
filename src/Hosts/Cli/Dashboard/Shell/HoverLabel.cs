@@ -4,16 +4,14 @@ using XenoAtom.Terminal.UI.Geometry;
 using XenoAtom.Terminal.UI.Input;
 using XenoAtom.Terminal.UI.Layout;
 using XenoAtom.Terminal.UI.Rendering;
-using XenoAtom.Terminal.UI.Styling;
 
 namespace Basil.Host.Cli.Dashboard.Shell;
 
 internal sealed partial class HoverLabel : Visual
 {
-	[Bindable] private partial bool Hot { get; set; }
+	private readonly Action? _click;
 
 	private readonly string _text;
-	private readonly Action? _click;
 
 	public HoverLabel(string text, Action? click)
 	{
@@ -21,6 +19,8 @@ internal sealed partial class HoverLabel : Visual
 		_click = click;
 		HorizontalAlignment = Align.Start;
 	}
+
+	[Bindable] private partial bool Hot { get; set; }
 
 	protected override SizeHints MeasureCore(in LayoutConstraints constraints)
 	{

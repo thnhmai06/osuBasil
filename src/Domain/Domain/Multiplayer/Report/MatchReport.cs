@@ -1,4 +1,6 @@
-namespace Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Report.Matches;
+
+namespace Basil.Domain.Multiplayer.Report;
 
 public sealed record MatchReport(MatchRecord Match, IReadOnlyList<IMatchEntry> Records);
 

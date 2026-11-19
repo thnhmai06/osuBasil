@@ -1,9 +1,9 @@
 using System.Text.Json;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Shared.Paging;
-
 using Basil.Domain.Game.Mechanics;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Report.Matches;
+using Basil.Domain.Multiplayer.Report.Rounds;
 using Basil.Infrastructure.Shared.Persistence;
 using Basil.Shared.Structures.Cryptography;
 using Microsoft.EntityFrameworkCore;
@@ -39,11 +39,14 @@ internal sealed class EfRoundRepository(DatabaseSession database, IRoundScoreRep
 					? new TeamVersusResult(round, stored.Margin, stored.IsDraw, stored.Winner,
 						new Dictionary<GameTeam, RoundTeamScore>
 						{
-							[GameTeam.Red] = TeamScoreOf(round, scores, GameTeam.Red, stored.RedPassedScore, stored.RedScore),
-							[GameTeam.Blue] = TeamScoreOf(round, scores, GameTeam.Blue, stored.BluePassedScore, stored.BlueScore)
+							[GameTeam.Red] = TeamScoreOf(round, scores, GameTeam.Red, stored.RedPassedScore,
+								stored.RedScore),
+							[GameTeam.Blue] = TeamScoreOf(round, scores, GameTeam.Blue, stored.BluePassedScore,
+								stored.BlueScore)
 						})
 					: new HeadToHeadResult(round, scores, stored.Margin, stored.IsDraw, stored.WinnerId);
 			}
+
 			listed.Add(round);
 		}
 

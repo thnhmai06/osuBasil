@@ -17,6 +17,12 @@ internal sealed class ScorePerformanceRecalculator(
 	private readonly CancellationTokenSource _stop = new();
 	private int _running;
 
+	public void Dispose()
+	{
+		_stop.Cancel();
+		_stop.Dispose();
+	}
+
 	public bool Running => Volatile.Read(ref _running) == 1;
 
 	public bool TryStart(ScorePerformanceScope scope)
@@ -25,12 +31,6 @@ internal sealed class ScorePerformanceRecalculator(
 
 		_ = Task.Run(() => RunAsync(scope, _stop.Token));
 		return true;
-	}
-
-	public void Dispose()
-	{
-		_stop.Cancel();
-		_stop.Dispose();
 	}
 
 	internal async Task RunAsync(ScorePerformanceScope scope, CancellationToken ct)

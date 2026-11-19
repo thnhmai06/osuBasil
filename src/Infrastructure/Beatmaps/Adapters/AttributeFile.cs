@@ -7,14 +7,13 @@ namespace Basil.Infrastructure.Beatmaps.Adapters;
 
 internal static class AttributeFile
 {
-	private sealed record Content(int Version, Dictionary<string, double> Attributes);
-
 	public static string Write(int version, DifficultyAttributes attributes)
 	{
 		var values = new Dictionary<string, double>();
 		foreach (var (id, value) in attributes.ToDatabaseAttributes())
 			if (value is not null)
-				values[id.ToString(CultureInfo.InvariantCulture)] = Convert.ToDouble(value, CultureInfo.InvariantCulture);
+				values[id.ToString(CultureInfo.InvariantCulture)] =
+					Convert.ToDouble(value, CultureInfo.InvariantCulture);
 
 		return JsonSerializer.Serialize(new Content(version, values));
 	}
@@ -37,4 +36,6 @@ internal static class AttributeFile
 			return false;
 		}
 	}
+
+	private sealed record Content(int Version, Dictionary<string, double> Attributes);
 }

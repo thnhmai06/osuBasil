@@ -1,6 +1,6 @@
-using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Domain.Game.Mechanics;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Report.Matches;
+using Basil.Domain.Multiplayer.Room;
 using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 
 namespace Basil.Host.Shared.Views;

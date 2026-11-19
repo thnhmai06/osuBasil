@@ -12,30 +12,32 @@ namespace Basil.Host.Cli.Dashboard.Shell;
 
 internal sealed partial class MetricList : Visual, IScrollable
 {
-	[Bindable] public partial int Revision { get; set; }
+	private readonly HashSet<string> _closed = [];
 
 	private readonly Glyphs _glyphs;
 	private readonly bool _noColor;
-	private readonly ScrollModel _scroll;
-	private readonly HashSet<string> _closed = [];
+	private int _bodyHeight;
+	private int _cursor = -1;
 	private IReadOnlyList<MetricLine> _lines = [];
 	private List<Row> _rows = [];
 	private string? _selectedKey;
-	private int _cursor = -1;
-	private int _bodyHeight;
 
 	public MetricList(Glyphs glyphs, bool noColor)
 	{
 		_glyphs = glyphs;
 		_noColor = noColor;
-		_scroll = new ScrollModel(this);
+		Scroll = new ScrollModel(this);
 		Focusable = true;
 		IsTabStop = true;
 		HorizontalAlignment = Align.Stretch;
 		VerticalAlignment = Align.Stretch;
 	}
 
-	public ScrollModel Scroll => _scroll;
+	[Bindable] public partial int Revision { get; set; }
+
+	private bool OnTitle => _cursor >= 0 && _cursor < _rows.Count && _rows[_cursor].IsTitle;
+
+	public ScrollModel Scroll { get; }
 
 	public event Action<string>? Picked;
 
@@ -67,7 +69,8 @@ internal sealed partial class MetricList : Visual, IScrollable
 
 	private void Rebuild()
 	{
-		var rows = _lines.Where(line => line.Group.Length == 0).Select(line => new Row(false, string.Empty, 0, true, line)).ToList();
+		var rows = _lines.Where(line => line.Group.Length == 0)
+			.Select(line => new Row(false, string.Empty, 0, true, line)).ToList();
 		foreach (var group in _lines.Where(line => line.Group.Length > 0).GroupBy(line => line.Group))
 		{
 			var open = !_closed.Contains(group.Key);
@@ -76,19 +79,20 @@ internal sealed partial class MetricList : Visual, IScrollable
 		}
 
 		_rows = rows;
-		_scroll.SetExtent(_scroll.ViewportWidth, _rows.Count);
+		Scroll.SetExtent(Scroll.ViewportWidth, _rows.Count);
 	}
 
 	protected override SizeHints MeasureCore(in LayoutConstraints constraints)
 	{
-		return SizeHints.Flex(new Size(8, 2), new Size(24, 6), new Size(int.MaxValue, int.MaxValue), 1, 1, 1, 1).Normalize();
+		return SizeHints.Flex(new Size(8, 2), new Size(24, 6), new Size(int.MaxValue, int.MaxValue), 1, 1, 1, 1)
+			.Normalize();
 	}
 
 	protected override void ArrangeCore(in Rectangle finalRect)
 	{
 		_bodyHeight = finalRect.Height;
-		_scroll.SetViewport(finalRect.Width, _bodyHeight);
-		_scroll.SetExtent(finalRect.Width, _rows.Count);
+		Scroll.SetViewport(finalRect.Width, _bodyHeight);
+		Scroll.SetExtent(finalRect.Width, _rows.Count);
 		Settle();
 	}
 
@@ -100,9 +104,10 @@ internal sealed partial class MetricList : Visual, IScrollable
 		_ = Revision;
 		var theme = GetTheme();
 		var plain = Style.None.WithForeground(theme.Foreground ?? Colors.TerminalWhite);
-		for (var y = rect.Y; y < rect.Y + rect.Height; y++) buffer.WriteText(rect.X, y, new string(' ', rect.Width), plain);
+		for (var y = rect.Y; y < rect.Y + rect.Height; y++)
+			buffer.WriteText(rect.X, y, new string(' ', rect.Width), plain);
 
-		var offset = Math.Clamp(_scroll.OffsetY, 0, Math.Max(_rows.Count - 1, 0));
+		var offset = Math.Clamp(Scroll.OffsetY, 0, Math.Max(_rows.Count - 1, 0));
 		for (var i = 0; i < rect.Height && offset + i < _rows.Count; i++)
 		{
 			var row = _rows[offset + i];
@@ -165,7 +170,7 @@ internal sealed partial class MetricList : Visual, IScrollable
 			markStyle = Select(markStyle, theme);
 		}
 
-		buffer.WriteText(rect.X, y, selected ? (_glyphs.Ascii ? ">" : "▌") : " ", markStyle);
+		buffer.WriteText(rect.X, y, selected ? _glyphs.Ascii ? ">" : "▌" : " ", markStyle);
 		buffer.WriteText(rect.X + 1, y, label, labelStyle);
 		buffer.WriteText(rect.X + rect.Width - 1 - value.Length, y, value, valueStyle);
 	}
@@ -182,7 +187,8 @@ internal sealed partial class MetricList : Visual, IScrollable
 			case TerminalKey.Home: MoveTo(0); break;
 			case TerminalKey.End: MoveTo(_rows.Count - 1); break;
 			case TerminalKey.Enter when OnTitle: Fold(_cursor, null); break;
-			case TerminalKey.Enter when _cursor >= 0 && _cursor < _rows.Count: Picked?.Invoke(_rows[_cursor].Line!.Key); break;
+			case TerminalKey.Enter
+				when _cursor >= 0 && _cursor < _rows.Count: Picked?.Invoke(_rows[_cursor].Line!.Key); break;
 			case TerminalKey.Left when OnTitle: Fold(_cursor, false); break;
 			case TerminalKey.Right when OnTitle: Fold(_cursor, true); break;
 			default: handled = false; break;
@@ -191,13 +197,11 @@ internal sealed partial class MetricList : Visual, IScrollable
 		if (handled) e.Handled = true;
 	}
 
-	private bool OnTitle => _cursor >= 0 && _cursor < _rows.Count && _rows[_cursor].IsTitle;
-
 	protected override void OnPointerPressed(PointerEventArgs e)
 	{
 		if (e.RoutingPhase != RoutingPhase.Bubble || e.Button != TerminalMouseButton.Left) return;
 
-		var index = _scroll.OffsetY + e.LocalY;
+		var index = Scroll.OffsetY + e.LocalY;
 		if (index < 0 || index >= _rows.Count) return;
 
 		_cursor = index;
@@ -238,12 +242,12 @@ internal sealed partial class MetricList : Visual, IScrollable
 	{
 		if (_cursor < 0 || _cursor >= _rows.Count || _bodyHeight <= 0) return;
 
-		var offset = _scroll.OffsetY;
+		var offset = Scroll.OffsetY;
 		if (_cursor < offset) offset = _cursor;
 		else if (_cursor >= offset + _bodyHeight) offset = _cursor - _bodyHeight + 1;
 
 		offset = Math.Clamp(offset, 0, Math.Max(_rows.Count - _bodyHeight, 0));
-		if (offset != _scroll.OffsetY) _scroll.SetOffset(0, offset);
+		if (offset != Scroll.OffsetY) Scroll.SetOffset(0, offset);
 	}
 
 	private Style Select(Style style, Theme theme)

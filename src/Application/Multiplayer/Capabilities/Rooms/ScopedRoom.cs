@@ -1,10 +1,7 @@
-using Basil.Application.Multiplayer.Objects;
-using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Shared.Privileges;
 using Basil.Application.Users.Objects.Sessions;
-using Basil.Domain.Multiplayer;
-using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
+using Basil.Domain.Multiplayer.Room;
 using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 
 namespace Basil.Application.Multiplayer.Capabilities.Rooms;

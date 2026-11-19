@@ -2,7 +2,7 @@ using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Game.Mechanics;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Report.Rounds;
 using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.EntityFrameworkCore;
 

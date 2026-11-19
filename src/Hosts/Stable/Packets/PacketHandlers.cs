@@ -3,21 +3,20 @@ using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Scores.Messages;
 using Basil.Application.Users.Messages;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Sessions;
-using Session = Basil.Application.Users.Objects.Sessions.Session;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using Basil.Gateway.Admission;
 using Basil.Gateway.RateLimiting;
 using Basil.Host.Stable.Support;
 using Basil.Protocol.Game.Stable.Models.Beatmaps;
 using Basil.Protocol.Game.Stable.Wire.Packets;
 using Basil.Shared.Structures.Cryptography;
-using Basil.Domain.Users;
 using Mediator;
+using Session = Basil.Application.Users.Objects.Sessions.Session;
 using User = Basil.Application.Users.Objects.User;
 
 namespace Basil.Host.Stable.Packets;
@@ -115,7 +114,7 @@ internal sealed partial class PacketHandlers(
 
 		if (WireMap.Known<UserActivity>(action.Action) is not { } activity ||
 		    WireMap.Known<GameMode>(action.Mode) is not { } mode) return;
-		var status = new PlayerStatus(activity, action.InfoText, hash,
+		var status = new UserStatus(activity, action.InfoText, hash,
 			action.MapId == 0 ? null : action.MapId, WireMap.Mods(action.Mods), mode);
 		await sender.Send(new SetPlayerStatus(osu, status), ct);
 	}

@@ -1,5 +1,5 @@
 using Basil.Application.Shared.Paging;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Report.Matches;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer.Persistence;

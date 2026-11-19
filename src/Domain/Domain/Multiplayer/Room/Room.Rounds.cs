@@ -1,7 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
+using Basil.Domain.Multiplayer.Report.Rounds;
 using Basil.Domain.Users;
 
-namespace Basil.Domain.Multiplayer;
+namespace Basil.Domain.Multiplayer.Room;
 
 public sealed record RoomRoundProgress(Round Round, bool AllLoaded, bool AllSkipped, bool Completed);
 

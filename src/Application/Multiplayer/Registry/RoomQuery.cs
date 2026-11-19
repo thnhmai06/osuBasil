@@ -44,7 +44,7 @@ public sealed record RoomQuery(
 					status = parsed;
 					return true;
 				case "mode" when byte.TryParse(rawValue, NumberStyles.None, CultureInfo.InvariantCulture,
-					                 out var number) && Enum.IsDefined((GameMode)number):
+					out var number) && Enum.IsDefined((GameMode)number):
 					mode = (GameMode)number;
 					return true;
 				case "password" when rawValue.ToLowerInvariant() is "yes" or "no":
@@ -73,7 +73,7 @@ public sealed record RoomQuery(
 			: room.Slots.Locked ? RoomStatus.Locked
 			: RoomStatus.Open;
 		return (Text is null || room.Settings.Name.Contains(Text, StringComparison.OrdinalIgnoreCase))
-		       && (Host is null || room.Authority.Host is { } host && Names(host, Host))
+		       && (Host is null || (room.Authority.Host is { } host && Names(host, Host)))
 		       && (Creator is null || Names(room.Authority.Creator, Creator))
 		       && (Player is null || room.Slots.Any(slot => slot.Player is { } seated && Names(seated, Player)))
 		       && (Status is null || Status == status)

@@ -1,7 +1,6 @@
 using Basil.Domain.Content;
 using Basil.Shared.Structures.Cryptography;
 
-
 namespace Basil.Application.Beatmaps.Persistence;
 
 public abstract class BeatmapsetSource(string name)

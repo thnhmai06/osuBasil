@@ -1,5 +1,5 @@
 using Basil.Application.Authentication.Persistence;
-
+using Basil.Domain.Authentication;
 using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;
 

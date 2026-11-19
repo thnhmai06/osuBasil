@@ -9,5 +9,4 @@ internal sealed record RoomCountdown(Session Actor, TimeSpan Length, bool Starts
 	public static readonly TimeSpan Max = TimeSpan.FromHours(1);
 
 	public DateTimeOffset EndsAt => StartedAt + Length;
-
 }

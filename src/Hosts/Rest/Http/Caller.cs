@@ -1,7 +1,6 @@
 using System.Net;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Authentication;
 using Basil.Gateway.Admission;
 using Basil.Gateway.Limits;
 

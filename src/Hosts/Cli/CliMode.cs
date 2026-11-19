@@ -31,7 +31,8 @@ public static class CliModes
 			switch (arg)
 			{
 				case "--nogui" or "--noconsole":
-					throw new CliOptionException($"{list[i]} was removed; use --console 0 (log only) or --console 1 (dashboard).");
+					throw new CliOptionException(
+						$"{list[i]} was removed; use --console 0 (log only) or --console 1 (dashboard).");
 				case "--nocolor":
 					noColor = true;
 					break;

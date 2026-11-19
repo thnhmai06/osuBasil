@@ -1,4 +1,3 @@
-using Basil.Application.Chat.Objects;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Chat;
 using Mediator;

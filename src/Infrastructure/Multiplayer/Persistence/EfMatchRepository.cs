@@ -1,7 +1,7 @@
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Persistence;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Report.Matches;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.EntityFrameworkCore;

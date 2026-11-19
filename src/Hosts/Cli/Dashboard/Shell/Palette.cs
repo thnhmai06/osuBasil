@@ -1,3 +1,5 @@
+using XenoAtom.Ansi;
+
 namespace Basil.Host.Cli.Dashboard.Shell;
 
 internal enum Ink : byte
@@ -88,7 +90,7 @@ internal sealed record Palette(bool NoColor)
 
 	public static string Escape(string text)
 	{
-		return XenoAtom.Ansi.AnsiMarkup.Escape(Plain(text));
+		return AnsiMarkup.Escape(Plain(text));
 	}
 
 	public static string Plain(string text)

@@ -1,16 +1,15 @@
-using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 using System.Text.Json;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects;
-using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Shared.Paging;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Room;
 using Basil.Gateway.Limits;
 using Basil.Host.Rest.Http;
 using Basil.Host.Rest.Sse;
 using Basil.Host.Shared.Views;
 using Mediator;
+using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 
 namespace Basil.Host.Rest.Routes;
 
@@ -29,7 +28,8 @@ internal static class RoomRoutes
 			                 The caller becomes the creator of the room, and its host when their game client is online and in no room. While room creation is locked, only room managers can create one.
 			                 """);
 		rooms.MapGet("/{id:int}", GetAsync).WithSummary("Get a room.")
-			.WithDescription("Includes its slots, referees and bans. A private room the caller may not view is answered with 404.");
+			.WithDescription(
+				"Includes its slots, referees and bans. A private room the caller may not view is answered with 404.");
 		rooms.MapGet("/{id:int}/live", LiveAsync).Sse().WithSummary("Stream a room.")
 			.WithDescription("""
 			                 The response is streamed using Server-Sent Events. The first event is the room as `GET /v1/rooms/{id}` returns it; after that a bundle arrives every second in which the room changed, carrying the room as it is then. The stream ends when the room closes and carries no gameplay or scores.

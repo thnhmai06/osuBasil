@@ -57,7 +57,8 @@ public static class ServerLogging
 					outputTemplate: Template, rollingInterval: file.Rolling.Interval,
 					fileSizeLimitBytes: rollingBytes > 0 ? rollingBytes : null, rollOnFileSizeLimit: rollingBytes > 0,
 					retainedFileCountLimit: null, encoding: Encoding.UTF8).CreateLogger()));
-			if (mode.Console == ConsoleLevel.Log) configuration.Console(outputTemplate: Template, theme: ConsoleTheme.None);
+			if (mode.Console == ConsoleLevel.Log)
+				configuration.Console(outputTemplate: Template, theme: ConsoleTheme.None);
 			if (telemetry is { Logs: true, OtlpEndpoint: { Length: > 0 } endpoint })
 				configuration.OpenTelemetry(sink => sink.Endpoint = endpoint);
 		}, options.QueueCapacity, drops);

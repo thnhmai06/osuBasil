@@ -3,6 +3,6 @@ using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Objects.Sessions;
 using Mediator;
 
-namespace Basil.Application.Servers.Messages;
+namespace Basil.Application.Servers.Messages.Content;
 
 public sealed record GetSettings(Session Actor) : IRequest<(ServerOutcome Result, ServerSettings? Settings)>;

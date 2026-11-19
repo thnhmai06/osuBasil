@@ -1,6 +1,6 @@
 using Basil.Domain.Users;
 
-namespace Basil.Domain.Multiplayer;
+namespace Basil.Domain.Multiplayer.Room;
 
 public sealed partial class Room
 {

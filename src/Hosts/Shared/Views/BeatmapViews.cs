@@ -1,6 +1,6 @@
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Game.Beatmaps;
+using Basil.Domain.Game.Mechanics;
 
 namespace Basil.Host.Shared.Views;
 

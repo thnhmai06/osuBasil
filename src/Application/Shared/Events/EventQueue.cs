@@ -9,9 +9,9 @@ public sealed class EventQueue
 		Channel.CreateUnbounded<IEventDelivery>(new UnboundedChannelOptions { SingleReader = true });
 
 	private readonly ILogger<EventQueue> _logger;
+	private long _failures;
 	private int _outstanding;
 	private long _published;
-	private long _failures;
 
 	public EventQueue(ILogger<EventQueue> logger)
 	{

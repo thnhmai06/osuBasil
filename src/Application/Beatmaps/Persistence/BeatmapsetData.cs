@@ -2,7 +2,6 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
 using Basil.Shared.Structures.Cryptography;
 
-
 namespace Basil.Application.Beatmaps.Persistence;
 
 public sealed record BeatmapsetData(

@@ -7,9 +7,9 @@ namespace Basil.Host.Cli.Dashboard.Shell;
 
 internal sealed class TabSpread
 {
+	private readonly int[] _labels;
 	private readonly TabControl _strip;
 	private readonly TabControlStyle _style;
-	private readonly int[] _labels;
 	private int _width = -1;
 
 	public TabSpread(TabControl strip, TabControlStyle style, IEnumerable<string> labels)

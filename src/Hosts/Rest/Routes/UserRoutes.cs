@@ -3,21 +3,18 @@ using Basil.Application.Authentication.Persistence;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Messages;
-using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Sessions;
-using Session = Basil.Application.Users.Objects.Sessions.Session;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
-
-using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using Basil.Gateway.Limits;
 using Basil.Host.Rest.Http;
 using Basil.Host.Rest.Sse;
 using Basil.Host.Shared.Views;
 using Basil.Shared.Structures.Cryptography;
 using Mediator;
+using Session = Basil.Application.Users.Objects.Sessions.Session;
 
 namespace Basil.Host.Rest.Routes;
 
@@ -173,7 +170,7 @@ internal static class UserRoutes
 		PatchUserRequest request, CancellationToken ct)
 	{
 		if (request.Away is not null && await context.Sender().Send(
-			    new SetUserAway(context.Session(), target, request.Away.Length == 0 ? null : request.Away), ct) is
+				    new SetUserAway(context.Session(), target, request.Away.Length == 0 ? null : request.Away), ct) is
 			    var away and not UserOutcome.Ok)
 			return NotSelf(away);
 		if (request.PmPrivate is { } pm &&

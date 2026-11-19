@@ -1,11 +1,10 @@
 using Basil.Application.Shared.Events;
 using Basil.Application.Users.Objects.Sessions;
-using Session = Basil.Application.Users.Objects.Sessions.Session;
 using Basil.Domain.Authentication;
-using Basil.Domain.Game.Client;
-using Basil.Domain.Users;
 using Basil.Domain.Game.Spectating;
 using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
+using Session = Basil.Application.Users.Objects.Sessions.Session;
 
 namespace Basil.Application.Users.Objects.Events;
 
@@ -16,7 +15,7 @@ public sealed record UserSessionOpened(Session Session, bool CameOnline) : UserE
 public sealed record UserSessionClosed(Session Session, SessionEndReason Reason, bool WentOffline)
 	: UserEvent;
 
-public sealed record UserSessionStatusChanged(StableSession Session, PlayerStatus Status) : UserEvent;
+public sealed record UserSessionStatusChanged(StableSession Session, UserStatus Status) : UserEvent;
 
 public sealed record UserSilenced(UserRecord User, DateTimeOffset Until) : UserEvent;
 

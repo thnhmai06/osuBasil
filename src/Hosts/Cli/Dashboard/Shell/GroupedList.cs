@@ -23,23 +23,20 @@ internal sealed record Section<T>(string Title, string Count, IReadOnlyList<T> I
 
 internal sealed partial class GroupedList<T> : Visual, IScrollable
 {
-	[Bindable] public partial int Revision { get; set; }
-
 	// A shared-width column is worth showing only from this width; a narrower table drops its last columns instead.
 	private const int MinShared = 10;
+	private readonly HashSet<string> _closed = [];
 	private readonly IReadOnlyList<Column<T>> _columns;
 	private readonly Glyphs _glyphs;
 	private readonly Func<T, string> _key;
 	private readonly bool _noColor;
-	private readonly ScrollModel _scroll;
-	private readonly WheelAcceleration _wheel;
-	private readonly HashSet<string> _closed = [];
 	private readonly HashSet<string> _searchClosed = [];
-	private IReadOnlyList<Section<T>> _sections = [];
+	private readonly WheelAcceleration _wheel;
+	private int _bodyHeight;
 	private List<Row> _rows = [];
 	private bool _searching;
+	private IReadOnlyList<Section<T>> _sections = [];
 	private int _selected = -1;
-	private int _bodyHeight;
 
 	public GroupedList(IReadOnlyList<Column<T>> columns, Func<T, string> key, Glyphs glyphs, bool noColor,
 		TimeProvider clock)
@@ -49,14 +46,14 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 		_key = key;
 		_glyphs = glyphs;
 		_noColor = noColor;
-		_scroll = new ScrollModel(this);
+		Scroll = new ScrollModel(this);
 		Focusable = true;
 		HorizontalAlignment = Align.Stretch;
 		VerticalAlignment = Align.Stretch;
 		IsTabStop = true;
 	}
 
-	public ScrollModel Scroll => _scroll;
+	[Bindable] public partial int Revision { get; set; }
 
 	public T? Selected => HasSelection ? _rows[_selected].Item : default;
 
@@ -66,12 +63,22 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 
 	public int ItemCount => _rows.Count(row => !row.IsHeader);
 
+	public int ActivatedColumn { get; private set; } = -1;
+
+	public Func<KeyEventArgs, bool>? KeyHook { get; set; }
+
+	private HashSet<string> Folded => _searching ? _searchClosed : _closed;
+
+	private bool OnTitle => _selected >= 0 && _selected < _rows.Count && _rows[_selected].IsHeader;
+
+	public ScrollModel Scroll { get; }
+
 	public (int First, int Last) VisibleItems()
 	{
 		var first = 0;
 		var last = 0;
 		var number = 0;
-		var from = _scroll.OffsetY;
+		var from = Scroll.OffsetY;
 		var to = from + Math.Max(_bodyHeight, 1);
 		for (var i = 0; i < _rows.Count; i++)
 		{
@@ -88,10 +95,6 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 	}
 
 	public event Action<T>? Activated;
-
-	public int ActivatedColumn { get; private set; } = -1;
-
-	public Func<KeyEventArgs, bool>? KeyHook { get; set; }
 
 	public event Action? Moved;
 
@@ -110,7 +113,8 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 		_sections = sections;
 		Rebuild();
 		_selected = keepItem is null ? -1 : _rows.FindIndex(row => !row.IsHeader && _key(row.Item!) == keepItem);
-		if (_selected < 0 && keepGroup is not null) _selected = _rows.FindIndex(row => row.IsHeader && row.Title == keepGroup);
+		if (_selected < 0 && keepGroup is not null)
+			_selected = _rows.FindIndex(row => row.IsHeader && row.Title == keepGroup);
 		if (_selected < 0) _selected = _rows.FindIndex(row => !row.IsHeader);
 		if (_selected < 0) _selected = _rows.Count > 0 ? 0 : -1;
 		Settle();
@@ -141,8 +145,6 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 		return true;
 	}
 
-	private HashSet<string> Folded => _searching ? _searchClosed : _closed;
-
 	private void Rebuild()
 	{
 		var rows = new List<Row>();
@@ -152,7 +154,8 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 
 			var open = !Folded.Contains(section.Title);
 			rows.Add(new Row(true, section.Title, section.Count, open, default));
-			if (open) rows.AddRange(section.Items.Select(item => new Row(false, string.Empty, string.Empty, true, item)));
+			if (open)
+				rows.AddRange(section.Items.Select(item => new Row(false, string.Empty, string.Empty, true, item)));
 		}
 
 		_rows = rows;
@@ -180,8 +183,8 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 	protected override void ArrangeCore(in Rectangle finalRect)
 	{
 		_bodyHeight = Math.Max(finalRect.Height - 2, 0);
-		_scroll.SetViewport(finalRect.Width, _bodyHeight);
-		_scroll.SetExtent(finalRect.Width, _rows.Count);
+		Scroll.SetViewport(finalRect.Width, _bodyHeight);
+		Scroll.SetExtent(finalRect.Width, _rows.Count);
 		Settle();
 	}
 
@@ -197,10 +200,11 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 			buffer.WriteText(rect.X, y, new string(' ', rect.Width), plain);
 
 		var widths = Widths(rect.Width);
-		buffer.WriteText(rect.X, rect.Y, Line(widths, column => column.Header), Muted(theme).WithTextStyle(TextStyle.Bold));
+		buffer.WriteText(rect.X, rect.Y, Line(widths, column => column.Header),
+			Muted(theme).WithTextStyle(TextStyle.Bold));
 		if (_rows.Count == 0) return;
 
-		var offset = Math.Clamp(_scroll.OffsetY, 0, _rows.Count - 1);
+		var offset = Math.Clamp(Scroll.OffsetY, 0, _rows.Count - 1);
 		var y0 = rect.Y + 1;
 		var first = offset;
 		if (_rows[offset].IsHeader)
@@ -260,8 +264,6 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 		if (handled) e.Handled = true;
 	}
 
-	private bool OnTitle => _selected >= 0 && _selected < _rows.Count && _rows[_selected].IsHeader;
-
 	protected override void OnPointerPressed(PointerEventArgs e)
 	{
 		if (e.RoutingPhase != RoutingPhase.Bubble || e.Button != TerminalMouseButton.Left) return;
@@ -283,6 +285,7 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 			ActivatedColumn = ColumnAt(e.LocalX);
 			Activated?.Invoke(_rows[index].Item!);
 		}
+
 		e.Handled = true;
 	}
 
@@ -299,7 +302,7 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 	{
 		if (_rows.Count == 0 || localY < 1) return -1;
 
-		var offset = Math.Clamp(_scroll.OffsetY, 0, _rows.Count - 1);
+		var offset = Math.Clamp(Scroll.OffsetY, 0, _rows.Count - 1);
 		var stuck = !_rows[offset].IsHeader;
 		if (stuck && localY == 1) return _rows.FindLastIndex(offset, row => row.IsHeader);
 
@@ -330,13 +333,13 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 	{
 		if (_selected < 0 || _selected >= _rows.Count || _bodyHeight <= 0) return;
 
-		var offset = _scroll.OffsetY;
+		var offset = Scroll.OffsetY;
 		var capacity = Math.Max(_bodyHeight - 1, 1);
 		if (_selected < offset) offset = _selected;
 		else if (_selected >= offset + capacity) offset = _selected - capacity + 1;
 
 		offset = Math.Clamp(offset, 0, Math.Max(_rows.Count - 1, 0));
-		if (offset != _scroll.OffsetY) _scroll.SetOffset(0, offset);
+		if (offset != Scroll.OffsetY) Scroll.SetOffset(0, offset);
 	}
 
 	private int ColumnAt(int localX)
@@ -357,8 +360,17 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 	private int[] Widths(int total)
 	{
 		var shown = _columns.Count;
-		int Fixed(int count) => _columns.Take(count).Sum(c => c.Width) + 2 * Math.Max(count - 1, 0) + 1;
-		int Needed(int count) => Fixed(count) + MinShared * _columns.Take(count).Count(c => c.Width == 0);
+
+		int Fixed(int count)
+		{
+			return _columns.Take(count).Sum(c => c.Width) + 2 * Math.Max(count - 1, 0) + 1;
+		}
+
+		int Needed(int count)
+		{
+			return Fixed(count) + MinShared * _columns.Take(count).Count(c => c.Width == 0);
+		}
+
 		while (shown > 2 && Needed(shown) > total) shown--;
 
 		var widths = _columns.Take(shown).Select(c => c.Width).ToArray();
@@ -397,9 +409,10 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 	private void DrawItem(CellBuffer buffer, Rectangle rect, int y, T item, int[] widths, bool selected, Theme theme)
 	{
 		var x = rect.X;
-		var mark = selected ? (_glyphs.Ascii ? ">" : "▌") : " ";
+		var mark = selected ? _glyphs.Ascii ? ">" : "▌" : " ";
 		var rowStyle = selected && !_noColor
-			? Style.None.WithForeground(theme.Foreground ?? Colors.TerminalWhite).WithBackground(theme.Selection ?? Colors.TerminalBlue)
+			? Style.None.WithForeground(theme.Foreground ?? Colors.TerminalWhite)
+				.WithBackground(theme.Selection ?? Colors.TerminalBlue)
 			: Style.None.WithForeground(theme.Foreground ?? Colors.TerminalWhite);
 		if (selected && _noColor) rowStyle = rowStyle.WithTextStyle(TextStyle.Invert);
 		buffer.WriteText(x, y, selected ? new string(' ', rect.Width) : string.Empty, rowStyle);

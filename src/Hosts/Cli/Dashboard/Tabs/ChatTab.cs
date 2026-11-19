@@ -2,11 +2,10 @@ using Basil.Application.Chat.Messages;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Users.Objects.Sessions;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Chat;
-using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using Basil.Host.Cli.Dashboard.Data;
 using Basil.Host.Cli.Dashboard.Shell;
 using Mediator;
@@ -16,8 +15,8 @@ using XenoAtom.Terminal;
 using XenoAtom.Terminal.UI;
 using XenoAtom.Terminal.UI.Commands;
 using XenoAtom.Terminal.UI.Controls;
-using XenoAtom.Terminal.UI.Input;
 using XenoAtom.Terminal.UI.Geometry;
+using XenoAtom.Terminal.UI.Input;
 using XenoAtom.Terminal.UI.Styling;
 
 namespace Basil.Host.Cli.Dashboard.Tabs;
@@ -33,50 +32,51 @@ internal interface IJumpable
 
 internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 {
-	private readonly Palette _palette;
-	private readonly DetailPanel _detail;
-	private readonly UserDetails _users;
 	private readonly ChannelDetails _channelDetails;
+	private readonly State<string> _channelQuery = new(string.Empty);
+	private readonly TextBox _channelSearch;
+	private readonly SearchBox _channelSearchBox;
 	private readonly GroupedList<ChannelItem> _channels;
+	private readonly DetailPanel _detail;
 	private readonly ChatFeed _feed;
 	private readonly Glyphs _glyphs;
+	private readonly Grid _grid;
+	private readonly PromptEditor _input;
 	private readonly LogControl _log = new LogControl { MaxCapacity = 500 }.WrapText(true);
 	private readonly ILogger _logger;
-	private readonly GroupedList<MemberItem> _members;
-	private readonly CliOptions _options;
-	private readonly PromptEditor _input;
-	private readonly IServiceProvider _services;
-	private readonly State<string> _title = new("Chat");
-	private readonly Func<(int Columns, int Rows)> _size;
-	private readonly Grid _grid;
-	private readonly State<string> _channelQuery = new(string.Empty);
 	private readonly State<string> _memberQuery = new(string.Empty);
-	private readonly SearchBox _channelSearchBox;
-	private readonly SearchBox _memberSearchBox;
-	private readonly TextBox _channelSearch;
 	private readonly TextBox _memberSearch;
-	private readonly State<bool> _showLeft = new(true);
-	private readonly State<bool> _showCenter = new(true);
-	private readonly State<bool> _showRight = new(true);
+	private readonly SearchBox _memberSearchBox;
+	private readonly GroupedList<MemberItem> _members;
 	private readonly HashSet<string> _openedDms = new(StringComparer.OrdinalIgnoreCase);
+	private readonly CliOptions _options;
+	private readonly Palette _palette;
+	private readonly IServiceProvider _services;
+	private readonly State<bool> _showCenter = new(true);
+	private readonly State<bool> _showLeft = new(true);
+	private readonly State<bool> _showRight = new(true);
+	private readonly Func<(int Columns, int Rows)> _size;
+	private readonly State<string> _title = new("Chat");
+	private readonly UserDetails _users;
+	private TerminalApp? _app;
+	private string _channelSeen = string.Empty;
+	private string _current = string.Empty;
+	private long _feedRevision = -1;
 	private string _firstChannel = string.Empty;
 	private string _firstMember = string.Empty;
-	private string _channelSeen = string.Empty;
-	private string _memberSeen = string.Empty;
-	private string _layoutKey = string.Empty;
-	private long _feedRevision = -1;
-	private bool _open;
-	private bool _membersShown;
 	private bool _focusInput;
-	private bool _stripSlash;
 	private long _lastTick;
-	private long _refreshedAt;
-	private string _current = string.Empty;
-	private long _seen;
+	private string _layoutKey = string.Empty;
+	private string _memberSeen = string.Empty;
+	private bool _membersShown;
+	private bool _open;
 	private Task<OperatorSession>? _operator;
-	private TerminalApp? _app;
+	private long _refreshedAt;
+	private long _seen;
+	private bool _stripSlash;
 
-	public ChatTab(IServiceProvider services, UserDetails users, ChannelDetails channels, ChatFeed feed, CliOptions options, Glyphs glyphs,
+	public ChatTab(IServiceProvider services, UserDetails users, ChannelDetails channels, ChatFeed feed,
+		CliOptions options, Glyphs glyphs,
 		ShellKit kit, Palette palette, Func<(int Columns, int Rows)> size, TimeProvider clock, Action<Action> post,
 		ILogger logger)
 	{
@@ -93,11 +93,17 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		_size = size;
 		_logger = logger;
 		_channels = new GroupedList<ChannelItem>(
-			[new Column<ChannelItem>("Channel", 0, c => c.Name), new Column<ChannelItem>("Users", 5, c => c.Members < 0 ? string.Empty : $"({c.Members})", _ => Ink.Muted) { Right = true }],
+			[
+				new Column<ChannelItem>("Channel", 0, c => c.Name),
+				new Column<ChannelItem>("Users", 5, c => c.Members < 0 ? string.Empty : $"({c.Members})",
+					_ => Ink.Muted) { Right = true }
+			],
 			c => c.Name, glyphs, options.NoColor, clock);
 		_members = new GroupedList<MemberItem>(
-			[new Column<MemberItem>("Member", 0, m => m.Name, m => UserInk.Of((UserPrivileges)m.Mask)),
-				new Column<MemberItem>("", 4, m => m.Mark, _ => Ink.Accent)],
+			[
+				new Column<MemberItem>("Member", 0, m => m.Name, m => UserInk.Of((UserPrivileges)m.Mask)),
+				new Column<MemberItem>("", 4, m => m.Mark, _ => Ink.Accent)
+			],
 			m => m.Name, glyphs, options.NoColor, clock);
 		_channelSearchBox = new SearchBox(_channelQuery, "search", glyphs);
 		_memberSearchBox = new SearchBox(_memberQuery, "search", glyphs);
@@ -106,7 +112,9 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		_channelSearch.IsTabStop = false;
 		_memberSearch.IsTabStop = false;
 		var left = new Group("Channels").Style(GroupStyle.Rounded).Padding(new Thickness(0, 0, 1, 0))
-			.Content(new VStack(_channelSearchBox.Row, new ScrollViewer(_channels).IsTabStop(false).Stretch()).Spacing(0)).Stretch();
+			.Content(
+				new VStack(_channelSearchBox.Row, new ScrollViewer(_channels).IsTabStop(false).Stretch()).Spacing(0))
+			.Stretch();
 		_input = new PromptEditor().LineMode(PromptEditorLineMode.SingleLine).PromptMarkup(string.Empty)
 			.Placeholder("Chatting as BasilBot").Accepted(Send);
 		_log.IsTabStop = false;
@@ -115,7 +123,8 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 			.Cell(JumpToEndButton.Over(_log, glyphs, JumpToEnd), 0, 0).Cell(_input, 1, 0);
 		var center = new Group().Style(GroupStyle.Rounded).Content(middle).TopLeftText(() => _title.Value).Stretch();
 		var right = new Group("Members").Style(GroupStyle.Rounded).Padding(new Thickness(0, 0, 1, 0))
-			.Content(new VStack(_memberSearchBox.Row, new ScrollViewer(_members).IsTabStop(false).Stretch()).Spacing(0)).Stretch()
+			.Content(new VStack(_memberSearchBox.Row, new ScrollViewer(_members).IsTabStop(false).Stretch()).Spacing(0))
+			.Stretch()
 			.IsVisible(_showRight);
 		// The settings of the channel in view, from the right of the top border of its pane.
 		var manage = new Button("[Channel]").Click(ShowChannel).IsTabStop(false).IsVisible(_showCenter)
@@ -123,7 +132,8 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		left.IsVisible(_showLeft);
 		center.IsVisible(_showCenter);
 		_grid = new Grid()
-			.Columns(new ColumnDefinition { Width = GridLength.Star(3) }, new ColumnDefinition { Width = GridLength.Star(6) },
+			.Columns(new ColumnDefinition { Width = GridLength.Star(3) },
+				new ColumnDefinition { Width = GridLength.Star(6) },
 				new ColumnDefinition { Width = GridLength.Star(3) })
 			.Rows(new RowDefinition { Height = GridLength.Star() })
 			.Cell(left, 0, 0).Cell(new ZStack(center, manage), 0, 1).Cell(right, 0, 2);
@@ -148,6 +158,26 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		AddSearchKeys(_memberSearch, _memberQuery, _members);
 	}
 
+	// Tick runs about ten times a second only while the tab is in view.
+	private bool Active => Environment.TickCount64 - _lastTick < 500;
+
+	private bool Narrow => _size().Columns < 80;
+
+	public void JumpToEnd()
+	{
+		_log.ScrollToTail();
+	}
+
+	public void Select(string id)
+	{
+		if (!id.StartsWith('#')) _openedDms.Add(id);
+		_detail.Close();
+		_channelQuery.Value = string.Empty;
+		Safely(Refresh);
+		_channels.Select(id);
+		_focusInput = true;
+	}
+
 	public Visual View { get; }
 
 	public void Attach(TerminalApp app)
@@ -156,28 +186,25 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		_detail.Attach(app);
 		app.AddGlobalCommand(new Command
 		{
-			Id = "chat.back",LabelMarkup = "Back", Gesture = new KeyGesture(TerminalKey.Escape),
+			Id = "chat.back", LabelMarkup = "Back", Gesture = new KeyGesture(TerminalKey.Escape),
 			CanExecute = _ => Narrow && _open && Active, Execute = _ => Back()
 		});
 		app.AddGlobalCommand(new Command
 		{
-			Id = "chat.back.alt", LabelMarkup = "Back", Gesture = new KeyGesture(TerminalKey.Left, TerminalModifiers.Alt),
+			Id = "chat.back.alt", LabelMarkup = "Back",
+			Gesture = new KeyGesture(TerminalKey.Left, TerminalModifiers.Alt),
 			CanExecute = _ => Narrow && _open && Active, Execute = _ => Back()
 		});
 		app.AddGlobalCommand(new Command
 		{
-			Id = "chat.members", LabelMarkup = "Members", Gesture = new KeyGesture(TerminalChar.CtrlB, TerminalModifiers.Ctrl),
+			Id = "chat.members", LabelMarkup = "Members",
+			Gesture = new KeyGesture(TerminalChar.CtrlB, TerminalModifiers.Ctrl),
 			CanExecute = _ => Active, Execute = _ =>
 			{
 				_membersShown = !_membersShown;
 				Arrange();
 			}
 		});
-	}
-
-	public void JumpToEnd()
-	{
-		_log.ScrollToTail();
 	}
 
 	public void Activate()
@@ -242,10 +269,19 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		var names = _feed.Channels().Union(general.Keys, StringComparer.OrdinalIgnoreCase)
 			.Union(lobby.Rooms.Keys.Select(id => $"#mp_{id}"), StringComparer.OrdinalIgnoreCase)
 			.Union(_openedDms, StringComparer.OrdinalIgnoreCase)
-			.Where(name => query.Length == 0 || name.Contains(query, StringComparison.OrdinalIgnoreCase)).Order().ToList();
-		ChannelItem Item(string name) => new(name,
-			general.TryGetValue(name, out var channel) ? channel.Members.Select(member => member.User).Distinct().Count() : -1);
+			.Where(name => query.Length == 0 || name.Contains(query, StringComparison.OrdinalIgnoreCase)).Order()
+			.ToList();
+
+		ChannelItem Item(string name)
+		{
+			return new ChannelItem(name,
+				general.TryGetValue(name, out var channel)
+					? channel.Members.Select(member => member.User).Distinct().Count()
+					: -1);
+		}
+
 		var sections = new List<Section<ChannelItem>>();
+
 		void Add(string title, Func<string, bool> belongs)
 		{
 			var items = names.Where(belongs).Select(Item).ToList();
@@ -260,21 +296,6 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		_channels.SetSections(sections, query.Length > 0);
 		Members();
 	}
-
-	public void Select(string id)
-	{
-		if (!id.StartsWith('#')) _openedDms.Add(id);
-		_detail.Close();
-		_channelQuery.Value = string.Empty;
-		Safely(Refresh);
-		_channels.Select(id);
-		_focusInput = true;
-	}
-
-	// Tick runs about ten times a second only while the tab is in view.
-	private bool Active => Environment.TickCount64 - _lastTick < 500;
-
-	private bool Narrow => _size().Columns < 80;
 
 	// The server changes its channels and rooms from other threads; a read that meets a change is tried again at the next tick.
 	private void Safely(Action read)
@@ -369,7 +390,8 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		{
 			search.AddCommand(new Command
 			{
-				Id = $"chat.search.{search.GetHashCode()}.{name}", LabelMarkup = name, Gesture = gesture, Execute = _ => run()
+				Id = $"chat.search.{search.GetHashCode()}.{name}", LabelMarkup = name, Gesture = gesture,
+				Execute = _ => run()
 			});
 		}
 
@@ -395,7 +417,12 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		if (key == _layoutKey) return;
 
 		_layoutKey = key;
-		GridLength Width(bool shown, double star) => shown ? GridLength.Star(star) : GridLength.Fixed(0);
+
+		GridLength Width(bool shown, double star)
+		{
+			return shown ? GridLength.Star(star) : GridLength.Fixed(0);
+		}
+
 		_showLeft.Value = left;
 		_showCenter.Value = center;
 		_showRight.Value = members;
@@ -462,9 +489,12 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		}
 
 		var query = _memberSeen.Trim();
+
 		List<MemberItem> Match(List<MemberItem> items)
 		{
-			return query.Length == 0 ? items : [.. items.Where(m => m.Name.Contains(query, StringComparison.OrdinalIgnoreCase))];
+			return query.Length == 0
+				? items
+				: [.. items.Where(m => m.Name.Contains(query, StringComparison.OrdinalIgnoreCase))];
 		}
 
 		List<Section<MemberItem>> sections =
@@ -517,7 +547,7 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 				}
 
 				var outcome = await sender.Send(new PostChatMessage(actor, target, text));
-				if (outcome != Basil.Domain.Chat.ChannelOutcome.Ok)
+				if (outcome != ChannelOutcome.Ok)
 					Report(channel, $"The message was not sent ({outcome}).");
 			}
 			catch (Exception exception)

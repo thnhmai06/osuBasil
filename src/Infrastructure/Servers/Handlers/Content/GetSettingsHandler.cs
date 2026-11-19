@@ -1,9 +1,9 @@
-using Basil.Application.Servers.Messages;
+using Basil.Application.Servers.Messages.Content;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Shared.Settings;
 using Mediator;
 
-namespace Basil.Infrastructure.Servers.Handlers;
+namespace Basil.Infrastructure.Servers.Handlers.Content;
 
 internal sealed class GetSettingsHandler(Server server)
 	: IRequestHandler<GetSettings, (ServerOutcome Result, ServerSettings? Settings)>

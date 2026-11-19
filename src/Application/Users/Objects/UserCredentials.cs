@@ -1,12 +1,10 @@
-using Basil.Application.Authentication.Persistence;
 using Basil.Application.Users.Objects.Sessions;
-using Basil.Domain.Users;
-using Session = Basil.Application.Users.Objects.Sessions.Session;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;
-
 using Basil.Domain.Moderation;
+using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;
+using Session = Basil.Application.Users.Objects.Sessions.Session;
 
 namespace Basil.Application.Users.Objects;
 

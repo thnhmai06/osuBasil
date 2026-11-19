@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Immutable;
 using Basil.Domain.Users;
 
-namespace Basil.Domain.Multiplayer;
+namespace Basil.Domain.Multiplayer.Room;
 
 public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 {

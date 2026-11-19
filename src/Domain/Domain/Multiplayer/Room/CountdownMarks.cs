@@ -1,4 +1,4 @@
-namespace Basil.Domain.Multiplayer;
+namespace Basil.Domain.Multiplayer.Room;
 
 public static class CountdownMarks
 {

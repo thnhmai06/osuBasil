@@ -4,6 +4,7 @@ using Basil.Host.Cli.Dashboard.Shell;
 using Basil.Host.Shared.Info;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using XenoAtom.Ansi;
 using XenoAtom.Terminal.UI;
 using XenoAtom.Terminal.UI.Controls;
 using XenoAtom.Terminal.UI.Geometry;
@@ -30,12 +31,13 @@ internal sealed class AboutTab : ITabView
 	private static readonly string Description =
 		Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyDescriptionAttribute>()?.Description ?? string.Empty;
 
-	private readonly IUpdateStatus _updates;
-	private readonly Action<Action> _post;
-	private readonly ILogger _logger;
 	private readonly State<string> _basil = new(string.Empty);
 	private readonly State<string> _last = new(string.Empty);
+	private readonly ILogger _logger;
+	private readonly Action<Action> _post;
 	private readonly State<string> _rulesets = new(string.Empty);
+
+	private readonly IUpdateStatus _updates;
 	private bool _checking;
 
 	public AboutTab(IServiceProvider services, Glyphs glyphs, CliOptions options, Func<(int Columns, int Rows)> size,
@@ -53,16 +55,20 @@ internal sealed class AboutTab : ITabView
 			Line(palette, "Version", AppVersion.Current),
 			Line(palette, "GitHub ", "https://github.com/thnhmai06/osuBasil"),
 			Line(palette, "License", "MIT")).Spacing(0);
-		var art = new Markup(XenoAtom.Ansi.AnsiMarkup.Escape(glyphs.Ascii ? Art.Replace("\u0332", string.Empty) : Art));
+		var art = new Markup(AnsiMarkup.Escape(glyphs.Ascii ? Art.Replace("\u0332", string.Empty) : Art));
 		var about = new Group("About").Style(style).Padding(new Thickness(1, 0, 1, 0))
 			.Content(new Grid()
-				.Columns(new ColumnDefinition { Width = GridLength.Auto }, new ColumnDefinition { Width = GridLength.Star() })
+				.Columns(new ColumnDefinition { Width = GridLength.Auto },
+					new ColumnDefinition { Width = GridLength.Star() })
 				.Rows(new RowDefinition { Height = GridLength.Auto })
-				.Cell(new Padder(art).Padding(new Thickness(0, 0, 3, 0)).IsVisible(() => size().Columns >= Layout.WideSize.Width), 0, 0)
+				.Cell(
+					new Padder(art).Padding(new Thickness(0, 0, 3, 0))
+						.IsVisible(() => size().Columns >= Layout.WideSize.Width), 0, 0)
 				.Cell(info, 0, 1))
 			.Stretch();
 		var updates = new Grid()
-			.Columns(new ColumnDefinition { Width = GridLength.Star() }, new ColumnDefinition { Width = GridLength.Star() })
+			.Columns(new ColumnDefinition { Width = GridLength.Star() },
+				new ColumnDefinition { Width = GridLength.Star() })
 			.Rows(new RowDefinition { Height = GridLength.Auto })
 			.Cell(Panel("Basil", _basil, style), 0, 0)
 			.Cell(Panel("Rulesets", _rulesets, style), 0, 1)
@@ -137,7 +143,8 @@ internal sealed class AboutTab : ITabView
 
 	private static Group Panel(string title, State<string> text, GroupStyle style)
 	{
-		return new Group(title).Style(style).Padding(new Thickness(1, 0, 1, 0)).Content(new TextBlock(() => text.Value).Wrap(true)).Stretch();
+		return new Group(title).Style(style).Padding(new Thickness(1, 0, 1, 0))
+			.Content(new TextBlock(() => text.Value).Wrap(true)).Stretch();
 	}
 
 	private static string Text(UpdateState state, string? version)

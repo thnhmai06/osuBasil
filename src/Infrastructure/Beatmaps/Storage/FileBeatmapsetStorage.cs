@@ -3,7 +3,6 @@ using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
-
 using Basil.Domain.Game.Mechanics;
 using Basil.Infrastructure.Shared.Storage;
 using Basil.Shared.Structures.Cryptography;
@@ -161,53 +160,6 @@ internal sealed class FileBeatmapsetStorage(
 		}
 	}
 
-	internal async Task<string?> ReadAttributesAsync(BeatmapsetRecord set, Md5Hash hash, GameMode mode, GameMods mask,
-		CancellationToken ct = default)
-	{
-		var folder = FindFolder(set.Id, FolderName(set));
-		if (folder is null) return null;
-
-		try
-		{
-			return await File.ReadAllTextAsync(AttributesPath(folder, hash, mode, mask), ct);
-		}
-		catch (Exception exception) when (exception is FileNotFoundException or DirectoryNotFoundException)
-		{
-			return null;
-		}
-	}
-
-	internal async Task<bool> WriteAttributesAsync(BeatmapsetRecord set, Md5Hash hash, GameMode mode, GameMods mask,
-		string content)
-	{
-		var gate = await LockAsync(set.Id);
-		try
-		{
-			var folder = FindFolder(set.Id, FolderName(set));
-			if (folder is null || !IsSetFolder(folder)) return false;
-
-			var path = AttributesPath(folder, hash, mode, mask);
-			Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-
-			var temporary = Incoming(".tmp");
-			try
-			{
-				await File.WriteAllTextAsync(temporary, content);
-				File.Move(temporary, path, true);
-			}
-			finally
-			{
-				DeleteFileIfExists(temporary);
-			}
-
-			return true;
-		}
-		finally
-		{
-			gate.Release();
-		}
-	}
-
 	public async Task SaveAsync(BeatmapsetRecord set, BeatmapsetFileType type, string name, Stream content)
 	{
 		var gate = await LockAsync(set.Id);
@@ -355,6 +307,53 @@ internal sealed class FileBeatmapsetStorage(
 		{
 			foreach (var folder in FoldersOf(set.Id).Where(IsSetFolder))
 				Directory.Delete(folder, true);
+		}
+		finally
+		{
+			gate.Release();
+		}
+	}
+
+	internal async Task<string?> ReadAttributesAsync(BeatmapsetRecord set, Md5Hash hash, GameMode mode, GameMods mask,
+		CancellationToken ct = default)
+	{
+		var folder = FindFolder(set.Id, FolderName(set));
+		if (folder is null) return null;
+
+		try
+		{
+			return await File.ReadAllTextAsync(AttributesPath(folder, hash, mode, mask), ct);
+		}
+		catch (Exception exception) when (exception is FileNotFoundException or DirectoryNotFoundException)
+		{
+			return null;
+		}
+	}
+
+	internal async Task<bool> WriteAttributesAsync(BeatmapsetRecord set, Md5Hash hash, GameMode mode, GameMods mask,
+		string content)
+	{
+		var gate = await LockAsync(set.Id);
+		try
+		{
+			var folder = FindFolder(set.Id, FolderName(set));
+			if (folder is null || !IsSetFolder(folder)) return false;
+
+			var path = AttributesPath(folder, hash, mode, mask);
+			Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+
+			var temporary = Incoming(".tmp");
+			try
+			{
+				await File.WriteAllTextAsync(temporary, content);
+				File.Move(temporary, path, true);
+			}
+			finally
+			{
+				DeleteFileIfExists(temporary);
+			}
+
+			return true;
 		}
 		finally
 		{

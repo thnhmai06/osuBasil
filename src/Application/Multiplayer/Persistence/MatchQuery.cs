@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Basil.Application.Shared.Paging;
-using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer.Persistence;
 

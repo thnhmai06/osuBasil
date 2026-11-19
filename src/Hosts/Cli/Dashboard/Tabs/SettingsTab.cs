@@ -1,9 +1,8 @@
+using System.Collections;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Collections;
-using Group = XenoAtom.Terminal.UI.Controls.Group;
-using Basil.Application.Servers.Messages;
+using Basil.Application.Servers.Messages.Content;
 using Basil.Application.Users.Registry;
 using Basil.Host.Cli.Commands;
 using Basil.Host.Cli.Dashboard.Shell;
@@ -18,8 +17,10 @@ using XenoAtom.Terminal;
 using XenoAtom.Terminal.UI;
 using XenoAtom.Terminal.UI.Commands;
 using XenoAtom.Terminal.UI.Controls;
+using XenoAtom.Terminal.UI.Geometry;
 using XenoAtom.Terminal.UI.Input;
 using XenoAtom.Terminal.UI.Styling;
+using Group = XenoAtom.Terminal.UI.Controls.Group;
 
 namespace Basil.Host.Cli.Dashboard.Tabs;
 
@@ -28,38 +29,38 @@ internal sealed class SettingsTab : ITabView
 	private const string StripHelp = "Down or Enter goes to the settings of the tab; Left and Right change the tab.";
 	private const string NotNumber = "Enter a number.";
 	private const int NestedIndent = 2;
+	private readonly HashSet<string> _closed = [];
+	private readonly ConsoleTab _console;
 
 	private readonly Group _content = new();
-	private readonly ConsoleTab _console;
 	private readonly State<string> _description = new(string.Empty);
-	private readonly State<string> _title = new(string.Empty);
-	private readonly State<string> _path = new(string.Empty);
 	private readonly List<Field> _fields = [];
-	private readonly List<Section> _sections = [];
+	private readonly Glyphs _glyphs;
+	private readonly ShellKit _kit;
+	private readonly ILogger _logger;
 	private readonly List<Visual> _nav = [];
-	private readonly HashSet<string> _closed = [];
-	private readonly HashSet<string> _searchClosed = [];
+	private readonly CliOptions _options;
+	private readonly IReadOnlyList<(string Name, string[] Categories)> _pages = SettingsPages.All;
+	private readonly Palette _palette;
+	private readonly State<string> _path = new(string.Empty);
+	private readonly Action<Action> _post;
 	private readonly State<string> _query = new(string.Empty);
 	private readonly ScrollViewer _scroll = new() { HorizontalScrollEnabled = false };
 	private readonly TextBox _search;
-	private readonly ShellKit _kit;
-	private string _applied = string.Empty;
-	private readonly Glyphs _glyphs;
-	private readonly ILogger _logger;
-	private readonly Palette _palette;
-	private readonly CliOptions _options;
-	private readonly Action<Action> _post;
-	private readonly IServiceProvider _services;
+	private readonly HashSet<string> _searchClosed = [];
+	private readonly List<Section> _sections = [];
 	private readonly State<int> _selected = new(0);
-	private readonly IReadOnlyList<(string Name, string[] Categories)> _pages = SettingsPages.All;
-	private readonly TabControl _strip;
+	private readonly IServiceProvider _services;
 	private readonly TabSpread _spread;
+	private readonly TabControl _strip;
+	private readonly State<string> _title = new(string.Empty);
 	private TerminalApp? _app;
-	private int _loaded = -1;
+	private string _applied = string.Empty;
 	private int _labelWidth;
-	private int _version;
-	private int _saving;
+	private int _loaded = -1;
 	private bool _reload;
+	private int _saving;
+	private int _version;
 
 	public SettingsTab(IServiceProvider services, ConsoleTab console, CliOptions options, Glyphs glyphs, ShellKit kit,
 		TimeProvider clock, Action<Action> post, ILogger logger)
@@ -86,8 +87,9 @@ internal sealed class SettingsTab : ITabView
 			Id = "settings.strip.enter", LabelMarkup = "Search", Gesture = new KeyGesture(TerminalKey.Enter),
 			ConsumesGestureWhenUnavailable = false, Execute = _ => _app?.Focus(_search)
 		});
-		var description = new Group().Style(GroupStyle.Rounded).Padding(new XenoAtom.Terminal.UI.Geometry.Thickness(1, 0, 1, 0))
-			.Content(new ScrollViewer(new VStack(new TextBlock(() => _title.Value).Wrap(true), new Markup(() => _path.Value),
+		var description = new Group().Style(GroupStyle.Rounded).Padding(new Thickness(1, 0, 1, 0))
+			.Content(new ScrollViewer(new VStack(new TextBlock(() => _title.Value).Wrap(true),
+				new Markup(() => _path.Value),
 				new TextBlock(() => _description.Value).Wrap(true))))
 			.Stretch();
 		_search = new TextBox().Text(_query).Placeholder("search");
@@ -100,7 +102,7 @@ internal sealed class SettingsTab : ITabView
 			e.Handled = true;
 		});
 		var searchRow = new HStack(new TextBlock($"{(glyphs.Ascii ? "?" : "⌕")} "), _search.Stretch()).MaxHeight(1);
-		_content.Style(GroupStyle.Rounded).Padding(new XenoAtom.Terminal.UI.Geometry.Thickness(1, 0, 1, 0))
+		_content.Style(GroupStyle.Rounded).Padding(new Thickness(1, 0, 1, 0))
 			.Content(new Grid().Columns(new ColumnDefinition { Width = GridLength.Star() })
 				.Rows(new RowDefinition { Height = GridLength.Auto }, new RowDefinition { Height = GridLength.Star() })
 				.Cell(searchRow, 0, 0).Cell(WheelScroll.Accelerate(_scroll, clock).Stretch(), 1, 0)).Stretch();
@@ -108,7 +110,8 @@ internal sealed class SettingsTab : ITabView
 			_content.AddCommand(new Command
 			{
 				Id = $"settings.back.{gesture}", LabelMarkup = "Back", Gesture = gesture,
-				CanExecute = _ => ReferenceEquals(_app?.FocusedElement, _search), ConsumesGestureWhenUnavailable = false,
+				CanExecute = _ => ReferenceEquals(_app?.FocusedElement, _search),
+				ConsumesGestureWhenUnavailable = false,
 				Execute = _ =>
 				{
 					if (_query.Value.Length > 0) _query.Value = string.Empty;
@@ -116,7 +119,8 @@ internal sealed class SettingsTab : ITabView
 				}
 			});
 		var body = new Grid()
-			.Columns(new ColumnDefinition { Width = GridLength.Star(2) }, new ColumnDefinition { Width = GridLength.Star(1) })
+			.Columns(new ColumnDefinition { Width = GridLength.Star(2) },
+				new ColumnDefinition { Width = GridLength.Star() })
 			.Rows(new RowDefinition { Height = GridLength.Star() })
 			.Cell(_content, 0, 0)
 			.Cell(description, 0, 1);
@@ -127,6 +131,8 @@ internal sealed class SettingsTab : ITabView
 			.Cell(body, 1, 0);
 		ShowStripHelp();
 	}
+
+	private (string Name, string[] Categories) Page => _pages[Math.Clamp(_selected.Value, 0, _pages.Count - 1)];
 
 	public Visual View { get; }
 
@@ -193,8 +199,6 @@ internal sealed class SettingsTab : ITabView
 		Load();
 	}
 
-	private (string Name, string[] Categories) Page => _pages[Math.Clamp(_selected.Value, 0, _pages.Count - 1)];
-
 	private void ShowStripHelp()
 	{
 		_title.Value = Page.Name;
@@ -257,7 +261,8 @@ internal sealed class SettingsTab : ITabView
 				foreach (var category in page.Categories)
 				{
 					var flat = new List<(string Path, string Value, SettingsFieldKind Kind)>();
-					Flatten(flat, string.Empty, JsonSerializer.SerializeToNode(SettingsCategories.Get(category, settings), ApiJson.Options));
+					Flatten(flat, string.Empty,
+						JsonSerializer.SerializeToNode(SettingsCategories.Get(category, settings), ApiJson.Options));
 					rows.AddRange(flat.Select(row =>
 					{
 						var dot = row.Path.IndexOf('.');
@@ -296,11 +301,13 @@ internal sealed class SettingsTab : ITabView
 					else if (row.Kind == SettingsFieldKind.Bool)
 						control = new Switch().IsOn(value == "true");
 					else
-						control = new PromptEditor().LineMode(PromptEditorLineMode.SingleLine).PromptMarkup(string.Empty)
+						control = new PromptEditor().LineMode(PromptEditorLineMode.SingleLine)
+							.PromptMarkup(string.Empty)
 							.Text(value);
 
 					var field = new Field(row.Category, row.Path, row.Label,
-						SettingsDescriptions.Of($"{row.Category}.{row.Path}") ?? string.Empty, value, row.Kind, control);
+						SettingsDescriptions.Of($"{row.Category}.{row.Path}") ?? string.Empty, value, row.Kind,
+						control);
 					if (!readOnly)
 					{
 						if (control is PromptEditor editor) editor.Accepted(() => Save(field));
@@ -316,7 +323,7 @@ internal sealed class SettingsTab : ITabView
 					// A row of a group inside a group is moved right with its title; its label is as much shorter, so the
 					// values still line up in one column.
 					field.LabelBox = new TextBlock(Palette.Plain(shown)).Trimming(TextTrimming.EndEllipsis)
-						.Margin(new XenoAtom.Terminal.UI.Geometry.Thickness(Indent(section), 0, 1, 0));
+						.Margin(new Thickness(Indent(section), 0, 1, 0));
 					field.Row = new HStack(field.LabelBox, control.Stretch()).Spacing(0);
 					section.Fields.Add(field);
 				}
@@ -379,8 +386,8 @@ internal sealed class SettingsTab : ITabView
 
 		_labelWidth = width;
 		foreach (var section in _sections)
-			foreach (var field in section.Fields)
-				field.LabelBox!.MinWidth(width - Indent(section)).MaxWidth(width - Indent(section));
+		foreach (var field in section.Fields)
+			field.LabelBox!.MinWidth(width - Indent(section)).MaxWidth(width - Indent(section));
 	}
 
 	// A label that begins with the name of its own group or category ("Login: attempt window") drops it.
@@ -443,11 +450,13 @@ internal sealed class SettingsTab : ITabView
 	{
 		visual.AddCommand(new Command
 		{
-			Id = $"{id}.down", LabelMarkup = "down", Gesture = new KeyGesture(TerminalKey.Down), Execute = _ => Step(visual, 1)
+			Id = $"{id}.down", LabelMarkup = "down", Gesture = new KeyGesture(TerminalKey.Down),
+			Execute = _ => Step(visual, 1)
 		});
 		visual.AddCommand(new Command
 		{
-			Id = $"{id}.up", LabelMarkup = "up", Gesture = new KeyGesture(TerminalKey.Up), Execute = _ => Step(visual, -1)
+			Id = $"{id}.up", LabelMarkup = "up", Gesture = new KeyGesture(TerminalKey.Up),
+			Execute = _ => Step(visual, -1)
 		});
 	}
 
@@ -455,6 +464,7 @@ internal sealed class SettingsTab : ITabView
 	private void AddEscape(Field field)
 	{
 		var id = $"settings.{field.Category}.{field.Path}";
+
 		void Add(string name, KeyGesture gesture, Action run)
 		{
 			field.Control.AddCommand(new Command
@@ -535,8 +545,10 @@ internal sealed class SettingsTab : ITabView
 					? number.ToString(CultureInfo.InvariantCulture)
 					: null;
 			case SettingsFieldKind.List:
-				return new JsonArray([.. text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-					.Select(item => (JsonNode?)JsonValue.Create(item))]).ToJsonString();
+				return new JsonArray([
+					.. text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+						.Select(item => (JsonNode?)JsonValue.Create(item))
+				]).ToJsonString();
 			case SettingsFieldKind.Optional when text.Length == 0:
 				return "null";
 			default:
@@ -561,7 +573,8 @@ internal sealed class SettingsTab : ITabView
 		if (kind is { } shown) _kit.Toasts.Show(line.Text.Split('\n')[0].TrimEnd('\r'), shown);
 	}
 
-	private static void Flatten(List<(string Path, string Value, SettingsFieldKind Kind)> rows, string prefix, JsonNode? node)
+	private static void Flatten(List<(string Path, string Value, SettingsFieldKind Kind)> rows, string prefix,
+		JsonNode? node)
 	{
 		switch (node)
 		{
@@ -609,8 +622,14 @@ internal sealed class SettingsTab : ITabView
 		}
 	}
 
-	private sealed class Field(string category, string path, string label, string description, string original,
-		SettingsFieldKind kind, Visual control)
+	private sealed class Field(
+		string category,
+		string path,
+		string label,
+		string description,
+		string original,
+		SettingsFieldKind kind,
+		Visual control)
 	{
 		public string Category { get; } = category;
 

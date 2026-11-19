@@ -53,6 +53,11 @@ public sealed class Session : IEquatable<Session>
 
 	public SessionEnded? Ended => Volatile.Read(ref _state).Ended;
 
+	public bool Equals(Session? other)
+	{
+		return other is not null && Id == other.Id;
+	}
+
 	public void Heartbeat(DateTimeOffset at)
 	{
 		while (true)
@@ -81,11 +86,6 @@ public sealed class Session : IEquatable<Session>
 			if (Interlocked.CompareExchange(ref _state, current with { Ended = new SessionEnded(at, reason) },
 				    current) == current) return true;
 		}
-	}
-
-	public bool Equals(Session? other)
-	{
-		return other is not null && Id == other.Id;
 	}
 
 	public override bool Equals(object? obj)

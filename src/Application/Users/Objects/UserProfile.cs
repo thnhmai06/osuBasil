@@ -1,5 +1,5 @@
-using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using DomainProfile = Basil.Domain.Users.UserProfile;
 
 namespace Basil.Application.Users.Objects;
@@ -79,8 +79,10 @@ public sealed class UserProfile
 	internal async Task<UserOutcome> RemoveAvatarAsync()
 	{
 		await using (var stored = await _user.Context.Avatars.OpenAsync(_user.Record))
+		{
 			if (stored is null)
 				return UserOutcome.NotFound;
+		}
 
 		await _user.Context.Avatars.DeleteAsync(_user.Record);
 		return UserOutcome.Ok;

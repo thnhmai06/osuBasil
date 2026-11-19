@@ -1,6 +1,4 @@
-using Basil.Application.Multiplayer.Objects;
-using Basil.Application.Multiplayer.Objects.Events;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Room;
 
 namespace Basil.Application.Multiplayer.Capabilities.Rooms;
 

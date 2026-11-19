@@ -17,28 +17,28 @@ namespace Basil.Host.Cli.Dashboard;
 
 public sealed class DashboardApp
 {
-	private readonly Glyphs _glyphs;
 	private readonly TimeProvider _clock;
 	private readonly State<int> _columns = new(120);
 	private readonly ConsoleTab _console;
-	private readonly State<int> _rows = new(40);
+	private readonly Dialogs _dialogs = new();
+	private readonly Glyphs _glyphs;
 	private readonly ILogger<DashboardApp> _logger;
 	private readonly CliOptions _mode;
-	private readonly Dialogs _dialogs = new();
-	private readonly ToastTray _toasts;
 	private readonly Palette _palette;
+	private readonly State<int> _rows = new(40);
 	private readonly DashboardSampler _sampler;
-	private readonly ShutdownController _shutdown;
 	private readonly State<int> _selected = new(0);
-	private readonly Dictionary<DashboardTab, ITabView> _views = [];
 	private readonly IServiceProvider _services;
-	private int _lastActive = -1;
+	private readonly ShutdownController _shutdown;
 	private readonly ThemeStore _themes;
+	private readonly ToastTray _toasts;
+	private readonly Dictionary<DashboardTab, ITabView> _views = [];
 	private TerminalApp? _app;
+	private int _lastActive = -1;
 	private long _lastSample;
 	private int _sampling;
-	private TabControl? _tabs;
 	private TabSpread? _spread;
+	private TabControl? _tabs;
 
 	public DashboardApp(IServiceProvider services, DashboardModel model, DashboardSampler sampler, CommandRunner runner,
 		CommandSuggestions suggestions, ShutdownController shutdown, ThemeStore themes, CliOptions mode,
@@ -55,37 +55,46 @@ public sealed class DashboardApp
 		_palette = new Palette(mode.NoColor);
 		_toasts = new ToastTray(_glyphs, _palette, clock, Post);
 		var kit = new ShellKit(_dialogs, _toasts, new Changes());
-		_console = new ConsoleTab(model.Log, runner, suggestions, mode, _glyphs, new Palette(mode.NoColor), _dialogs, clock,
+		_console = new ConsoleTab(model.Log, runner, suggestions, mode, _glyphs, new Palette(mode.NoColor), _dialogs,
+			clock,
 			logger);
 		var actions = new CommandActions(services, _console, _toasts, kit.Changes, Post);
 		var beatmaps = new BeatmapDetails(services, actions, _dialogs);
-		var users = new UserDetails(services, actions, beatmaps, mode, _dialogs, _glyphs, clock, name => OpenIn(DashboardTab.Chat, name));
+		var users = new UserDetails(services, actions, beatmaps, mode, _dialogs, _glyphs, clock,
+			name => OpenIn(DashboardTab.Chat, name));
 		_views[DashboardTab.Users] = new UsersTab(services, users, mode, _glyphs, kit, clock, Post, logger);
-		_views[DashboardTab.Lobby] = new LobbyTab(services, users, actions, name => OpenIn(DashboardTab.Chat, name), mode,
+		_views[DashboardTab.Lobby] = new LobbyTab(services, users, actions, name => OpenIn(DashboardTab.Chat, name),
+			mode,
 			_glyphs, kit, clock, Post, logger);
 		_views[DashboardTab.Beatmaps] = new BeatmapsTab(services, beatmaps, mode, _glyphs, kit, clock, Post, logger);
 		_views[DashboardTab.Scores] = new ScoresTab(services, users, beatmaps, _glyphs, kit, mode, clock, Post, logger);
-		_views[DashboardTab.About] = new AboutTab(services, _glyphs, mode, () => (_columns.Value, _rows.Value), Post, logger);
-		_views[DashboardTab.Monitor] = new MonitorTab(model, themes, _glyphs, mode, () => (_columns.Value, _rows.Value), clock);
+		_views[DashboardTab.About] =
+			new AboutTab(services, _glyphs, mode, () => (_columns.Value, _rows.Value), Post, logger);
+		_views[DashboardTab.Monitor] =
+			new MonitorTab(model, themes, _glyphs, mode, () => (_columns.Value, _rows.Value), clock);
 		_views[DashboardTab.Sessions] = new SessionsTab(services, users, mode, _glyphs, kit, clock, Post, logger);
-		_views[DashboardTab.Chat] = new ChatTab(services, users, new ChannelDetails(services, actions, _dialogs), model.Chat, mode, _glyphs, kit,
+		_views[DashboardTab.Chat] = new ChatTab(services, users, new ChannelDetails(services, actions, _dialogs),
+			model.Chat, mode, _glyphs, kit,
 			new Palette(mode.NoColor), () => (_columns.Value, _rows.Value), clock, Post, logger);
 		_views[DashboardTab.Settings] = new SettingsTab(services, _console, mode, _glyphs, kit, clock, Post, logger);
 	}
+
+	private DashboardTab Tab => (DashboardTab)Math.Clamp(_selected.Value, 0, Enum.GetValues<DashboardTab>().Length - 1);
 
 	private void Post(Action action)
 	{
 		_app?.Post(action);
 	}
 
-	private DashboardTab Tab => (DashboardTab)Math.Clamp(_selected.Value, 0, Enum.GetValues<DashboardTab>().Length - 1);
-
 	public Visual Build()
 	{
 		var pages = Enum.GetValues<DashboardTab>().Select(tab => new TabPage(
 			new Markup(Header(tab)),
 			new Padder(WithRefresh(tab)).Padding(new Thickness(1, 0, 1, 0)).Stretch())).ToArray();
-		var strip = (_mode.Ascii ? TabControlStyle.Ascii : TabControlStyle.NoBorder) with { TabPadding = new Thickness(0, 0, 1, 0) };
+		var strip = (_mode.Ascii ? TabControlStyle.Ascii : TabControlStyle.NoBorder) with
+		{
+			TabPadding = new Thickness(0, 0, 1, 0)
+		};
 		_tabs = new TabControl(pages).Style(strip).SelectedIndex(_selected);
 		_spread = new TabSpread(_tabs, strip, Enum.GetValues<DashboardTab>().Select(tab => $"F{(int)tab + 1} {tab}"));
 		var status = new ComputedVisual(StatusBar);
@@ -95,8 +104,8 @@ public sealed class DashboardApp
 			.Cell(_toasts.Over(_tabs), 0, 0)
 			.Cell(status, 1, 0);
 		var small = new Center(new Group("Terminal too small").Style(GroupStyle.Rounded).Padding(1)
-				.Content(new VStack(new Markup(() => SmallLine(0)), new Markup(() => SmallLine(1)),
-					new TextBlock("Enlarge the window or zoom out."))));
+			.Content(new VStack(new Markup(() => SmallLine(0)), new Markup(() => SmallLine(1)),
+				new TextBlock("Enlarge the window or zoom out."))));
 		return _dialogs.Dim(new Padder(() => TooSmall() ? small : main).Stretch());
 	}
 
@@ -197,15 +206,20 @@ public sealed class DashboardApp
 				items.AddRange([("Tab pane", null), ("Ctrl+B members", null), ("Esc/Alt+← back", null)]);
 				break;
 			case DashboardTab.Settings:
-				items.AddRange([("←→ tab", null), ("↓ search", null), ("↑↓ select", null), ("←→ fold", null), ("Enter save", null), ("Esc back", null)]);
+				items.AddRange([
+					("←→ tab", null), ("↓ search", null), ("↑↓ select", null), ("←→ fold", null), ("Enter save", null),
+					("Esc back", null)
+				]);
 				break;
 			case DashboardTab.Console:
 				items.AddRange([("Enter run", null), ("Tab/↑↓ complete", null), ("Esc close", null)]);
 				break;
 			default:
 				if (searchable is not null)
-					items.AddRange([("↑↓ select", null), ("Enter open", null), ("/ search", searchable.FocusSearch),
-						("? help", searchable.ShowHelp)]);
+					items.AddRange([
+						("↑↓ select", null), ("Enter open", null), ("/ search", searchable.FocusSearch),
+						("? help", searchable.ShowHelp)
+					]);
 				break;
 		}
 
@@ -290,7 +304,8 @@ public sealed class DashboardApp
 
 		app.AddGlobalCommand(new Command
 		{
-			Id = "interrupt", LabelMarkup = "Interrupt", Gesture = new KeyGesture(TerminalChar.CtrlC, TerminalModifiers.Ctrl),
+			Id = "interrupt", LabelMarkup = "Interrupt",
+			Gesture = new KeyGesture(TerminalChar.CtrlC, TerminalModifiers.Ctrl),
 			Execute = _ => _shutdown.Interrupt(!string.IsNullOrEmpty(_console.Prompt.Text))
 		});
 		app.AddGlobalCommand(new Command
@@ -305,23 +320,30 @@ public sealed class DashboardApp
 		});
 		var refresh = new Command
 		{
-			Id = "refresh", LabelMarkup = "Refresh", Gesture = new KeyGesture(TerminalChar.CtrlR, TerminalModifiers.Ctrl),
+			Id = "refresh", LabelMarkup = "Refresh",
+			Gesture = new KeyGesture(TerminalChar.CtrlR, TerminalModifiers.Ctrl),
 			CanExecute = _ => Refreshes(Tab), Execute = _ => RefreshView()
 		};
 		app.AddGlobalCommand(refresh);
 		// The command box takes Ctrl+R for itself, so it needs the command too.
 		_console.Prompt.AddCommand(refresh);
-		foreach (var (id, key, step) in new[] { ("tab.previous", TerminalKey.Left, -1), ("tab.next", TerminalKey.Right, 1) })
+		foreach (var (id, key, step) in new[]
+			         { ("tab.previous", TerminalKey.Left, -1), ("tab.next", TerminalKey.Right, 1) })
 			app.AddGlobalCommand(new Command
 			{
 				Id = id, LabelMarkup = id, Gesture = new KeyGesture(key, TerminalModifiers.Ctrl),
 				CanExecute = _ => app.FocusedElement is not (TextBox or PromptEditor or TextArea),
-				Execute = _ => _selected.Value = Math.Clamp(_selected.Value + step, 0, Enum.GetValues<DashboardTab>().Length - 1)
+				Execute = _ =>
+					_selected.Value = Math.Clamp(_selected.Value + step, 0, Enum.GetValues<DashboardTab>().Length - 1)
 			});
 		app.AddGlobalCommand(new Command
 		{
 			Id = "jump.end", LabelMarkup = "Jump to End",
-			Gesture = new KeyGesture(TerminalKey.End, TerminalModifiers.Ctrl), Execute = _ => { if (ActiveView() is IJumpable view) view.JumpToEnd(); else _console.JumpToEnd(); }
+			Gesture = new KeyGesture(TerminalKey.End, TerminalModifiers.Ctrl), Execute = _ =>
+			{
+				if (ActiveView() is IJumpable view) view.JumpToEnd();
+				else _console.JumpToEnd();
+			}
 		});
 	}
 

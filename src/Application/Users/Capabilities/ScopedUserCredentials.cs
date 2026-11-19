@@ -1,8 +1,6 @@
 using Basil.Application.Shared.Settings;
-using Basil.Application.Users.Objects;
-
-using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Application.Users.Capabilities;

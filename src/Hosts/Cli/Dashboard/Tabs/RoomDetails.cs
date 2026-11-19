@@ -1,7 +1,6 @@
 using System.Globalization;
-using Basil.Application.Users.Objects;
-using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using Basil.Host.Cli.Dashboard.Shell;
 
 namespace Basil.Host.Cli.Dashboard.Tabs;
@@ -33,7 +32,8 @@ internal sealed class RoomDetails(UserDetails users, CommandActions actions, Act
 		}
 
 		fields.AddRange(room.Slots.Select(slot =>
-			($"Slot {slot.Index + 1}", $"{slot.Player}{(slot.Host ? " (H)" : string.Empty)}  {slot.Status}", Ink.Text)));
+			($"Slot {slot.Index + 1}", $"{slot.Player}{(slot.Host ? " (H)" : string.Empty)}  {slot.Status}",
+				Ink.Text)));
 		var list = new List<DetailAction>();
 		if (room.Host.Length > 0)
 			list.Add(DetailAction.OpenAsync("Host", () => users.OfAsync(UserReference.ByName(room.Host))));
@@ -68,28 +68,36 @@ internal sealed class RoomDetails(UserDetails users, CommandActions actions, Act
 		var rules = room.Rules!;
 		return
 		[
-			new("Rename", () => dialogs.Form("Rename room", [new FormField("FullName", room.Name)],
+			new DetailAction("Rename", () => dialogs.Form("Rename room", [new FormField("FullName", room.Name)],
 				values => Run(id, "name", $"--name {CommandActions.Quote(values[0])}"))),
-			new("Size", () => dialogs.Form("Room size", [new FormField("Slots (1-16)", room.Size.ToString(CultureInfo.InvariantCulture))],
+			new DetailAction("Size", () => dialogs.Form("Room size",
+				[new FormField("Slots (1-16)", room.Size.ToString(CultureInfo.InvariantCulture))],
 				values => Run(id, "size", $"--size {CommandActions.Quote(values[0])}"))),
-			new("Teams and winning", () => dialogs.Form("Teams and winning",
-				[new FormField("Team type", rules.TeamType), new FormField("Win condition", rules.WinCondition),
-					new FormField("Size (optional)")],
+			new DetailAction("Teams and winning", () => dialogs.Form("Teams and winning",
+				[
+					new FormField("Team type", rules.TeamType), new FormField("Win condition", rules.WinCondition),
+					new FormField("Size (optional)")
+				],
 				values => Run(id, "set",
 					$"--teamType {CommandActions.Quote(values[0])} --winCondition {CommandActions.Quote(values[1])}" +
 					(values[2].Length > 0 ? $" --size {CommandActions.Quote(values[2])}" : string.Empty)))),
-			new("Password", () => dialogs.Form("Room password", [new FormField("Password (empty removes)", Secret: true)],
+			new DetailAction("Password", () => dialogs.Form("Room password",
+				[new FormField("Password (empty removes)", Secret: true)],
 				values => Run(id, "password", $"--password {CommandActions.Quote(values[0])}"))),
-			new(rules.Private ? "Make public" : "Make private",
+			new DetailAction(rules.Private ? "Make public" : "Make private",
 				() => Run(id, "private", $"--private {(rules.Private ? "false" : "true")}")),
-			new("Beatmap", () => dialogs.Form("Room beatmap", [new FormField("Beatmap id"), new FormField("Mode (optional)")],
+			new DetailAction("Beatmap", () => dialogs.Form("Room beatmap",
+				[new FormField("Beatmap id"), new FormField("Mode (optional)")],
 				values => Run(id, "map",
 					$"--beatmap {CommandActions.Quote(values[0])}" +
 					(values[1].Length > 0 ? $" --mode {CommandActions.Quote(values[1])}" : string.Empty)))),
-			new("Mods", () => dialogs.Form("Room mods", [new FormField("Mods (HD,DT or None)"), new FormField("Free mods (yes/no)")],
+			new DetailAction("Mods", () => dialogs.Form("Room mods",
+				[new FormField("Mods (HD,DT or None)"), new FormField("Free mods (yes/no)")],
 				values => Run(id, "mods",
 					$"--mods {CommandActions.Quote(values[0].Length == 0 ? "None" : values[0])}" +
-					(values[1].Length > 0 ? $" --freemod {(values[1].StartsWith('y') ? "true" : "false")}" : string.Empty))))
+					(values[1].Length > 0
+						? $" --freemod {(values[1].StartsWith('y') ? "true" : "false")}"
+						: string.Empty))))
 		];
 	}
 
@@ -104,10 +112,12 @@ internal sealed class RoomDetails(UserDetails users, CommandActions actions, Act
 			list.Add(new DetailAction("Ban player", () => Pick(room, "Ban player", "ban")));
 			list.Add(new DetailAction("Move player", () => dialogs.Form("Move player",
 				[new FormField("Player (id or name)"), new FormField("Slot (1-16)")], values =>
-					actions.RunForUser($"rooms {id} move --slot {CommandActions.Quote(values[1])} --user {{0}}", values[0]))));
+					actions.RunForUser($"rooms {id} move --slot {CommandActions.Quote(values[1])} --user {{0}}",
+						values[0]))));
 			list.Add(new DetailAction("Change team", () => dialogs.Form("Change team",
 				[new FormField("Player (id or name)"), new FormField("Team (Blue/Red)")], values =>
-					actions.RunForUser($"rooms {id} team --team {CommandActions.Quote(values[1])} --user {{0}}", values[0]))));
+					actions.RunForUser($"rooms {id} team --team {CommandActions.Quote(values[1])} --user {{0}}",
+						values[0]))));
 		}
 
 		if (room.Host.Length > 0) list.Add(new DetailAction("Clear host", () => Run(id, "clearhost")));
@@ -116,7 +126,8 @@ internal sealed class RoomDetails(UserDetails users, CommandActions actions, Act
 		list.Add(new DetailAction("Add referee", () => Ask(id, "Add referee", "addref")));
 		if (room.Referees.Length > 0)
 			list.Add(new DetailAction("Remove referee", () => dialogs.Choose("Remove referee",
-				room.Referees.Split(", "), null, name => actions.RunForUser($"rooms {id} removeref --user {{0}}", name))));
+				room.Referees.Split(", "), null,
+				name => actions.RunForUser($"rooms {id} removeref --user {{0}}", name))));
 		return list;
 	}
 
@@ -124,7 +135,9 @@ internal sealed class RoomDetails(UserDetails users, CommandActions actions, Act
 	private DetailView Players(RoomItem room)
 	{
 		var fields = room.Slots.Select(slot =>
-			($"Slot {slot.Index + 1}", $"{slot.Player}{(slot.Host ? " (H)" : string.Empty)}  {slot.Status}", Ink.Text)).ToList();
+				($"Slot {slot.Index + 1}", $"{slot.Player}{(slot.Host ? " (H)" : string.Empty)}  {slot.Status}",
+					Ink.Text))
+			.ToList();
 		var list = room.Slots.Select(slot => DetailAction.OpenAsync(slot.Player,
 			() => users.OfAsync(UserReference.ByName(slot.Player)))).ToList();
 		return new DetailView("Players", fields, list);
@@ -150,6 +163,9 @@ internal sealed class RoomDetails(UserDetails users, CommandActions actions, Act
 	private void AskSeconds(int room, string title, string verb, string start)
 	{
 		dialogs.Form(title, [new FormField("Seconds (0 = now)", start)], values =>
-			Run(room, verb, values[0] is "" or "0" && verb == "start" ? string.Empty : $"--seconds {CommandActions.Quote(values[0])}"));
+			Run(room, verb,
+				values[0] is "" or "0" && verb == "start"
+					? string.Empty
+					: $"--seconds {CommandActions.Quote(values[0])}"));
 	}
 }

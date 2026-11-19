@@ -2,7 +2,6 @@ using Basil.Host.Cli.Dashboard.Shell.Toasts;
 using XenoAtom.Terminal;
 using XenoAtom.Terminal.UI;
 using XenoAtom.Terminal.UI.Controls;
-using XenoAtom.Terminal.UI.Geometry;
 using XenoAtom.Terminal.UI.Input;
 using XenoAtom.Terminal.UI.Styling;
 
@@ -13,12 +12,12 @@ internal sealed class DetailPanel
 	private const int CompactWidth = 100;
 	private const int ButtonColumn = 22;
 	private const int CompactButtonColumn = 14;
-	private readonly Glyphs _glyphs;
-	private readonly Dialogs _dialogs;
 	private readonly Group _box;
-	private readonly State<bool> _open = new(false);
-	private readonly State<int> _height = new(8);
 	private readonly State<string> _crumb = new(string.Empty);
+	private readonly Dialogs _dialogs;
+	private readonly Glyphs _glyphs;
+	private readonly State<int> _height = new(8);
+	private readonly State<bool> _open = new(false);
 	private readonly Palette _palette;
 	private readonly Action<Action> _post;
 	private readonly string _root;
@@ -27,7 +26,8 @@ internal sealed class DetailPanel
 	private TerminalApp? _app;
 	private bool _compact;
 
-	public DetailPanel(string root, Glyphs glyphs, Palette palette, Dialogs dialogs, ToastTray toasts, Action<Action> post,
+	public DetailPanel(string root, Glyphs glyphs, Palette palette, Dialogs dialogs, ToastTray toasts,
+		Action<Action> post,
 		Changes changes)
 	{
 		changes.Occurred += Reload;
@@ -38,7 +38,8 @@ internal sealed class DetailPanel
 		_toasts = toasts;
 		_post = post;
 		_box = new Group(new Markup(() => _crumb.Value)).Style(glyphs.Ascii ? GroupStyle.Ascii : GroupStyle.Single)
-			.IsVisible(_open).MinHeight(() => _height.Value).MaxHeight(() => _height.Value).HorizontalAlignment(Align.Stretch);
+			.IsVisible(_open).MinHeight(() => _height.Value).MaxHeight(() => _height.Value)
+			.HorizontalAlignment(Align.Stretch);
 	}
 
 	public Visual View => _box;
@@ -189,9 +190,11 @@ internal sealed class DetailPanel
 			var line = _palette.Wrap(Ink.Muted, label.PadRight(width)) + " " + _palette.Wrap(kind, value);
 			fields.Add(new Markup(line));
 		}
+
 		var buttons = new List<Button>();
 		if (_steps.Count > 1) buttons.Add(new Button($"[{_glyphs.Back} Back]").Click(Back));
-		var ordered = view.Actions.Append(new DetailAction("Close", Close, DetailActionKind.Close)).OrderBy(action => action.Kind).ToList();
+		var ordered = view.Actions.Append(new DetailAction("Close", Close, DetailActionKind.Close))
+			.OrderBy(action => action.Kind).ToList();
 		if (_compact && ordered.Count > 0)
 			buttons.Add(new Button("[Actions]").Click(() => ShowActions(ordered)));
 		else
@@ -281,7 +284,8 @@ internal sealed class DetailPanel
 		}
 
 		var list = new ScrollViewer(rows).MinWidth(24).MaxHeight(Math.Max(_height.Value, 6));
-		dialog.Content(Dialogs.EscapeCloses(dialog, new VStack(list, Dialogs.Buttons(new Button("Cancel").Click(dialog.Close)))));
+		dialog.Content(Dialogs.EscapeCloses(dialog,
+			new VStack(list, Dialogs.Buttons(new Button("Cancel").Click(dialog.Close)))));
 		_dialogs.Show(dialog);
 	}
 }

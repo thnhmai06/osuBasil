@@ -1,6 +1,6 @@
 using Basil.Gateway.RateLimiting;
-using Basil.Host.Irc.Commands;
 using Basil.Host.Irc.Clients;
+using Basil.Host.Irc.Commands;
 using Basil.Host.Shared.Documentation;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;

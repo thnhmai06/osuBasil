@@ -1,5 +1,7 @@
 using Basil.Application.Users.Objects.Sessions;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Report;
+using Basil.Domain.Multiplayer.Report.Matches;
+using Basil.Domain.Multiplayer.Report.Rounds;
 using Mediator;
 
 namespace Basil.Application.Multiplayer.Messages;

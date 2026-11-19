@@ -1,7 +1,7 @@
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Multiplayer.Registry;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Report.Rounds;
 using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;

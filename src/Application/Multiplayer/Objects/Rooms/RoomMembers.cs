@@ -1,6 +1,6 @@
 using Basil.Application.Users.Objects.Sessions;
-using Basil.Shared.Structures.Data;
 using Basil.Domain.Users;
+using Basil.Shared.Structures.Data;
 
 namespace Basil.Application.Multiplayer.Objects.Rooms;
 

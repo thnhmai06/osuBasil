@@ -17,7 +17,8 @@ internal static class JumpToEndButton
 	{
 		if (log.FollowTail || log.HasSelection || log.Bounds.Height <= 0) return;
 
-		if (log.EnumerateVisualsDepthFirst().OfType<ScrollViewer>().FirstOrDefault() is { } viewer && WheelScroll.AtEnd(viewer))
+		if (log.EnumerateVisualsDepthFirst().OfType<ScrollViewer>().FirstOrDefault() is { } viewer &&
+		    WheelScroll.AtEnd(viewer))
 			log.FollowTail = true;
 	}
 }

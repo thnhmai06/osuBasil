@@ -1,6 +1,5 @@
-using Basil.Application.Users.Objects;
-using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Capabilities;
 

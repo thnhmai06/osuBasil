@@ -1,7 +1,7 @@
 using Basil.Domain.Game.Mechanics;
 using Basil.Shared.Utilities;
 
-namespace Basil.Domain.Multiplayer;
+namespace Basil.Domain.Multiplayer.Report.Matches;
 
 public sealed class MatchSettings : IMatchSettings
 {

@@ -5,11 +5,9 @@ using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Scores.Messages;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Messages;
-using Basil.Application.Users.Objects;
 using Basil.Domain.Game.Scores;
-using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
-using Basil.Host.Cli.Dashboard.Data;
+using Basil.Domain.Users;
 using Basil.Host.Cli.Dashboard.Shell;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,8 +16,18 @@ using XenoAtom.Terminal.UI;
 
 namespace Basil.Host.Cli.Dashboard.Tabs;
 
-internal sealed record ScoreItem(int Id, int? UserId, string Player, ulong Mask, int? BeatmapId, string Beatmap, string Mods,
-	int Score, double Accuracy, Grade Grade, DateTimeOffset Time);
+internal sealed record ScoreItem(
+	int Id,
+	int? UserId,
+	string Player,
+	ulong Mask,
+	int? BeatmapId,
+	string Beatmap,
+	string Mods,
+	int Score,
+	double Accuracy,
+	Grade Grade,
+	DateTimeOffset Time);
 
 internal sealed partial class ScoresSource(IServiceProvider services) : IListSource<ScoreItem>
 {
@@ -52,7 +60,8 @@ internal sealed partial class ScoresSource(IServiceProvider services) : IListSou
 				maps[hash.HashValue] = map = found is null ? (null, hash.HashValue) : (found.Id, Name: found.FullName);
 			}
 
-			items.Add(new ScoreItem(score.Id, data.UserId, player.Item1, player.Item2, map.Id, map.Name, data.Mods.ToString(),
+			items.Add(new ScoreItem(score.Id, data.UserId, player.Item1, player.Item2, map.Id, map.Name,
+				data.Mods.ToString(),
 				data.LastState.TotalScore, data.Accuracy, data.Grade, data.Timestamp));
 		}
 
@@ -89,21 +98,32 @@ internal sealed partial class ScoresSource(IServiceProvider services) : IListSou
 internal sealed class ScoresTab : ITabView, ISearchable
 {
 	private const string Help = """
-		user:name or user:id          only this player's scores
-		beatmap:id                    only this beatmap's scores
-		Other words are read as a beatmap search (see the Beatmaps tab, ?)
-		Example: user:bob beatmap:75
-		""";
+	                            user:name or user:id          only this player's scores
+	                            beatmap:id                    only this beatmap's scores
+	                            Other words are read as a beatmap search (see the Beatmaps tab, ?)
+	                            Example: user:bob beatmap:75
+	                            """;
 
 	private readonly ListPage<ScoreItem> _page;
 	private bool _opened;
 
-		public ScoresTab(IServiceProvider services, UserDetails users, BeatmapDetails beatmaps, Glyphs glyphs,
+	public ScoresTab(IServiceProvider services, UserDetails users, BeatmapDetails beatmaps, Glyphs glyphs,
 		ShellKit kit, CliOptions options, TimeProvider clock, Action<Action> post, ILogger logger)
 	{
 		_page = new ListPage<ScoreItem>("Scores", Help, Columns(users),
-			s => s.Id.ToString(CultureInfo.InvariantCulture), new ScoresSource(services), s => Detail(s, users, beatmaps),
+			s => s.Id.ToString(CultureInfo.InvariantCulture), new ScoresSource(services),
+			s => Detail(s, users, beatmaps),
 			glyphs, kit, options.NoColor, clock, post, logger);
+	}
+
+	public void FocusSearch()
+	{
+		_page.FocusSearch();
+	}
+
+	public void ShowHelp()
+	{
+		_page.ShowHelp();
 	}
 
 	public Visual View => _page.View;
@@ -132,16 +152,6 @@ internal sealed class ScoresTab : ITabView, ISearchable
 		_page.Refresh();
 	}
 
-	public void FocusSearch()
-	{
-		_page.FocusSearch();
-	}
-
-	public void ShowHelp()
-	{
-		_page.ShowHelp();
-	}
-
 	internal static IReadOnlyList<Column<ScoreItem>> Columns(UserDetails? users)
 	{
 		return
@@ -149,12 +159,16 @@ internal sealed class ScoresTab : ITabView, ISearchable
 			new Column<ScoreItem>("ID", 8, s => s.Id.ToString(CultureInfo.InvariantCulture)) { Right = true },
 			new Column<ScoreItem>("Player", 0, s => s.Player, s => UserInk.Of((UserPrivileges)s.Mask))
 			{
-				Link = users is null ? null : s => s.UserId is { } id ? (s.Player, () => users.OfAsync(UserReference.ById(id))) : null
+				Link = users is null
+					? null
+					: s => s.UserId is { } id ? (s.Player, () => users.OfAsync(UserReference.ById(id))) : null
 			},
 			new Column<ScoreItem>("Beatmap", 0, s => s.Beatmap) { Weight = 3 },
 			new Column<ScoreItem>("Mods", 12, s => s.Mods, _ => Ink.Info),
-			new Column<ScoreItem>("Score", 12, s => s.Score.ToString("N0", CultureInfo.InvariantCulture)) { Right = true },
-			new Column<ScoreItem>("Acc", 8, s => $"{s.Accuracy.ToString("0.00", CultureInfo.InvariantCulture)}%") { Right = true },
+			new Column<ScoreItem>("Score", 12, s => s.Score.ToString("N0", CultureInfo.InvariantCulture))
+				{ Right = true },
+			new Column<ScoreItem>("Acc", 8, s => $"{s.Accuracy.ToString("0.00", CultureInfo.InvariantCulture)}%")
+				{ Right = true },
 			new Column<ScoreItem>("Grade", 6, s => GradeText(s.Grade), s => Rank(s.Grade)),
 			new Column<ScoreItem>("Time", 17, s => s.Time.ToLocalTime().ToString("yyyy-MM-dd HH:mm",
 				CultureInfo.InvariantCulture), _ => Ink.Muted)
@@ -183,7 +197,8 @@ internal sealed class ScoresTab : ITabView, ISearchable
 	{
 		var fields = new List<(string, string, Ink)>
 		{
-			("ID", score.Id.ToString(CultureInfo.InvariantCulture), Ink.Text), ("Player", score.Player, UserInk.Of((UserPrivileges)score.Mask)),
+			("ID", score.Id.ToString(CultureInfo.InvariantCulture), Ink.Text),
+			("Player", score.Player, UserInk.Of((UserPrivileges)score.Mask)),
 			("Beatmap", score.Beatmap, Ink.Text), ("Mods", score.Mods, Ink.Info),
 			("Score", score.Score.ToString("N0", CultureInfo.InvariantCulture), Ink.Text),
 			("Accuracy", $"{score.Accuracy.ToString("0.00", CultureInfo.InvariantCulture)}%", Ink.Text),

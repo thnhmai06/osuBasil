@@ -1,10 +1,10 @@
 using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects;
-using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Game.Mechanics;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Report.Matches;
+using Basil.Domain.Multiplayer.Room;
 using Basil.Host.Stable.Support;
 using Basil.Protocol.Game.Stable.Models.Multiplayer;
 using Basil.Protocol.Game.Stable.Wire.Packets;

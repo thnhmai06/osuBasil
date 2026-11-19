@@ -1,51 +1,51 @@
 <Solution>
 	<Folder Name="/Sources/">
-		<Project Path="src/Gateway/Basil.Gateway.csproj" />
-		<Project Path="src/Basil/Basil.csproj" />
-		<Project Path="src\Shared\Basil.Shared.csproj" />
+		<Project Path="src/Gateway/Basil.Gateway.csproj"/>
+		<Project Path="src/Basil/Basil.csproj"/>
+		<Project Path="src\Shared\Basil.Shared.csproj"/>
 	</Folder>
 	<Folder Name="/Sources/Application/">
-		<Project Path="src/Application/Anticheat/Basil.Application.Anticheat.csproj" />
-		<Project Path="src/Application/Authentication/Basil.Application.Authentication.csproj" />
-		<Project Path="src/Application/Beatmaps/Basil.Application.Beatmaps.csproj" />
-		<Project Path="src/Application/Bot/Basil.Application.Bot.csproj" />
-		<Project Path="src/Application/Chat/Basil.Application.Chat.csproj" />
-		<Project Path="src/Application/Shared/Basil.Application.Shared.csproj" />
-		<Project Path="src/Application/Content/Basil.Application.Content.csproj" />
-		<Project Path="src/Application/Diagnostics/Basil.Application.Diagnostics.csproj" />
-		<Project Path="src/Application/Multiplayer/Basil.Application.Multiplayer.csproj" />
-		<Project Path="src/Application/Scores/Basil.Application.Scores.csproj" />
-		<Project Path="src/Application/Servers/Basil.Application.Servers.csproj" />
-		<Project Path="src/Application/Users/Basil.Application.Users.csproj" />
+		<Project Path="src/Application/Anticheat/Basil.Application.Anticheat.csproj"/>
+		<Project Path="src/Application/Authentication/Basil.Application.Authentication.csproj"/>
+		<Project Path="src/Application/Beatmaps/Basil.Application.Beatmaps.csproj"/>
+		<Project Path="src/Application/Bot/Basil.Application.Bot.csproj"/>
+		<Project Path="src/Application/Chat/Basil.Application.Chat.csproj"/>
+		<Project Path="src/Application/Shared/Basil.Application.Shared.csproj"/>
+		<Project Path="src/Application/Content/Basil.Application.Content.csproj"/>
+		<Project Path="src/Application/Diagnostics/Basil.Application.Diagnostics.csproj"/>
+		<Project Path="src/Application/Multiplayer/Basil.Application.Multiplayer.csproj"/>
+		<Project Path="src/Application/Scores/Basil.Application.Scores.csproj"/>
+		<Project Path="src/Application/Servers/Basil.Application.Servers.csproj"/>
+		<Project Path="src/Application/Users/Basil.Application.Users.csproj"/>
 	</Folder>
 	<Folder Name="/Sources/Infrastructure/">
-		<Project Path="src/Infrastructure/Anticheat/Basil.Infrastructure.Anticheat.csproj" />
-		<Project Path="src/Infrastructure/Authentication/Basil.Infrastructure.Authentication.csproj" />
-		<Project Path="src/Infrastructure/Beatmaps/Basil.Infrastructure.Beatmaps.csproj" />
-		<Project Path="src/Infrastructure/Bot/Basil.Infrastructure.Bot.csproj" />
-		<Project Path="src/Infrastructure/Chat/Basil.Infrastructure.Chat.csproj" />
-		<Project Path="src/Infrastructure/Shared/Basil.Infrastructure.Shared.csproj" />
-		<Project Path="src/Infrastructure/Content/Basil.Infrastructure.Content.csproj" />
-		<Project Path="src/Infrastructure/Diagnostics/Basil.Infrastructure.Diagnostics.csproj" />
-		<Project Path="src/Infrastructure/Multiplayer/Basil.Infrastructure.Multiplayer.csproj" />
-		<Project Path="src/Infrastructure/Persistence/Basil.Infrastructure.Persistence.csproj" />
-		<Project Path="src/Infrastructure/Scores/Basil.Infrastructure.Scores.csproj" />
-		<Project Path="src/Infrastructure/Servers/Basil.Infrastructure.Servers.csproj" />
-		<Project Path="src/Infrastructure/Users/Basil.Infrastructure.Users.csproj" />
+		<Project Path="src/Infrastructure/Anticheat/Basil.Infrastructure.Anticheat.csproj"/>
+		<Project Path="src/Infrastructure/Authentication/Basil.Infrastructure.Authentication.csproj"/>
+		<Project Path="src/Infrastructure/Beatmaps/Basil.Infrastructure.Beatmaps.csproj"/>
+		<Project Path="src/Infrastructure/Bot/Basil.Infrastructure.Bot.csproj"/>
+		<Project Path="src/Infrastructure/Chat/Basil.Infrastructure.Chat.csproj"/>
+		<Project Path="src/Infrastructure/Shared/Basil.Infrastructure.Shared.csproj"/>
+		<Project Path="src/Infrastructure/Content/Basil.Infrastructure.Content.csproj"/>
+		<Project Path="src/Infrastructure/Diagnostics/Basil.Infrastructure.Diagnostics.csproj"/>
+		<Project Path="src/Infrastructure/Multiplayer/Basil.Infrastructure.Multiplayer.csproj"/>
+		<Project Path="src/Infrastructure/Persistence/Basil.Infrastructure.Persistence.csproj"/>
+		<Project Path="src/Infrastructure/Scores/Basil.Infrastructure.Scores.csproj"/>
+		<Project Path="src/Infrastructure/Servers/Basil.Infrastructure.Servers.csproj"/>
+		<Project Path="src/Infrastructure/Users/Basil.Infrastructure.Users.csproj"/>
 	</Folder>
 	<Folder Name="/Sources/Domain/">
-		<Project Path="src/Domain/Domain/Basil.Domain.csproj" />
-		<Project Path="src/Domain/Game/Basil.Domain.Game.csproj" />
+		<Project Path="src/Domain/Domain/Basil.Domain.csproj"/>
+		<Project Path="src/Domain/Game/Basil.Domain.Game.csproj"/>
 	</Folder>
 	<Folder Name="/Sources/Hosts/">
-		<Project Path="src/Hosts/Stable/Basil.Host.Stable.csproj" />
-		<Project Path="src/Hosts/Irc/Basil.Host.Irc.csproj" />
-		<Project Path="src/Hosts/Rest/Basil.Host.Rest.csproj" />
-		<Project Path="src/Hosts/Cli/Basil.Host.Cli.csproj" />
-		<Project Path="src/Hosts/Shared/Basil.Host.Shared.csproj" />
+		<Project Path="src/Hosts/Stable/Basil.Host.Stable.csproj"/>
+		<Project Path="src/Hosts/Irc/Basil.Host.Irc.csproj"/>
+		<Project Path="src/Hosts/Rest/Basil.Host.Rest.csproj"/>
+		<Project Path="src/Hosts/Cli/Basil.Host.Cli.csproj"/>
+		<Project Path="src/Hosts/Shared/Basil.Host.Shared.csproj"/>
 	</Folder>
 	<Folder Name="/Sources/Protocol/">
-		<Project Path="src/Protocol/Irc/Basil.Protocol.Irc.csproj" />
-		<Project Path="src\Protocol\Stable\Basil.Protocol.Game.Stable.csproj" />
+		<Project Path="src/Protocol/Irc/Basil.Protocol.Irc.csproj"/>
+		<Project Path="src\Protocol\Stable\Basil.Protocol.Game.Stable.csproj"/>
 	</Folder>
 </Solution>

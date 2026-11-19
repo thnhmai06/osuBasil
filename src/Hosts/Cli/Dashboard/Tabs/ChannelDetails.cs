@@ -11,7 +11,8 @@ internal sealed class ChannelDetails(IServiceProvider services, CommandActions a
 	{
 		var create = new DetailAction("New channel", AskNew);
 		if (services.GetRequiredService<GeneralChannelRegistry>().Find(name) is not { } channel)
-			return new DetailView("Channels", [("Channel", "only general channels can be changed", Ink.Muted)], [create]);
+			return new DetailView("Channels", [("Channel", "only general channels can be changed", Ink.Muted)],
+				[create]);
 
 		var data = channel.Record.Value;
 		var members = channel.Members.Select(member => member.User).Distinct().Count();

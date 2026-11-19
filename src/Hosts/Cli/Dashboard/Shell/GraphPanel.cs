@@ -14,12 +14,12 @@ internal sealed class GraphPanel
 	private static readonly int[,] DotBits = { { 0x01, 0x02, 0x04, 0x40 }, { 0x08, 0x10, 0x20, 0x80 } };
 
 	private readonly Func<double> _ceiling;
-	private readonly State<int> _version = new(0);
 	private readonly Glyphs _glyphs;
 	private readonly bool _noColor;
 	private readonly Series _primary;
 	private readonly Series? _secondary;
 	private readonly Func<Theme> _theme;
+	private readonly State<int> _version = new(0);
 
 	public GraphPanel(string title, Series primary, Series? secondary, Func<double> ceiling,
 		IReadOnlyList<Func<string>> info, string legend, Func<Theme> theme, Glyphs glyphs, bool noColor)
@@ -133,7 +133,8 @@ internal sealed class GraphPanel
 
 		for (var x = 0; x < area.Width; x++)
 		for (var y = 0; y < area.Height; y++)
-			if (cells[x, y] != 0) surface.Put(area.X + x, area.Y + y, (char)(0x2800 + cells[x, y]), Tone.Accent);
+			if (cells[x, y] != 0)
+				surface.Put(area.X + x, area.Y + y, (char)(0x2800 + cells[x, y]), Tone.Accent);
 	}
 
 	private static double[] Tail(double[] values, int count)

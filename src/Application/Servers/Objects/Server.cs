@@ -1,8 +1,7 @@
 using Basil.Application.Chat.Objects;
 using Basil.Application.Servers.Capabilities;
-using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Objects.Events;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using User = Basil.Application.Users.Objects.User;

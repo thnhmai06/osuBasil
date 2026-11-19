@@ -19,43 +19,43 @@ internal interface IListSource<T>
 
 internal sealed class ListPage<T>
 {
-	public static readonly TimeSpan Debounce = TimeSpan.FromMilliseconds(500);
-
 	private const int PageSize = 100;
 	private const int CompactWidth = 100;
+	public static readonly TimeSpan Debounce = TimeSpan.FromMilliseconds(500);
 	private readonly TimeProvider _clock;
-	private readonly Func<T, DetailView> _detailOf;
-	private readonly Func<T, string> _keyOf;
-	private string? _shownKey;
 	private readonly DetailPanel _detail;
+	private readonly Func<T, DetailView> _detailOf;
 	private readonly Dialogs _dialogs;
-	private readonly ToastTray _toasts;
+	private readonly State<string> _footer = new(string.Empty);
 	private readonly Glyphs _glyphs;
 	private readonly string _help;
-	private readonly string _title;
+	private readonly Func<T, string> _keyOf;
 	private readonly GroupedList<T> _list;
 	private readonly ILogger _logger;
 	private readonly bool _noColor;
 	private readonly Action<Action> _post;
 	private readonly State<string> _query = new(string.Empty);
+	private readonly TextBox? _search;
+	private readonly SearchBox _searchBox;
 	private readonly IListSource<T> _source;
-	private readonly State<string> _footer = new(string.Empty);
+	private readonly string _title;
+	private readonly ToastTray _toasts;
+	private TerminalApp? _app;
+	private long _changedAt;
+	private bool _focusList;
 	private CancellationTokenSource _load = new();
 	private string _loadedQuery = string.Empty;
-	private long _changedAt;
-	private string _seenQuery = string.Empty;
-	private int _pages = 1;
-	private int _version;
-	private bool _more;
 	private bool _loading;
+	private bool _more;
+	private int _pages = 1;
 	private string? _pendingSelect;
-	private bool _focusList;
+	private string _seenQuery = string.Empty;
+	private string? _shownKey;
 	private bool _stripSlash;
-	private readonly SearchBox _searchBox;
-	private TextBox? _search;
-	private TerminalApp? _app;
+	private int _version;
 
-	public ListPage(string title, string help, IReadOnlyList<Column<T>> columns, Func<T, string> key, IListSource<T> source,
+	public ListPage(string title, string help, IReadOnlyList<Column<T>> columns, Func<T, string> key,
+		IListSource<T> source,
 		Func<T, DetailView> detail, Glyphs glyphs, ShellKit kit, bool noColor, TimeProvider clock,
 		Action<Action> post, ILogger logger)
 	{
@@ -106,6 +106,8 @@ internal sealed class ListPage<T>
 	}
 
 	public Visual View { get; }
+
+	private bool CanBack => _detail.IsOpen || _query.Value.Length > 0 || ReferenceEquals(_app?.FocusedElement, _search);
 
 	public void Attach(TerminalApp app)
 	{
@@ -224,8 +226,10 @@ internal sealed class ListPage<T>
 	{
 		_loading = false;
 		_more = data.Any(section => section.HasMore);
-		_list.SetSections([.. data.Select(section => new Section<T>(section.Title,
-			section.HasMore ? $"{section.Items.Count}+" : section.Items.Count.ToString(), section.Items))],
+		_list.SetSections([
+				.. data.Select(section => new Section<T>(section.Title,
+					section.HasMore ? $"{section.Items.Count}+" : section.Items.Count.ToString(), section.Items))
+			],
 			_loadedQuery.Trim().Length > 0);
 		if (_pendingSelect is not null && _list.Select(_pendingSelect)) _pendingSelect = null;
 		var total = data.Sum(section => section.Items.Count);
@@ -262,7 +266,7 @@ internal sealed class ListPage<T>
 
 		if (!_detail.IsOpen) return false;
 
-		if (e.Key == TerminalKey.Enter && _list.HasSelection || e.Char == 'x')
+		if ((e.Key == TerminalKey.Enter && _list.HasSelection) || e.Char == 'x')
 		{
 			_detail.Close();
 			return true;
@@ -296,8 +300,6 @@ internal sealed class ListPage<T>
 		else if (_query.Value.Length > 0) _query.Value = string.Empty;
 		else LeaveSearch();
 	}
-
-	private bool CanBack => _detail.IsOpen || _query.Value.Length > 0 || ReferenceEquals(_app?.FocusedElement, _search);
 
 	private void LeaveSearch()
 	{

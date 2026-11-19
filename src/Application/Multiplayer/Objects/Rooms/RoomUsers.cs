@@ -1,4 +1,3 @@
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Users;
 

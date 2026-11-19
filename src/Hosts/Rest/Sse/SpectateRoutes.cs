@@ -1,13 +1,11 @@
 using Basil.Application.Users.Messages;
-using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Objects.Events;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
-using Basil.Domain.Game.Client;
-using Basil.Domain.Users;
 using Basil.Domain.Game.Spectating;
 using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using Basil.Host.Rest.Http;
 using Mediator;
 
@@ -57,7 +55,7 @@ internal static class SpectateRoutes
 		return result;
 	}
 
-	internal static object StatusOf(PlayerStatus status)
+	internal static object StatusOf(UserStatus status)
 	{
 		return new
 		{

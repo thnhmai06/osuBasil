@@ -1,8 +1,7 @@
-using Basil.Domain.Users;
 using System.Collections.Concurrent;
 using System.Globalization;
 using Basil.Application.Users.Messages;
-using Basil.Application.Users.Objects;
+using Basil.Domain.Users;
 using Basil.Host.Cli.Commands;
 using Basil.Host.Cli.Dashboard.Shell;
 using Basil.Host.Cli.Dashboard.Shell.Toasts;
@@ -11,7 +10,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Cli.Dashboard.Tabs;
 
-internal sealed class CommandActions(IServiceProvider services, ConsoleTab console, ToastTray toasts, Changes changes,
+internal sealed class CommandActions(
+	IServiceProvider services,
+	ConsoleTab console,
+	ToastTray toasts,
+	Changes changes,
 	Action<Action> post)
 {
 	public static string Quote(string value)

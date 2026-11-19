@@ -1,9 +1,9 @@
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Servers.Messages;
+using Basil.Application.Servers.Messages.Content;
 using Basil.Application.Servers.Objects;
 using Mediator;
 
-namespace Basil.Infrastructure.Servers.Handlers;
+namespace Basil.Infrastructure.Servers.Handlers.Content;
 
 internal sealed class UploadBeatmapsetHandler(Server server)
 	: IRequestHandler<UploadBeatmapset, (ServerOutcome Result, BeatmapsetImportResult? Import)>

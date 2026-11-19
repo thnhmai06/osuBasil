@@ -1,7 +1,5 @@
 using System.Text.Json.Serialization;
 using Basil.Domain.Content;
-
-using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
 using Basil.Shared.Utilities;
 

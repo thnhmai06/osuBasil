@@ -1,14 +1,11 @@
 using Basil.Application.Chat.Objects;
-using Basil.Application.Multiplayer.Objects.Rooms;
-using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Authentication;
 using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Game.Users;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Room;
+using Basil.Domain.Users;
 using Basil.Protocol.Game.Stable.Models.Multiplayer;
 using Basil.Protocol.Game.Stable.Wire.Packets;
-using Basil.Domain.Users;
 using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 using User = Basil.Application.Users.Objects.User;
 
@@ -50,7 +47,7 @@ internal static class StableView
 
 	public static void WriteStats(PacketWriter writer, User user, UserStats stats)
 	{
-		var status = user.Stable?.Status ?? PlayerStatus.Idle;
+		var status = user.Stable?.Status ?? UserStatus.Idle;
 		writer.UserStats(user.Record.Id, (int)status.Activity, status.Text,
 			status.BeatmapHash?.ToString() ?? string.Empty,
 			(int)status.GameMods, (int)status.GameMode, status.BeatmapId ?? 0,

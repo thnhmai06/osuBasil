@@ -68,7 +68,9 @@ internal sealed class ToastTray
 			}
 
 			entry.Kind = (ToastKind)Math.Max((int)entry.Kind, (int)kind);
-			entry.Deadline = _clock.GetTimestamp() + (long)((entry.Kind == ToastKind.Error ? ErrorLifetime : Lifetime).TotalSeconds * _clock.TimestampFrequency);
+			entry.Deadline = _clock.GetTimestamp() +
+			                 (long)((entry.Kind == ToastKind.Error ? ErrorLifetime : Lifetime).TotalSeconds *
+			                        _clock.TimestampFrequency);
 			_version.Value++;
 		});
 	}

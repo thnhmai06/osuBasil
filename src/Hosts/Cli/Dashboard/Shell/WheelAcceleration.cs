@@ -2,11 +2,10 @@ namespace Basil.Host.Cli.Dashboard.Shell;
 
 internal sealed class WheelAcceleration(TimeProvider clock, int baseStep = 1)
 {
-	private static readonly TimeSpan Burst = TimeSpan.FromMilliseconds(120);
-
 	private const int MaxStreak = 12;
-	private long _last;
+	private static readonly TimeSpan Burst = TimeSpan.FromMilliseconds(120);
 	private bool _any;
+	private long _last;
 	private int _streak;
 
 	public int Step()

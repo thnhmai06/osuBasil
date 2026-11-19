@@ -1,6 +1,7 @@
+using Basil.Domain.Multiplayer.Report.Matches;
 using Basil.Shared.Structures.Cryptography;
 
-namespace Basil.Domain.Multiplayer;
+namespace Basil.Domain.Multiplayer.Report.Rounds;
 
 public sealed class Round : IMatchEntry, IEquatable<Round>
 {

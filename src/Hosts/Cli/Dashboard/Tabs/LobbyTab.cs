@@ -3,10 +3,9 @@ using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Shared.Paging;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using Basil.Host.Cli.Dashboard.Shell;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,9 +14,22 @@ using XenoAtom.Terminal.UI;
 
 namespace Basil.Host.Cli.Dashboard.Tabs;
 
-internal sealed record RoomItem(int Id, string Name, int Players, int Size, string State, string Host,
-	string Creator, string Referees, ulong HostMask, ulong CreatorMask, bool Open, bool Locked, IReadOnlyList<(int Index, string Player, bool Host, string Status)> Slots,
-	RoomRules? Rules = null, bool Countdown = false)
+internal sealed record RoomItem(
+	int Id,
+	string Name,
+	int Players,
+	int Size,
+	string State,
+	string Host,
+	string Creator,
+	string Referees,
+	ulong HostMask,
+	ulong CreatorMask,
+	bool Open,
+	bool Locked,
+	IReadOnlyList<(int Index, string Player, bool Host, string Status)> Slots,
+	RoomRules? Rules = null,
+	bool Countdown = false)
 {
 	public bool CanStartRound => Open && State != "playing" && Players > 0 && Rules is { Map.Length: > 0 };
 
@@ -54,20 +66,25 @@ internal sealed class LobbySource(IServiceProvider services) : IListSource<RoomI
 				new RoomRules(room.Settings.IsPrivate, room.Settings.Password.Length > 0,
 					room.Settings.Beatmap?.Name ?? string.Empty, room.Settings.MatchSettings.Mode.ToString(),
 					room.Settings.MatchSettings.Mods.ToString(), room.Settings.MatchSettings.Freemods,
-					room.Settings.MatchSettings.TeamType.ToString(), room.Settings.MatchSettings.WinCondition.ToString()),
+					room.Settings.MatchSettings.TeamType.ToString(),
+					room.Settings.MatchSettings.WinCondition.ToString()),
 				await sender.Send(new HasRoomCountdown(actor, room), ct)));
 		}
 
 		var openIds = open.Select(room => room.Id).ToHashSet();
 		// A closed room has no host, players, status, mode or password any more, so only the name and the creator can match.
-		var (_, closedFound) = await sender.Send(new ListMatches(actor, new MatchQuery(true), new PageRequest(0, limit)), ct);
-		var closed = closedFound is null || parsed.Host is not null || parsed.Player is not null || parsed.Status is not null ||
+		var (_, closedFound) =
+			await sender.Send(new ListMatches(actor, new MatchQuery(true), new PageRequest(0, limit)), ct);
+		var closed = closedFound is null || parsed.Host is not null || parsed.Player is not null ||
+		             parsed.Status is not null ||
 		             parsed.Mode is not null || parsed.Password is not null
 			? []
-			: closedFound.Items.Where(match => !openIds.Contains(match.Id) && Matches(parsed, match.Id, match.Value.Name,
+			: closedFound.Items.Where(match => !openIds.Contains(match.Id) && Matches(parsed, match.Id,
+					match.Value.Name,
 					match.Value.Creator))
 				.Select(match => new RoomItem(match.Id, match.Value.Name, 0, 0, "closed", string.Empty,
-					match.Value.Creator.Value.Name, string.Empty, 0, (ulong)match.Value.Creator.Value.Privileges, false, false, [])).ToList();
+					match.Value.Creator.Value.Name, string.Empty, 0, (ulong)match.Value.Creator.Value.Privileges, false,
+					false, [])).ToList();
 		return
 		[
 			new SectionData<RoomItem>("Open", open, found.HasNext),
@@ -79,7 +96,8 @@ internal sealed class LobbySource(IServiceProvider services) : IListSource<RoomI
 	{
 		return (query.Text is not { Length: > 0 } text || name.Contains(text, StringComparison.OrdinalIgnoreCase) ||
 		        text == id.ToString(CultureInfo.InvariantCulture)) &&
-		       (query.Creator is not { Length: > 0 } who || creator.Value.Name.Contains(who, StringComparison.OrdinalIgnoreCase) ||
+		       (query.Creator is not { Length: > 0 } who ||
+		        creator.Value.Name.Contains(who, StringComparison.OrdinalIgnoreCase) ||
 		        who == creator.Id.ToString(CultureInfo.InvariantCulture));
 	}
 }
@@ -87,40 +105,51 @@ internal sealed class LobbySource(IServiceProvider services) : IListSource<RoomI
 internal sealed class LobbyTab : ITabView, ISearchable
 {
 	private const string Help = """
-		Words match the room name (ignoring case) or the exact room id.
-		host:bob         the host, by name or id
-		creator:bob      the creator, by name or id
-		player:bob       a player seated in it, by name or id
-		status:open      open, locked or playing
-		mode:0           the game mode, 0 to 3
-		password:yes|no  with or without a password
-		Example: status:open mode:0 cup
-		Filters apply to open rooms; closed rooms match the words and creator:.
-		""";
+	                            Words match the room name (ignoring case) or the exact room id.
+	                            host:bob         the host, by name or id
+	                            creator:bob      the creator, by name or id
+	                            player:bob       a player seated in it, by name or id
+	                            status:open      open, locked or playing
+	                            mode:0           the game mode, 0 to 3
+	                            password:yes|no  with or without a password
+	                            Example: status:open mode:0 cup
+	                            Filters apply to open rooms; closed rooms match the words and creator:.
+	                            """;
 
 	private readonly ListPage<RoomItem> _page;
 	private bool _opened;
 
-	public LobbyTab(IServiceProvider services, UserDetails users, CommandActions actions, Action<string> openChat, CliOptions options,
+	public LobbyTab(IServiceProvider services, UserDetails users, CommandActions actions, Action<string> openChat,
+		CliOptions options,
 		Glyphs glyphs, ShellKit kit, TimeProvider clock, Action<Action> post, ILogger logger)
 	{
 		var details = new RoomDetails(users, actions, openChat, kit.Dialogs);
 		_page = new ListPage<RoomItem>("Lobby", Help,
-		[
-			new Column<RoomItem>("ID", 8, r => r.Id.ToString()) { Right = true },
-			new Column<RoomItem>("FullName", 0, r => r.Name) { Weight = 3 },
-			new Column<RoomItem>("Players", 9, r => r.Open ? $"{r.Players}/{r.Size}" : "-") { Right = true },
-			new Column<RoomItem>("State", 9, r => r.State, State),
-			new Column<RoomItem>("Host", 0, r => r.Host, r => UserInk.Of((UserPrivileges)r.HostMask))
-			{
-				Link = r => r.Host.Length == 0 ? null : (r.Host, () => users.OfAsync(UserReference.ByName(r.Host)))
-			},
-			new Column<RoomItem>("Creator", 0, r => r.Creator, r => UserInk.Of((UserPrivileges)r.CreatorMask))
-			{
-				Link = r => (r.Creator, () => users.OfAsync(UserReference.ByName(r.Creator)))
-			}
-		], r => r.Id.ToString(), new LobbySource(services), details.Of,
+			[
+				new Column<RoomItem>("ID", 8, r => r.Id.ToString()) { Right = true },
+				new Column<RoomItem>("FullName", 0, r => r.Name) { Weight = 3 },
+				new Column<RoomItem>("Players", 9, r => r.Open ? $"{r.Players}/{r.Size}" : "-") { Right = true },
+				new Column<RoomItem>("State", 9, r => r.State, State),
+				new Column<RoomItem>("Host", 0, r => r.Host, r => UserInk.Of((UserPrivileges)r.HostMask))
+				{
+					Link = r => r.Host.Length == 0 ? null : (r.Host, () => users.OfAsync(UserReference.ByName(r.Host)))
+				},
+				new Column<RoomItem>("Creator", 0, r => r.Creator, r => UserInk.Of((UserPrivileges)r.CreatorMask))
+				{
+					Link = r => (r.Creator, () => users.OfAsync(UserReference.ByName(r.Creator)))
+				}
+			], r => r.Id.ToString(), new LobbySource(services), details.Of,
 			glyphs, kit, options.NoColor, clock, post, logger);
+	}
+
+	public void FocusSearch()
+	{
+		_page.FocusSearch();
+	}
+
+	public void ShowHelp()
+	{
+		_page.ShowHelp();
 	}
 
 	public Visual View => _page.View;
@@ -147,16 +176,6 @@ internal sealed class LobbyTab : ITabView, ISearchable
 	public void Refresh()
 	{
 		_page.Refresh();
-	}
-
-	public void FocusSearch()
-	{
-		_page.FocusSearch();
-	}
-
-	public void ShowHelp()
-	{
-		_page.ShowHelp();
 	}
 
 	internal static Ink State(RoomItem room)

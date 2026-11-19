@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Basil.Application.Shared.Paging;
-using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
 using Mediator;
 

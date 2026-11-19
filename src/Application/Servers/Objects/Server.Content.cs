@@ -34,8 +34,10 @@ public readonly struct ServerFaq
 	internal async Task<ServerOutcome> DeleteAsync(string entry)
 	{
 		using (var stored = await _server.Context.Faqs.ReadAsync(entry))
+		{
 			if (stored is null)
 				return ServerOutcome.NotFound;
+		}
 
 		await _server.Context.Faqs.DeleteAsync(entry);
 		return ServerOutcome.Ok;

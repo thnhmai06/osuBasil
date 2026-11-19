@@ -1,4 +1,3 @@
-
 using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Game.Scores;
 

@@ -1,7 +1,6 @@
 using XenoAtom.Terminal.UI;
 using XenoAtom.Terminal.UI.Controls;
 using XenoAtom.Terminal.UI.Styling;
-using XenoAtom.Terminal.UI.Text;
 
 namespace Basil.Host.Cli.Dashboard.Shell;
 

@@ -2,11 +2,11 @@ using System.Collections.Concurrent;
 using Basil.Application.Multiplayer.Capabilities.Rooms;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Users.Objects.Sessions;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Room;
 using Basil.Domain.Users;
-using DomainRoom = Basil.Domain.Multiplayer.Room;
-using MatchRecord = Basil.Domain.Multiplayer.MatchRecord;
-using MatchSettings = Basil.Domain.Multiplayer.MatchSettings;
+using DomainRoom = Basil.Domain.Multiplayer.Room.Room;
+using MatchRecord = Basil.Domain.Multiplayer.Report.Matches.MatchRecord;
+using MatchSettings = Basil.Domain.Multiplayer.Report.Matches.MatchSettings;
 
 namespace Basil.Application.Multiplayer.Objects.Rooms;
 
@@ -58,6 +58,11 @@ public sealed partial class Room : IEquatable<Room>
 
 	private DateTimeOffset Now => Context.Clock.GetUtcNow();
 
+	public bool Equals(Room? other)
+	{
+		return other is not null && Match.Equals(other.Match);
+	}
+
 	public StableSession? SessionOf(UserRecord user)
 	{
 		return _seats.GetValueOrDefault(user);
@@ -71,11 +76,6 @@ public sealed partial class Room : IEquatable<Room>
 	public RoomSlot? SlotOf(StableSession player)
 	{
 		return Seated(player) is { } record ? Slots.Find(record) : null;
-	}
-
-	public bool Equals(Room? other)
-	{
-		return other is not null && Match.Equals(other.Match);
 	}
 
 	public ScopedRoom ScopeTo(Session actor)

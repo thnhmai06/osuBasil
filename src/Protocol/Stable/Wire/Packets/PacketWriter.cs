@@ -1,7 +1,6 @@
 using Basil.Domain.Game.Spectating;
 using Basil.Protocol.Game.Stable.Models.Beatmaps;
 using Basil.Protocol.Game.Stable.Models.Multiplayer;
-using Basil.Protocol.Game.Stable.Models.Authentication;
 using Basil.Protocol.Game.Stable.Wire.Binary;
 
 namespace Basil.Protocol.Game.Stable.Wire.Packets;

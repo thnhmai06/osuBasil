@@ -1,5 +1,4 @@
 using Basil.Application.Servers.Objects;
-using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
 
 namespace Basil.Application.Servers.Capabilities;

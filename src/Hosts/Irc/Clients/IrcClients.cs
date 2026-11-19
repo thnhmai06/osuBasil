@@ -35,7 +35,10 @@ internal sealed class IrcClients
 
 	public void Forget(Session session)
 	{
-		lock (_gate) _held.Remove(session);
+		lock (_gate)
+		{
+			_held.Remove(session);
+		}
 	}
 
 	public IrcSocket? Find(Session session)

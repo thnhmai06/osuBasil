@@ -1,11 +1,10 @@
 using Basil.Application.Chat.Messages;
-using Basil.Application.Chat.Objects;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Chat;
+using Basil.Domain.Users;
 using Basil.Host.Stable.Support;
 using Basil.Protocol.Game.Stable.Models.Chat;
-using Basil.Domain.Users;
 
 namespace Basil.Host.Stable.Packets;
 

@@ -5,6 +5,7 @@ namespace Basil.Host.Cli.Dashboard;
 
 public sealed class ThemeStore : IThemeControl
 {
+	public const string MonochromeName = "monochrome";
 	public static readonly string DefaultScheme = ColorScheme.RootLoopsDark.Name;
 
 	private readonly string _file;
@@ -31,11 +32,9 @@ public sealed class ThemeStore : IThemeControl
 		Theme = Theme.FromScheme(_schemes.GetValueOrDefault(Current) ?? ColorScheme.RootLoopsDark);
 	}
 
-	public const string MonochromeName = "monochrome";
+	public Theme Theme { get; private set; }
 
 	public bool Locked { get; }
-
-	public Theme Theme { get; private set; }
 
 	public IReadOnlyList<string> Names => [.. _schemes.Keys.Order()];
 

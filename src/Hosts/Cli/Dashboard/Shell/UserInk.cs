@@ -1,4 +1,3 @@
-using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
 
 namespace Basil.Host.Cli.Dashboard.Shell;

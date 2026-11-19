@@ -110,7 +110,8 @@ internal static class MetaCommands
 	// A word of the topic matches the same word of the command, or any value where the command takes a parameter.
 	private static bool Starts(CommandDef command, IReadOnlyList<string> topic)
 	{
-		return command.Words.Length >= topic.Count && topic.Select((word, i) => CommandDef.IsParameter(command.Words[i]) ||
+		return command.Words.Length >= topic.Count && topic.Select((word, i) =>
+			CommandDef.IsParameter(command.Words[i]) ||
 			command.Words[i].Equals(word, StringComparison.OrdinalIgnoreCase)).All(match => match);
 	}
 

@@ -1,6 +1,5 @@
-using Basil.Domain.Users;
 using System.Globalization;
-using Basil.Application.Users.Objects;
+using Basil.Domain.Users;
 using Basil.Host.Cli.Dashboard.Shell;
 using Microsoft.Extensions.Logging;
 using XenoAtom.Terminal.UI;
@@ -10,10 +9,10 @@ namespace Basil.Host.Cli.Dashboard.Tabs;
 internal sealed class SessionsTab : ITabView, ISearchable
 {
 	private const string Help = """
-		Words match the account name or its exact id, the address, the client or the kind.
-		The history of one account is in its detail, under Sessions…
-		Example: bob
-		""";
+	                            Words match the account name or its exact id, the address, the client or the kind.
+	                            The history of one account is in its detail, under Sessions…
+	                            Example: bob
+	                            """;
 
 	private readonly ListPage<SessionItem> _page;
 	private bool _opened;
@@ -23,8 +22,19 @@ internal sealed class SessionsTab : ITabView, ISearchable
 	{
 		_page = new ListPage<SessionItem>("Sessions", Help,
 			SessionColumns.Of(s => (s.UserName, () => users.OfAsync(UserReference.ById(s.UserId)))),
-			s => s.Id.ToString(CultureInfo.InvariantCulture), new SessionsSource(services, clock), users.Of, glyphs, kit,
+			s => s.Id.ToString(CultureInfo.InvariantCulture), new SessionsSource(services, clock), users.Of, glyphs,
+			kit,
 			options.NoColor, clock, post, logger);
+	}
+
+	public void FocusSearch()
+	{
+		_page.FocusSearch();
+	}
+
+	public void ShowHelp()
+	{
+		_page.ShowHelp();
 	}
 
 	public Visual View => _page.View;
@@ -51,15 +61,5 @@ internal sealed class SessionsTab : ITabView, ISearchable
 	public void Refresh()
 	{
 		_page.Refresh();
-	}
-
-	public void FocusSearch()
-	{
-		_page.FocusSearch();
-	}
-
-	public void ShowHelp()
-	{
-		_page.ShowHelp();
 	}
 }

@@ -2,7 +2,6 @@ using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Scores.Messages;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Users.Persistence;
-
 using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;
 using Mediator;

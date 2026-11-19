@@ -1,10 +1,9 @@
 using Basil.Application.Shared.Privileges;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Authentication;
-using Basil.Domain.Game.Client;
-using Basil.Domain.Users;
 using Basil.Domain.Game.Spectating;
 using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using Session = Basil.Application.Users.Objects.Sessions.Session;
 
 namespace Basil.Application.Users.Capabilities;
@@ -57,7 +56,7 @@ public readonly struct ScopedStableSession
 		return ReferenceEquals(Actor, Host) && Host.PublishFrames(bundle);
 	}
 
-	public bool SetStatus(PlayerStatus status)
+	public bool SetStatus(UserStatus status)
 	{
 		return ReferenceEquals(Actor, Host) && Host.SetStatus(status);
 	}

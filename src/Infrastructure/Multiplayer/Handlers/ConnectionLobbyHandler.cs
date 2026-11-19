@@ -1,7 +1,7 @@
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Shared.Events;
-using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Objects.Events;
+using Basil.Application.Users.Objects.Sessions;
 using Mediator;
 using Microsoft.Extensions.Logging;
 

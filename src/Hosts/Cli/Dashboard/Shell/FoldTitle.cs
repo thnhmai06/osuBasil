@@ -4,16 +4,15 @@ using XenoAtom.Terminal.UI.Geometry;
 using XenoAtom.Terminal.UI.Input;
 using XenoAtom.Terminal.UI.Layout;
 using XenoAtom.Terminal.UI.Rendering;
-using XenoAtom.Terminal.UI.Styling;
 
 namespace Basil.Host.Cli.Dashboard.Shell;
 
 internal sealed partial class FoldTitle : Visual
 {
 	private readonly Glyphs _glyphs;
-	private readonly bool _noColor;
-	private readonly string _name;
 	private readonly int _indent;
+	private readonly string _name;
+	private readonly bool _noColor;
 
 	public FoldTitle(string name, Glyphs glyphs, bool noColor, int indent = 0)
 	{
@@ -34,7 +33,7 @@ internal sealed partial class FoldTitle : Visual
 
 	protected override SizeHints MeasureCore(in LayoutConstraints constraints)
 	{
-		return SizeHints.FlexX(new Size(4, 1), new Size(20, 1), 1, 1).Normalize();
+		return SizeHints.FlexX(new Size(4, 1), new Size(20, 1)).Normalize();
 	}
 
 	protected override void RenderOverride(CellBuffer buffer)
