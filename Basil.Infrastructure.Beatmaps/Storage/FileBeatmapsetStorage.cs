@@ -409,7 +409,7 @@ internal sealed class FileBeatmapsetStorage(
 		DeletePackedSource(placed, target);
 	}
 
-	private void RestoreAfterFailure(FileBeatmapsetArchive placed, string target, string stagingFolder,
+	private static void RestoreAfterFailure(FileBeatmapsetArchive placed, string target, string stagingFolder,
 		string stagedArchive,
 		string? aside)
 	{

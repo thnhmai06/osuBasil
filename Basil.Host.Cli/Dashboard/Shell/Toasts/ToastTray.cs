@@ -111,7 +111,7 @@ internal sealed class ToastTray
 		var (mark, ink) = entry.Kind switch
 		{
 			ToastKind.Error => (_glyphs.ToastError, Ink.Error),
-			ToastKind.Warning => (_glyphs.ToastWarning, Ink.Warning),
+			ToastKind.Warning => (Glyphs.ToastWarning, Ink.Warning),
 			_ => (_glyphs.ToastInfo, Ink.Success)
 		};
 		var repeats = entry.Count > 1 ? $"×{entry.Count}" : string.Empty;

@@ -31,7 +31,7 @@ public sealed partial class Room
 		return Rounds.Settlement is { Closed: false, Round.EndedAt: not null } settlement ? Decide(settlement) : null;
 	}
 
-	public RoundDecision? Decide(RoundSettlement settlement)
+	public static RoundDecision? Decide(RoundSettlement settlement)
 	{
 		var missing = settlement.Missing();
 		settlement.Close();

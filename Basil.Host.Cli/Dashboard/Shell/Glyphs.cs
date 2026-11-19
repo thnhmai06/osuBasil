@@ -12,7 +12,7 @@ internal sealed record Glyphs(bool Ascii)
 
 	public string ToastInfo => Ascii ? "+" : "✓";
 
-	public string ToastWarning => "!";
+	public static string ToastWarning => "!";
 
 	public string ToastError => Ascii ? "x" : "✗";
 

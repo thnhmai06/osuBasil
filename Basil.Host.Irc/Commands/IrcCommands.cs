@@ -82,7 +82,7 @@ internal sealed partial class IrcCommands(
 		else await RegisteringAsync(session, message, ct);
 	}
 
-	private void Ping(IrcSocket session, IrcMessage message)
+	private static void Ping(IrcSocket session, IrcMessage message)
 	{
 		if (message.Parameters.Count == 0)
 			session.Numeric(IrcNumericReply.ErrNeedMoreParams, "PING", IrcReplies.NeedMoreParams);

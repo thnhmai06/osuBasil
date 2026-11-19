@@ -66,7 +66,7 @@ public sealed partial class Room
 
 	private void Decide(RoundSettlement settlement)
 	{
-		var decision = State.Decide(settlement);
+		var decision = Domain.Multiplayer.Room.Room.Decide(settlement);
 		SyncTimer();
 		Publish(decision);
 	}

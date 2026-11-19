@@ -40,7 +40,7 @@ internal sealed class ChatCommands(
 		return await ExecuteChainAsync(context, segments, ct);
 	}
 
-	private async Task<bool> IsChainAllowedAsync(CommandContext context, IReadOnlyList<CommandSegment> segments,
+	private static async Task<bool> IsChainAllowedAsync(CommandContext context, IReadOnlyList<CommandSegment> segments,
 		CancellationToken ct)
 	{
 		if (context.Channel == GeneralChannel.LobbyName)
