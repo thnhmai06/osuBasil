@@ -52,14 +52,22 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
 
 ### Domain and Application
 
-* **Domain also holds the rules of one object on its own.** The Implementation Test: if the member touches only the
-  object's own state (no repository, no event, no live object of another module, no timer), it is a synchronous
-  Domain rule that answers with the object's outcome enum (plus the data its event needs); the Application object of the
-  same name keeps a `State` of that Domain type, calls the rule under its lock, then publishes the event and does the
-  cross-object step. Examples: `Room.ChangeSlot`, `Room.Configure`, `Room.Kick` (Domain) against `Room.Join`,
-  `Room.Close`, the score-wait timer (Application); `UserData.IsSilenced` (Domain) against
-  `UserSilence.ImposeAsync` (Application); `RoomChannelName`, `CountdownMarks`, `GeneralChannelChange.ApplyTo` (Domain).
+* **Every business operation lives in Domain (decided 2026-11-20).** The Implementation Test: if the member touches
+  only the object's own state (no repository, no event, no live object of another module, no timer, no connection),
+  it is a synchronous Domain operation that answers with the object's outcome enum plus the data its event needs,
+  including the consequences inside the object (`RoomMembers.Kick` vacates the slot, hands the host on and returns the
+  round progress). The Application object of the same name keeps a `State` of that Domain type, holds the lock, calls
+  the operation, publishes the event and does the cross-object step; it never re-derives a rule the Domain already
+  answers. Examples: `RoomSlots.ChangeSlot`, `RoomSettings.Configure`, `RoomMembers.Kick`, `RoomSlots.Leave`,
+  `Room.Close`, `RoomSettings.PasswordMatches` (Domain) against `Room.Join`, the lobby, the score-wait timer and the
+  "manager of any room skips the password" decision (Application); `UserData.IsSilenced` (Domain) against
+  `UserSilence.ImposeAsync` (Application); `CountdownMarks`, `GeneralChannelChange.ApplyTo` (Domain).
   Players are `UserRecord` in Domain; the Application object keeps the map to the live sessions.
+* **Domain holds no synchronization.** No `Lock`, `Volatile`, `Interlocked` or concurrent collection in Domain; the
+  Application object that shares the state owns the lock. A Domain state that can be derived is derived (a room is
+  closed when its match has `EndedAt`). A Domain outcome enum holds only the reasons of that one object; reasons that
+  need another object, a connection or the lobby are an Application enum (`LobbyResult`, `SessionAuthResult`,
+  `ChannelJoinResult`).
 
 * **Domain** is the system at rest: the durable models (`Match`, `Round`, `MatchSettings`,
   `User`, `Beatmap`, `Login`, …) and the rules that stay true while the system is offline. A model guarantees that **it is valid**: field values

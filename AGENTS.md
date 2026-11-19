@@ -506,12 +506,19 @@ same folders under `tests/`.
 
 ### Domain and Application
 
-Domain holds the rules of **one object on its own**: its state, invariants and transitions that touch only itself,
-synchronous, with no repository, no event publishing and no live object of another module (a seat holds a `UserRecord`,
-never a `Session`). Application keeps the capabilities (`Scoped*`), the contracts and every coordination between objects
-(Room with Session, Room with Lobby, publishing, timers, settings reads). The live type and its rule type share a name and
-are told apart by namespace (`Basil.Application.Multiplayer.Objects.Rooms.Room` holds `State`, a
-`Basil.Domain.Multiplayer.Room`). Test: if the member needs another object, an event or the clock's timers, it is Application.
+**Every business operation lives in Domain** (decided 2026-11-20): an object's state, invariants and every transition
+of it, including the consequences inside the same object (a kick that vacates the slot, hands the host on and ends the
+round; a mode change that strips invalid mods from every slot). Domain is synchronous and holds no lock, no
+`Volatile`, no concurrent collection, no timer, no repository, no event publishing and no live object of another module
+(a seat holds a `UserRecord`, never a `Session`). Application only offers the contracts to the outside (messages,
+`Scoped*`, views, events) and does what needs several objects or the runtime: the object's lock, the map to live
+sessions, the lobby, timers, publishing. An operation reports what happened (the outcome enum and the data its event
+needs, such as the round progress it caused), so Application never re-derives a rule. The live type and its rule type
+share a name and are told apart by namespace (`Basil.Application.Multiplayer.Objects.Rooms.Room` holds `State`, a
+`Basil.Domain.Multiplayer.Room.Room`). A Domain outcome enum holds only the reasons of that one object; a reason that
+needs another object, a connection or the lobby belongs to an Application enum (`LobbyResult`, `SessionAuthResult`,
+`ChannelJoinResult`). Test: if the member needs another object, a connection, a lock or the clock's timers, it is
+Application; anything else is Domain.
 
 The detailed rules moved out of this file so each can be read when needed. **Read the matching file before touching that area:**
 
@@ -526,7 +533,7 @@ The detailed rules moved out of this file so each can be read when needed. **Rea
 
 `Room` is mutable shared state.
 
-Operations that read and then mutate a room are synchronous methods of `Room` that hold the room's own `Lock` across the complete state transition and publish inside it; a closed room answers `RoomClosed`. `ScopedRoom` only checks permissions and calls them.
+Operations that read and then mutate a room are synchronous methods of the Application `Room` that hold the room's own `Lock` across the call to the Domain rule and publish inside it; the Domain `Room` holds no lock. A closed room (its match has `EndedAt`) answers `RoomClosed`. `ScopedRoom` only checks permissions and calls them.
 
 Do not introduce a second synchronization mechanism for the same state.
 

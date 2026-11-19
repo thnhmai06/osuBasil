@@ -264,7 +264,7 @@ that root. The first event is a snapshot. See [`sse.md`](sse.md).
 ## Invariants
 
 * Dependencies point down; `tests/Architecture/` enforces the module and host graphs.
-* Domain is dependency-free and holds the rules of one object on its own; coordination between objects stays in Application.
+* Domain is dependency-free, holds no lock, and holds every business operation of one object; Application only exposes contracts and coordinates objects, connections, locks and timers.
 * The acted-on object stores the relation and emits the event.
 * A notification is never awaited under a lock; objects enqueue, a dispatcher publishes.
 * A capability lives for one request.
