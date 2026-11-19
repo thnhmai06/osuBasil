@@ -2,20 +2,16 @@ namespace Basil.Domain.Authentication;
 
 public sealed class Session(SessionRecord record) : IEquatable<Session>
 {
-	private readonly Lock _sync = new();
-
 	public SessionRecord Record { get; } = record;
 
 	public void Heartbeat(DateTimeOffset at)
 	{
-		using var scope = _sync.EnterScope();
 		var data = Record.Value;
 		if (data.Ended is null && at > data.LastActiveAt) data.LastActiveAt = at;
 	}
 
 	public SessionStatus StatusAt(DateTimeOffset now)
 	{
-		using var scope = _sync.EnterScope();
 		var data = Record.Value;
 		if (data.Ended is not null) return SessionStatus.Ended;
 		var silent = now - data.LastActiveAt;
@@ -25,7 +21,6 @@ public sealed class Session(SessionRecord record) : IEquatable<Session>
 
 	public bool End(DateTimeOffset at, SessionEndReason reason)
 	{
-		using var scope = _sync.EnterScope();
 		var data = Record.Value;
 		if (data.Ended is not null) return false;
 		data.Ended = new SessionEnded(at, reason);

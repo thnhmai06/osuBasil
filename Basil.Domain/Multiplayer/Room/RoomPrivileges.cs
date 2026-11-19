@@ -4,7 +4,8 @@ namespace Basil.Domain.Multiplayer.Room;
 [Flags]
 public enum RoomPrivileges : uint
 {
-	None = 0,
+	/// <summary>Takes part in the room without any other role, such as watching it without occupying a slot.</summary>
+	Viewer = 0,
 
 	/// <summary>Occupies a slot in the room.</summary>
 	Player = 1 << 0,

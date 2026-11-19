@@ -1,3 +1,4 @@
+using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
 
 namespace Basil.Domain.Multiplayer.Room;

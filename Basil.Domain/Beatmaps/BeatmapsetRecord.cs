@@ -1,4 +1,6 @@
 using Basil.Domain.Content;
+using Basil.Domain.Mechanics;
+using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Domain.Beatmaps;
 
@@ -53,3 +55,5 @@ public sealed record BeatmapsetAssets
 {
 	public bool HasStoryboard { get; init; }
 }
+
+public readonly record struct BeatmapReference(Md5Hash Hash, int Id, string FullName, BeatmapRecord? Known);

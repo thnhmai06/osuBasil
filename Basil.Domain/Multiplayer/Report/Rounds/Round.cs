@@ -35,15 +35,15 @@ public sealed class Round : IMatchEntry, IEquatable<Round>
 
 	public required DateTimeOffset? EndedAt { get; set; }
 
+	public required MatchRecord Match { get; init; }
+
+	DateTimeOffset IMatchEntry.Timestamp => StartedAt;
+
 	public bool Equals(Round? other)
 	{
 		if (other is null) return false;
 		return Match.Equals(other.Match) && Index == other.Index;
 	}
-
-	public required MatchRecord Match { get; init; }
-
-	DateTimeOffset IMatchEntry.Timestamp => StartedAt;
 
 	public override bool Equals(object? obj)
 	{

@@ -1,58 +1,37 @@
 namespace Basil.Domain.Multiplayer.Room;
 
+/// <summary>Why a rule of a room accepted or refused an action.</summary>
 public enum RoomActionResult : byte
 {
 	Denied = 0,
 
 	Ok = 1,
 
-	RoleDenied,
+	RoomClosed,
 
-	AlreadySeated,
-
-	Banned,
-
-	InAnotherRoom,
-
-	WrongPassword,
-
-	Full,
-
-	IsObserver,
+	InProgress,
 
 	NotInRoom,
 
-	IsManager,
+	Banned,
 
 	NotBanned,
 
-	TargetOffline,
+	Full,
 
-	AlreadyInRoom,
+	IsManager,
 
-	TooManyReferees,
+	IsCreator,
 
 	AlreadyReferee,
 
 	NotReferee,
 
-	IsCreator,
-
-	IsPlayer,
-
-	NotObserver,
-
-	TooManyRooms,
-
-	NoRoomId,
+	TooManyReferees,
 
 	SlotNotOpen,
 
 	RoomLocked,
-
-	Locked,
-
-	InProgress,
 
 	OwnSlot,
 
@@ -68,11 +47,5 @@ public enum RoomActionResult : byte
 
 	NotInProgress,
 
-	RoundMismatch,
-
-	RoomClosed,
-
-	Blocked,
-
-	NotFound
+	RoundMismatch
 }

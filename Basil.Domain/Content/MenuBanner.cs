@@ -42,14 +42,14 @@ public sealed class MenuBanner : IEquatable<MenuBanner>
 
 	public required DateTimeOffset CreatedAt { get; init; }
 
-	private static bool IsValidWindow(DateTimeOffset? startsAt, DateTimeOffset? endsAt)
-	{
-		return !(startsAt > endsAt);
-	}
-
 	public bool IsCurrent(DateTimeOffset now)
 	{
 		return (StartsAt is null || StartsAt <= now) && (EndsAt is null || now < EndsAt);
+	}
+
+	private static bool IsValidWindow(DateTimeOffset? startsAt, DateTimeOffset? endsAt)
+	{
+		return !(startsAt > endsAt);
 	}
 
 	public bool Equals(MenuBanner? other)

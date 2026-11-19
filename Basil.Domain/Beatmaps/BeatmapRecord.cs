@@ -1,3 +1,4 @@
+using Basil.Domain.Mechanics;
 using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Domain.Beatmaps;
@@ -34,6 +35,8 @@ public sealed class BeatmapRecord : IEquatable<BeatmapRecord>
 
 	public string FullName => $"{Beatmapset.Metadata.FullName} [{Metadata.VersionName}]";
 
+	public BeatmapReference Reference => new(Hash, Id, FullName, this);
+
 	public string FileName
 	{
 		get
@@ -45,12 +48,6 @@ public sealed class BeatmapRecord : IEquatable<BeatmapRecord>
 		}
 	}
 
-	public bool Equals(BeatmapRecord? other)
-	{
-		if (other is null) return false;
-		return Id == other.Id;
-	}
-
 	public bool IsLocked()
 	{
 		return Locked || Beatmapset.Locked;
@@ -59,6 +56,12 @@ public sealed class BeatmapRecord : IEquatable<BeatmapRecord>
 	public bool IsVisible()
 	{
 		return Visible && Beatmapset.Visible;
+	}
+
+	public bool Equals(BeatmapRecord? other)
+	{
+		if (other is null) return false;
+		return Id == other.Id;
 	}
 
 	public override bool Equals(object? obj)

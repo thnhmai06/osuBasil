@@ -1,52 +1,38 @@
 using Basil.Domain.Multiplayer.Report.Matches;
-using Basil.Domain.Users;
-using Basil.Shared.Structures.Data;
 
 namespace Basil.Domain.Multiplayer.Room;
 
-public sealed partial class Room
+/// <summary>A multiplayer room: its settings, slots, roles and rounds, with every rule that keeps them consistent.</summary>
+public sealed class Room
 {
-	private readonly ConcurrentSet<UserRecord> _banned = [];
-	private readonly Lock _sync = new();
-
-	public Room(int id, MatchRecord match, MatchSettings settings, string password = "")
+	public Room(MatchRecord match, MatchSettings settings, string password = "")
 	{
-		ArgumentOutOfRangeException.ThrowIfNegative(id);
-		Id = id;
 		Match = match;
-		Settings = new RoomSettings(match, settings, password);
-		Authority = new RoomAuthority(match);
-		Rounds = new RoomRounds();
-		Slots = new RoomSlots();
+		Settings = new RoomSettings(this, match, settings, password);
+		Rounds = new RoomRounds(this);
+		Slots = new RoomSlots(this);
+		Members = new RoomMembers(this);
 	}
-
-	public int Id { get; }
 
 	public MatchRecord Match { get; }
 
 	public RoomSlots Slots { get; }
 
-	public RoomSettings Settings { get; }
+	public RoomMembers Members { get; }
 
-	public RoomAuthority Authority { get; }
+	public RoomSettings Settings { get; }
 
 	public RoomRounds Rounds { get; }
 
-	public IReadOnlySet<UserRecord> Banned => _banned;
+	public bool IsClosed => Match.Value.EndedAt is not null;
 
-	public bool IsClosed
+	/// <summary>Closes the room, ending the round in progress as aborted; refused when it is already closed.</summary>
+	public RoomActionResult Close(DateTimeOffset now)
 	{
-		get => Volatile.Read(ref field);
-		private set => Volatile.Write(ref field, value);
-	}
+		if (IsClosed) return RoomActionResult.RoomClosed;
 
-	public Lock.Scope Enter()
-	{
-		return _sync.EnterScope();
-	}
-
-	public void Close()
-	{
-		IsClosed = true;
+		Rounds.EndCurrentRound(true, now);
+		Match.Value.EndedAt = now;
+		return RoomActionResult.Ok;
 	}
 }

@@ -15,11 +15,6 @@ public abstract class RoundResult : IEquatable<RoundResult>
 
 	public abstract IEnumerable<RoundScore> Scores { get; }
 
-	public bool Equals(RoundResult? other)
-	{
-		return other is not null && Round.Equals(other.Round);
-	}
-
 	public static RoundResult? Decide(Round round, IReadOnlyCollection<RoundScore> scores)
 	{
 		return scores.Count == 0
@@ -27,6 +22,11 @@ public abstract class RoundResult : IEquatable<RoundResult>
 			: round.Settings.TeamType.IsTeamMode()
 				? TeamVersusResult.Decide(round, scores)
 				: HeadToHeadResult.Decide(round, scores);
+	}
+
+	public bool Equals(RoundResult? other)
+	{
+		return other is not null && Round.Equals(other.Round);
 	}
 
 	public override bool Equals(object? obj)
