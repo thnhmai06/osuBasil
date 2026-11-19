@@ -43,9 +43,9 @@ public sealed record ScoreData(
 	bool IsPassed,
 	DateTimeOffset Timestamp)
 {
-	public Grade Grade = Grade.ThrowIfInvalid();
+	public readonly Grade Grade = Grade.ThrowIfInvalid();
 
-	public GameMode Mode = Mode.ThrowIfInvalid();
+	public readonly GameMode Mode = Mode.ThrowIfInvalid();
 
 	public int? UserId = UserId is < 1
 		? throw new ArgumentOutOfRangeException(nameof(UserId), UserId, "User ids start at 1.")

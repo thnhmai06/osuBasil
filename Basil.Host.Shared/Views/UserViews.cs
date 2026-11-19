@@ -1,7 +1,6 @@
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Domain.Users;
-using Basil.Domain.Users;
 
 namespace Basil.Host.Shared.Views;
 
@@ -27,7 +26,7 @@ public sealed record UserView(
 		var now = clock.GetUtcNow();
 		return new UserView(record.Id, record.Value.Name, record.Value.Country.ToAcronym().ToLowerInvariant(),
 			(ulong)record.Value.Privileges, (ulong)user.EffectivePrivileges(now),
-			record.Value.IsSilenced(now) ? record.Value.SilencedUntil : null);
+			record.Value.IsSilenced(now) ? record.Value.SilencedEnd : null);
 	}
 }
 

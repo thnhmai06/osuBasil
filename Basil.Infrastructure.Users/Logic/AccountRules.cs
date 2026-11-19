@@ -5,7 +5,6 @@ using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Ports;
 using Basil.Domain.Authentication;
 using Basil.Domain.Users;
-using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;
 using Microsoft.Extensions.Logging;
 
@@ -23,7 +22,7 @@ internal sealed class AccountRules(
 		if ((await settings.GetAsync(ct)).Locks.HasFlag(Locks.Accounts))
 			return RegistrationFailure.Locked;
 
-		if (!UserData.IsValidName(attempt.Username)) throw new InvalidUserNameException();
+		_ = new UserData { Name = attempt.Username };
 
 		return await users.GetByNameAsync(attempt.Username, ct) is not null
 			? RegistrationFailure.NameTaken
@@ -62,7 +61,7 @@ internal sealed class AccountRules(
 		CancellationToken ct)
 	{
 		var user = await users.GetByNameAsync(attempt.Username, ct);
-		if (user is null || user.IsBasilBot()) return (null, LoginFailure.UnknownUser);
+		if (user is null || user.Id == BasilBot.Id) return (null, LoginFailure.UnknownUser);
 		if (user.Value.DeletedAt is not null) return (null, LoginFailure.AccountDeleted);
 		if (!await credentials.IsPasswordAsync(user, attempt.PasswordHash, ct))
 			return (null, LoginFailure.WrongPassword);

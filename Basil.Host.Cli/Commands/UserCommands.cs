@@ -1,3 +1,4 @@
+using Basil.Application.Users;
 using System.Globalization;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Shared.Paging;
@@ -5,7 +6,6 @@ using Basil.Application.Users.Messages;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
-using Basil.Domain.Users;
 using Basil.Domain.Users;
 using Basil.Host.Shared.Views;
 using Mediator;

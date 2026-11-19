@@ -14,7 +14,6 @@ using Basil.Application.Users.Ports;
 using Basil.Domain.Authentication;
 using Basil.Domain.Client;
 using Basil.Domain.Users;
-using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;
 using Basil.Shared.Utilities;
 using Session = Basil.Application.Users.Objects.Sessions.Session;
@@ -222,7 +221,7 @@ public sealed class UserRegistry
 	// The account checks a password login makes, made again for a session that comes back by its token.
 	private static LoginFailure? Ineligible(UserRecord record, SessionType type)
 	{
-		if (record.IsBasilBot()) return LoginFailure.InvalidToken;
+		if (record.Id == BasilBot.Id) return LoginFailure.InvalidToken;
 		if (record.Value.DeletedAt is not null) return LoginFailure.AccountDeleted;
 		if (type is SessionType.StableTourney && !record.Value.Privileges.Allows(UserPrivileges.Tournament))
 			return LoginFailure.NoTourneyPrivilege;
@@ -346,10 +345,12 @@ public sealed class UserRegistry
 		return _context.Sessions.EndSilentAsync(_context.Clock.GetUtcNow());
 	}
 
+	private const string BotName = "BasilBot";
+
 	public async Task<UserRecord> EnsureBotAsync(CancellationToken ct = default)
 	{
 		var stored = await _context.Users.GetAsync(BasilBot.Id, ct);
-		var isBot = stored is { Value: { DeletedAt: null, Privileges: UserPrivileges.None, SilencedUntil: null } };
+		var isBot = stored is { Value: { DeletedAt: null, Privileges: UserPrivileges.None, SilencedEnd: null } };
 
 		if (!isBot && stored is not null) CloseAll(stored, SessionEndReason.Revoked);
 
@@ -358,7 +359,7 @@ public sealed class UserRegistry
 			: await _context.Users.ReplaceAsync(BasilBot.Id, stored is { Value.DeletedAt: null }
 				? new UserData
 					{ Name = stored.Value.Name, Country = stored.Value.Country, Privileges = UserPrivileges.None }
-				: new UserData { Name = BasilBot.DefaultName, Privileges = UserPrivileges.None });
+				: new UserData { Name = BotName, Privileges = UserPrivileges.None });
 
 		await _context.Credentials.DeleteAsync(bot);
 		return bot;

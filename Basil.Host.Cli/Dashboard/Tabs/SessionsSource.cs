@@ -11,7 +11,7 @@ internal sealed class SessionsSource(IServiceProvider services, TimeProvider clo
 	{
 		var now = clock.GetUtcNow();
 		var text = query.Trim();
-		var items = services.GetRequiredService<UserRegistry>().Online.Values.Where(user => !user.Record.IsBasilBot())
+		var items = services.GetRequiredService<UserRegistry>().Online.Values.Where(user => user.Record.Id != BasilBot.Id)
 			.SelectMany(user => user.Connections.Where(connection => !connection.IsServerOwned))
 			.Select(connection => SessionItem.Of(connection.State, now) with { Live = true })
 			.Where(item => Matches(item, text))

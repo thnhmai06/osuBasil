@@ -2,7 +2,7 @@ using Basil.Application.Users.Capabilities;
 using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Authentication;
-using Basil.Domain.Users;
+using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 using Session = Basil.Application.Users.Objects.Sessions.Session;
 using DomainUser = Basil.Domain.Users.User;
@@ -13,7 +13,7 @@ public sealed class User
 {
 	internal User(UserRecord record, UserContext context)
 	{
-		State = new DomainUser(record);
+		State = new DomainUser(record, new Dictionary<GameMode, UserStats>());
 		Context = context;
 		Profile = new UserProfile(this);
 		Credentials = new UserCredentials(this);
@@ -26,9 +26,9 @@ public sealed class User
 
 	public UserRecord Record => State.Record;
 
-	public string? AwayMessage => Profile.AwayMessage;
+	public string? AwayMessage => State.AwayMessage;
 
-	public bool PmPrivate => Profile.PmPrivate;
+	public bool PmPrivate => State.PmPrivate;
 
 	public bool IsOnline =>
 		Context.Registry.Online.TryGetValue(Record, out var online) && ReferenceEquals(online, this);
@@ -64,32 +64,28 @@ public sealed class User
 
 	public UserPrivileges EffectivePrivileges(DateTimeOffset now)
 	{
-		return State.Privileges;
+		return Record.Value.Privileges;
 	}
 
-	internal void Apply(Action<DomainUser> rule)
+	internal void Apply(Action<UserData> rule)
 	{
-		rule(State);
+		rule(Record.Value);
 		var online = Context.Registry.Online.GetValueOrDefault(Record);
 		if (online is not null && !ReferenceEquals(online.Record, Record))
-			rule(new DomainUser(online.Record));
+			rule(online.Record.Value);
 	}
 
 	internal Task StoreChangeAsync(Action<UserData> change)
 	{
-		UserData copy;
-		using (Enter())
+		var current = Record.Value;
+		var copy = new UserData
 		{
-			var current = Record.Value;
-			copy = new UserData
-			{
-				Name = current.Name,
-				Country = current.Country,
-				Privileges = current.Privileges,
-				SilencedUntil = current.SilencedUntil,
-				DeletedAt = current.DeletedAt
-			};
-		}
+			Name = current.Name,
+			Country = current.Country,
+			Privileges = current.Privileges,
+			SilencedEnd = current.SilencedEnd,
+			DeletedAt = current.DeletedAt
+		};
 
 		change(copy);
 		return Context.Users.UpdateAsync(new UserRecord { Id = Record.Id, Value = copy });
@@ -105,7 +101,11 @@ public sealed class User
 			data.DeletedAt = now;
 			data.Privileges = UserPrivileges.None;
 		});
-		Apply(user => user.MarkDeleted(now));
+		Apply(data =>
+		{
+			data.DeletedAt = now;
+			data.Privileges = UserPrivileges.None;
+		});
 		Context.Registry.CloseAll(Record, SessionEndReason.Deleted);
 		return UserActionResult.Ok;
 	}
@@ -113,7 +113,7 @@ public sealed class User
 	internal async Task<UserActionResult> SetPrivilegesAsync(UserPrivileges privileges)
 	{
 		await StoreChangeAsync(data => data.Privileges = privileges);
-		Apply(user => user.ReplacePrivileges(privileges));
+		Apply(data => data.Privileges = privileges);
 		if (Context.Registry.Online.GetValueOrDefault(Record) is { } online)
 			Context.Registry.CloseDisallowed(online);
 
@@ -129,10 +129,5 @@ public sealed class User
 	internal bool Remove(Session connection)
 	{
 		return Sessions.Remove(connection);
-	}
-
-	internal Lock.Scope Enter()
-	{
-		return State.Enter();
 	}
 }

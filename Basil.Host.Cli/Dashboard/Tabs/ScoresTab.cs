@@ -1,3 +1,4 @@
+using Basil.Application.Users;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using Basil.Application.Beatmaps.Messages;
@@ -6,7 +7,6 @@ using Basil.Application.Scores.Messages;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Messages;
 using Basil.Domain.Scores;
-using Basil.Domain.Users;
 using Basil.Domain.Users;
 using Basil.Host.Cli.Dashboard.Shell;
 using Mediator;

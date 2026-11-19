@@ -1,6 +1,5 @@
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Users;
-using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;
 using Mediator;
 

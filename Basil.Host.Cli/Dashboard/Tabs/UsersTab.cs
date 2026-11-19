@@ -4,7 +4,6 @@ using Basil.Application.Users.Messages;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Users;
-using Basil.Domain.Users;
 using Basil.Host.Cli.Dashboard.Shell;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
@@ -37,7 +36,7 @@ internal sealed class UsersSource(IServiceProvider services, TimeProvider clock)
 		var parsed = UserQuery.Parse(query);
 		if (!query.Contains("deleted", StringComparison.OrdinalIgnoreCase)) parsed = parsed with { Deleted = false };
 		var now = clock.GetUtcNow();
-		var online = registry.Online.Values.Where(user => !user.Record.IsBasilBot())
+		var online = registry.Online.Values.Where(user => user.Record.Id != BasilBot.Id)
 			.Where(user => Matches(parsed, user.Record.Id, user.Record.Value.Name,
 				user.Record.Value.Country.ToAcronym()))
 			.OrderBy(user => user.Record.Id)
@@ -46,7 +45,7 @@ internal sealed class UsersSource(IServiceProvider services, TimeProvider clock)
 		var actor = await registry.OperateAsync(ct);
 		var found = await services.GetRequiredService<ISender>()
 			.Send(new SearchUsers(actor, parsed, new PageRequest(0, limit)), ct);
-		var offline = found.Items.Where(record => !onlineIds.Contains(record.Id) && !record.IsBasilBot())
+		var offline = found.Items.Where(record => !onlineIds.Contains(record.Id) && record.Id != BasilBot.Id)
 			.Select(record => Item(lobby, record, null, now)).ToList();
 		return
 		[

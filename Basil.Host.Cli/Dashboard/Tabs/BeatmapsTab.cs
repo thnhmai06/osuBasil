@@ -3,7 +3,6 @@ using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Beatmaps;
 using Basil.Host.Cli.Dashboard.Shell;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;

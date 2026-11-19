@@ -1,6 +1,5 @@
 using Basil.Domain.Content;
 using Basil.Domain.Users;
-using DomainProfile = Basil.Domain.Users.UserProfile;
 
 namespace Basil.Application.Users.Objects;
 
@@ -13,28 +12,29 @@ public sealed class UserProfile
 		_user = user;
 	}
 
-	public string? AwayMessage => _user.State.Profile.AwayMessage;
+	public string? AwayMessage => _user.State.AwayMessage;
 
-	public bool PmPrivate => _user.State.Profile.PmPrivate;
+	public bool PmPrivate => _user.State.PmPrivate;
 
 	internal void SetCountry(Country country)
 	{
-		_user.Apply(user => user.Profile.SetCountry(country));
+		_user.Apply(data => data.Country = country);
 	}
 
 	internal void SetAway(string? message)
 	{
-		_user.State.Profile.SetAway(message);
+		_user.State.AwayMessage = message;
 	}
 
 	internal void SetPmPrivate(bool pmPrivate)
 	{
-		_user.State.Profile.SetPmPrivate(pmPrivate);
+		_user.State.PmPrivate = pmPrivate;
 	}
 
 	internal async Task<UserActionResult> RenameAsync(string name)
 	{
-		DomainProfile.ValidateName(name);
+		// Assigning the name applies the rules for user names before anything is stored.
+		_ = new UserData { Name = name };
 
 		return await _user.Context.Users.RenameAsync(_user.Record, name)
 			? UserActionResult.Ok
@@ -43,8 +43,6 @@ public sealed class UserProfile
 
 	internal async Task<UserActionResult> SetCountryAsync(Country country)
 	{
-		DomainProfile.ValidateCountry(country);
-
 		await _user.StoreChangeAsync(data => data.Country = country);
 		SetCountry(country);
 		return UserActionResult.Ok;

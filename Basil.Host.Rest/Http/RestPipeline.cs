@@ -1,4 +1,3 @@
-using Basil.Host.Shared.Errors;
 using Basil.Domain;
 using System.Globalization;
 using System.Text.Json;

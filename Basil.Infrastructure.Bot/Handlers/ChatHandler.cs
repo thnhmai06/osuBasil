@@ -30,7 +30,7 @@ internal sealed class ChatHandler(
 		if (posted.Actor is not { } actor || IsIgnored(posted.Message, actor))
 			return ValueTask.CompletedTask;
 
-		var privateMessage = posted.Channel is PmChannel pm && pm.Owner.Record.IsBasilBot();
+		var privateMessage = posted.Channel is PmChannel pm && pm.Owner.Record.Id == BasilBot.Id;
 		if (posted.Channel is PmChannel && !privateMessage) return ValueTask.CompletedTask;
 
 		// Ordinary channel chatter is not a command; only the commands reach the worker queue.
@@ -46,7 +46,7 @@ internal sealed class ChatHandler(
 	// never are.
 	private static bool IsIgnored(Message message, Session actor)
 	{
-		return message.IsNotice || (message.Author.IsBasilBot() && actor is not OperatorSession);
+		return message.IsNotice || (message.Author.Id == BasilBot.Id && actor is not OperatorSession);
 	}
 
 	private CommandContext NewContext(ChannelMessagePosted posted, Session actor, bool privateMessage)

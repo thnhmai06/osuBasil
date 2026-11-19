@@ -1,8 +1,8 @@
 using System.Globalization;
 using Basil.Application.Shared.Exceptions;
 using Basil.Application.Shared.Paging;
+using Basil.Application.Users;
 using Basil.Application.Users.Persistence;
-using Basil.Domain.Users;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -51,7 +51,7 @@ internal sealed class EfUserRepository(DatabaseSession database) : IUserReposito
 		var id = user.Id;
 		var country = (int)user.Value.Country;
 		var privileges = (int)user.Value.Privileges;
-		var silencedUntil = user.Value.SilencedUntil?.ToUniversalTime();
+		var silencedUntil = user.Value.SilencedEnd?.ToUniversalTime();
 		var deletedAt = user.Value.DeletedAt?.ToUniversalTime();
 		// A deletion is permanent: a record that does not know it must not take it back.
 		return database.WriteAsync((UsersDbContext context) => context.Users
@@ -75,11 +75,9 @@ internal sealed class EfUserRepository(DatabaseSession database) : IUserReposito
 
 	public async Task<bool> RenameAsync(UserRecord user, string name)
 	{
-		if (!UserData.IsValidName(name))
-			throw new ArgumentException("The name is not a valid user name.", nameof(name));
-
 		var id = user.Id;
-		var normalized = UserData.NormalizeName(name);
+		// Assigning the name applies the rules for user names; the record takes it once it is committed.
+		var normalized = new UserData { Name = name }.NormalizedName;
 
 		// Whether the name is free is the database's to say, so the record takes the name only once it is committed.
 		try
@@ -110,7 +108,8 @@ internal sealed class EfUserRepository(DatabaseSession database) : IUserReposito
 
 	public async ValueTask<UserRecord?> GetByNameAsync(string name, CancellationToken ct = default)
 	{
-		var normalized = UserData.NormalizeName(name);
+		var normalized = UserReference.Normalize(name);
+		if (normalized is null) return null;
 		var row = await database.ReadAsync((UsersDbContext context) => context.Users
 			.Where(candidate => candidate.NormalizedName == normalized && candidate.DeletedAt == null)
 			.FirstOrDefaultAsync(ct), ct);
@@ -166,7 +165,7 @@ internal sealed class EfUserRepository(DatabaseSession database) : IUserReposito
 			ActiveName = data.DeletedAt is null ? data.NormalizedName : null,
 			Country = (int)data.Country,
 			Privileges = (int)data.Privileges,
-			SilencedUntil = data.SilencedUntil?.ToUniversalTime(),
+			SilencedUntil = data.SilencedEnd?.ToUniversalTime(),
 			DeletedAt = data.DeletedAt?.ToUniversalTime()
 		};
 	}
@@ -186,7 +185,7 @@ internal sealed class EfUserRepository(DatabaseSession database) : IUserReposito
 				Name = row.Name,
 				Country = (Country)row.Country,
 				Privileges = (UserPrivileges)row.Privileges,
-				SilencedUntil = row.SilencedUntil,
+				SilencedEnd = row.SilencedUntil,
 				DeletedAt = row.DeletedAt
 			}
 		};

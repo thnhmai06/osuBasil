@@ -1,6 +1,6 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Shared.Paging;
-using Basil.Domain.Users;
+using Basil.Application.Users;
 using Mediator;
 
 namespace Basil.Application.Scores.Messages;

@@ -43,7 +43,7 @@ public sealed class UserRelationships
 	{
 		if (_user.Record.Equals(target)) return UserActionResult.Self;
 		if (target.Value.DeletedAt is not null) return UserActionResult.Deleted;
-		if (target.IsBasilBot()) return UserActionResult.Ok;
+		if (target.Id == BasilBot.Id) return UserActionResult.Ok;
 
 		await SetAsync(target, RelationshipType.Friend);
 		return UserActionResult.Ok;
@@ -52,7 +52,7 @@ public sealed class UserRelationships
 	internal async Task<UserActionResult> RemoveFriendAsync(UserRecord target)
 	{
 		if (_user.Record.Equals(target)) return UserActionResult.Self;
-		if (target.IsBasilBot()) return UserActionResult.SystemAccount;
+		if (target.Id == BasilBot.Id) return UserActionResult.SystemAccount;
 
 		return await RemoveAsync(target, RelationshipType.Friend) ? UserActionResult.Ok : UserActionResult.NotFound;
 	}
@@ -61,7 +61,7 @@ public sealed class UserRelationships
 	{
 		if (_user.Record.Equals(target)) return UserActionResult.Self;
 		if (target.Value.DeletedAt is not null) return UserActionResult.Deleted;
-		if (target.IsBasilBot()) return UserActionResult.SystemAccount;
+		if (target.Id == BasilBot.Id) return UserActionResult.SystemAccount;
 
 		await SetAsync(target, RelationshipType.Block);
 		return UserActionResult.Ok;
@@ -70,7 +70,7 @@ public sealed class UserRelationships
 	internal async Task<UserActionResult> UnblockAsync(UserRecord target)
 	{
 		if (_user.Record.Equals(target)) return UserActionResult.Self;
-		if (target.IsBasilBot()) return UserActionResult.NotFound;
+		if (target.Id == BasilBot.Id) return UserActionResult.NotFound;
 
 		return await RemoveAsync(target, RelationshipType.Block) ? UserActionResult.Ok : UserActionResult.NotFound;
 	}

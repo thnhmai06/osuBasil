@@ -7,7 +7,7 @@ public abstract class UsersException(string message) : BasilException(message);
 public abstract class AccountException(string message) : UsersException(message);
 
 /// <summary>A user name does not follow the rules for names.</summary>
-public sealed class InvalidUserNameException() : AccountException("The user name is not valid.");
+public sealed class InvalidUserNameException(string detail) : AccountException($"The user name is not valid. {detail}");
 
 /// <summary>A rule of a profile was broken.</summary>
 public abstract class ProfileException(string message) : UsersException(message);

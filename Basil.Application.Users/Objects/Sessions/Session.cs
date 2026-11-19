@@ -4,7 +4,6 @@ using Basil.Application.Users.Objects.Events;
 using Basil.Domain.Authentication;
 using Basil.Domain.Spectating;
 using Basil.Domain.Users;
-using Basil.Domain.Users;
 using Basil.Shared.Structures.Data;
 
 namespace Basil.Application.Users.Objects.Sessions;
@@ -21,7 +20,7 @@ public abstract class Session(Domain.Authentication.Session state, string token)
 
 	public bool IsOpen { get; internal set; }
 
-	public bool IsServerOwned => Record.IsBasilBot();
+	public bool IsServerOwned => Record.Id == BasilBot.Id;
 
 	public UserRecord Record => State.Record.Value.User;
 
@@ -54,7 +53,7 @@ public sealed class StableSession : Session
 
 	public int UtcOffset { get; }
 
-	public UserStatus Status { get; internal set; } = UserStatus.Idle;
+	public UserStatus Status { get; internal set; } = new();
 
 	public IReadOnlySet<Session> Spectators => _spectators;
 

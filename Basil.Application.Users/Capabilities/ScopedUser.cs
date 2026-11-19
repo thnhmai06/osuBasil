@@ -3,7 +3,6 @@ using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Users;
-using Basil.Domain.Users;
 using User = Basil.Application.Users.Objects.User;
 
 namespace Basil.Application.Users.Capabilities;
@@ -81,7 +80,7 @@ public readonly struct ScopedUser
 
 	internal UserActionResult? Guard(User target, bool selfAllowed)
 	{
-		if (target.Record.IsBasilBot()) return UserActionResult.SystemAccount;
+		if (target.Record.Id == BasilBot.Id) return UserActionResult.SystemAccount;
 		return (IsSelf && selfAllowed) || Outranks(target) ? null : UserActionResult.NotOutranking;
 	}
 

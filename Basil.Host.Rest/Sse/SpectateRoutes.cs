@@ -1,10 +1,11 @@
+using Basil.Application.Users;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
+using Basil.Domain.Mechanics;
 using Basil.Domain.Spectating;
-using Basil.Domain.Users;
 using Basil.Domain.Users;
 using Basil.Host.Rest.Http;
 using Mediator;
@@ -59,9 +60,10 @@ internal static class SpectateRoutes
 	{
 		return new
 		{
-			activity = status.Activity, text = status.Text, beatmapId = status.BeatmapId,
-			mods = status.GameMods.ToString(),
-			mode = status.GameMode
+			activity = status.Activity, text = status.Detail?.BeatmapFullName ?? string.Empty,
+			beatmapId = status.Detail?.BeatmapId,
+			mods = (status.Detail?.GameMods ?? GameMods.NoMod).ToString(),
+			mode = status.Detail?.GameMode ?? GameMode.Standard
 		};
 	}
 

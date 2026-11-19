@@ -1,5 +1,5 @@
+using Basil.Application.Users;
 using System.Globalization;
-using Basil.Domain.Users;
 using Basil.Domain.Users;
 using Basil.Host.Cli.Dashboard.Shell;
 

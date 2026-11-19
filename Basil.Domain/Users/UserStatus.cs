@@ -1,17 +1,24 @@
 using Basil.Domain.Mechanics;
-using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Domain.Users;
 
-public sealed record UserStatus(
-	UserActivity Activity,
-	string Text,
-	Md5Hash? BeatmapHash,
-	int? BeatmapId,
-	GameMods GameMods,
-	GameMode GameMode)
+public sealed class UserStatus
 {
-	public static readonly UserStatus Idle =
-		new(UserActivity.Idle, string.Empty, null, null, GameMods.NoMod, GameMode.Standard);
+	public UserActivity Activity { get; init; } = UserActivity.Idle;
+
+	public UserStatusDetail? Detail { get; set; }
+}
+
+public readonly record struct UserStatusDetail
+{
+	public Md5Hash BeatmapHash { get; init; }
+
+	public string BeatmapFullName { get; init; }
+
+	public int? BeatmapId { get; init; }
+
+	public GameMode GameMode { get; init; }
+
+	public GameMods GameMods { get; init; }
 }

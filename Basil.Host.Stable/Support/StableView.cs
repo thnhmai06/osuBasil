@@ -1,9 +1,7 @@
 using Basil.Application.Chat.Objects;
-using Basil.Domain.Authentication;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 using Basil.Domain.Multiplayer.Room;
-using Basil.Domain.Users;
 using Basil.Protocol.Game.Stable.Models.Multiplayer;
 using Basil.Protocol.Game.Stable.Wire.Packets;
 using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
@@ -42,15 +40,17 @@ internal static class StableView
 		var client = user.Stable;
 		writer.UserPresence(user.Record.Id, user.Record.Value.Name, client?.UtcOffset ?? 0,
 			(int)user.Record.Value.Country, Privileges(user.EffectivePrivileges(now)),
-			(int)(client?.Status.GameMode ?? GameMode.Standard), 0, 0, stats.Rank);
+			(int)(client?.Status.Detail?.GameMode ?? GameMode.Standard), 0, 0, stats.Rank);
 	}
 
 	public static void WriteStats(PacketWriter writer, User user, UserStats stats)
 	{
-		var status = user.Stable?.Status ?? UserStatus.Idle;
-		writer.UserStats(user.Record.Id, (int)status.Activity, status.Text,
-			status.BeatmapHash?.ToString() ?? string.Empty,
-			(int)status.GameMods, (int)status.GameMode, status.BeatmapId ?? 0,
+		var status = user.Stable?.Status ?? new UserStatus();
+		var detail = status.Detail;
+		writer.UserStats(user.Record.Id, (int)status.Activity, detail?.BeatmapFullName ?? string.Empty,
+			detail?.BeatmapHash.ToString() ?? string.Empty,
+			(int)(detail?.GameMods ?? GameMods.NoMod), (int)(detail?.GameMode ?? GameMode.Standard),
+			detail?.BeatmapId ?? 0,
 			stats.RankedScore,
 			UserStats.Accuracy, stats.PlayCount, stats.TotalScore, stats.Rank, UserStats.Pp);
 	}

@@ -1,3 +1,4 @@
+using Basil.Application.Users;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -10,7 +11,6 @@ using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Content;
-using Basil.Domain.Users;
 using Basil.Host.Shared.Json;
 using Basil.Host.Shared.Views;
 using Mediator;

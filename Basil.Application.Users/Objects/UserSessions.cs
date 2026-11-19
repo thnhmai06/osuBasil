@@ -37,14 +37,12 @@ public sealed class UserSessions
 
 	internal void Add(Session connection)
 	{
-		using var scope = _user.Enter();
 		var set = _connections.GetOrAdd(connection.Type, _ => []);
 		set.Add(connection);
 	}
 
 	internal bool Remove(Session connection)
 	{
-		using var scope = _user.Enter();
 		return _connections.TryGetValue(connection.Type, out var set) && set.Remove(connection);
 	}
 
@@ -85,7 +83,7 @@ public sealed class UserSessions
 
 	internal async Task<UserActionResult> CloseAsync(long id)
 	{
-		if (_user.Record.IsBasilBot()) return UserActionResult.SystemAccount;
+		if (_user.Record.Id == BasilBot.Id) return UserActionResult.SystemAccount;
 		// A session whose client is online exists even before its record reaches the store.
 		if (!Connections.Any(connection => connection.State.Record.Id == id) &&
 		    await _user.Context.Sessions.GetAsync(_user.Record, id) is not { Value.Ended: null })
@@ -97,7 +95,7 @@ public sealed class UserSessions
 
 	internal async Task<UserActionResult> CloseAllAsync(Session actor, bool keepCurrent)
 	{
-		if (_user.Record.IsBasilBot()) return UserActionResult.SystemAccount;
+		if (_user.Record.Id == BasilBot.Id) return UserActionResult.SystemAccount;
 
 		var isSelf = actor.Record.Equals(_user.Record);
 		long? keep = isSelf && keepCurrent && actor is ApiSession api ? api.State.Record.Id : null;

@@ -1,3 +1,4 @@
+using Basil.Application.Users;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Users;
 
@@ -25,7 +26,7 @@ internal sealed class RoomUsers
 
 	internal async ValueTask<bool> BlocksAsync(UserRecord blocker, UserRecord who, CancellationToken ct = default)
 	{
-		if (blocker.IsBasilBot()) return false;
+		if (blocker.Id == BasilBot.Id) return false;
 
 		var relationships = await _relationships.ListAsync(blocker, ct);
 		return relationships.Any(relationship => relationship.Target.Equals(who) &&

@@ -42,7 +42,7 @@ Acting on oneself is exempt, except that nobody silences or unsilences themselve
 
 ## Silence
 
-A moderator can silence an account until a moment. The end time is stored on the account (`SilencedUntil`), so nothing
+A moderator can silence an account until a moment. The end time is stored on the account (`SilencedEnd`), so nothing
 needs a timer: the silence is over when the clock reaches it. While it lasts:
 
 * the account cannot post chat messages, public or private;
@@ -88,7 +88,7 @@ with the typist's privileges, never with the bot's.
 ## Related code
 
 * [`UserPrivileges.cs`](../../src/Domain/Users/UserPrivileges.cs): the privilege flags, `Allows`, the default set
-* [`UserRecord.cs`](../../src/Domain/Users/UserRecord.cs): the account data, its privileges and `SilencedUntil`
+* [`UserRecord.cs`](../../src/Domain/Users/UserRecord.cs): the account data, its privileges and `SilencedEnd`
 * [`ScopedUser.cs`](../../Basil.Application.Users/Capabilities/ScopedUser.cs),
   [`ScopedUserSilence.cs`](../../Basil.Application.Users/Capabilities/ScopedUserSilence.cs),
   [`ScopedUserPrivileges.cs`](../../Basil.Application.Users/Capabilities/ScopedUserPrivileges.cs): account actions

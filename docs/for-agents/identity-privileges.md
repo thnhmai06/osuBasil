@@ -13,7 +13,7 @@ touching users, connections, privileges, silences or the bot.
 * **Room privileges are a separate concept.** `RoomPrivileges` (Domain) is the set of roles a user holds in one room (creator, referee, host, seated player). It is derived per room, never stored, and no account privilege is derived from it. A room scope only starts from the account's effective `UserPrivileges` (`Tournament` holds the creator role in every room, a missing `Player` holds no role). See [`multiplayer.md`](../for-developers/multiplayer.md).
 * **Privilege checks require every bit** (`UserPrivileges.Allows`); an empty requirement is satisfied. A refusal is the
   outcome `Denied` and does not name the privileges.
-* **A silence is a stored end time, not a restriction.** `UserData.SilencedUntil` holds the moment a silence ends; no
+* **A silence is a stored end time, not a restriction.** `UserData.SilencedEnd` holds the moment a silence ends; no
   timer is needed. A silenced account cannot post chat messages and receives no private messages (`Silenced`,
   `TargetSilenced`); its privileges, rooms, scores and uploads are unaffected. A moderator imposes and lifts it
   (`Moderator`); each is logged in the `ModerationLog`. There are no restrictions.

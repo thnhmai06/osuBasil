@@ -1,3 +1,4 @@
+using Basil.Application.Users;
 using System.Net;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Registry;
@@ -10,7 +11,6 @@ using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Domain.Client;
 using Basil.Domain.Mechanics;
-using Basil.Domain.Users;
 using Basil.Domain.Users;
 using Basil.Gateway.RateLimiting;
 using Basil.Host.Stable.Support;
@@ -121,12 +121,12 @@ internal sealed class StableLogin(
 		var motd = (await sender.Send(new ReadSettings(), ct)).General.Motd;
 		var friends = (await sender.Send(new ListFriends(connection, UserReference.ById(user.Record.Id)), ct)).Users;
 		var silenceSeconds = user.Record.Value.IsSilenced(now)
-			? (int)(user.Record.Value.SilencedUntil!.Value - now).TotalSeconds
+			? (int)(user.Record.Value.SilencedEnd!.Value - now).TotalSeconds
 			: 0;
 		var others = new List<(User User, UserStats Stats)>();
 		foreach (var other in registry.Online.Values.Where(other => !ReferenceEquals(other, user)))
 			others.Add((other, await sender.Send(new GetUserStats(other,
-				other.Stable?.Status.GameMode ?? GameMode.Standard), ct)));
+				other.Stable?.Status.Detail?.GameMode ?? GameMode.Standard), ct)));
 
 		var welcome = Outbox.Build(writer =>
 		{

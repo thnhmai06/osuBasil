@@ -1,5 +1,4 @@
 using Basil.Domain.Users;
-using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Capabilities;
 

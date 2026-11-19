@@ -1,3 +1,4 @@
+using Basil.Application.Users;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
@@ -5,7 +6,6 @@ using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Users;
 using Basil.Domain.Users;
 using Basil.Gateway.RateLimiting;
 using Basil.Host.Stable.Support;
@@ -38,7 +38,8 @@ internal sealed class WebAuthentication(
 		CancellationToken ct)
 	{
 		if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(passwordMd5)) return null;
-		var normalized = UserData.NormalizeName(username);
+		var normalized = UserReference.Normalize(username);
+		if (normalized is null) return null;
 		if (await sender.Send(new GetUser(UserReference.ByName(username)), ct) is not { } record) return null;
 		var online = registry.Of(record);
 		if (online.Stable is not { IsOpen: true } client) return null;

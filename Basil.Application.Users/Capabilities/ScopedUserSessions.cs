@@ -2,7 +2,6 @@ using Basil.Application.Authentication.Persistence;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Authentication;
 using Basil.Domain.Users;
-using Basil.Domain.Users;
 using User = Basil.Application.Users.Objects.User;
 
 namespace Basil.Application.Users.Capabilities;

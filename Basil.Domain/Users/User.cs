@@ -1,46 +1,22 @@
+using Basil.Domain.Mechanics;
+
 namespace Basil.Domain.Users;
 
-public sealed class User
+public sealed class User(UserRecord record, IReadOnlyDictionary<GameMode, UserStats> stats)
 {
-	private readonly Lock _sync = new();
+	public UserRecord Record { get; } = record;
 
-	public User(UserRecord record)
+	public Dictionary<GameMode, UserStats> Stats { get; init; } = stats.ToDictionary();
+
+	public UserStatus Status { get; init; } = new();
+
+	public string? AwayMessage
 	{
-		Record = record;
-		Profile = new UserProfile(this);
-		Silence = new UserSilence(this);
-	}
+		get;
+		set => field = string.IsNullOrWhiteSpace(value) ? null : value;
+	} = null;
 
-	public UserRecord Record { get; }
+	public bool PmPrivate { get; set; } = false;
 
-	public UserProfile Profile { get; }
-
-	public UserSilence Silence { get; }
-
-	public UserPrivileges Privileges
-	{
-		get
-		{
-			using var scope = Enter();
-			return Record.Value.Privileges;
-		}
-	}
-
-	public void ReplacePrivileges(UserPrivileges privileges)
-	{
-		using var scope = Enter();
-		Record.Value.Privileges = privileges;
-	}
-
-	public void MarkDeleted(DateTimeOffset at)
-	{
-		using var scope = Enter();
-		Record.Value.DeletedAt = at;
-		Record.Value.Privileges = UserPrivileges.None;
-	}
-
-	public Lock.Scope Enter()
-	{
-		return _sync.EnterScope();
-	}
+	public PresenceVisibility PresenceVisibility { get; set; } = PresenceVisibility.All;
 }

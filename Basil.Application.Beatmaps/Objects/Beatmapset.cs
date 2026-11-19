@@ -3,7 +3,6 @@ using Basil.Application.Beatmaps.Objects.Events;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Shared.Actors;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Beatmaps;
 
 namespace Basil.Application.Beatmaps.Objects;
 

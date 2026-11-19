@@ -1,10 +1,10 @@
 using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Multiplayer.Messages;
+using Basil.Application.Users;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer.Room;
-using Basil.Domain.Users;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;

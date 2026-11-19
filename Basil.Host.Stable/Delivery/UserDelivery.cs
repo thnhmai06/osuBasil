@@ -18,7 +18,7 @@ internal sealed class UserOnlineDelivery(
 	{
 		if (!notification.CameOnline || notification.Session.Type is not SessionType.Stable) return;
 		var user = notification.Session.User;
-		var stats = await sender.Send(new GetUserStats(user, user.Stable?.Status.GameMode ?? GameMode.Standard), ct);
+		var stats = await sender.Send(new GetUserStats(user, user.Stable?.Status.Detail?.GameMode ?? GameMode.Standard), ct);
 		var now = clock.GetUtcNow();
 		outbox.Send(registry.OpenStableClients(), writer =>
 		{
@@ -48,7 +48,7 @@ internal sealed class UserStatusDelivery(UserRegistry registry, Outbox outbox, I
 	public async ValueTask Handle(UserSessionStatusChanged notification, CancellationToken ct)
 	{
 		var user = notification.Session.User;
-		var stats = await sender.Send(new GetUserStats(user, notification.Status.GameMode), ct);
+		var stats = await sender.Send(new GetUserStats(user, notification.Status.Detail?.GameMode ?? GameMode.Standard), ct);
 		outbox.Send(registry.OpenStableClients(), writer => StableView.WriteStats(writer, user, stats));
 	}
 }

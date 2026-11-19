@@ -112,7 +112,7 @@ public sealed class DashboardSampler(IServiceProvider services, DashboardModel m
 	{
 		return
 		[
-			.. registry.Online.Values.Where(user => !user.Record.IsBasilBot()).OrderBy(user => user.Record.Id)
+			.. registry.Online.Values.Where(user => user.Record.Id != BasilBot.Id).OrderBy(user => user.Record.Id)
 				.Select(user =>
 					new UserRow(
 						user.Record.Id, user.Record.Value.Name,

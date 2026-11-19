@@ -1,3 +1,4 @@
+using Basil.Application.Users;
 using Basil.Host.Shared.Errors;
 using Basil.Domain;
 using Basil.Application.Chat.Messages;
@@ -6,7 +7,6 @@ using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Chat;
-using Basil.Domain.Users;
 using Basil.Domain.Users;
 using Basil.Host.Cli.Dashboard.Data;
 using Basil.Host.Cli.Dashboard.Shell;

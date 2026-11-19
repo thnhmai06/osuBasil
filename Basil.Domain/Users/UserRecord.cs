@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using Basil.Domain.Users;
 using Basil.Shared.Utilities;
 
 namespace Basil.Domain.Users;
@@ -35,7 +34,7 @@ public sealed class UserRecord : IEquatable<UserRecord>
 
 public sealed partial class UserData
 {
-	public string NormalizedName => NormalizeName(Name);
+	public string NormalizedName => Name.ToLowerInvariant().Replace(' ', '_');
 
 	public required string Name
 	{
@@ -43,7 +42,18 @@ public sealed partial class UserData
 		set
 		{
 			ArgumentNullException.ThrowIfNull(value);
-			if (NameError(value) is not null) throw new InvalidUserNameException();
+
+			if (value.Length is < 3 or > 15)
+				throw new InvalidUserNameException("Username must be between 3 and 15 characters.");
+			if (value.StartsWith(' ') || value.EndsWith(' '))
+				throw new InvalidUserNameException("Username cannot start or end with a space.");
+			if (value.Contains("  "))
+				throw new InvalidUserNameException("Username cannot contain consecutive spaces.");
+			if (value.All(char.IsDigit))
+				throw new InvalidUserNameException("Username cannot contain only digits.");
+			if (!OsuUsernameChars().IsMatch(value))
+				throw new InvalidUserNameException("Username may only contain letters, numbers, spaces, and _ - [ ].");
+
 			field = value;
 		}
 	}
@@ -60,7 +70,7 @@ public sealed partial class UserData
 		set => field = value.ThrowIfInvalid();
 	} = UserPrivilegesExtensions.Default;
 
-	public DateTimeOffset? SilencedUntil { get; set; }
+	public DateTimeOffset? SilencedEnd { get; set; }
 
 	public DateTimeOffset? DeletedAt
 	{
@@ -73,30 +83,9 @@ public sealed partial class UserData
 		}
 	}
 
-	public static bool IsValidName(string name)
-	{
-		return NameError(name) is null;
-	}
-
-	private static string? NameError(string value)
-	{
-		if (value.Length is < 3 or > 15) return "Username must be between 3 and 15 characters.";
-		if (value.StartsWith(' ') || value.EndsWith(' ')) return "Username cannot start or end with a space.";
-		if (value.Contains("  ")) return "Username cannot contain consecutive spaces.";
-		if (value.All(char.IsDigit)) return "Username cannot contain only digits.";
-		if (!OsuUsernameChars().IsMatch(value))
-			return "Username may only contain letters, numbers, spaces, and _ - [ ].";
-		return null;
-	}
-
 	public bool IsSilenced(DateTimeOffset now)
 	{
-		return now < SilencedUntil;
-	}
-
-	public static string NormalizeName(string name)
-	{
-		return name.ToLowerInvariant().Replace(' ', '_');
+		return now < SilencedEnd;
 	}
 
 	[GeneratedRegex(@"^[a-zA-Z0-9_\-\[\] ]+\z")]

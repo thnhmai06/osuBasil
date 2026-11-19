@@ -1,10 +1,10 @@
+using Basil.Application.Users;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Basil.Application.Servers.Messages.Content;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Users.Messages;
 using Basil.Domain.Content;
-using Basil.Domain.Users;
 using Basil.Gateway.Limits;
 using Basil.Host.Rest.Http;
 using Basil.Host.Shared.Views;

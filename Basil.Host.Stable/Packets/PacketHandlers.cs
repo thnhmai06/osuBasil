@@ -2,12 +2,12 @@ using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Scores.Messages;
+using Basil.Application.Users;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Domain.Mechanics;
-using Basil.Domain.Users;
 using Basil.Domain.Users;
 using Basil.Gateway.Admission;
 using Basil.Gateway.RateLimiting;
@@ -114,8 +114,20 @@ internal sealed partial class PacketHandlers(
 
 		if (WireMap.Known<UserActivity>(action.Action) is not { } activity ||
 		    WireMap.Known<GameMode>(action.Mode) is not { } mode) return;
-		var status = new UserStatus(activity, action.InfoText, hash,
-			action.MapId == 0 ? null : action.MapId, WireMap.Mods(action.Mods), mode);
+		var status = new UserStatus
+		{
+			Activity = activity,
+			Detail = hash is { } beatmapHash
+				? new UserStatusDetail
+				{
+					BeatmapHash = beatmapHash,
+					BeatmapFullName = action.InfoText,
+					BeatmapId = action.MapId == 0 ? null : action.MapId,
+					GameMode = mode,
+					GameMods = WireMap.Mods(action.Mods)
+				}
+				: null
+		};
 		await sender.Send(new SetPlayerStatus(osu, status), ct);
 	}
 
@@ -125,7 +137,7 @@ internal sealed partial class PacketHandlers(
 
 		var stats = new List<UserStats>();
 		foreach (var user in wanted)
-			stats.Add(await sender.Send(new GetUserStats(user, user.Stable?.Status.GameMode ?? GameMode.Standard),
+			stats.Add(await sender.Send(new GetUserStats(user, user.Stable?.Status.Detail?.GameMode ?? GameMode.Standard),
 				ct));
 		outbox.Send(actor, writer =>
 		{
@@ -141,7 +153,7 @@ internal sealed partial class PacketHandlers(
 		var now = clock.GetUtcNow();
 		var stats = new List<UserStats>();
 		foreach (var user in wanted)
-			stats.Add(await sender.Send(new GetUserStats(user, user.Stable?.Status.GameMode ?? GameMode.Standard),
+			stats.Add(await sender.Send(new GetUserStats(user, user.Stable?.Status.Detail?.GameMode ?? GameMode.Standard),
 				ct));
 		outbox.Send(actor, writer =>
 		{

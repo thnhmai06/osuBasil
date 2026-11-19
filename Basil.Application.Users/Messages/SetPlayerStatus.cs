@@ -1,5 +1,4 @@
 using Basil.Application.Users.Objects.Sessions;
-using Basil.Domain.Authentication;
 using Basil.Domain.Users;
 using Mediator;
 

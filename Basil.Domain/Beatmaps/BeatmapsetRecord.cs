@@ -1,5 +1,4 @@
 using Basil.Domain.Content;
-using Basil.Domain.Beatmaps;
 
 namespace Basil.Domain.Beatmaps;
 

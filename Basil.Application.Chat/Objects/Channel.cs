@@ -3,7 +3,6 @@ using Basil.Application.Chat.Objects.Events;
 using Basil.Domain.Authentication;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
-using Basil.Domain.Users;
 using Basil.Shared.Structures.Data;
 using Session = Basil.Application.Users.Objects.Sessions.Session;
 
@@ -159,7 +158,7 @@ public abstract class Channel
 			if (blocked || (pm.Owner.PmPrivate && !friend)) return ChannelJoinResult.Blocked;
 		}
 
-		if (!pm.Owner.Record.IsBasilBot() && recipientSilenced)
+		if (pm.Owner.Record.Id != BasilBot.Id && recipientSilenced)
 			return ChannelJoinResult.TargetSilenced;
 
 		return null;

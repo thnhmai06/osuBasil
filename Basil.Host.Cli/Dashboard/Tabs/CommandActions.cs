@@ -1,7 +1,7 @@
+using Basil.Application.Users;
 using System.Collections.Concurrent;
 using System.Globalization;
 using Basil.Application.Users.Messages;
-using Basil.Domain.Users;
 using Basil.Host.Cli.Commands;
 using Basil.Host.Cli.Dashboard.Shell;
 using Basil.Host.Cli.Dashboard.Shell.Toasts;

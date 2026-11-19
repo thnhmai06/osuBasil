@@ -1,7 +1,6 @@
 using Basil.Application.Users.Objects.Events;
 using Basil.Domain.Moderation;
 using Basil.Domain.Users;
-using DomainSilence = Basil.Domain.Users.UserSilence;
 
 namespace Basil.Application.Users.Objects;
 
@@ -14,15 +13,15 @@ public sealed class UserSilence
 		_user = user;
 	}
 
-	public DateTimeOffset? Until => _user.State.Silence.EndsAt;
+	public DateTimeOffset? Until => _user.Record.Value.SilencedEnd;
 
 	internal async Task<UserActionResult> ImposeAsync(DateTimeOffset endsAt, string? reason, UserRecord actor)
 	{
 		var now = _user.Context.Clock.GetUtcNow();
-		DomainSilence.ValidateImpose(endsAt, now);
+		if (endsAt <= now) throw new InvalidSilenceException();
 
-		await _user.StoreChangeAsync(data => data.SilencedUntil = endsAt);
-		_user.Apply(user => user.Silence.Set(endsAt));
+		await _user.StoreChangeAsync(data => data.SilencedEnd = endsAt);
+		_user.Apply(data => data.SilencedEnd = endsAt);
 		await _user.Context.ModerationLog.AppendAsync(Log(ModerationAction.Silence, actor, reason, now));
 
 		_user.Context.Events.Publish(new UserSilenced(_user.Record, endsAt));
@@ -32,10 +31,10 @@ public sealed class UserSilence
 	internal async Task<UserActionResult> LiftAsync(string? reason, UserRecord actor)
 	{
 		var now = _user.Context.Clock.GetUtcNow();
-		if (_user.State.Silence.ValidateLift(now) is var absent and not UserActionResult.Ok) return absent;
+		if (!_user.Record.Value.IsSilenced(now)) return UserActionResult.NotFound;
 
-		await _user.StoreChangeAsync(data => data.SilencedUntil = null);
-		_user.Apply(user => user.Silence.Set(null));
+		await _user.StoreChangeAsync(data => data.SilencedEnd = null);
+		_user.Apply(data => data.SilencedEnd = null);
 		await _user.Context.ModerationLog.AppendAsync(Log(ModerationAction.Unsilence, actor, reason, now));
 		_user.Context.Events.Publish(new UserUnsilenced(_user.Record));
 		return UserActionResult.Ok;
