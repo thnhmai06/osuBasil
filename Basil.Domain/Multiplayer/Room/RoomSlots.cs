@@ -5,8 +5,6 @@ using Basil.Domain.Users;
 
 namespace Basil.Domain.Multiplayer.Room;
 
-public readonly record struct SlotMove(int From, int To);
-
 public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 {
 	private readonly Room _room;
@@ -43,7 +41,7 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 			slot.Locked = open-- <= 0;
 	}
 
-	public (RoomActionResult Outcome, SlotMove? Move) ChangeSlot(UserRecord player, int index)
+	public (RoomActionResult Outcome, (int From, int To)? Move) ChangeSlot(UserRecord player, int index)
 	{
 		if (_room.IsClosed) return (RoomActionResult.RoomClosed, null);
 		if (Find(player) is not { } from) return (RoomActionResult.NotInRoom, null);
@@ -54,10 +52,10 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		if (to.Locked || to.Player is not null) return (RoomActionResult.SlotNotOpen, null);
 
 		from.MoveTo(to);
-		return (RoomActionResult.Ok, new SlotMove(from.Index, to.Index));
+		return (RoomActionResult.Ok, (from.Index, to.Index));
 	}
 
-	public (RoomActionResult Outcome, SlotMove? Move) MovePlayer(UserRecord player, int index)
+	public (RoomActionResult Outcome, (int From, int To)? Move) MovePlayer(UserRecord player, int index)
 	{
 		if (_room.IsClosed) return (RoomActionResult.RoomClosed, null);
 		if (Find(player) is not { } from) return (RoomActionResult.NotInRoom, null);
@@ -66,7 +64,7 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		if (to.Locked || to.Player is not null) return (RoomActionResult.SlotNotOpen, null);
 
 		from.MoveTo(to);
-		return (RoomActionResult.Ok, new SlotMove(from.Index, to.Index));
+		return (RoomActionResult.Ok, (from.Index, to.Index));
 	}
 
 	public RoomActionResult ArrangeSlots(IReadOnlyList<SlotArrangement> arrangement)

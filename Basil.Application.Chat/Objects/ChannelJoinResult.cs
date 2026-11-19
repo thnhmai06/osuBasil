@@ -1,4 +1,4 @@
-namespace Basil.Domain.Chat;
+namespace Basil.Application.Chat.Objects;
 
 public enum ChannelJoinResult : byte
 {

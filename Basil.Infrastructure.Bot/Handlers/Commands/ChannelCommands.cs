@@ -5,6 +5,7 @@ using Basil.Application.Servers.Objects;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using Mediator;
+using Basil.Application.Chat.Objects;
 
 namespace Basil.Infrastructure.Bot.Handlers.Commands;
 

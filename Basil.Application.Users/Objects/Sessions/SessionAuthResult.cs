@@ -1,4 +1,4 @@
-namespace Basil.Domain.Authentication;
+namespace Basil.Application.Users.Objects.Sessions;
 
 public enum SessionAuthResult : byte
 {

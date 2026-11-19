@@ -1,6 +1,7 @@
 using Basil.Application.Users.Messages;
 using Basil.Domain.Authentication;
 using Mediator;
+using Basil.Application.Users.Objects.Sessions;
 
 namespace Basil.Infrastructure.Users.Handlers;
 

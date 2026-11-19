@@ -232,9 +232,6 @@ internal static class MpReplies
 	public static readonly Reply GenericFailed = new("mp.genericFailed", "Couldn't do that ({outcome}).", "outcome");
 
 	// ── outcome replies ───────────────────────────────────────────────────────────────────
-	public static readonly Reply NotAuthorizedInMatch = new("mp.notAuthorizedInMatch",
-		"You don't have privilege to do that in this match.");
-
 	public static readonly Reply MissingPrivileges = new("mp.missingPrivileges",
 		"You do not have the privileges needed for that.");
 

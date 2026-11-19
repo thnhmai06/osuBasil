@@ -7,6 +7,7 @@ using Basil.Gateway.Limits;
 using Basil.Host.Rest.Http;
 using Basil.Host.Shared.Views;
 using Mediator;
+using Basil.Application.Chat.Objects;
 
 namespace Basil.Host.Rest.Routes;
 

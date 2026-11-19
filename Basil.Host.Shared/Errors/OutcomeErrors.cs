@@ -10,6 +10,8 @@ using Basil.Domain.Content;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer.Room;
 using Basil.Domain.Users;
+using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Chat.Objects;
 
 namespace Basil.Host.Shared.Errors;
 

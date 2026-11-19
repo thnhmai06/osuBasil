@@ -20,6 +20,7 @@ using XenoAtom.Terminal.UI.Controls;
 using XenoAtom.Terminal.UI.Geometry;
 using XenoAtom.Terminal.UI.Input;
 using XenoAtom.Terminal.UI.Styling;
+using Basil.Application.Chat.Objects;
 
 namespace Basil.Host.Cli.Dashboard.Tabs;
 
