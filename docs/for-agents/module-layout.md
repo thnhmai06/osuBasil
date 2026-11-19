@@ -30,7 +30,7 @@ service implementations and `Workers/` for the loops and hosted services. Tests 
 Users/         IUserRepository and friends, UserQuery, login inputs    (Persistence)
                IUserAvatarStorage                                      (Storage)
                IAccountRules (internal)                                (Ports)
-               User, UserContext, UserGrants, UserProfile, UserActionResult  (Objects)
+               User, UserContext, UserProfile, UserActionResult  (Objects)
                Session, SessionContext, SessionAuthResult,
                PlayerStatus                                            (Objects/Sessions)
                UserRegistry                                            (Registry)

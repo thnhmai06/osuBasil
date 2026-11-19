@@ -1,4 +1,5 @@
 using Basil.Application.Users.Capabilities;
+using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Authentication;
 using Basil.Domain.Users;
@@ -17,7 +18,6 @@ public sealed class User
 		Profile = new UserProfile(this);
 		Credentials = new UserCredentials(this);
 		Sessions = new UserSessions(this);
-		Grants = new UserGrants(this);
 		Silence = new UserSilence(this);
 		Relationships = new UserRelationships(this);
 	}
@@ -40,8 +40,6 @@ public sealed class User
 	public UserCredentials Credentials { get; }
 
 	public UserSessions Sessions { get; }
-
-	public UserGrants Grants { get; }
 
 	public UserRelationships Relationships { get; }
 
@@ -66,7 +64,7 @@ public sealed class User
 
 	public UserPrivileges EffectivePrivileges(DateTimeOffset now)
 	{
-		return Grants.Effective(now);
+		return State.Privileges;
 	}
 
 	internal void Apply(Action<DomainUser> rule)
@@ -107,8 +105,19 @@ public sealed class User
 			data.DeletedAt = now;
 			data.Privileges = UserPrivileges.None;
 		});
-		Grants.MarkDeleted(now);
+		Apply(user => user.MarkDeleted(now));
 		Context.Registry.CloseAll(Record, SessionEndReason.Deleted);
+		return UserActionResult.Ok;
+	}
+
+	internal async Task<UserActionResult> SetPrivilegesAsync(UserPrivileges privileges)
+	{
+		await StoreChangeAsync(data => data.Privileges = privileges);
+		Apply(user => user.ReplacePrivileges(privileges));
+		if (Context.Registry.Online.GetValueOrDefault(Record) is { } online)
+			Context.Registry.CloseDisallowed(online);
+
+		Context.Events.Publish(new UserPrivilegesChanged(Record, privileges));
 		return UserActionResult.Ok;
 	}
 

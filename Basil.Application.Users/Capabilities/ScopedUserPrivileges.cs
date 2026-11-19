@@ -13,6 +13,6 @@ public readonly struct ScopedUserPrivileges(ScopedUser scoped)
 		if (scoped.Guard(user, true) is { } refused) return refused;
 		if (scoped.Deny(user.Record.Value.Privileges ^ privileges) is { } cannotGrant) return cannotGrant;
 
-		return await user.Grants.SetAsync(privileges);
+		return await user.SetPrivilegesAsync(privileges);
 	}
 }

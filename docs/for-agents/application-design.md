@@ -57,7 +57,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   Domain rule that answers with the object's outcome enum (plus the data its event needs); the Application object of the
   same name keeps a `State` of that Domain type, calls the rule under its lock, then publishes the event and does the
   cross-object step. Examples: `Room.ChangeSlot`, `Room.Configure`, `Room.Kick` (Domain) against `Room.Join`,
-  `Room.Close`, the score-wait timer (Application); `UserGrants.Replace`, `UserSilence.ValidateImpose` (Domain) against
+  `Room.Close`, the score-wait timer (Application); `User.ReplacePrivileges`, `UserSilence.ValidateImpose` (Domain) against
   `UserSilence.ImposeAsync` (Application); `RoomChannelName`, `CountdownMarks`, `GeneralChannelChange.ApplyTo` (Domain).
   Players are `UserRecord` in Domain; the Application object keeps the map to the live sessions.
 
