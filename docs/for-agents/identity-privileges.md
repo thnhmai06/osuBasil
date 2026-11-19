@@ -82,11 +82,11 @@ touching users, connections, privileges, silences or the bot.
   closed it is `Ended`. A sweeper ends every `Expired` session, in memory and in the store, with `TimedOut`; a heartbeat
   never revives an expired one.
 
-  Sessions survive a restart. An osu! or API session resumes by its token while it is not `Expired`
-  (`UserRegistry.ResumeAsync`; an osu! client that resumes gets the same login bundle a password login sends). A closed
-  or revoked session never resumes, and a resume checks the account again (deleted, or without `Tournament` for a
-  StableTourney session). IRC sessions are ended at startup with `ServerStopped`, and IRC signs in with the account
-  password in `PASS` (as osu! and the API do). IRC is plain TCP, so that password crosses the network readable; see
+  Only an API session survives a restart: it resumes by its token while it is not `Expired`
+  (`UserRegistry.ResumeAsync`, one read of the store for a token the server does not hold). A closed or revoked session
+  never resumes, and a resume checks the account again (deleted). osu! and IRC sessions are ended at startup with
+  `ServerStopped`; an osu! client with an unknown token is told to restart and signs in again with its saved password,
+  as bancho.py does, and IRC signs in with the account password in `PASS` (as osu! and the API do). IRC is plain TCP, so that password crosses the network readable; see
   [`https.md`](../for-technicians/https.md). Ended sessions are deleted after `Sessions.RetentionPeriod` (90 days by
   default). `Sessions.MaxPerUser` and `Sessions.ApiToken.Lifetime` no longer exist.
 * **One active session per user and type.** Why: a second sign-in of the same kind is either a mistake (a client still

@@ -46,7 +46,7 @@ public static class Caller
 			var token = header["Bearer ".Length..].Trim();
 			if (token.Length == 0) return false;
 
-			var result = await registry.ResumeAsync(SessionType.Api, token, null, context.RequestAborted);
+			var result = await registry.ResumeAsync(token, null, context.RequestAborted);
 			if (result.Session is not ApiSession connection) return false;
 
 			context.Items[ConnectionKey] = connection;

@@ -16,8 +16,6 @@ using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Ports;
 using Basil.Domain.Authentication;
 using Basil.Domain.Game.Client;
-
-
 using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
 using Basil.Shared.Structures.Cryptography;
@@ -34,9 +32,12 @@ public sealed class UserRegistry
 		new(new OsuVersion(default, null, OsuVersionStream.Stable), default);
 
 	private readonly IAccountRules _accounts;
+
 	private readonly ConcurrentDictionary<long, Session> _activity = new();
+
 	// Sessions ended here whose end the store has not confirmed yet: their tokens never resume meanwhile.
 	private readonly ConcurrentDictionary<long, byte> _ended = new();
+
 	// Accounts whose stored sessions are being revoked: those started before the revocation never resume meanwhile.
 	private readonly ConcurrentDictionary<int, ImmutableList<Revocation>> _revoking = new();
 	private readonly SessionContext _sessionContext;
@@ -101,8 +102,9 @@ public sealed class UserRegistry
 		if (failure is { } loginFailure) return LoginResult.Fail(loginFailure);
 		if (record is null) return LoginResult.Fail(LoginFailure.UnknownUser);
 
-		// After a restart the user's open session is only in the store; it is read before the account gate.
-		var stored = type.IsExclusive && _online.GetValueOrDefault(record)?[type].Count is null or 0
+		// After a restart a user's open API session is only in the store (the others end at startup); it is read before
+		// the account gate.
+		var stored = type is SessionType.Api && _online.GetValueOrDefault(record)?[type].Count is null or 0
 			? await _context.Sessions.FindOpenAsync(record, type, ct)
 			: null;
 
@@ -155,22 +157,18 @@ public sealed class UserRegistry
 		};
 	}
 
-	public async Task<LoginResult> ResumeAsync(SessionType type, string token,
-		Func<UserRecord, bool>? accepts = null, CancellationToken ct = default)
+	public async Task<LoginResult> ResumeAsync(string token, Func<UserRecord, bool>? accepts = null,
+		CancellationToken ct = default)
 	{
-		if (type is not (SessionType.Stable or SessionType.StableTourney or SessionType.Api))
-			throw new ArgumentException("Only an osu! or API session resumes by its token.", nameof(type));
-
+		const SessionType type = SessionType.Api;
 		if (_tokens.GetValueOrDefault(token) is { IsOpen: true } open && open.Type == type)
 			return ResumeOpen(open, accepts);
 
-		var hash = HashToken(token);
-		var owner = await _context.Sessions.FindOpenOwnerAsync(type, hash, ct);
-		var record = owner is { } id ? await _context.Users.GetAsync(id, ct) : null;
-		if (record is null || accepts?.Invoke(record) == false) return LoginResult.Fail(LoginFailure.InvalidToken);
-
-		var stored = await _context.Sessions.FindOpenByTokenAsync(record, type, hash, ct);
+		var stored = await _context.Sessions.FindOpenByTokenAsync(type, HashToken(token), _context.Users.GetAsync, ct);
 		if (stored is null || IsEnding(stored)) return LoginResult.Fail(LoginFailure.InvalidToken);
+
+		var record = stored.User;
+		if (accepts?.Invoke(record) == false) return LoginResult.Fail(LoginFailure.InvalidToken);
 
 		var now = _context.Clock.GetUtcNow();
 		var refusal = Ineligible(record, type);
@@ -515,9 +513,12 @@ public sealed class UserRegistry
 
 	public async Task<int> CloseStoppedAsync()
 	{
-		// An IRC session lives as long as its socket; osu! and API sessions resume by their token.
-		return await _context.Sessions.EndOpenAsync(SessionType.Irc, SessionEndReason.ServerStopped,
-			_context.Clock.GetUtcNow());
+		// Only an API session resumes by its token; osu! and IRC clients sign in again after a restart.
+		var now = _context.Clock.GetUtcNow();
+		var ended = 0;
+		foreach (var type in new[] { SessionType.Stable, SessionType.StableTourney, SessionType.Irc })
+			ended += await _context.Sessions.EndOpenAsync(type, SessionEndReason.ServerStopped, now);
+		return ended;
 	}
 
 	public async Task<int> PurgeEndedSessionsAsync()

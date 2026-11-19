@@ -1,6 +1,5 @@
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Authentication;
-
 using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;
 
@@ -31,10 +30,8 @@ public interface ISessionRepository
 
 	Task<Session?> GetAsync(UserRecord user, long id, CancellationToken ct = default);
 
-	Task<int?> FindOpenOwnerAsync(SessionType type, Sha256Hash tokenHash, CancellationToken ct = default);
-
-	Task<Session?> FindOpenByTokenAsync(UserRecord user, SessionType type, Sha256Hash tokenHash,
-		CancellationToken ct = default);
+	Task<Session?> FindOpenByTokenAsync(SessionType type, Sha256Hash tokenHash,
+		Func<int, CancellationToken, ValueTask<UserRecord?>> owner, CancellationToken ct = default);
 
 	Task<Session?> FindOpenAsync(UserRecord user, SessionType type, CancellationToken ct = default);
 

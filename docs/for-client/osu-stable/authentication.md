@@ -137,9 +137,8 @@ Tourney spectator clients are an exception and may run alongside the player's no
 
 Sessions are recorded in the database, not only in server memory.
 
-A session survives a server restart. A client that presents its token after a restart resumes its session and receives
-the same login bundle a password login sends, as long as the session has not been silent for 300 seconds; past that,
-or once the session has ended, the client is told to restart and log in again.
+A session ends with a server restart. A client that presents a token the server does not hold, as after a restart, or
+whose session has ended, is told to restart and logs in again with its saved password.
 
 ---
 

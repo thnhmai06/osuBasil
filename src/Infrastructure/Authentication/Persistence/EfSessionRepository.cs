@@ -3,7 +3,6 @@ using Basil.Application.Authentication.Persistence;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Authentication;
 using Basil.Domain.Game.Client;
-
 using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Persistence;
 using Basil.Shared.Structures.Cryptography;
@@ -58,26 +57,17 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 		return row is null ? null : ToSession(row, user);
 	}
 
-	public async Task<int?> FindOpenOwnerAsync(SessionType type, Sha256Hash tokenHash,
-		CancellationToken ct = default)
-	{
-		var hash = Convert.FromHexString(tokenHash.HashValue);
-		return await database.ReadAsync((AuthenticationDbContext context) => context.Sessions
-				.Where(item => item.TokenHash == hash && item.Type == type && item.EndedAt == null)
-				.Select(item => (int?)item.UserId)
-				.FirstOrDefaultAsync(ct),
-			ct);
-	}
-
-	public async Task<Session?> FindOpenByTokenAsync(UserRecord user, SessionType type, Sha256Hash tokenHash,
-		CancellationToken ct = default)
+	public async Task<Session?> FindOpenByTokenAsync(SessionType type, Sha256Hash tokenHash,
+		Func<int, CancellationToken, ValueTask<UserRecord?>> owner, CancellationToken ct = default)
 	{
 		var hash = Convert.FromHexString(tokenHash.HashValue);
 		var row = await database.ReadAsync((AuthenticationDbContext context) => context.Sessions
-				.FirstOrDefaultAsync(item => item.TokenHash == hash && item.Type == type && item.UserId == user.Id &&
-				                             item.EndedAt == null, ct),
+				.FirstOrDefaultAsync(item => item.TokenHash == hash && item.Type == type && item.EndedAt == null, ct),
 			ct);
-		return row is null ? null : ToSession(row, user);
+		if (row is null) return null;
+
+		var user = await owner(row.UserId, ct);
+		return user is null ? null : ToSession(row, user);
 	}
 
 	public async Task<Session?> FindOpenAsync(UserRecord user, SessionType type, CancellationToken ct = default)
@@ -196,7 +186,8 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 		var adapters = new NetworkAdapters
 			{ Adapters = row.NetworkAdapters!, Hash = new Md5Hash(row.NetworkAdaptersHash!) };
 		return new OsuClient(version,
-			new OsuFingerprint(new Md5Hash(row.OsuPathHash!), new Md5Hash(row.UninstallHash!), new Md5Hash(row.DiskSignatureHash!),
+			new OsuFingerprint(new Md5Hash(row.OsuPathHash!), new Md5Hash(row.UninstallHash!),
+				new Md5Hash(row.DiskSignatureHash!),
 				adapters));
 	}
 

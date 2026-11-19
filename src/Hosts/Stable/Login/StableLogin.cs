@@ -57,7 +57,8 @@ internal sealed class StableLogin(
 		LoginResult result;
 		try
 		{
-			result = await registry.LoginAsync(new LoginAttempt(request.Username, new Md5Hash(request.PasswordMd5)), type,
+			result = await registry.LoginAsync(new LoginAttempt(request.Username, new Md5Hash(request.PasswordMd5)),
+				type,
 				ip,
 				client, request.UtcOffset, ct);
 		}
@@ -74,21 +75,6 @@ internal sealed class StableLogin(
 
 		if (request.BlockNonFriendDms) await sender.Send(new SetPmPrivate(connection, true), ct);
 		return (connection.Token, await WelcomeAsync(connection, ct));
-	}
-
-	public async Task<(Session? Session, byte[] Reply)> ResumeAsync(string token, CancellationToken ct)
-	{
-		if (!state.AcceptingLogins) return (null, []);
-
-		// The token does not say which client holds it, so both osu! session types are asked.
-		foreach (var type in new[] { SessionType.Stable, SessionType.StableTourney })
-		{
-			var result = await registry.ResumeAsync(type, token, ct: ct);
-			if (result.Session is { } session) return (session, await WelcomeAsync(session, ct));
-			if (result.Failure is not LoginFailure.InvalidToken) break;
-		}
-
-		return (null, []);
 	}
 
 	private static bool TryParse(byte[] body, out LoginRequest request, out OsuClient client)

@@ -232,7 +232,7 @@ with no caller (startup, event handlers reacting for the server, announcements) 
 ## Sessions
 
 A session is one sign-in on one connection: one token, one row in `sessions`. It is alive while its client keeps
-sending heartbeats; after a silence it can be replaced or expires, and the osu! and API sessions survive a restart.
+sending heartbeats; after a silence it can be replaced or expires, and only API sessions survive a restart.
 Session types are Stable, StableTourney (the osu!tourney client and observers), Irc and Api. BasilBot is a module bound
 to user id 1 that holds exactly one Stable and one Irc session and has no session type of its own; see
 [`../for-agents/identity-privileges.md`](../for-agents/identity-privileges.md), which also owns the one-session-per-type rule.

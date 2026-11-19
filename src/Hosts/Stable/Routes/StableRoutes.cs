@@ -80,16 +80,10 @@ public static class StableRoutes
 			return Results.Bytes(reply, "text/html; charset=UTF-8");
 		}
 
-		byte[] welcome = [];
+		// An unknown token, as after a restart, makes the client sign in again.
 		if (registry.Find(token) is not
 		    { IsOpen: true, Type: SessionType.Stable or SessionType.StableTourney } connection)
-		{
-			// A token the server no longer holds in memory resumes its stored session, as after a restart.
-			(var resumed, welcome) = await login.ResumeAsync(token, ct);
-			if (resumed is null)
-				return Results.Bytes(Outbox.Build(writer => writer.RestartServer(0)), "text/html; charset=UTF-8");
-			connection = resumed;
-		}
+			return Results.Bytes(Outbox.Build(writer => writer.RestartServer(0)), "text/html; charset=UTF-8");
 
 		var started = Stopwatch.GetTimestamp();
 		registry.MarkActive(connection);
@@ -97,7 +91,7 @@ public static class StableRoutes
 		if (!connection.IsOpen)
 			return Results.Bytes(Outbox.Build(writer => writer.RestartServer(0)), "text/html; charset=UTF-8");
 		await dispatcher.DispatchAsync(connection, body, ct);
-		byte[] packets = [.. welcome, .. outbox.Drain(connection)];
+		var packets = outbox.Drain(connection);
 		DiagnosticsMetrics.StableDuration.Record(Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 		return Results.Bytes(packets, "text/html; charset=UTF-8");
 	}
