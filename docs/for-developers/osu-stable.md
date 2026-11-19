@@ -185,14 +185,14 @@ the connection) is answered with the `RestartServer` packet, which makes the cli
 
 | Component                  | Location |
 |----------------------------|----------|
-| Routes, request flow       | [`StableRoutes.cs`](../../src/Hosts/Stable/Routes/StableRoutes.cs) |
-| Login                      | [`StableLogin.cs`](../../src/Hosts/Stable/Login/StableLogin.cs) |
-| Packet dispatcher          | [`PacketDispatcher.cs`](../../src/Hosts/Stable/Packets/PacketDispatcher.cs) |
-| Packet handlers            | [`PacketHandlers.cs`](../../src/Hosts/Stable/Packets/PacketHandlers.cs), [`PacketHandlers.Multiplayer.cs`](../../src/Hosts/Stable/Packets/PacketHandlers.Multiplayer.cs) |
-| Outgoing queue             | [`Outbox.cs`](../../src/Hosts/Stable/Support/Outbox.cs) |
-| Event delivery             | [`UserDelivery.cs`](../../src/Hosts/Stable/Delivery/UserDelivery.cs), [`ChatDelivery.cs`](../../src/Hosts/Stable/Delivery/ChatDelivery.cs), [`RoomDelivery.cs`](../../src/Hosts/Stable/Delivery/RoomDelivery.cs) |
+| Routes, request flow       | [`StableRoutes.cs`](../../Basil.Host.Stable/Routes/StableRoutes.cs) |
+| Login                      | [`StableLogin.cs`](../../Basil.Host.Stable/Login/StableLogin.cs) |
+| Packet dispatcher          | [`PacketDispatcher.cs`](../../Basil.Host.Stable/Packets/PacketDispatcher.cs) |
+| Packet handlers            | [`PacketHandlers.cs`](../../Basil.Host.Stable/Packets/PacketHandlers.cs), [`PacketHandlers.Multiplayer.cs`](../../Basil.Host.Stable/Packets/PacketHandlers.Multiplayer.cs) |
+| Outgoing queue             | [`Outbox.cs`](../../Basil.Host.Stable/Support/Outbox.cs) |
+| Event delivery             | [`UserDelivery.cs`](../../Basil.Host.Stable/Delivery/UserDelivery.cs), [`ChatDelivery.cs`](../../Basil.Host.Stable/Delivery/ChatDelivery.cs), [`RoomDelivery.cs`](../../Basil.Host.Stable/Delivery/RoomDelivery.cs) |
 | Wire format                | [`Basil.Protocol.Game.Stable`](../../Basil.Protocol.Game.Stable) |
-| Room runtime state         | [`Room.cs`](../../src/Application/Multiplayer/Objects/Rooms/Room.cs) |
+| Room runtime state         | [`Room.cs`](../../Basil.Application.Multiplayer/Objects/Rooms/Room.cs) |
 | Room race tests            | [`RoomConcurrencyTests.cs`](../../tests/Application/Multiplayer/Objects/Rooms/RoomConcurrencyTests.cs) |
 | Host tests                 | [`tests/Hosts/Stable`](../../tests/Hosts/Stable) |
 

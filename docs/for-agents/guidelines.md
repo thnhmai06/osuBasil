@@ -94,7 +94,7 @@ See [`architecture.md`](../for-developers/architecture.md).
 
 ### Multiplayer mutations
 
-Multiplayer state mutations must hold the room's own lock (see [`Room`](../../src/Application/Multiplayer/Objects/Rooms/Room.cs)).
+Multiplayer state mutations must hold the room's own lock (see [`Room`](../../Basil.Application.Multiplayer/Objects/Rooms/Room.cs)).
 
 Any handler, command, or route that performs a read-then-mutate operation on match slots is a synchronous method of `Room`
 that holds the room's lock across the complete operation and never awaits under it:

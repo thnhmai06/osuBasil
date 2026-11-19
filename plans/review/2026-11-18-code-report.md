@@ -12,61 +12,61 @@ every host references no Infrastructure and no other host. The real problems are
 
 ### 1. The IRC host writes user-visible text outside `IrcReplies` (AGENTS rule 9) - verified
 32 `session.Numeric(..., "literal")` calls in `Basil.Host.Irc` carry literals that are not in `IrcReplies`
-(`src/Hosts/Irc/Support/IrcReplies.cs`, 129 lines, which has the right idea for other strings). Examples:
-- `src/Hosts/Irc/Commands/IrcCommands.cs:208` `session.Numeric(IrcNumericReply.ErrNoMotd, "MOTD File is missing");`
-- `src/Hosts/Irc/Commands/IrcCommands.cs:362` `session.Numeric(IrcNumericReply.ErrSaslFail, "SASL authentication failed");`
+(`Basil.Host.Irc/Support/IrcReplies.cs`, 129 lines, which has the right idea for other strings). Examples:
+- `Basil.Host.Irc/Commands/IrcCommands.cs:208` `session.Numeric(IrcNumericReply.ErrNoMotd, "MOTD File is missing");`
+- `Basil.Host.Irc/Commands/IrcCommands.cs:362` `session.Numeric(IrcNumericReply.ErrSaslFail, "SASL authentication failed");`
   (repeated at 388 and 399), `:266`/`:356` "You have already authenticated", `:350` "SASL authentication aborted",
   `:406` "SASL authentication successful", `:192` `$"Welcome to the {IrcReplies.Network} IRC network, {mask}"`.
-- `src/Hosts/Irc/Commands/IrcCommands.Queries.cs:35,49` "End of /NAMES list.", `:70` "End of /WHO list.", `:84`
+- `Basil.Host.Irc/Commands/IrcCommands.Queries.cs:35,49` "End of /NAMES list.", `:70` "End of /WHO list.", `:84`
   "No nickname given" (also `IrcCommands.cs:101`), `:92,110` "End of /WHOIS list.", `:100` "is logged in as".
-- `src/Hosts/Irc/Commands/IrcCommands.Messaging.cs:21,27,100,180,250,258` ("No recipient given", "No text to send",
+- `Basil.Host.Irc/Commands/IrcCommands.Messaging.cs:21,27,100,180,250,258` ("No recipient given", "No text to send",
   "You are no longer marked as being away", "Cannot change mode for other users", "Unknown MODE flag").
-- `src/Hosts/Irc/Delivery/MembershipDelivery.cs:50` `Kick(own, channel, "Removed from the channel")`, `:78`
-  "The channel was closed", `:91` "You may no longer read the channel"; `src/Hosts/Irc/Support/IrcChannels.cs:18` "No topic is set";
-  `src/Hosts/Irc/Transport/IrcListener.cs:159` `session.Close("Connection closed")`.
+- `Basil.Host.Irc/Delivery/MembershipDelivery.cs:50` `Kick(own, channel, "Removed from the channel")`, `:78`
+  "The channel was closed", `:91` "You may no longer read the channel"; `Basil.Host.Irc/Support/IrcChannels.cs:18` "No topic is set";
+  `Basil.Host.Irc/Transport/IrcListener.cs:159` `session.Close("Connection closed")`.
 Why it matters: rule 9 says each chat surface owns its reply constants and changing wording is a contract change; here
 the wording is scattered, and tests cannot reference constants (see 9).
 
 ### 2. The Stable host also writes user-visible text inline - verified
-- `src/Hosts/Stable/Delivery/RoomDelivery.cs:156` `$"Come join my game: {notification.Room.UrlEmbed}"` (chat text the client shows).
-- `src/Hosts/Stable/Web/OsuWebRoutes.cs:517` and `:528`
+- `Basil.Host.Stable/Delivery/RoomDelivery.cs:156` `$"Come join my game: {notification.Room.UrlEmbed}"` (chat text the client shows).
+- `Basil.Host.Stable/Web/OsuWebRoutes.cs:517` and `:528`
   `new { form_error = new { user = new { username = new[] { "Too many registrations." } } } }`
-  although `src/Hosts/Stable/Web/OsuWebReplies.cs` and `Support/StableReplies.cs` exist for this.
+  although `Basil.Host.Stable/Web/OsuWebReplies.cs` and `Support/StableReplies.cs` exist for this.
 BasilBot/Application.Bot is clean (all text is in `*Replies`); I found no literal reply outside them there.
 
 ### 3. Handlers that serve several event types, one of them with state - verified
-- `src/Infrastructure/Bot/Handlers/RoomAnnouncer.cs:16-24` `internal sealed class RoomAnnouncer(...) :
+- `Basil.Infrastructure.Bot/Handlers/RoomAnnouncer.cs:16-24` `internal sealed class RoomAnnouncer(...) :
   INotificationHandler<LobbyRoomClosingAnnounced>, INotificationHandler<LobbyRoomClosed>, ...RoomRoundStarted, ...RoomRoundAborted,
   ...RoomRoundDecided, ...RoomRoundEnded, ...RoomPlayerJoined` (7 types) and it keeps state:
   `private readonly ConcurrentSet<Round> _awaitingScores = [];` / `ConcurrentSet<Room> _closingRooms = [];` (lines 26-27).
-- `src/Infrastructure/Chat/Handlers/ConnectionChannelHandler.cs:15-16` serves `UserConnectionOpened` and `UserConnectionClosed`.
+- `Basil.Infrastructure.Chat/Handlers/ConnectionChannelHandler.cs:15-16` serves `UserConnectionOpened` and `UserConnectionClosed`.
 AGENTS "Final verification" item 7 names exactly this ("a handler that waits or serves several event types") and
 `docs/for-developers/architecture.md:92` says "one class per message type". Every other handler class in `src/` has one
 type (checked by script over all classes; `LifecycleLog.cs` and the Host `*Delivery.cs` files are separate classes).
 
 ### 4. API view/request records use primitives where an enum exists - verified
 Rule "User-visible enums: keep API record properties typed as their actual enum types".
-- `src/Hosts/Shared/Views/UserViews.cs:22-23` `ulong Privileges, ulong EffectivePrivileges,` while
+- `Basil.Host.Shared/Views/UserViews.cs:22-23` `ulong Privileges, ulong EffectivePrivileges,` while
   `src/Domain/Users/UserPrivileges.cs:9` is `enum UserPrivileges : byte` and the request side is typed
-  (`src/Hosts/Rest/Routes/UserRoutes.cs:390` `UserPrivileges? Privileges`): input and output disagree. The casts are at
+  (`Basil.Host.Rest/Routes/UserRoutes.cs:390` `UserPrivileges? Privileges`): input and output disagree. The casts are at
   `UserViews.cs` `(ulong)record.Value.Privileges, (ulong)user.EffectivePrivileges(now)`.
-- `src/Hosts/Shared/Views/ChannelViews.cs:9-10` `byte ReadPrivileges, byte WritePrivileges` and
-  `src/Hosts/Rest/Routes/ChannelRoutes.cs:96-97,104-105` `byte? ReadPrivileges, byte? WritePrivileges` (should be `UserPrivileges`).
-- `string Mods` in `src/Hosts/Shared/Views/ScoreViews.cs:14`, `RoomViews.cs:13,32` (`GameMods` is an enum; the view
+- `Basil.Host.Shared/Views/ChannelViews.cs:9-10` `byte ReadPrivileges, byte WritePrivileges` and
+  `Basil.Host.Rest/Routes/ChannelRoutes.cs:96-97,104-105` `byte? ReadPrivileges, byte? WritePrivileges` (should be `UserPrivileges`).
+- `string Mods` in `Basil.Host.Shared/Views/ScoreViews.cs:14`, `RoomViews.cs:13,32` (`GameMods` is an enum; the view
   sends `settings.Mods.ToString()`). Possibly deliberate for a flags enum; the contract should say so. Marked likely.
-- `src/Hosts/Cli/Dashboard/Data/DashboardModel.cs:21` `ulong Privileges);` (CLI only, minor).
+- `Basil.Host.Cli/Dashboard/Data/DashboardModel.cs:21` `ulong Privileges);` (CLI only, minor).
 
 ### 5. Exceptions swallowed with no log and no counter - verified
-- `src/Infrastructure/Beatmaps/Handlers/GetBeatmapStarsHandler.cs:19-22` `catch (Exception e) when (e is not OperationCanceledException) { return null; }`
-- `src/Infrastructure/Beatmaps/Logic/DifficultyAnalyser.cs:32-35` `catch (Exception e) when (...) { return EmptyAnalysis(difficulty.Mode); }`
+- `Basil.Infrastructure.Beatmaps/Handlers/GetBeatmapStarsHandler.cs:19-22` `catch (Exception e) when (e is not OperationCanceledException) { return null; }`
+- `Basil.Infrastructure.Beatmaps/Logic/DifficultyAnalyser.cs:32-35` `catch (Exception e) when (...) { return EmptyAnalysis(difficulty.Mode); }`
   (a failing analyser silently yields an empty analysis, which then looks like a real result)
-- `src/Infrastructure/Beatmaps/Adapters/OsuBeatmapsetReader.cs:156-160` `catch (Exception exception) when (exception is not OperationCanceledException) { // Skip malformed .osu files ... return null; }`
+- `Basil.Infrastructure.Beatmaps/Adapters/OsuBeatmapsetReader.cs:156-160` `catch (Exception exception) when (exception is not OperationCanceledException) { // Skip malformed .osu files ... return null; }`
   (the variable `exception` is unused; a bug in the reader looks like a malformed file)
-- `src/Infrastructure/Beatmaps/Storage/IncomingLeftovers.cs:29-31` empty `catch (Exception exception) when (IOException or UnauthorizedAccessException) { }`
-- `src/Hosts/Cli/Dashboard/Shell/DetailPanel.cs:149-152` `catch (Exception) { // The stale step stays. }`
-- `src/Hosts/Cli/Dashboard/Tabs/CommandActions.cs:51` `if (task.IsCompletedSuccessfully && task.Result) then(); else toasts.Show(otherwise, ...)`:
+- `Basil.Infrastructure.Beatmaps/Storage/IncomingLeftovers.cs:29-31` empty `catch (Exception exception) when (IOException or UnauthorizedAccessException) { }`
+- `Basil.Host.Cli/Dashboard/Shell/DetailPanel.cs:149-152` `catch (Exception) { // The stale step stays. }`
+- `Basil.Host.Cli/Dashboard/Tabs/CommandActions.cs:51` `if (task.IsCompletedSuccessfully && task.Result) then(); else toasts.Show(otherwise, ...)`:
   a faulted check shows the "cannot" toast as if the answer were no; the exception is never observed.
-- `src/Hosts/Irc/Session/IrcSession.cs:210-213` and `src/Hosts/Irc/Transport/IrcListener.cs:128-131` empty IO catches (acceptable for socket teardown; listed for completeness).
+- `Basil.Host.Irc/Session/IrcSession.cs:210-213` and `Basil.Host.Irc/Transport/IrcListener.cs:128-131` empty IO catches (acceptable for socket teardown; listed for completeness).
 The counted/logged ones (Room.Rounds.cs:18 counts `RoomMetrics.TimerFailed`, workers, handlers via `HandlerStep`) are fine.
 
 ### 6. Exception-driven validation remains although migration-status says it is done - verified
@@ -74,15 +74,15 @@ The counted/logged ones (Room.Rounds.cs:18 counts `RoomMetrics.TimerFailed`, wor
 exceptions: Done for users, MD5 hashes, channels and content names". The code still catches the constructor:
 - `src/Domain/Content/ContentReference.cs:92-101` `TryParse` itself is `try { result = Parse(s, provider); return true; } catch { return false; }` (bare catch).
 - MD5: `Md5.TryParse` exists (`src/Domain/Cryptography/Md5.cs:44`) but `new Md5(` appears 27 times and only 1 caller uses
-  `TryParse`/`IsValid`; hosts catch instead: `src/Hosts/Stable/Login/StableLogin.cs:67` and `:90`,
-  `src/Hosts/Stable/Packets/PacketHandlers.cs:117` (`catch (ArgumentException) { }` around `hash = new Md5(action.MapMd5);`),
-  `src/Hosts/Stable/Web/OsuWebRoutes.cs:563`, `src/Application/Users/Persistence/CredentialChecks.cs:26`,
-  `src/Infrastructure/Content/Persistence/EfMenuBannerRepository.cs:84`, `src/Protocol/Stable/Models/Client/OsuFingerprintExtensions.cs:45`.
-- `src/Domain/Users/Country.cs:813` and `src/Infrastructure/Beatmaps/Storage/FileBeatmapsetStorage.cs:331,350` same pattern.
+  `TryParse`/`IsValid`; hosts catch instead: `Basil.Host.Stable/Login/StableLogin.cs:67` and `:90`,
+  `Basil.Host.Stable/Packets/PacketHandlers.cs:117` (`catch (ArgumentException) { }` around `hash = new Md5(action.MapMd5);`),
+  `Basil.Host.Stable/Web/OsuWebRoutes.cs:563`, `Basil.Application.Users/Persistence/CredentialChecks.cs:26`,
+  `Basil.Infrastructure.Content/Persistence/EfMenuBannerRepository.cs:84`, `Basil.Protocol.Game.Stable/Models/Client/OsuFingerprintExtensions.cs:45`.
+- `src/Domain/Users/Country.cs:813` and `Basil.Infrastructure.Beatmaps/Storage/FileBeatmapsetStorage.cs:331,350` same pattern.
 17 sites catch `ArgumentException`/`FormatException` in total.
 
 ### 7. `UserRegistry` is a 799-line mixed responsibility class - likely
-`src/Application/Users/Registry/UserRegistry.cs`: besides indexing online users it does login (`LoginAsync:135`,
+`Basil.Application.Users/Registry/UserRegistry.cs`: besides indexing online users it does login (`LoginAsync:135`,
 `LoginWithTokenAsync:219`), registration checks (`CheckRegistrationAsync:329`), bot bootstrap (`EnsureBotAsync:420`,
 `ConnectBotAsync:464`, `OperateAsync:445`), activity flushing (`FlushActivityAsync:594`), shutdown closing
 (`CloseStoppedAsync:618`) and retention (`PurgeEndedSessionsAsync:632`). AGENTS: Registry "owns the operations on what it holds";
@@ -94,10 +94,10 @@ smell from item 7. Not a defect today, a maintainability blocker for "clean insi
   `tests/Hosts/Cli/Dashboard/GroupFoldTests.cs:29,35` (`GetMethod("Fold", NonPublic)`, `GetField("_rows", NonPublic)`),
   `tests/Hosts/Cli/Dashboard/SmallPartsTests.cs:102,115` (`GetMethod("Relative"|"Matches", NonPublic)`).
 - Real sleeps: `tests/Hosts/Cli/Dashboard/ListPageTests.cs:44,49` `await Task.Delay(50, ...)` (twice, in a test that already has a fake clock);
-  `tests/src/Basil/EndToEnd/Streams.cs:21` `Task.Delay(50)`; `tests/Hosts/Rest/Sse/StreamHelpers.cs:13` `Task.Delay(100)`;
-  `tests/src/Basil/EndToEnd/ShutdownEndToEndTests.cs:176` `Task.Delay(20)`; `tests/Support/Basil.Testing.Clients/OsuClient.cs:131,148` 25 ms polling;
+  `tests/Basil/EndToEnd/Streams.cs:21` `Task.Delay(50)`; `tests/Hosts/Rest/Sse/StreamHelpers.cs:13` `Task.Delay(100)`;
+  `tests/Basil/EndToEnd/ShutdownEndToEndTests.cs:176` `Task.Delay(20)`; `tests/Support/Basil.Testing.Clients/OsuClient.cs:131,148` 25 ms polling;
   `tests/Support/Basil.Testing.Persistence/StoredRows.cs:114` 50 ms. (No `Thread.Sleep` anywhere.)
-- Sync-over-async / blocking: `tests/src/Basil/Configuration/ConfigurationWatcherTests.cs:41` `_watcher.StartAsync(...).GetAwaiter().GetResult();`, `tests/src/Basil/Logging/LogQueueTests.cs:53` `_release.Wait();`.
+- Sync-over-async / blocking: `tests/Basil/Configuration/ConfigurationWatcherTests.cs:41` `_watcher.StartAsync(...).GetAwaiter().GetResult();`, `tests/Basil/Logging/LogQueueTests.cs:53` `_release.Wait();`.
 - Log assertions (rule 8 says do not): `tests/Infrastructure/Bot/Replies/ReplyCatalogTests.cs:187-188` `Assert.Contains(Joined.Key, entry.Message)`, `:203` `Assert.Equal(LogLevel.Warning, ...)`.
 
 ### 9. Tests duplicate reply literals instead of the production constants - verified
@@ -105,18 +105,18 @@ Rule 8/9: "Tests reference those constants rather than duplicating literals." IR
 `IrcReplies` constants: "Password incorrect" (`tests/Hosts/Irc/Users/RegistrationTests.cs`, constant `IrcReplies.BadCredentials`),
 "Too many failed login" (same file, `IrcReplies.TooManyAttempts`), "No text to send" (`tests/Hosts/Irc/Chat/ChatTests.cs`),
 "End of /NAMES" (`ChannelTests.cs`, `QueryTests.cs`), "SASL authentication" (`tests/Hosts/Irc/Users/CapabilityTests.cs`,
-`tests/src/Basil/EndToEnd/IrcEndToEndTests.cs`, `tests/Support/Basil.Testing.Clients/IrcClient.cs`). CLI tests assert literals
+`tests/Basil/EndToEnd/IrcEndToEndTests.cs`, `tests/Support/Basil.Testing.Clients/IrcClient.cs`). CLI tests assert literals
 too (`tests/Hosts/Cli/Commands/ContentCommandTests.cs:272,274` "Sent to 0 clients.", "No such user: 999999"; `UserCommandTests.cs:44`).
 This is a consequence of problem 1: the strings have no constant to reference.
 
 ### 10. Gateway enforcement and rate-limit rules still live in the hosts - verified (documented as target)
 `Basil.Gateway` is referenced by the hosts, but the policy keys and numbers are chosen in the hosts:
-`src/Hosts/Irc/Commands/IrcCommands.Messaging.cs:67` `limiter.TryAcquire($"chat:{actor.Record.Id}", ...)`,
-`src/Hosts/Stable/Packets/PacketHandlers.Chat.cs:30` (same key built in a second host), `src/Hosts/Irc/Commands/IrcCommands.cs:148`
-`$"irc-login-fail:{session.Address}"`, `src/Hosts/Rest/Http/RestPipeline.cs:60,68`, `src/Hosts/Stable/Web/OsuWebRoutes.cs:515,525,526`
-(`register-check:`, `register:`, `register:server`), `src/Hosts/Rest/Sse/DiagnosticsRoutes.cs:74` `"diagnostics:gc-collect"`.
-`RateLimiter` is registered three times: `src/Hosts/Rest/RestHost.cs:20` `services.AddSingleton<RateLimiter>();`,
-`src/Hosts/Stable/Routes/StableRoutes.cs:26` `services.AddSingleton<RateLimiter>();`, `src/Hosts/Irc/Transport/IrcHost.cs:18` `TryAddSingleton`.
+`Basil.Host.Irc/Commands/IrcCommands.Messaging.cs:67` `limiter.TryAcquire($"chat:{actor.Record.Id}", ...)`,
+`Basil.Host.Stable/Packets/PacketHandlers.Chat.cs:30` (same key built in a second host), `Basil.Host.Irc/Commands/IrcCommands.cs:148`
+`$"irc-login-fail:{session.Address}"`, `Basil.Host.Rest/Http/RestPipeline.cs:60,68`, `Basil.Host.Stable/Web/OsuWebRoutes.cs:515,525,526`
+(`register-check:`, `register:`, `register:server`), `Basil.Host.Rest/Sse/DiagnosticsRoutes.cs:74` `"diagnostics:gc-collect"`.
+`RateLimiter` is registered three times: `Basil.Host.Rest/RestHost.cs:20` `services.AddSingleton<RateLimiter>();`,
+`Basil.Host.Stable/Routes/StableRoutes.cs:26` `services.AddSingleton<RateLimiter>();`, `Basil.Host.Irc/Transport/IrcHost.cs:18` `TryAddSingleton`.
 It works (last registration wins, one instance) but each host believes it owns the limiter. The same `chat:` key being
 shared between IRC and Stable is a hidden coupling. `migration-status.md` lists this as target; for a v1.0.0 "clean inside"
 goal it is the largest remaining migration item.
@@ -124,27 +124,27 @@ goal it is the largest remaining migration item.
 ### 11. "(target)" status text is out of date for options binding - verified
 `docs/for-developers/migration-status.md` says "`Basil` binds configuration and hands it over as `IOptions<T>`; target: the
 project that defines an options type binds it". In code three Infrastructure projects already bind themselves
-(`src/Infrastructure/Beatmaps/DependencyInjection.cs:59`, `src/Infrastructure/Bot/DependencyInjection.cs:41`,
-`src/Infrastructure/Shared/DependencyInjection.cs:67`, `DatabaseSetup.cs:14`), while the hosts still read raw string keys:
-`src/Hosts/Irc/Transport/IrcHost.cs:40-41` `configuration.GetValue("Basil:Server:Irc:Port", irc.Port)` / `"Basil:Server:Domain"`,
-`src/Hosts/Rest/RestHost.cs:36` takes `IConfiguration`, and `src/Basil/Lifetime/HostApplication.cs:45,76` still binds
+(`Basil.Infrastructure.Beatmaps/DependencyInjection.cs:59`, `Basil.Infrastructure.Bot/DependencyInjection.cs:41`,
+`Basil.Infrastructure.Shared/DependencyInjection.cs:67`, `DatabaseSetup.cs:14`), while the hosts still read raw string keys:
+`Basil.Host.Irc/Transport/IrcHost.cs:40-41` `configuration.GetValue("Basil:Server:Irc:Port", irc.Port)` / `"Basil:Server:Domain"`,
+`Basil.Host.Rest/RestHost.cs:36` takes `IConfiguration`, and `Basil/Lifetime/HostApplication.cs:45,76` still binds
 `Basil:Updates`/`Basil:Server`. So both the doc and the code are in a mixed state.
 
 ### 12. Whole images are copied into memory on the image hosts - verified location, severity likely
-`src/Hosts/Rest/Images/StreamImageProvider.cs:44-46`
+`Basil.Host.Rest/Images/StreamImageProvider.cs:44-46`
 `var memory = new MemoryStream(); await stream.CopyToAsync(memory, ...); return new BufferedResolver(memory.ToArray());`
 AGENTS Streaming: "Application does not buffer a payload in a MemoryStream or a byte[] copy" and "Large payloads (replays, `.osz`
-archives, images) never pass through a cache"; `src/Basil/Lifetime/HostApplication.cs:60-63` also puts an ImageSharp disk
+archives, images) never pass through a cache"; `Basil/Lifetime/HostApplication.cs:60-63` also puts an ImageSharp disk
 cache under `<Storage>/Cache`. The copy is bounded by upload limits for avatars/screenshots, so this is a rule violation,
-not an OOM risk (likely). Related but bounded and acceptable: `src/Hosts/Stable/Routes/StableRoutes.cs:79-81` buffers the
-packet body (Kestrel limit 1 MiB, `KestrelSetup.cs:12`), `src/Infrastructure/Beatmaps/Adapters/OsuBeatmapsetReader.cs:132`
+not an OOM risk (likely). Related but bounded and acceptable: `Basil.Host.Stable/Routes/StableRoutes.cs:79-81` buffers the
+packet body (Kestrel limit 1 MiB, `KestrelSetup.cs:12`), `Basil.Infrastructure.Beatmaps/Adapters/OsuBeatmapsetReader.cs:132`
 buffers one `.osu` capped by `MaxOsuBytes`.
 
 ### 13. Dead production members (only tests call them) - verified by grep over `src` and `tests`
 - `src/Domain/Mechanics/GameTeamType.cs:33` `public bool IsTagMode()` - no reference anywhere.
-- `src/Hosts/Cli/Dashboard/Data/DashboardModel.cs:190` `public void AddOutput(OutputLine line)` - no reference anywhere.
-- `src/Hosts/Cli/Dashboard/Graphs/BrailleGraph.cs:56` `public static bool FitsGraphs(int width)` - no reference anywhere.
-- `src/Protocol/Stable/Wire/Packets/PacketWriter.cs:94` `ChangeUsername` and `:269` `ToggleBlockNonFriendDm`, `src/Protocol/Irc/Models/IrcMessage.cs:274`
+- `Basil.Host.Cli/Dashboard/Data/DashboardModel.cs:190` `public void AddOutput(OutputLine line)` - no reference anywhere.
+- `Basil.Host.Cli/Dashboard/Graphs/BrailleGraph.cs:56` `public static bool FitsGraphs(int width)` - no reference anywhere.
+- `Basil.Protocol.Game.Stable/Wire/Packets/PacketWriter.cs:94` `ChangeUsername` and `:269` `ToggleBlockNonFriendDm`, `Basil.Protocol.Irc/Models/IrcMessage.cs:274`
   `Privmsg` - referenced only by their own protocol tests, never by a host (the server never sends them).
 - `src/Domain/Beatmaps/BeatmapsetStatus.cs:66` `FromOsuApi` - only `tests/Domain/Beatmaps/BeatmapsetStatusTests.cs:47-49`.
 - Empty test project: `tests/Application/Content/Basil.Application.Content.Tests.csproj` has 0 test files (Application.Content holds only interfaces + `ReadMenu`), still in `Basil.slnx`.
@@ -159,16 +159,16 @@ buffers one `.osu` capped by `MaxOsuBytes`.
 - `Directory.Packages.props` lists `SharpZipLib` 1.4.2 and `Microsoft.Extensions.Configuration.Binder` 10.0.11 but no csproj references them (verified by script over `src`, `tests`, `tools`): dead version pins.
 - `Directory.Packages.props` mixes `Microsoft.Extensions.Configuration*` at 10.0.11 with others at 10.0.14 (cosmetic).
 - Docs contradict: `AGENTS.md` describes `Basil.Infrastructure.Persistence` as "Npgsql provider ... all PostgreSQL migrations" while
-  `src/Infrastructure/Persistence/Providers/MySqlDatabaseProvider.cs` exists and `docs/for-developers/database.md:5` says PostgreSQL or MySQL;
-  XML docs `src/Infrastructure/Shared/Persistence/DatabaseOptions.cs:3` and `DatabaseSetup.cs:5` say only PostgreSQL. Only PostgreSQL migrations exist (`Migrations/<Module>`), so MySQL support depends on the migrations being engine-neutral (`database.md:131` says so).
+  `Basil.Infrastructure.Persistence/Providers/MySqlDatabaseProvider.cs` exists and `docs/for-developers/database.md:5` says PostgreSQL or MySQL;
+  XML docs `Basil.Infrastructure.Shared/Persistence/DatabaseOptions.cs:3` and `DatabaseSetup.cs:5` say only PostgreSQL. Only PostgreSQL migrations exist (`Migrations/<Module>`), so MySQL support depends on the migrations being engine-neutral (`database.md:131` says so).
 
 ### 15. Smaller contract and hygiene items - verified
-- `src/Application/Scores/Messages/ListScores.cs:20-23` `public enum ScoreListOutcome { Ok = 1, NoBeatmap, NoUser ... }` has no `Denied = 0` (rule: every outcome enum has `Denied = 0`, `Ok = 1`). It is a message-result enum for a public read, so arguably exempt, but it is the only one of 11 `*Outcome` enums that deviates (`ShutdownStepOutcome` in `src/Basil/Lifetime/ShutdownSequence.cs` is not an object outcome).
-- `src/Hosts/Rest/Http/Api.cs:102` `new Envelope<T>(..., DateTimeOffset.UtcNow)`: the only direct clock read in `src`; everything else uses `TimeProvider`, so the envelope timestamp cannot be faked in tests.
-- Two `Meter` instances with the same name: `src/Application/Multiplayer/Objects/Rooms/RoomMetrics.cs:12` `new Meter("Basil.Multiplayer", "1.0")` and `src/Infrastructure/Multiplayer/Metrics/MultiplayerMeter.cs:9`; same for `"Basil.Users"` (`Application/Users/Objects/Connections/ConnectionMetrics.cs:22` vs `Infrastructure/Users/Metrics/UsersMeter.cs:9`). Application owns metrics code here although the layering puts `Metrics/` in Infrastructure.
-- `src/Hosts/Cli/Socket/ControlSocket.cs:173` `_ = Task.Run(() => ServeAsync(client, stoppingToken), stoppingToken);` - `ServeAsync` (line 190) only catches IO/Socket/Json/OperationCanceled; any other exception faults an unobserved task with no log (likely).
-- XML docs that describe implementation (rule 6): `src/Application/Users/Registry/UserRegistry.cs:669` "The lock order is this gate, then <see cref="User" />", `src/Infrastructure/Content/Storage/FileFaqStorage.cs:53` "Writes an entry's new text to a temporary file", `src/Infrastructure/Shared/Storage/FileUploadSpool.cs:6`, `TempFiles.cs:6`.
-- Correlated subquery for `BestPerPlayer` in `src/Infrastructure/Scores/Persistence/EfScoreRepository.cs:~97` (`!matching.Any(other => other.UserId == s.UserId && ...)`) is O(n^2) per beatmap leaderboard and every list uses `Skip(offset)`; fine at small scale, a load risk for the 1k-user goal that `migration-status.md` says is untested (likely).
+- `Basil.Application.Scores/Messages/ListScores.cs:20-23` `public enum ScoreListOutcome { Ok = 1, NoBeatmap, NoUser ... }` has no `Denied = 0` (rule: every outcome enum has `Denied = 0`, `Ok = 1`). It is a message-result enum for a public read, so arguably exempt, but it is the only one of 11 `*Outcome` enums that deviates (`ShutdownStepOutcome` in `Basil/Lifetime/ShutdownSequence.cs` is not an object outcome).
+- `Basil.Host.Rest/Http/Api.cs:102` `new Envelope<T>(..., DateTimeOffset.UtcNow)`: the only direct clock read in `src`; everything else uses `TimeProvider`, so the envelope timestamp cannot be faked in tests.
+- Two `Meter` instances with the same name: `Basil.Application.Multiplayer/Objects/Rooms/RoomMetrics.cs:12` `new Meter("Basil.Multiplayer", "1.0")` and `Basil.Infrastructure.Multiplayer/Metrics/MultiplayerMeter.cs:9`; same for `"Basil.Users"` (`Application/Users/Objects/Connections/ConnectionMetrics.cs:22` vs `Infrastructure/Users/Metrics/UsersMeter.cs:9`). Application owns metrics code here although the layering puts `Metrics/` in Infrastructure.
+- `Basil.Host.Cli/Socket/ControlSocket.cs:173` `_ = Task.Run(() => ServeAsync(client, stoppingToken), stoppingToken);` - `ServeAsync` (line 190) only catches IO/Socket/Json/OperationCanceled; any other exception faults an unobserved task with no log (likely).
+- XML docs that describe implementation (rule 6): `Basil.Application.Users/Registry/UserRegistry.cs:669` "The lock order is this gate, then <see cref="User" />", `Basil.Infrastructure.Content/Storage/FileFaqStorage.cs:53` "Writes an entry's new text to a temporary file", `Basil.Infrastructure.Shared/Storage/FileUploadSpool.cs:6`, `TempFiles.cs:6`.
+- Correlated subquery for `BestPerPlayer` in `Basil.Infrastructure.Scores/Persistence/EfScoreRepository.cs:~97` (`!matching.Any(other => other.UserId == s.UserId && ...)`) is O(n^2) per beatmap leaderboard and every list uses `Skip(offset)`; fine at small scale, a load risk for the 1k-user goal that `migration-status.md` says is untested (likely).
 
 ## 1. Leftovers of the migration
 
@@ -180,7 +180,7 @@ Every "(target)" claim checked:
 | Rest/Cli/Infrastructure never reference `Protocol.Stable` | csproj of Rest, Cli, Shared have no reference; no `using Basil.Protocol.Stable` in Rest/Cli; no Infrastructure csproj references Protocol | done (verified) |
 | Test naming `Condition_Result` | not sampled | unknown |
 - `TODO`: 1, `src/Domain/Client/ScoreFrame.cs:17` `int TagByte, //TODO: Can someone reverse-engineer the osu! stable spectating protocol and decode the TagByte bitmask in SPECTATE_FRAMES?`. No `FIXME`/`HACK`/`XXX`, no `NotImplementedException`, no `[Obsolete]`, no `SuppressMessage`.
-- `#pragma warning disable`: 1 hand-written, `src/Infrastructure/Beatmaps/Adapters/OsuBeatmapCalculator.cs:180` `#pragma warning disable CS0618 // the score is built here, with no score manager to ask` (justified). Generated/migration only: `CA1814` in 4 migrations (`Beatmaps|Chat|Multiplayer|Users/..._InitialCreate.cs`), `612, 618` in the 10 generated designer/snapshot files (20 lines).
+- `#pragma warning disable`: 1 hand-written, `Basil.Infrastructure.Beatmaps/Adapters/OsuBeatmapCalculator.cs:180` `#pragma warning disable CS0618 // the score is built here, with no score manager to ask` (justified). Generated/migration only: `CA1814` in 4 migrations (`Beatmaps|Chat|Multiplayer|Users/..._InitialCreate.cs`), `612, 618` in the 10 generated designer/snapshot files (20 lines).
 - Commented-out code: none found by grep for `//\s*(var|if|return|await)`; not exhaustively read (likely none).
 - Unreferenced members: see 13.
 
@@ -189,8 +189,8 @@ Every "(target)" claim checked:
 - `.ConfigureAwait`: 0 in `src`/`tools`; `tests/Architecture/LayeringTests.cs:318` enforces it.
 - Host calling `ScopeTo`: 0 hits in `src/Hosts` (verified). Host referencing Infrastructure: 0 (csproj and `using`). Host referencing another host: 0 (script over `using Basil.Host.*`). Rest/Cli referencing `Protocol.Stable`: 0.
 - Module Infrastructure referencing another module: 0 (csproj project references and `using Basil.Infrastructure.*`; only `Shared`, which is allowed). Application project references match the documented graph.
-- Application holding handlers/logic/workers: none (no `Handlers`/`Logic`/`Workers`/`Adapters` folder and no `INotificationHandler`/`BackgroundService` under `src/Application`). Note `src/Application/Bot/Commands/` holds `CommandCatalog`, `CommandContext`, replies (contracts); the command handlers are in `Infrastructure/Bot/Handlers/Commands`. Fine.
-- Type names as literals: `grep '"src/Basil\.'` finds only the `Meter` names (`"Basil.Multiplayer"` etc., 13 of them, and `AddMeter("Basil.*")` in `src/Basil/Logging/TelemetrySetup.cs:29`). These are telemetry names, not type names; acceptable.
+- Application holding handlers/logic/workers: none (no `Handlers`/`Logic`/`Workers`/`Adapters` folder and no `INotificationHandler`/`BackgroundService` under `src/Application`). Note `Basil.Application.Bot/Commands/` holds `CommandCatalog`, `CommandContext`, replies (contracts); the command handlers are in `Infrastructure/Bot/Handlers/Commands`. Fine.
+- Type names as literals: `grep '"Basil\.'` finds only the `Meter` names (`"Basil.Multiplayer"` etc., 13 of them, and `AddMeter("Basil.*")` in `Basil/Logging/TelemetrySetup.cs:29`). These are telemetry names, not type names; acceptable.
 - `Priv` abbreviation: none.
 - `await` under a room lock: none. `lock (_sync)` blocks in `Room.*.cs` are synchronous (the compiler forbids await); `Room.Enter()`, `User.Enter()`, `Channel.Enter()`, `Connection.EnterSpectators()` callers (`Lobby.cs:272`, `UserGrants/UserProfile/UserSessions/UserSilence`, `Connection.cs:182,212,229`) never await inside the scope (checked the files). `UserRegistry.AccountScope` is a `ref struct`, so it cannot cross an await.
 - Handler that waits: no handler class contains `Task.Delay`/`WaitAsync` (files with delays are workers, lifetime and tests). Handler serving several event types: see 3.
@@ -209,10 +209,10 @@ Every "(target)" claim checked:
 ## 4. Error handling and safety
 
 - `catch` blocks: 107 sites. Swallowing ones: see 5. `async void`: 0. `.Result`/`.Wait()` in `src`: only property `.Result` of outcome tuples and `task.Result` after `IsCompletedSuccessfully` (`CommandActions.cs:51`), no blocking.
-- Unobserved `Task.Run`/discards in `src`: `ControlSocket.cs:173` (15), `SseHub.cs:293` `_ = TickAsync();` (its body begins with `try`, likely safe), `FileBeatmapsetWatcher.cs:118` `_ = SettleAsync(name);` (likely handles its errors; `:143` catch logs), `BeatmapReloader.cs:34` (RunAsync has catch at `:58`), `ScorePerformanceRecalculator.cs:29` (documented "failure is logged"), eight `_ = Task.Run(async () => ...)` in `src/Hosts/Cli/Dashboard` (each has a try/catch in the sampled ones; `DetailPanel.cs:142-152` swallows, see 5).
+- Unobserved `Task.Run`/discards in `src`: `ControlSocket.cs:173` (15), `SseHub.cs:293` `_ = TickAsync();` (its body begins with `try`, likely safe), `FileBeatmapsetWatcher.cs:118` `_ = SettleAsync(name);` (likely handles its errors; `:143` catch logs), `BeatmapReloader.cs:34` (RunAsync has catch at `:58`), `ScorePerformanceRecalculator.cs:29` (documented "failure is logged"), eight `_ = Task.Run(async () => ...)` in `Basil.Host.Cli/Dashboard` (each has a try/catch in the sampled ones; `DetailPanel.cs:142-152` swallows, see 5).
 - Unbounded collections: `RateLimiter` is capped (`MaxKeys = 100_000`, purge every minute). `IMemoryCache` is used only for `CacheAside` and credentials. No unbounded cache found in hosts; `IrcListener._perAddress` and `Outbox._queues` are per-connection structures (not checked for removal on close: likely fine).
 - Database reads: every `ToListAsync` in `src/Infrastructure` has `Take(...)` (`ListLimits.Ceiling`, `page.Fetch`, or `limit`) except `EfSettingsRepository.cs:46` (settings categories, a handful of rows) and the two `Include`-free reads that are single-row. Verified clean otherwise.
-- Streaming/memory copies: see 12. Uploads go through `FileUploadSpool` (`src/Infrastructure/Shared/Storage/FileUploadSpool.cs`), which has a catch that deletes the temp file; quarantine is in `Quarantine.cs`.
+- Streaming/memory copies: see 12. Uploads go through `FileUploadSpool` (`Basil.Infrastructure.Shared/Storage/FileUploadSpool.cs`), which has a catch that deletes the temp file; quarantine is in `Quarantine.cs`.
 - Clock: see 15.
 
 ## 5. Tests
@@ -256,7 +256,7 @@ Per project (test attributes: `[Fact]`/`[Theory]` lines; theories count once eve
 | Architecture | 87 | 17 | - |
 Total about 3,333 `[Fact]/[Theory]`.
 
-Thin relative to source (likely gaps): `Hosts/Shared` (7 tests / 17 files; `OutcomeErrors.cs` 123 lines, `RoomCommands.cs` 203 lines, `AdmissionRefusals.cs`), `Application/Diagnostics` (10 / 15), `Application/Shared` (15 / 25; `ServerSettings.cs` 492 lines), `Application/Scores` (37 / 26 in 2 files), `Infrastructure/Servers` (28 / 22 in 2 files), `Infrastructure/Multiplayer` (105 / 69), `Infrastructure/Anticheat` (3), `Application/Content` (empty). There is no test project for `Basil.Infrastructure.Persistence` itself (migrations are covered by `tests/src/Basil/ModuleMigrationTests.cs`), none for `Application.Anticheat`/`Application.Authentication` (interfaces only).
+Thin relative to source (likely gaps): `Hosts/Shared` (7 tests / 17 files; `OutcomeErrors.cs` 123 lines, `RoomCommands.cs` 203 lines, `AdmissionRefusals.cs`), `Application/Diagnostics` (10 / 15), `Application/Shared` (15 / 25; `ServerSettings.cs` 492 lines), `Application/Scores` (37 / 26 in 2 files), `Infrastructure/Servers` (28 / 22 in 2 files), `Infrastructure/Multiplayer` (105 / 69), `Infrastructure/Anticheat` (3), `Application/Content` (empty). There is no test project for `Basil.Infrastructure.Persistence` itself (migrations are covered by `tests/Basil/ModuleMigrationTests.cs`), none for `Application.Anticheat`/`Application.Authentication` (interfaces only).
 
 Quality findings: see 8 and 9. Also `MemberData`/`Skip` use: no `Skip =` on a test. Known gaps listed by the owner in `migration-status.md` (kick/unban/team/removeref unknown-name tests; no load test) are still open.
 

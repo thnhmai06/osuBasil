@@ -23,12 +23,12 @@ dotnet run --project Basil -- --console 0
 ```
 
 The default connection string in
-[`appsettings.json`](../../src/Basil/Configurations/appsettings.json) is
+[`appsettings.json`](../../Basil/Configurations/appsettings.json) is
 `Host=localhost;Port=5432;Database=basil;Username=basil;Password=basil`; create that role, or override the
 setting as described below. Database migrations run when the server starts.
 
 On the first run Basil creates its `Data/` directory next to the build output
-(`src/Basil/bin/Debug/net10.0/Data/`). The server never creates an account by itself; make the first
+(`Basil/bin/Debug/net10.0/Data/`). The server never creates an account by itself; make the first
 administrator with the console, which runs the command against the storage without starting the server:
 
 ```bash
@@ -41,7 +41,7 @@ the terminal dashboard; when stdin or stdout is redirected it falls back to `--c
 ## Development configuration
 
 Basil uses the same configuration model in development and production. There is no separate development-only file.
-The files live in `Configurations/` beside the executable (in a checkout, `src/Basil/Configurations/` is copied to
+The files live in `Configurations/` beside the executable (in a checkout, `Basil/Configurations/` is copied to
 the build output):
 
 ```text

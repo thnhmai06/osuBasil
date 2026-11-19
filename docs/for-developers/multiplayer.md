@@ -130,16 +130,16 @@ A player is in at most one room. A room's own check cannot see another room's se
 
 ## Related code
 
-* [`Room.cs`](../../src/Application/Multiplayer/Objects/Rooms/Room.cs): live room and `ScopeTo`
-* [`ScopedRoom.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoom.cs): caller, role and room-privilege scope
-* [`ScopedRoomMembers.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomMembers.cs), [`ScopedRoomSlots.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomSlots.cs), [`ScopedRoomRounds.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomRounds.cs), [`ScopedRoomSettings.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomSettings.cs), [`ScopedRoomAuthority.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomAuthority.cs): caller-authorized room parts
-* [`Lobby.cs`](../../src/Application/Multiplayer/Registry/Lobby.cs), [`Room.cs`](../../src/Application/Multiplayer/Objects/Rooms/Room.cs): system-owned room operations
-* [`Room.cs`](../../src/Domain/Domain/Multiplayer/Room/Room.cs): the rules of the room on its own (the Domain half)
-* [`RoomPrivileges.cs`](../../src/Domain/Domain/Multiplayer/Room/RoomPrivileges.cs): room privileges and the role groups
-* [`CheckRoundStart.cs`](../../src/Application/Multiplayer/Messages/CheckRoundStart.cs): asks whether a connection may start rounds, without starting one
-* [`StartRoomCountdown.cs`](../../src/Application/Multiplayer/Messages/StartRoomCountdown.cs), [`CancelRoomCountdown.cs`](../../src/Application/Multiplayer/Messages/CancelRoomCountdown.cs): the countdown requests, answered by BasilBot
-* [`RoomCountdowns.cs`](../../src/Infrastructure/Bot/Workers/RoomCountdowns.cs), [`RoomCountdown.cs`](../../src/Application/Bot/Objects/RoomCountdown.cs): the countdown timers and their marks
-* [`Lobby.cs`](../../src/Application/Multiplayer/Registry/Lobby.cs), [`ScopedLobby.cs`](../../src/Application/Multiplayer/Capabilities/ScopedLobby.cs): lobby-owned lifetime and caller-scoped operations
+* [`Room.cs`](../../Basil.Application.Multiplayer/Objects/Rooms/Room.cs): live room and `ScopeTo`
+* [`ScopedRoom.cs`](../../Basil.Application.Multiplayer/Capabilities/Rooms/ScopedRoom.cs): caller, role and room-privilege scope
+* [`ScopedRoomMembers.cs`](../../Basil.Application.Multiplayer/Capabilities/Rooms/ScopedRoomMembers.cs), [`ScopedRoomSlots.cs`](../../Basil.Application.Multiplayer/Capabilities/Rooms/ScopedRoomSlots.cs), [`ScopedRoomRounds.cs`](../../Basil.Application.Multiplayer/Capabilities/Rooms/ScopedRoomRounds.cs), [`ScopedRoomSettings.cs`](../../Basil.Application.Multiplayer/Capabilities/Rooms/ScopedRoomSettings.cs), [`ScopedRoomAuthority.cs`](../../Basil.Application.Multiplayer/Capabilities/Rooms/ScopedRoomAuthority.cs): caller-authorized room parts
+* [`Lobby.cs`](../../Basil.Application.Multiplayer/Registry/Lobby.cs), [`Room.cs`](../../Basil.Application.Multiplayer/Objects/Rooms/Room.cs): system-owned room operations
+* [`Room.cs`](../../Basil.Domain/Multiplayer/Room/Room.cs): the rules of the room on its own (the Domain half)
+* [`RoomPrivileges.cs`](../../Basil.Domain/Multiplayer/Room/RoomPrivileges.cs): room privileges and the role groups
+* [`CheckRoundStart.cs`](../../Basil.Application.Multiplayer/Messages/CheckRoundStart.cs): asks whether a connection may start rounds, without starting one
+* [`StartRoomCountdown.cs`](../../Basil.Application.Multiplayer/Messages/StartRoomCountdown.cs), [`CancelRoomCountdown.cs`](../../Basil.Application.Multiplayer/Messages/CancelRoomCountdown.cs): the countdown requests, answered by BasilBot
+* [`RoomCountdowns.cs`](../../Basil.Infrastructure.Bot/Workers/RoomCountdowns.cs), [`RoomCountdown.cs`](../../Basil.Application.Bot/Objects/RoomCountdown.cs): the countdown timers and their marks
+* [`Lobby.cs`](../../Basil.Application.Multiplayer/Registry/Lobby.cs), [`ScopedLobby.cs`](../../Basil.Application.Multiplayer/Capabilities/ScopedLobby.cs): lobby-owned lifetime and caller-scoped operations
 
 ## See also
 

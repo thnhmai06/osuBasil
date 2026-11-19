@@ -141,8 +141,8 @@ the owner added on 2026-11-18 are recorded here first; both change surfaces froz
 Owner (2026-11-18): persistence becomes EF Core on PostgreSQL only; MySQL is no longer supported; the database is
 optimised for PostgreSQL.
 
-Today: an engine abstraction `IDatabaseProvider` (`src/Infrastructure/Shared/Persistence/DatabaseProvider.cs`) with
-`PostgresDatabaseProvider` and `MySqlDatabaseProvider` (`src/Infrastructure/Persistence/Providers/`), chosen per
+Today: an engine abstraction `IDatabaseProvider` (`Basil.Infrastructure.Shared/Persistence/DatabaseProvider.cs`) with
+`PostgresDatabaseProvider` and `MySqlDatabaseProvider` (`Basil.Infrastructure.Persistence/Providers/`), chosen per
 endpoint by `Basil:Database:Read:Provider` / `Write:Provider` (`"PostgreSQL"`, `"MySql"`). The migrations are kept
 engine-neutral on purpose (`database.md`: a migration may not contain `Npgsql`, `MySql`, `type:` or
 `.HasColumnType(`). The tests run on either engine (`BASIL_TEST_PROVIDER`, Testcontainers.MySql in
@@ -174,8 +174,8 @@ Owner (2026-11-18): Basil runs only as a Docker container; the native builds per
 
 Today: `release.yml` publishes six self-contained archives (`win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`,
 `osx-x64`, `osx-arm64`), packs a Velopack updater (`continue-on-error`) and pushes an image to Docker Hub. The server
-has an update checker (`src/Basil/Configuration/UpdateChecker.cs`), a native restart that starts the same executable
-again (`src/Basil/Lifetime/Restarter.cs`), and a dashboard that needs a terminal (`--console 1`).
+has an update checker (`Basil/Configuration/UpdateChecker.cs`), a native restart that starts the same executable
+again (`Basil/Lifetime/Restarter.cs`), and a dashboard that needs a terminal (`--console 1`).
 
 Steps (to detail and approve):
 

@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<RootNamespace>Basil.Host.Shared</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Basil.Application.Shared\Basil.Application.Shared.csproj"/>
+		<ProjectReference Include="..\Basil.Gateway\Basil.Gateway.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Beatmaps\Basil.Application.Beatmaps.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Chat\Basil.Application.Chat.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Content\Basil.Application.Content.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Multiplayer\Basil.Application.Multiplayer.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Scores\Basil.Application.Scores.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Servers\Basil.Application.Servers.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Users\Basil.Application.Users.csproj"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Basil.Host.Rest.Tests"/>
+		<InternalsVisibleTo Include="Basil.Host.Shared.Tests"/>
+	</ItemGroup>
+
+</Project>

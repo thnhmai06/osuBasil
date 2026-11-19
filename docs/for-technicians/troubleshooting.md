@@ -290,7 +290,7 @@ Basil reads most deployment configuration when the process starts; only `Logging
 Policy settings (locks, rate limits, upload limits and the like) are stored in the database and apply at once when
 changed through the API or the console.
 
-After changing [`Configurations/appsettings.json`](../../src/Basil/Configurations/appsettings.json):
+After changing [`Configurations/appsettings.json`](../../Basil/Configurations/appsettings.json):
 
 1. Save the file.
 2. Stop Basil.

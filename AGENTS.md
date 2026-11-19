@@ -428,7 +428,7 @@ value is never renumbered for a client. `Basil.Protocol.Irc` wraps IRC the same 
 transport hosts reference Protocol; Application and Infrastructure never do. Protocol is the language the hosts use to
 translate the wire into the system's own messages and back; it does not validate and coordinates nothing.
 
-Every project is a folder at the repository root named after its project: `src/Domain/Domain/`,
+Every project is a folder at the repository root named after its project: `Basil.Domain/`,
 `Basil.Application.<Module>/`, `Basil.Infrastructure.<Module>/`, `Basil.Host.{Shared,Stable,Irc,Rest,Cli}/`,
 `Basil.Protocol.{Game.Stable,Irc}/`. The project file and the namespace keep the full name
 (`Basil.Domain.csproj`, `Basil.Domain.*`, `Basil.Application.Users.Persistence`). Tests mirror the same tree under

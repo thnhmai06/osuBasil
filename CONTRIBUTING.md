@@ -49,14 +49,14 @@ Follow that guide rather than creating an ad-hoc local setup.
 ## Project structure
 
 ```text
-src/Domain/Domain/                    business model
+Basil.Domain/                    business model
 Basil.Application.<Module>/      the module's ports and live objects
 Basil.Infrastructure.<Module>/   the module's implementations
 Basil.Protocol.{Game.Stable,Irc}/ wire formats
 Basil.Host.{Shared,Stable,Irc,Rest,Cli}/
                                  the transports
-src/Basil/                           the entry point
-src/Application/Bot/, src/Infrastructure/Bot/
+Basil/                           the entry point
+Basil.Application.Bot/, Basil.Infrastructure.Bot/
                                  BasilBot
 
 tests/

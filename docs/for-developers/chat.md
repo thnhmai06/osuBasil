@@ -103,17 +103,17 @@ BasilBot is online with a permanent `User` and one Stable and one Irc connection
 
 ## Related code
 
-* [`Channel.cs`](../../src/Application/Chat/Objects/Channel.cs): channel state, `ScopeTo` and the read and write rules each kind overrides
-* [`ScopedChannel.cs`](../../src/Application/Chat/Capabilities/ScopedChannel.cs): join, part and post operations
-* [`ScopedGeneralChannel.cs`](../../src/Application/Chat/Capabilities/ScopedGeneralChannel.cs): general-channel configuration and deletion
-* [`ScopedServerChannels.cs`](../../src/Application/Servers/Capabilities/ScopedServerChannels.cs): general-channel creation, and the lookup of the channel to manage
-* [`ChannelOutcome.cs`](../../src/Application/Chat/Objects/ChannelOutcome.cs): operation outcomes
-* [`GeneralChannelRegistry.cs`](../../src/Application/Chat/Registry/GeneralChannelRegistry.cs): general-channel ownership and the automatic joins and parts
-* [`GeneralChannel.cs`](../../src/Application/Chat/Objects/GeneralChannel.cs), [`PmChannel.cs`](../../src/Application/Chat/Objects/PmChannel.cs), [`PmChannels.cs`](../../src/Application/Chat/Registry/PmChannels.cs): general and private-message channels, and the private-message channel of each online user; [`GeneralChannelRecord.cs`](../../src/Domain/Chat/GeneralChannelRecord.cs): the stored general channel
-* [`RoomChannel.cs`](../../src/Application/Chat/Objects/RoomChannel.cs), [`SpectatorChannel.cs`](../../src/Application/Chat/Objects/SpectatorChannel.cs), [`SpectatorChannels.cs`](../../src/Application/Chat/Registry/SpectatorChannels.cs): room and spectator channels, and the spectator channel of each watched client
-* [`User.cs`](../../src/Application/Users/Objects/User.cs), [`ScopedUser.cs`](../../src/Application/Users/Capabilities/ScopedUser.cs): the user's online state (away message, connections)
-* [`ScopedStableSession.cs`](../../src/Application/Users/Capabilities/ScopedStableSession.cs): spectator operations
-* [`Room.cs`](../../src/Application/Multiplayer/Objects/Rooms/Room.cs), [`RoomCountdowns.cs`](../../src/Infrastructure/Bot/Workers/RoomCountdowns.cs): room ownership and the bot's countdowns
+* [`Channel.cs`](../../Basil.Application.Chat/Objects/Channel.cs): channel state, `ScopeTo` and the read and write rules each kind overrides
+* [`ScopedChannel.cs`](../../Basil.Application.Chat/Capabilities/ScopedChannel.cs): join, part and post operations
+* [`ScopedGeneralChannel.cs`](../../Basil.Application.Chat/Capabilities/ScopedGeneralChannel.cs): general-channel configuration and deletion
+* [`ScopedServerChannels.cs`](../../Basil.Application.Servers/Capabilities/ScopedServerChannels.cs): general-channel creation, and the lookup of the channel to manage
+* [`ChannelOutcome.cs`](../../Basil.Application.Chat/Objects/ChannelOutcome.cs): operation outcomes
+* [`GeneralChannelRegistry.cs`](../../Basil.Application.Chat/Registry/GeneralChannelRegistry.cs): general-channel ownership and the automatic joins and parts
+* [`GeneralChannel.cs`](../../Basil.Application.Chat/Objects/GeneralChannel.cs), [`PmChannel.cs`](../../Basil.Application.Chat/Objects/PmChannel.cs), [`PmChannels.cs`](../../Basil.Application.Chat/Registry/PmChannels.cs): general and private-message channels, and the private-message channel of each online user; [`GeneralChannelRecord.cs`](../../src/Domain/Chat/GeneralChannelRecord.cs): the stored general channel
+* [`RoomChannel.cs`](../../Basil.Application.Chat/Objects/RoomChannel.cs), [`SpectatorChannel.cs`](../../Basil.Application.Chat/Objects/SpectatorChannel.cs), [`SpectatorChannels.cs`](../../Basil.Application.Chat/Registry/SpectatorChannels.cs): room and spectator channels, and the spectator channel of each watched client
+* [`User.cs`](../../Basil.Application.Users/Objects/User.cs), [`ScopedUser.cs`](../../Basil.Application.Users/Capabilities/ScopedUser.cs): the user's online state (away message, connections)
+* [`ScopedStableSession.cs`](../../Basil.Application.Users/Capabilities/ScopedStableSession.cs): spectator operations
+* [`Room.cs`](../../Basil.Application.Multiplayer/Objects/Rooms/Room.cs), [`RoomCountdowns.cs`](../../Basil.Infrastructure.Bot/Workers/RoomCountdowns.cs): room ownership and the bot's countdowns
 
 ## See also
 

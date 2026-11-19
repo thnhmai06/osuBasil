@@ -8,26 +8,26 @@ Paths are under `/mnt/shared/Development/osuBasil`. Known findings F-021, F-038,
 1. **First-run Postgres command cannot work.** `docs/for-developers/development.md:21`:
    `docker run -d --name basil-pg -e POSTGRES_PASSWORD=basil -e POSTGRES_DB=basil -p 5432:5432 postgres:17-alpine`.
    Line 25-27 says the default connection string uses `Username=basil`, but no `POSTGRES_USER=basil` is given, so the only
-   role is `postgres`. A contributor's first `dotnet run` fails to log in. (verified: `src/Basil/Configurations/appsettings.json` `ConnectionStrings`; `docker-compose.yml` sets `POSTGRES_USER: basil`.)
+   role is `postgres`. A contributor's first `dotnet run` fails to log in. (verified: `Basil/Configurations/appsettings.json` `ConnectionStrings`; `docker-compose.yml` sets `POSTGRES_USER: basil`.)
 2. **Release archive format is wrong for Linux and macOS.** `docs/for-technicians/deployment.md:75`: "Extract: `Basil-{version}-{platform}.zip`". The release
    workflow (`.github/workflows/release.yml:72-80`) makes `.zip` only for `win-*`; Linux and macOS get `Basil-<v>-<rid>.tar.gz`
    (a zip would drop the executable bit). An operator on Linux finds no zip. (verified)
 3. **osu! login doc says a second login replaces the first session; the server refuses it.**
    `docs/for-client/osu-stable/authentication.md:131`: "Logging in again with the same account replaces the previous session."
-   `src/Application/Users/Registry/UserRegistry.cs:491-551`: at the per-type limit, only an idle connection is closed first; a stable
+   `Basil.Application.Users/Registry/UserRegistry.cs:491-551`: at the per-type limit, only an idle connection is closed first; a stable
    login then fails with `TooManySessions` ("This account has too many open sessions."). Only API connections are replaced. (verified)
    Also line 133 omits that a tourney client needs the `Tournament` privilege (`UserRegistry.cs:500`).
 4. **Hardware-ban check is documented as a feature; it is out of scope.** `authentication.md:119` "the account being blocked by a hardware-ban check",
    `:149` "Basil can compare the supplied hardware information with hardware associated with banned accounts", `:153` "Established verified accounts are not rejected...".
    `docs/for-developers/working-scopes.md:154` says "Multi-account detection, hardware bans, client hash checks, the `Verified` grant | Out of scope",
    and no such check exists in `Basil.Application.Users`. The page also mentions "verified accounts" while `:159` says there is no verification. (verified)
-5. **IRC host name contradicts itself across pages.** `docs/for-client/irc-client.md:18` "Server | `irc.<domain>`" and `src/Basil/ServerOptions.cs`
+5. **IRC host name contradicts itself across pages.** `docs/for-client/irc-client.md:18` "Server | `irc.<domain>`" and `Basil/ServerOptions.cs`
    ("the IRC server is `irc.` plus this domain", and `LanAdvertiser.Labels` advertises `irc`) versus
    `docs/for-technicians/https.md:48` "It needs no `irc.<domain>` record" and `troubleshooting.md:226` "There is also no `irc.<domain>` hostname requirement".
    The LAN name list in `configuration.md:135-136`, `https.md:12-22` and `getting-started.md:77-87` omits `irc.<domain>` although the server answers mDNS for it. A user told "no record needed" and "server = irc.basil.local" cannot tell which to type. (verified)
 6. **Default log level documented as `Information`; the shipped file is `Trace`.** `docs/for-technicians/logging.md:32`
    (example `"Default": "Information"`), `troubleshooting.md:381-385` ("return the setting to: Information"), but
-   `src/Basil/Configurations/appsettings.json` sets `Default`, `Microsoft`, `Microsoft.Hosting.Lifetime` and `System` to `Trace`. An operator who deploys the
+   `Basil/Configurations/appsettings.json` sets `Default`, `Microsoft`, `Microsoft.Hosting.Lifetime` and `System` to `Trace`. An operator who deploys the
    shipped file writes Trace logs (100 MB/day rolls, up to 1 GB kept) while the docs imply a quiet default. (verified)
 7. **ffmpeg failure documented as `503`; no such behaviour exists.** `deployment.md:45` "Without it, audio preview requests return `503 Service Unavailable`",
    `troubleshooting.md:60` heading "Audio preview returns `503 Service Unavailable`". The only `503` in `src/Hosts` is `shuttingDown`
@@ -81,7 +81,7 @@ No description names PostgreSQL, Redis, DI, middleware, `Channel<T>` or file pat
 
 ### A3. Errors and room command bodies (F-022)
 
-* **Responses: F-022 is partly refuted.** `src/Hosts/Rest/Http/OpenApiSetup.cs:84-134` now adds generic responses to every operation: 200 (envelope or `text/event-stream`),
+* **Responses: F-022 is partly refuted.** `Basil.Host.Rest/Http/OpenApiSetup.cs:84-134` now adds generic responses to every operation: 200 (envelope or `text/event-stream`),
   401 and 403 for token routes, 404 on every route, 409 and 422 on non-GET, 422 on GET, 429 on every route. So a status list exists. But it is **generic, not per-route**:
   e.g. `/health` and `POST /v1/auth/login` are given a 404 and 409 they never return, `GET` routes without a body or paging get a 422 "paging parameter out of range", and the error `code`
   (`errors.code`: `tooLarge`, `targetOffline`, `locked`, ...) is never listed per route. Only a handful of descriptions name a status and code in prose. Verdict: the "no responses described" gap is closed in form but the content is not trustworthy per route. (verified)
@@ -92,13 +92,13 @@ No description names PostgreSQL, Redis, DI, middleware, `Channel<T>` or file pat
 
 ### A4. BasilBot and IRC catalogs
 
-* **BasilBot** (`src/Application/Bot/Commands/CommandCatalog.cs`): 38 commands, each with a path, a usage string (`Usage`) and a summary reply. **No command has an example**; `BotReference.cs` writes a two-column table (`Command | What it does`) with no example column and no privilege column.
+* **BasilBot** (`Basil.Application.Bot/Commands/CommandCatalog.cs`): 38 commands, each with a path, a usage string (`Usage`) and a summary reply. **No command has an example**; `BotReference.cs` writes a two-column table (`Command | What it does`) with no example column and no privilege column.
   Gaps (verified):
   * `!channel` has usage `list|create|set|delete` and summary "manage the general channels (needs privilege)": no per-subcommand arguments, no options. The only description of `name=value` options is hand-written in `docs/for-client/basil-bot.md:73-76`, contradicting "this page intentionally does not duplicate the command list" (`:109`).
   * `!mp private [0|1]`, `!mp set <teammode 0-3> [scoremode 0-3] [size 1-16]`, `!mp mods <mods>|Freemod|None`, `!mp map <beatmap id> [playmode]` give no valid values for modes, mod syntax or "playmode" (numbers? names?).
   * `!mp addref`/`removeref` say "(creator only)" while AGENTS.md says the creator and `Tournament` can manage; privilege per command is not listed.
   * `!faq <entry>|list`, `!where <username>`, `!roll [max]` have usage but no example output.
-* **IRC** (`src/Hosts/Irc/Session/IrcReference.cs`): a table of 23 commands `(Command, Needs sign-in, What it does)`. **No usage line and no example for any command**; `CAP`, `AUTHENTICATE`, `PRIVMSG`, `WHO`, `WHOIS` say nothing about parameters. The page has no connection example (what a PASS/NICK/USER sequence or an SASL `AUTHENTICATE` payload looks like), no numeric list (`464`, `421`, `482` are mentioned but not listed), and no mention of `#mp_<id>` joining rules beyond a bullet. (verified)
+* **IRC** (`Basil.Host.Irc/Session/IrcReference.cs`): a table of 23 commands `(Command, Needs sign-in, What it does)`. **No usage line and no example for any command**; `CAP`, `AUTHENTICATE`, `PRIVMSG`, `WHO`, `WHOIS` say nothing about parameters. The page has no connection example (what a PASS/NICK/USER sequence or an SASL `AUTHENTICATE` payload looks like), no numeric list (`464`, `421`, `482` are mentioned but not listed), and no mention of `#mp_<id>` joining rules beyond a bullet. (verified)
 * Both generated pages are good as a summary and weak as a how-to.
 
 ## Part B: Markdown documents
@@ -217,7 +217,7 @@ No description names PostgreSQL, Redis, DI, middleware, `Channel<T>` or file pat
 
 ### `docs/for-developers/development.md`
 
-* Verified: `data/certs/basil.local.pfx` copied via `src/Basil/Basil.csproj:61`; `dotnet test tests/...` paths exist; the Postman folder exists.
+* Verified: `data/certs/basil.local.pfx` copied via `Basil/Basil.csproj:61`; `dotnet test tests/...` paths exist; the Postman folder exists.
 * Problems: Postgres container (top 1); `:158` `Server:TrustedProxies` should be `Basil:Server:TrustedProxies`; `:96-109` repeats an operator task (curl with `Host` header) and `:90-92` "the server has not been deployed yet" is a time-bound statement.
 * Verdict: fix.
 
@@ -241,14 +241,14 @@ No description names PostgreSQL, Redis, DI, middleware, `Channel<T>` or file pat
 
 ### `docs/index.md`
 
-* Verified: all relative links resolve (link check over `docs/for-client`, `for-technicians`, `for-developers`, `index.md`: only the four `src/Protocol/Irc/*.cs` links in `for-developers/irc.md` and the ADR link broke).
+* Verified: all relative links resolve (link check over `docs/for-client`, `for-technicians`, `for-developers`, `index.md`: only the four `Basil.Protocol.Irc/*.cs` links in `for-developers/irc.md` and the ADR link broke).
 * Problems: the audience table sends "Player or tool" to `osu-stable/getting-started.md` only, with no direct link to the API (`for-client/api/overview.md`), the IRC page or BasilBot page: three of the four client journeys are reachable only through "See also" lists. The references table gives `/docs/v1` etc. correctly, but every `for-client` page says `/docs/`.
 * Verdict: fix (navigation).
 
 ### Broken links found by script
 
 * `docs/for-client/api/response-envelope.md` -> `../../adr/ADR-009-rest-v1.md` (no such directory).
-* `docs/for-developers/irc.md` -> `../../src/Protocol/Irc/IrcMessage.cs`, `IrcTag.cs`, `IrcNumericReply.cs`, `IrcUserPrefix.cs` (paths do not exist at that depth; the files are in `src/Protocol/Irc/...` possibly in a subfolder, so the relative depth is off).
+* `docs/for-developers/irc.md` -> `../../Basil.Protocol.Irc/IrcMessage.cs`, `IrcTag.cs`, `IrcNumericReply.cs`, `IrcUserPrefix.cs` (paths do not exist at that depth; the files are in `Basil.Protocol.Irc/...` possibly in a subfolder, so the relative depth is off).
 * No broken anchors in the files checked.
 
 ## Summary table

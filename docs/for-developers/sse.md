@@ -11,7 +11,7 @@ The client-facing wire contract is the generated OpenAPI page. This page explain
 
 Every live route has the same shape: a root owns some state (a player, a room, a match, the server), several clients
 watch it, and the state changes independently of those clients. Building one pipeline per route would duplicate
-bundling, backpressure, connection limits and shutdown. `src/Hosts/Rest/Sse/SseHub.cs` is that one pipeline.
+bundling, backpressure, connection limits and shutdown. `Basil.Host.Rest/Sse/SseHub.cs` is that one pipeline.
 
 ## How a stream works
 
@@ -106,11 +106,11 @@ the next tick.
 
 ## Related code
 
-* `src/Hosts/Rest/Sse/SseHub.cs` — roots, bundling, streams, limits, shutdown announcement.
-* `src/Hosts/Rest/Sse/SseResult.cs` — writes a stream and releases it.
-* `src/Hosts/Rest/Sse/MatchRoutes.cs`, `SpectateRoutes.cs`, `DiagnosticsRoutes.cs` — the live roots.
-* `src/Hosts/Rest/Routes/RoomRoutes.cs` — room live route.
-* `src/Hosts/Rest/Http/RestPipeline.cs` — 503 while stopping and the shared error envelope.
+* `Basil.Host.Rest/Sse/SseHub.cs` — roots, bundling, streams, limits, shutdown announcement.
+* `Basil.Host.Rest/Sse/SseResult.cs` — writes a stream and releases it.
+* `Basil.Host.Rest/Sse/MatchRoutes.cs`, `SpectateRoutes.cs`, `DiagnosticsRoutes.cs` — the live roots.
+* `Basil.Host.Rest/Routes/RoomRoutes.cs` — room live route.
+* `Basil.Host.Rest/Http/RestPipeline.cs` — 503 while stopping and the shared error envelope.
 
 ## See also
 

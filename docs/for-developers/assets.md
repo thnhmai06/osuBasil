@@ -71,7 +71,7 @@ example, `/beatmapsets/{beatmapsetId}/background` exists both as a real asset ro
 on `api.<domain>`.
 
 Every provider therefore checks the host before matching the path, using the host helpers in
-`src/Hosts/Rest/Images/ImageHosts.cs`.
+`Basil.Host.Rest/Images/ImageHosts.cs`.
 
 ### Providers
 
@@ -89,7 +89,7 @@ not exist, an icon points to an external URL, or a user has no uploaded avatar.
 The request then falls through to the corresponding minimal-API route on the same host. These routes keep the
 private-resource checks.
 
-The routes are in `src/Hosts/Rest/Routes/` (`MenuRoutes`, `BeatmapRoutes`, `UserRoutes`) and `src/Hosts/Stable/Web/OsuWebRoutes.cs`.
+The routes are in `Basil.Host.Rest/Routes/` (`MenuRoutes`, `BeatmapRoutes`, `UserRoutes`) and `Basil.Host.Stable/Web/OsuWebRoutes.cs`.
 
 ### Fixed-size crops without query strings
 
@@ -176,8 +176,8 @@ See [`configuration.md`](../for-technicians/configuration.md) for the complete `
 
 ## Related code
 
-* `src/Hosts/Rest/Images/` — `ImageHosts` (the `a.` and `assets.` hosts, ImageSharp.Web pipeline) and the image providers.
-* `src/Hosts/Rest/Routes/MenuRoutes.cs` — menu banner, icon and seasonal routes.
-* `src/Application/Content/Storage/` — the storage ports for avatars, menu assets, screenshots and the FAQ.
-* `src/Infrastructure/Content/Storage/` — their file implementations.
+* `Basil.Host.Rest/Images/` — `ImageHosts` (the `a.` and `assets.` hosts, ImageSharp.Web pipeline) and the image providers.
+* `Basil.Host.Rest/Routes/MenuRoutes.cs` — menu banner, icon and seasonal routes.
+* `Basil.Application.Content/Storage/` — the storage ports for avatars, menu assets, screenshots and the FAQ.
+* `Basil.Infrastructure.Content/Storage/` — their file implementations.
 * `src/Domain/Content/MenuBanner.cs` — banner metadata model.

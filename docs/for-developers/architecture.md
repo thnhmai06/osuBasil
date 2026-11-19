@@ -38,7 +38,7 @@ Basil.Infrastructure.Persistence    Npgsql provider (IDatabaseProvider), design-
 Basil.Protocol.Stable / .Irc     the translation language of each wire            -> Domain / nothing
 Basil.Gateway                    (target) admission control                       -> (nothing but the rate-limiting library)
 Basil.Host.Shared                views and outcome-to-error mapping               -> Application projects
-src/Hosts/Stable/.Irc/.Rest/.Cli  transports                                     -> Host.Shared, Protocol, Gateway, Application
+Basil.Host.Stable/.Irc/.Rest/.Cli  transports                                     -> Host.Shared, Protocol, Gateway, Application
 Basil                            composition root -> everything
 ```
 
@@ -276,12 +276,12 @@ that root. The first event is a snapshot. See [`sse.md`](sse.md).
 ## Related code
 
 * `src/Domain/` — the system at rest.
-* `src/Application/Shared/`, `src/Infrastructure/Shared/` — shared values (`Paging/`, `Actors/`, `Privileges/Scoped.cs`, `Exceptions/`), events, dispatcher (`Workers/EventDispatcher.cs`).
+* `Basil.Application.Shared/`, `Basil.Infrastructure.Shared/` — shared values (`Paging/`, `Actors/`, `Privileges/Scoped.cs`, `Exceptions/`), events, dispatcher (`Workers/EventDispatcher.cs`).
 * `src/Application/<Module>/`, `src/Infrastructure/<Module>/` — module contracts, objects and implementations.
-* `src/Protocol/Stable/`, `src/Protocol/Irc/` — the translation language of each wire.
-* `src/Hosts/Shared/`, `src/Hosts/{Stable,Irc,Rest,Cli}/` — views and the transports.
-* `src/Basil/` — the composition root (`Lifetime/` for start, restart and shutdown, `Http/` for its middleware).
-* `src/Gateway/` — admission control in `Admission/`, `Limits/` and `RateLimiting/`.
+* `Basil.Protocol.Game.Stable/`, `Basil.Protocol.Irc/` — the translation language of each wire.
+* `Basil.Host.Shared/`, `src/Hosts/{Stable,Irc,Rest,Cli}/` — views and the transports.
+* `Basil/` — the composition root (`Lifetime/` for start, restart and shutdown, `Http/` for its middleware).
+* `Basil.Gateway/` — admission control in `Admission/`, `Limits/` and `RateLimiting/`.
 * Each module's Infrastructure project keeps its OpenTelemetry meter in `Metrics/`.
 * `tests/Architecture/` — `ModuleGraphTests`, `HostGraphTests`, `CompositionTests`, `ScopedLifetimeTests`.
 

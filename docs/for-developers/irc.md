@@ -236,11 +236,11 @@ closes the socket.
 
 ## Related code
 
-* [`Session.cs`](../../src/Application/Users/Objects/Sessions/Session.cs): session types
-* [`UserRegistry.cs`](../../src/Application/Users/Registry/UserRegistry.cs): `LoginAsync`, `CloseSilent`
-* [`Channel.cs`](../../src/Application/Chat/Objects/Channel.cs), [`ScopedChannel.cs`](../../src/Application/Chat/Capabilities/ScopedChannel.cs): membership, posting, recipients
-* [`RoomChannel.cs`](../../src/Application/Chat/Objects/RoomChannel.cs): room channel access
-* [`IrcMessage.cs`](../../src/Protocol/Irc/IrcMessage.cs), [`IrcTag.cs`](../../src/Protocol/Irc/IrcTag.cs), [`IrcNumericReply.cs`](../../src/Protocol/Irc/IrcNumericReply.cs), [`IrcUserPrefix.cs`](../../src/Protocol/Irc/IrcUserPrefix.cs): wire format
+* [`Session.cs`](../../Basil.Application.Users/Objects/Sessions/Session.cs): session types
+* [`UserRegistry.cs`](../../Basil.Application.Users/Registry/UserRegistry.cs): `LoginAsync`, `CloseSilent`
+* [`Channel.cs`](../../Basil.Application.Chat/Objects/Channel.cs), [`ScopedChannel.cs`](../../Basil.Application.Chat/Capabilities/ScopedChannel.cs): membership, posting, recipients
+* [`RoomChannel.cs`](../../Basil.Application.Chat/Objects/RoomChannel.cs): room channel access
+* [`IrcMessage.cs`](../../Basil.Protocol.Irc/IrcMessage.cs), [`IrcTag.cs`](../../Basil.Protocol.Irc/IrcTag.cs), [`IrcNumericReply.cs`](../../Basil.Protocol.Irc/IrcNumericReply.cs), [`IrcUserPrefix.cs`](../../Basil.Protocol.Irc/IrcUserPrefix.cs): wire format
 * [`Basil.Host.Irc`](../../Basil.Host.Irc): listener, session, commands and delivery
 
 ## See also

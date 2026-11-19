@@ -97,7 +97,7 @@ If you are building Basil yourself instead of using a release, see [`development
 
 ### 2. Configure Basil
 
-Edit [`Configurations/appsettings.json`](../../src/Basil/Configurations/appsettings.json) beside the executable.
+Edit [`Configurations/appsettings.json`](../../Basil/Configurations/appsettings.json) beside the executable.
 Settings can also be given on the command line (`--Basil:Server:Domain=tourney.example`), which wins over the file.
 
 See [`configuration.md`](configuration.md) for the complete configuration reference.

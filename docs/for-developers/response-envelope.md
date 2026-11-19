@@ -163,11 +163,11 @@ enum, which is rarely the status the member means. Add the mapping and its test 
 
 ## Related code
 
-* [`Api.cs`](../../src/Hosts/Rest/Http/Api.cs): the envelope and the helpers that build every result
-* [`RestPipeline.cs`](../../src/Hosts/Rest/Http/RestPipeline.cs): exceptions, shutdown and rate limits as envelopes
-* [`OpenApiSetup.cs`](../../src/Hosts/Rest/Http/OpenApiSetup.cs): the `Envelope` schema and the operation transformer
-* [`OutcomeErrors.cs`](../../src/Hosts/Shared/Errors/OutcomeErrors.cs): outcome to error kind and status
-* [`UserViews.cs`](../../src/Hosts/Shared/Views/UserViews.cs), [`BeatmapViews.cs`](../../src/Hosts/Shared/Views/BeatmapViews.cs): the embedded references
+* [`Api.cs`](../../Basil.Host.Rest/Http/Api.cs): the envelope and the helpers that build every result
+* [`RestPipeline.cs`](../../Basil.Host.Rest/Http/RestPipeline.cs): exceptions, shutdown and rate limits as envelopes
+* [`OpenApiSetup.cs`](../../Basil.Host.Rest/Http/OpenApiSetup.cs): the `Envelope` schema and the operation transformer
+* [`OutcomeErrors.cs`](../../Basil.Host.Shared/Errors/OutcomeErrors.cs): outcome to error kind and status
+* [`UserViews.cs`](../../Basil.Host.Shared/Views/UserViews.cs), [`BeatmapViews.cs`](../../Basil.Host.Shared/Views/BeatmapViews.cs): the embedded references
 
 ## See also
 

@@ -89,11 +89,11 @@ with the typist's privileges, never with the bot's.
 
 * [`UserPrivileges.cs`](../../src/Domain/Users/UserPrivileges.cs): the privilege flags, `Allows`, the default set
 * [`UserRecord.cs`](../../src/Domain/Users/UserRecord.cs): the account data, its privileges and `SilencedUntil`
-* [`ScopedUser.cs`](../../src/Application/Users/Capabilities/ScopedUser.cs),
-  [`ScopedUserSilence.cs`](../../src/Application/Users/Capabilities/ScopedUserSilence.cs),
-  [`ScopedUserPrivileges.cs`](../../src/Application/Users/Capabilities/ScopedUserPrivileges.cs): account actions
-* [`UserSilence.cs`](../../src/Application/Users/Objects/UserSilence.cs): the silence of an account
-* [`UserOutcome.cs`](../../src/Application/Users/Objects/UserOutcome.cs): account-operation outcomes
+* [`ScopedUser.cs`](../../Basil.Application.Users/Capabilities/ScopedUser.cs),
+  [`ScopedUserSilence.cs`](../../Basil.Application.Users/Capabilities/ScopedUserSilence.cs),
+  [`ScopedUserPrivileges.cs`](../../Basil.Application.Users/Capabilities/ScopedUserPrivileges.cs): account actions
+* [`UserSilence.cs`](../../Basil.Application.Users/Objects/UserSilence.cs): the silence of an account
+* [`UserOutcome.cs`](../../Basil.Application.Users/Objects/UserOutcome.cs): account-operation outcomes
 
 ## See also
 

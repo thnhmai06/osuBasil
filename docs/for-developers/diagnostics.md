@@ -118,11 +118,11 @@ meter and handler (with a positive control), and the dashboard's use of the samp
 
 ## Related code
 
-* [`DiagnosticsRoutes.cs`](../../src/Hosts/Rest/Sse/DiagnosticsRoutes.cs): the routes and the actions
-* [`ScopedDiagnostics.cs`](../../src/Application/Diagnostics/Capabilities/ScopedDiagnostics.cs): the privilege gate of the actions
-* [`DiagnosticsIntake.cs`](../../src/Infrastructure/Diagnostics/Services/DiagnosticsIntake.cs) and [`DiagnosticsFeed.cs`](../../src/Infrastructure/Diagnostics/Services/DiagnosticsFeed.cs): the two services
-* [`RuntimeSampler.cs`](../../src/Infrastructure/Diagnostics/Services/RuntimeSampler.cs): process and runtime measurements
-* [`DiagnosticsSample.cs`](../../src/Application/Diagnostics/Services/DiagnosticsSample.cs): the sample of every category
+* [`DiagnosticsRoutes.cs`](../../Basil.Host.Rest/Sse/DiagnosticsRoutes.cs): the routes and the actions
+* [`ScopedDiagnostics.cs`](../../Basil.Application.Diagnostics/Capabilities/ScopedDiagnostics.cs): the privilege gate of the actions
+* [`DiagnosticsIntake.cs`](../../Basil.Infrastructure.Diagnostics/Services/DiagnosticsIntake.cs) and [`DiagnosticsFeed.cs`](../../Basil.Infrastructure.Diagnostics/Services/DiagnosticsFeed.cs): the two services
+* [`RuntimeSampler.cs`](../../Basil.Infrastructure.Diagnostics/Services/RuntimeSampler.cs): process and runtime measurements
+* [`DiagnosticsSample.cs`](../../Basil.Application.Diagnostics/Services/DiagnosticsSample.cs): the sample of every category
 
 ## See also
 

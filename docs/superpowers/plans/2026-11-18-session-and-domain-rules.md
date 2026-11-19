@@ -49,10 +49,10 @@
 ### Task 2: Domain `Session`
 
 **Files:**
-- Create: `src/Domain/Domain/Authentication/Session.cs` (merges `SessionRecord` + `SessionData`)
-- Create: `src/Domain/Domain/Authentication/SessionStatus.cs`
-- Create: `src/Domain/Domain/Authentication/SessionRules.cs`
-- Delete: `src/Domain/Domain/Authentication/SessionRecord.cs` (keep `SessionEnded`, `SessionEndReason` by moving them into `Session.cs`)
+- Create: `Basil.Domain/Authentication/Session.cs` (merges `SessionRecord` + `SessionData`)
+- Create: `Basil.Domain/Authentication/SessionStatus.cs`
+- Create: `Basil.Domain/Authentication/SessionRules.cs`
+- Delete: `Basil.Domain/Authentication/SessionRecord.cs` (keep `SessionEnded`, `SessionEndReason` by moving them into `Session.cs`)
 - Test: `tests/Domain/Authentication/SessionTests.cs`
 
 **Interfaces:**
@@ -76,11 +76,11 @@
 ### Task 3: Persistence — one `sessions` table
 
 **Files:**
-- Modify: `src/Infrastructure/Authentication/Persistence/SessionRow.cs` (drop `ExpiresAt`; nothing else needed, the row already holds IP and client)
-- Modify: `src/Infrastructure/Authentication/Persistence/EfSessionRepository.cs`, `AuthenticationDbContext.cs`
-- Delete: `ConnectionRow.cs`, `EfConnectionRepository.cs`, `src/Application/Authentication/Persistence/IConnectionRepository.cs`, `ConnectionRecord` (wherever defined), the in-memory fake in `tests/Support`
-- Modify: `src/Application/Authentication/Persistence/ISessionRepository.cs`
-- Create: migration `src/Infrastructure/Persistence/Migrations/Authentication/<timestamp>_MergeConnectionsIntoSessions.cs` (drop `connections`, drop `sessions.ExpiresAt`)
+- Modify: `Basil.Infrastructure.Authentication/Persistence/SessionRow.cs` (drop `ExpiresAt`; nothing else needed, the row already holds IP and client)
+- Modify: `Basil.Infrastructure.Authentication/Persistence/EfSessionRepository.cs`, `AuthenticationDbContext.cs`
+- Delete: `ConnectionRow.cs`, `EfConnectionRepository.cs`, `Basil.Application.Authentication/Persistence/IConnectionRepository.cs`, `ConnectionRecord` (wherever defined), the in-memory fake in `tests/Support`
+- Modify: `Basil.Application.Authentication/Persistence/ISessionRepository.cs`
+- Create: migration `Basil.Infrastructure.Persistence/Migrations/Authentication/<timestamp>_MergeConnectionsIntoSessions.cs` (drop `connections`, drop `sessions.ExpiresAt`)
 - Test: `tests/Infrastructure/Authentication/Persistence/EfSessionRepositoryTests.cs` (update), delete `EfConnectionRepositoryTests.cs`
 
 **Interfaces:**
@@ -95,18 +95,18 @@
   - `ListAsync`, `GetAsync`, `DeleteEndedBeforeAsync` unchanged except `SessionRecord` → `Session`. Rename the query enum `SessionState` → `SessionFilter` (it clashes in meaning with `SessionStatus`).
 
 - [ ] **Step 1: Tests** in `EfSessionRepositoryTests`: `FindOpenByToken_Ended_Null`, `FindOpenAsync_OtherType_Null`, `EndSilent_OsuPast300_Ended`, `EndSilent_ApiUnderEightHours_Open`, `WriteActivity_UpdatesLastActive`.
-- [ ] **Step 2:** Implement; generate the migration with `dotnet ef migrations add MergeConnectionsIntoSessions` against `AuthenticationDbContext` (design-time factory in `src/Infrastructure/Persistence/DesignTime`).
+- [ ] **Step 2:** Implement; generate the migration with `dotnet ef migrations add MergeConnectionsIntoSessions` against `AuthenticationDbContext` (design-time factory in `Basil.Infrastructure.Persistence/DesignTime`).
 - [ ] **Step 3:** Build `Basil.Infrastructure.Authentication` and `Basil.Infrastructure.Persistence` → succeed.
 - [ ] **Step 4:** Commit `feat(auth): one sessions table, drop connections`.
 
 ### Task 4: Application `Session` and `UserRegistry` login rules
 
 **Files:**
-- Move/rename: `src/Application/Users/Objects/Connections/` → `src/Application/Users/Objects/Sessions/`; `Connection` → `Session` (abstract, `IActor`), `StableConnection` → `StableSession`, `TourneyConnection` → `TourneySession`, `IrcConnection` → `IrcSession`, `ApiConnection` → `ApiSession`, `OperatorConnection` → `OperatorSession`; `ConnectionContext` → `SessionContext`; `ConnectionOutcome` → `SessionOutcome`; `ConnectionMetrics` → `SessionMetrics` (same counters, renamed); `ConnectionRules` deleted (folded into Domain `SessionRules`; `ReplacesOnJoin` goes, the A/B rule replaces it).
-- Modify: `src/Application/Users/Registry/UserRegistry.cs`, `src/Application/Users/Objects/UserSessions.cs`, `User.cs`, `LoginResult.cs`, `Users/Objects/Events/UserEvents.cs` (`UserConnectionOpened/Closed` → `UserSessionOpened/Closed`), `Users/Persistence/LoginFailure.cs` (`TooManySessions` → `AlreadyOnline`)
-- Modify: `src/Application/Shared/Settings/ServerSettings.cs` (remove `MaxPerUser`, `MaxSessionsSettings`, `ApiToken`, `ApiTokenSettings`; keep `RetentionPeriod`) and the settings labels/descriptions in `src/Hosts/Shared/Views/Settings*.cs`
-- Delete: `src/Application/Users/Messages/OpenIrcSession.cs`, `ListSessionConnections.cs` and their handlers in `src/Infrastructure/Users/Handlers/`
-- Modify: `src/Infrastructure/Users/Workers/IdleConnectionSweeper.cs` → `SessionSweeper.cs`, the startup that calls `EndOpenAsync`
+- Move/rename: `Basil.Application.Users/Objects/Connections/` → `Basil.Application.Users/Objects/Sessions/`; `Connection` → `Session` (abstract, `IActor`), `StableConnection` → `StableSession`, `TourneyConnection` → `TourneySession`, `IrcConnection` → `IrcSession`, `ApiConnection` → `ApiSession`, `OperatorConnection` → `OperatorSession`; `ConnectionContext` → `SessionContext`; `ConnectionOutcome` → `SessionOutcome`; `ConnectionMetrics` → `SessionMetrics` (same counters, renamed); `ConnectionRules` deleted (folded into Domain `SessionRules`; `ReplacesOnJoin` goes, the A/B rule replaces it).
+- Modify: `Basil.Application.Users/Registry/UserRegistry.cs`, `Basil.Application.Users/Objects/UserSessions.cs`, `User.cs`, `LoginResult.cs`, `Users/Objects/Events/UserEvents.cs` (`UserConnectionOpened/Closed` → `UserSessionOpened/Closed`), `Users/Persistence/LoginFailure.cs` (`TooManySessions` → `AlreadyOnline`)
+- Modify: `Basil.Application.Shared/Settings/ServerSettings.cs` (remove `MaxPerUser`, `MaxSessionsSettings`, `ApiToken`, `ApiTokenSettings`; keep `RetentionPeriod`) and the settings labels/descriptions in `Basil.Host.Shared/Views/Settings*.cs`
+- Delete: `Basil.Application.Users/Messages/OpenIrcSession.cs`, `ListSessionConnections.cs` and their handlers in `Basil.Infrastructure.Users/Handlers/`
+- Modify: `Basil.Infrastructure.Users/Workers/IdleConnectionSweeper.cs` → `SessionSweeper.cs`, the startup that calls `EndOpenAsync`
 - Test: `tests/Infrastructure/Users/Handlers/SessionHandlerTests.cs` (extend), new `tests/Infrastructure/Users/Handlers/SessionLoginTests.cs`, rename `IdleConnectionSweeperTests` → `SessionSweeperTests`
 
 **Interfaces:**
@@ -140,10 +140,10 @@
 ### Task 5: Hosts follow the Session
 
 **Files:**
-- Modify: `src/Hosts/Stable/Routes/StableRoutes.cs`, `src/Hosts/Stable/Login/StableLogin.cs` (unknown `osu-token` → `ResumeAsync(Stable…)`; a resumed session receives the same login bundle a password login sends; `AlreadyOnline` maps to the wire reply bancho.py sends for "already logged in")
-- Modify: `src/Hosts/Rest/Http/Caller.cs`, `src/Hosts/Rest/Sse/SseHub.cs` (`ResumeAsync(Api…)`; SSE keepalive calls `MarkActive`); `src/Hosts/Rest/Routes/UserRoutes.cs` (drop the IRC-key route and the session-connections route; their OpenAPI docs go with them)
-- Modify: `src/Hosts/Irc/Commands/IrcCommands.cs`, `src/Hosts/Irc/Session/IrcClients.cs`; rename host class `src/Hosts/Irc/Session/IrcSession.cs` → `IrcSocket.cs` (it clashes with Application `IrcSession`); `PASS` = account password → `LoginAsync(LoginAttempt, SessionType.Irc, …)`; keyed by session, not by token
-- Modify: `src/Hosts/Cli/Commands/UserCommands.cs`, `src/Hosts/Cli/Dashboard/Tabs/UserDetails.cs` (drop session-connections views); `src/Hosts/Shared/Errors/OutcomeErrors.cs` and the IRC/BasilBot reply constants for `AlreadyOnline` (wording through the humanizer skill, per memory `client-text-through-humanizer`)
+- Modify: `Basil.Host.Stable/Routes/StableRoutes.cs`, `Basil.Host.Stable/Login/StableLogin.cs` (unknown `osu-token` → `ResumeAsync(Stable…)`; a resumed session receives the same login bundle a password login sends; `AlreadyOnline` maps to the wire reply bancho.py sends for "already logged in")
+- Modify: `Basil.Host.Rest/Http/Caller.cs`, `Basil.Host.Rest/Sse/SseHub.cs` (`ResumeAsync(Api…)`; SSE keepalive calls `MarkActive`); `Basil.Host.Rest/Routes/UserRoutes.cs` (drop the IRC-key route and the session-connections route; their OpenAPI docs go with them)
+- Modify: `Basil.Host.Irc/Commands/IrcCommands.cs`, `Basil.Host.Irc/Session/IrcClients.cs`; rename host class `Basil.Host.Irc/Session/IrcSession.cs` → `IrcSocket.cs` (it clashes with Application `IrcSession`); `PASS` = account password → `LoginAsync(LoginAttempt, SessionType.Irc, …)`; keyed by session, not by token
+- Modify: `Basil.Host.Cli/Commands/UserCommands.cs`, `Basil.Host.Cli/Dashboard/Tabs/UserDetails.cs` (drop session-connections views); `Basil.Host.Shared/Errors/OutcomeErrors.cs` and the IRC/BasilBot reply constants for `AlreadyOnline` (wording through the humanizer skill, per memory `client-text-through-humanizer`)
 - Test: `tests/Hosts/Irc/…` (login with `PASS <password>`), `tests/Hosts/Stable/…` (unknown token resumes), `tests/Hosts/Rest/…` (token after restart), and update every test that used `Connection` names (mechanical)
 
 - [ ] **Step 1: Tests:** `Irc_PassPassword_Welcomes`, `Irc_PassWrongPassword_464`, `Stable_KnownStoredToken_ResumesWithLoginBundle`, `Rest_StoredToken_Authorized`, `Rest_IrcKeyRoute_Gone` (404).
@@ -166,8 +166,8 @@ The split, for every object below: Domain type with the same name in `Basil.Doma
 ### Task 7: Multiplayer — `Room`
 
 **Files:**
-- Create in `src/Domain/Domain/Multiplayer/Room/`: `Room.cs` (Id, Match, Slots, Settings, Authority, Rounds, IsClosed, `Lock.Scope Enter()`), `RoomSlot.cs`, `RoomSlots.cs`, `RoomSettings.cs`, `RoomAuthority.cs` (Creator, Referees, `MaxReferees`, `UserRecord? Host`, `IsManagedBy`), `RoomRounds.cs`, `RoundSettlement.cs` (without the timer), `RoomOutcome.cs`, `RoomSettingsChange.cs`, `SlotArrangement.cs`, `BeatmapReference.cs`; keep `RoomRules.cs`
-- Modify: `src/Application/Multiplayer/Objects/Rooms/Room*.cs` (operations call `State`), delete the moved files there
+- Create in `Basil.Domain/Multiplayer/Room/`: `Room.cs` (Id, Match, Slots, Settings, Authority, Rounds, IsClosed, `Lock.Scope Enter()`), `RoomSlot.cs`, `RoomSlots.cs`, `RoomSettings.cs`, `RoomAuthority.cs` (Creator, Referees, `MaxReferees`, `UserRecord? Host`, `IsManagedBy`), `RoomRounds.cs`, `RoundSettlement.cs` (without the timer), `RoomOutcome.cs`, `RoomSettingsChange.cs`, `SlotArrangement.cs`, `BeatmapReference.cs`; keep `RoomRules.cs`
+- Modify: `Basil.Application.Multiplayer/Objects/Rooms/Room*.cs` (operations call `State`), delete the moved files there
 - Test: `tests/Domain/Multiplayer/RoomTests.cs` and siblings per partial
 
 **Domain rule methods** (all `RoomOutcome` or `(RoomOutcome, …)`, all synchronous, players as `UserRecord`): `ChangeSlot`, `MovePlayer`, `ArrangeSlots`, `SetReady`, `SetHasMap`, `ToggleTeam`, `SetTeam`, `SetMods`, `SetLocked`, `LockSlot` (the slot-only part of `ToggleSlotLock`), `Configure` with `AreValid` and the `Apply*` helpers, `AddReferee`, `RemoveReferee`, `Kick`, `Ban`, `Unban`, `IsWrongPassword`, `StartRound`, `AbortRound`, `MarkLoaded`, `SkipIntro`, `ReportFailed`, `ReportCompleted`, `BeginRound`, `EndCurrentRound`, `AdvanceRound`, `ReceiveScore`, `AwaitsScore`, `Decide`.
@@ -182,8 +182,8 @@ The split, for every object below: Domain type with the same name in `Basil.Doma
 ### Task 8: Users — `User` and `Session` rules
 
 **Files:**
-- Create: `src/Domain/Domain/Users/User.cs` (state: record, grants, profile flags, silence), `UserGrants.cs` (`Effective`, `Replace`, `MarkDeleted`), `UserProfile.cs` (`SetCountry`, `SetAway`, `SetPmPrivate`), `UserSilence.cs` (`IsSilencedAt`, `EndsAt`), `UserOutcome.cs`, `UserReference.cs`; `src/Domain/Domain/Authentication/PlayerStatus.cs`, `SessionOutcome.cs`
-- Modify: `src/Application/Users/Objects/*` — every `*Async`, `Add/Remove(Session)`, spectating, `UserRegistry`, `UserContext`, `LoginResult` stay
+- Create: `Basil.Domain/Users/User.cs` (state: record, grants, profile flags, silence), `UserGrants.cs` (`Effective`, `Replace`, `MarkDeleted`), `UserProfile.cs` (`SetCountry`, `SetAway`, `SetPmPrivate`), `UserSilence.cs` (`IsSilencedAt`, `EndsAt`), `UserOutcome.cs`, `UserReference.cs`; `Basil.Domain/Authentication/PlayerStatus.cs`, `SessionOutcome.cs`
+- Modify: `Basil.Application.Users/Objects/*` — every `*Async`, `Add/Remove(Session)`, spectating, `UserRegistry`, `UserContext`, `LoginResult` stay
 - Test: `tests/Domain/Users/UserGrantsTests.cs`, `UserProfileTests.cs`, `UserSilenceTests.cs`
 
 - [ ] **Step 1: Tests:** `Effective_Deleted_None`, `SetAway_Null_ClearsMessage`, `IsSilencedAt_AtEnd_False`.
@@ -192,8 +192,8 @@ The split, for every object below: Domain type with the same name in `Basil.Doma
 ### Task 9: Chat and Bot rules
 
 **Files:**
-- Create: `src/Domain/Domain/Chat/GeneralChannelChange.cs` (with `Validate` and `ApplyTo(GeneralChannelData)`), `ChannelOutcome.cs`, `RoomChannelName.cs` (`NameFor(int)`, `TryParse(string, out int)`); `src/Domain/Domain/Multiplayer/Room/CountdownMarks.cs` (`For(TimeSpan length, bool startsRound)` from `RoomCountdown.MarksFor`)
-- Modify: `src/Application/Chat/Objects/GeneralChannel.cs`, `RoomChannel.cs`, `src/Application/Bot/Objects/RoomCountdown.cs`
+- Create: `Basil.Domain/Chat/GeneralChannelChange.cs` (with `Validate` and `ApplyTo(GeneralChannelData)`), `ChannelOutcome.cs`, `RoomChannelName.cs` (`NameFor(int)`, `TryParse(string, out int)`); `Basil.Domain/Multiplayer/Room/CountdownMarks.cs` (`For(TimeSpan length, bool startsRound)` from `RoomCountdown.MarksFor`)
+- Modify: `Basil.Application.Chat/Objects/GeneralChannel.cs`, `RoomChannel.cs`, `Basil.Application.Bot/Objects/RoomCountdown.cs`
 - Test: `tests/Domain/Chat/GeneralChannelChangeTests.cs`, `RoomChannelNameTests.cs`, `tests/Domain/Multiplayer/CountdownMarksTests.cs` (move the existing countdown cases from the deleted `tests/Application/Bot/Countdowns/RoomCountdownTests.cs` if the owner wants them kept)
 
 - [ ] **Step 1: Tests:** `TryParse_NameFor_RoundTrips`, `TryParse_NotARoomName_False`, `Validate_EmptyName_Throws`, `Marks_ThirtySeconds_IncludesTenAndFive` (values per BasilBot countdown docs).

@@ -52,7 +52,7 @@ jobs:
           TAG: ${{ github.event.release.tag_name }}
         shell: bash
         run: >
-          dotnet publish src/Basil
+          dotnet publish Basil
           -c Release
           -r ${{ matrix.rid }}
           --self-contained true

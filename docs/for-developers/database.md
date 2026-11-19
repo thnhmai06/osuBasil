@@ -112,7 +112,7 @@ The shared `Database` and `DatabaseSession` talk to an `IDatabaseProvider` (Infr
 connections, points a context at a pool and its history table, and tells a unique violation and a connection failure
 apart (the open-retry of `DatabaseSession` retries only the latter). `Basil.Infrastructure.Persistence` implements it with
 Npgsql and snake_case names, owns the design-time factories and holds the migrations, one folder per module context
-(`src/Infrastructure/Persistence/Migrations/<Module>/`); history table names are unchanged. Only `Basil` references that
+(`Basil.Infrastructure.Persistence/Migrations/<Module>/`); history table names are unchanged. Only `Basil` references that
 project and calls `AddPersistenceInfrastructure()`; module Infrastructure projects see their `DbContext` types through
 `InternalsVisibleTo`.
 
@@ -135,7 +135,7 @@ tools/add-migration.sh <Module> <Name>     # runs dotnet ef, moves the snapshot,
 ```
 
 Each module has exactly one migration, `InitialCreate`, until a first release. To regenerate everything from scratch,
-delete `src/Infrastructure/Persistence/Migrations`, then run the script with `InitialCreate` for Users, Authentication,
+delete `Basil.Infrastructure.Persistence/Migrations`, then run the script with `InitialCreate` for Users, Authentication,
 Beatmaps, Content, Shared, Scores, Multiplayer and Chat in that order. Every existing development database must then be
 dropped and recreated, because its `__ef_migrations_<module>` history names migrations that no longer exist. The runtime ignores `PendingModelChangesWarning`, because a neutral
 snapshot never equals a provider's model; `ModuleMigrationTests` checks the model against the migrations with the provider's
@@ -143,11 +143,11 @@ own differ instead.
 
 ## Related code
 
-* `src/Infrastructure/Shared/Persistence/` — `DatabaseSession`, `Database`, `DatabaseMigrator`, `ContextModel`
-* `src/Infrastructure/Shared/Registry/` — `CacheAside`
+* `Basil.Infrastructure.Shared/Persistence/` — `DatabaseSession`, `Database`, `DatabaseMigrator`, `ContextModel`
+* `Basil.Infrastructure.Shared/Registry/` — `CacheAside`
 * `src/Infrastructure/<Module>/Persistence/` — the module's `DbContext`, the `XxxRow` types and the repositories
-* `src/Infrastructure/Persistence/` — `PostgresDatabaseProvider`, the design-time factories and `Migrations/<Module>/`
-* `src/Infrastructure/Shared/Workers/StorageStartup.cs` — migration and resident loading at startup; `AddBasilStorage()` registers the
+* `Basil.Infrastructure.Persistence/` — `PostgresDatabaseProvider`, the design-time factories and `Migrations/<Module>/`
+* `Basil.Infrastructure.Shared/Workers/StorageStartup.cs` — migration and resident loading at startup; `AddBasilStorage()` registers the
   module migrations in the order above
 
 ## See also

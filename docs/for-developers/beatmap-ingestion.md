@@ -74,7 +74,7 @@ Basil has two mechanisms (the upload route is the third entry into the same pipe
 
 ### Filesystem watcher
 
-[`BeatmapsetStorageWatcher`](../../src/Infrastructure/Beatmaps/Workers/BeatmapsetStorageWatcher.cs) monitors the directory for a `.osz` archive appearing, changing, or disappearing.
+[`BeatmapsetStorageWatcher`](../../Basil.Infrastructure.Beatmaps/Workers/BeatmapsetStorageWatcher.cs) monitors the directory for a `.osz` archive appearing, changing, or disappearing.
 
 When a new `.osz` appears, the watcher schedules it for ingestion. Under normal conditions, the change becomes visible within a few seconds.
 
@@ -211,14 +211,14 @@ Derived media must therefore be treated as disposable cache data, not as another
 
 ## Related code
 
-* [`BeatmapsetImporter.cs`](../../src/Infrastructure/Beatmaps/Logic/BeatmapsetImporter.cs): imports one uploaded `.osz`
-* [`BeatmapsetScanner.cs`](../../src/Infrastructure/Beatmaps/Logic/BeatmapsetScanner.cs): scans the storage and reconciles it with the database
-* [`BeatmapsetPlanner.cs`](../../src/Infrastructure/Beatmaps/Logic/BeatmapsetPlanner.cs): decides what a changed archive means for the stored records
-* [`BeatmapsetStorageWatcher.cs`](../../src/Infrastructure/Beatmaps/Workers/BeatmapsetStorageWatcher.cs): startup scan and filesystem change detection
-* [`FileBeatmapsetStorage.cs`](../../src/Infrastructure/Beatmaps/Storage/FileBeatmapsetStorage.cs): the `Beatmapsets/` directory as storage
-* [`OsuBeatmapAnalyser.cs`](../../src/Infrastructure/Beatmaps/Adapters/OsuBeatmapAnalyser.cs): osu! ruleset difficulty calculations
-* [`BeatmapPreviewMaker.cs`](../../src/Infrastructure/Beatmaps/Adapters/BeatmapPreviewMaker.cs): audio previews with `ffmpeg`
-* [`BeatmapRoutes.cs`](../../src/Hosts/Rest/Routes/BeatmapRoutes.cs): beatmapset routes of the API host
+* [`BeatmapsetImporter.cs`](../../Basil.Infrastructure.Beatmaps/Logic/BeatmapsetImporter.cs): imports one uploaded `.osz`
+* [`BeatmapsetScanner.cs`](../../Basil.Infrastructure.Beatmaps/Logic/BeatmapsetScanner.cs): scans the storage and reconciles it with the database
+* [`BeatmapsetPlanner.cs`](../../Basil.Infrastructure.Beatmaps/Logic/BeatmapsetPlanner.cs): decides what a changed archive means for the stored records
+* [`BeatmapsetStorageWatcher.cs`](../../Basil.Infrastructure.Beatmaps/Workers/BeatmapsetStorageWatcher.cs): startup scan and filesystem change detection
+* [`FileBeatmapsetStorage.cs`](../../Basil.Infrastructure.Beatmaps/Storage/FileBeatmapsetStorage.cs): the `Beatmapsets/` directory as storage
+* [`OsuBeatmapAnalyser.cs`](../../Basil.Infrastructure.Beatmaps/Adapters/OsuBeatmapAnalyser.cs): osu! ruleset difficulty calculations
+* [`BeatmapPreviewMaker.cs`](../../Basil.Infrastructure.Beatmaps/Adapters/BeatmapPreviewMaker.cs): audio previews with `ffmpeg`
+* [`BeatmapRoutes.cs`](../../Basil.Host.Rest/Routes/BeatmapRoutes.cs): beatmapset routes of the API host
 
 ## See also
 

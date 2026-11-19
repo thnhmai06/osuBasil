@@ -20,7 +20,7 @@ Use Docker Compose when the Basil repository is available on the deployment mach
 Before the first run, edit:
 
 ```text
-src/Basil/Configurations/appsettings.json
+Basil/Configurations/appsettings.json
 ```
 
 Configure the settings required by the deployment, especially:
@@ -36,7 +36,7 @@ requirements.
 The Compose setup bind-mounts this file into the container as read-only:
 
 ```text
-src/Basil/Configurations/appsettings.json
+Basil/Configurations/appsettings.json
         │
         └──► /app/Configurations/appsettings.json
 ```
