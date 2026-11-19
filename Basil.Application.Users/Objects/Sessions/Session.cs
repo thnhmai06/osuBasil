@@ -23,7 +23,7 @@ public abstract class Session(Domain.Authentication.Session state, string token)
 
 	public bool IsServerOwned => Record.IsBasilBot();
 
-	public UserRecord Record => State.User;
+	public UserRecord Record => State.Record.Value.User;
 
 	public virtual UserPrivileges EffectivePrivileges(DateTimeOffset now)
 	{

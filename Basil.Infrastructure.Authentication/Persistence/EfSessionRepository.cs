@@ -12,7 +12,7 @@ namespace Basil.Infrastructure.Authentication.Persistence;
 
 internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRepository
 {
-	public Task CreateAsync(Session session)
+	public Task CreateAsync(SessionRecord session)
 	{
 		var row = ToRow(session);
 		return database.WriteAsync((AuthenticationDbContext context) =>
@@ -22,7 +22,7 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 		});
 	}
 
-	public async ValueTask<Page<Session>> ListAsync(SessionQuery query, PageRequest page,
+	public async ValueTask<Page<SessionRecord>> ListAsync(SessionQuery query, PageRequest page,
 		CancellationToken ct = default)
 	{
 		var user = query.User;
@@ -46,18 +46,18 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 		}, ct);
 
 		var (rows, hasNext) = page.Slice(fetched);
-		return new Page<Session>(rows.Select(row => ToSession(row, user)).ToList(), hasNext);
+		return new Page<SessionRecord>(rows.Select(row => ToRecord(row, user)).ToList(), hasNext);
 	}
 
-	public async Task<Session?> GetAsync(UserRecord user, long id, CancellationToken ct = default)
+	public async Task<SessionRecord?> GetAsync(UserRecord user, long id, CancellationToken ct = default)
 	{
 		var row = await database.ReadAsync((AuthenticationDbContext context) => context.Sessions
 				.FirstOrDefaultAsync(item => item.Id == id && item.UserId == user.Id, ct),
 			ct);
-		return row is null ? null : ToSession(row, user);
+		return row is null ? null : ToRecord(row, user);
 	}
 
-	public async Task<Session?> FindOpenByTokenAsync(SessionType type, Sha256Hash tokenHash,
+	public async Task<SessionRecord?> FindOpenByTokenAsync(SessionType type, Sha256Hash tokenHash,
 		Func<int, CancellationToken, ValueTask<UserRecord?>> owner, CancellationToken ct = default)
 	{
 		var hash = Convert.FromHexString(tokenHash.HashValue);
@@ -67,17 +67,17 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 		if (row is null) return null;
 
 		var user = await owner(row.UserId, ct);
-		return user is null ? null : ToSession(row, user);
+		return user is null ? null : ToRecord(row, user);
 	}
 
-	public async Task<Session?> FindOpenAsync(UserRecord user, SessionType type, CancellationToken ct = default)
+	public async Task<SessionRecord?> FindOpenAsync(UserRecord user, SessionType type, CancellationToken ct = default)
 	{
 		var row = await database.ReadAsync((AuthenticationDbContext context) => context.Sessions
 				.Where(item => item.UserId == user.Id && item.Type == type && item.EndedAt == null)
 				.OrderByDescending(item => item.LastActiveAt)
 				.FirstOrDefaultAsync(ct),
 			ct);
-		return row is null ? null : ToSession(row, user);
+		return row is null ? null : ToRecord(row, user);
 	}
 
 	public Task EndAsync(long id, SessionEnded ended)
@@ -161,20 +161,19 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 				.ExecuteDeleteAsync());
 	}
 
-	private static Session ToSession(SessionRow row, UserRecord user)
+	private static SessionRecord ToRecord(SessionRow row, UserRecord user)
 	{
-		var session = new Session
+		var data = new SessionData
 		{
-			Id = row.Id,
 			User = user,
 			Type = row.Type,
 			StartedAt = row.StartedAt,
 			Fingerprint = new SessionFingerprint(row.Ip, ToClient(row), row.ClientInfo),
 			TokenHash = new Sha256Hash(Convert.ToHexStringLower(row.TokenHash)),
-			LastActiveAt = row.LastActiveAt
+			LastActiveAt = row.LastActiveAt,
+			Ended = row.EndedAt is { } at ? new SessionEnded(at, row.EndReason!.Value) : null
 		};
-		if (row.EndedAt is { } at) session.End(at, row.EndReason!.Value);
-		return session;
+		return new SessionRecord { Id = row.Id, Value = data };
 	}
 
 	private static OsuClient? ToClient(SessionRow row)
@@ -191,13 +190,14 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 				adapters));
 	}
 
-	private static SessionRow ToRow(Session data)
+	private static SessionRow ToRow(SessionRecord record)
 	{
+		var data = record.Value;
 		var device = data.Fingerprint;
 		var client = device.Client;
 		return new SessionRow
 		{
-			Id = data.Id,
+			Id = record.Id,
 			UserId = data.User.Id,
 			Type = data.Type,
 			Ip = device.Ip,

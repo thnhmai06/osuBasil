@@ -96,7 +96,7 @@ internal sealed class StableLogin(
 	{
 		return registry.Online.Values.SelectMany(user => user.Connections)
 			.Count(connection => connection is { IsOpen: true, IsServerOwned: false } &&
-			                     Equals(connection.State.Fingerprint.Ip, ip));
+			                     Equals(connection.State.Record.Value.Fingerprint.Ip, ip));
 	}
 
 	private static (string Token, byte[] Reply) FailureReply(LoginFailure? failure)

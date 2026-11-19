@@ -41,10 +41,11 @@ public sealed record SessionView(
 	DateTimeOffset? EndedAt,
 	SessionEndReason? EndReason)
 {
-	public static SessionView Of(Session data)
+	public static SessionView Of(SessionRecord record)
 	{
+		var data = record.Value;
 		var device = data.Fingerprint;
-		return new SessionView(data.Id, data.Type, device.Ip.ToString(), device.ClientInformation, data.StartedAt,
+		return new SessionView(record.Id, data.Type, device.Ip.ToString(), device.ClientInformation, data.StartedAt,
 			data.LastActiveAt, data.Ended?.At, data.Ended?.Reason);
 	}
 }

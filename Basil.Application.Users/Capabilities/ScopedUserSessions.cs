@@ -9,7 +9,7 @@ namespace Basil.Application.Users.Capabilities;
 
 public readonly struct ScopedUserSessions(ScopedUser scoped)
 {
-	public async Task<(UserOutcome Result, Page<Session>? Sessions)> ListAsync(PageRequest page,
+	public async Task<(UserOutcome Result, Page<SessionRecord>? Sessions)> ListAsync(PageRequest page,
 		SessionFilter state = SessionFilter.Any, IReadOnlyList<SessionType>? types = null,
 		CancellationToken ct = default)
 	{
@@ -20,7 +20,7 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 		return (UserOutcome.Ok, sessions);
 	}
 
-	public async Task<(UserOutcome Result, Session? Session)> GetAsync(long id,
+	public async Task<(UserOutcome Result, SessionRecord? Session)> GetAsync(long id,
 		CancellationToken ct = default)
 	{
 		var (user, refusal) = await GuardAsync(UserPrivileges.Moderator, ct);

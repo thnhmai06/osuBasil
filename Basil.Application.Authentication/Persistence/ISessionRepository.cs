@@ -23,17 +23,17 @@ public sealed record SessionActivity(long Id, SessionType Type, DateTimeOffset L
 
 public interface ISessionRepository
 {
-	Task CreateAsync(Session session);
+	Task CreateAsync(SessionRecord session);
 
-	ValueTask<Page<Session>> ListAsync(SessionQuery query, PageRequest page,
+	ValueTask<Page<SessionRecord>> ListAsync(SessionQuery query, PageRequest page,
 		CancellationToken ct = default);
 
-	Task<Session?> GetAsync(UserRecord user, long id, CancellationToken ct = default);
+	Task<SessionRecord?> GetAsync(UserRecord user, long id, CancellationToken ct = default);
 
-	Task<Session?> FindOpenByTokenAsync(SessionType type, Sha256Hash tokenHash,
+	Task<SessionRecord?> FindOpenByTokenAsync(SessionType type, Sha256Hash tokenHash,
 		Func<int, CancellationToken, ValueTask<UserRecord?>> owner, CancellationToken ct = default);
 
-	Task<Session?> FindOpenAsync(UserRecord user, SessionType type, CancellationToken ct = default);
+	Task<SessionRecord?> FindOpenAsync(UserRecord user, SessionType type, CancellationToken ct = default);
 
 	Task EndAsync(long id, SessionEnded ended);
 

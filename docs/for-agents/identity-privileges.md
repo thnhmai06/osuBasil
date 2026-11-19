@@ -68,8 +68,9 @@ touching users, connections, privileges, silences or the bot.
   is checked in Application, never in a transport, and refuses with a `Locked` outcome.
 * **Sessions and tokens.** One concept covers a sign-in, its token and its connection: the `Session`, one row in
   `sessions` with the auth data and the connection data together. There is no separate connection table, no connection
-  history and no IRC key. The Domain `Session` holds the user, type, start, device (address and client), the SHA-256
-  hash of the token, the last heartbeat and the end. The Application `Session` (`StableSession`, `TourneySession`,
+  history and no IRC key. Domain stores it as `SessionRecord` (the `Id` and the `SessionData`: the user, type, start, device (address and
+  client), the SHA-256 hash of the token, the last heartbeat and the end), as `UserRecord` holds `UserData`; the Domain
+  `Session` wraps one record with the rules of a single session (heartbeat, status, end). The Application `Session` (`StableSession`, `TourneySession`,
   `IrcSession`, `ApiSession`, `OperatorSession`) is the live actor (`IActor`) and holds it as `State`. The `Id` is a
   marker the API shows in place of the hash and opens nothing; the hash is the lookup key and is never shown. Several
   clients that share one API token are one session. Types: Stable, StableTourney, Irc, Api (the bot has none of its own,

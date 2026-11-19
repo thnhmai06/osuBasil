@@ -104,7 +104,7 @@ public sealed class UserRegistry
 		// After a restart a user's open API session is only in the store (the others end at startup); it is read before
 		// the account gate.
 		var stored = type is SessionType.Api && _online.GetValueOrDefault(record)?[type].Count is null or 0
-			? await _context.Sessions.FindOpenAsync(record, type, ct)
+			? Wrap(await _context.Sessions.FindOpenAsync(record, type, ct))
 			: null;
 
 		var now = _context.Clock.GetUtcNow();
@@ -118,11 +118,11 @@ public sealed class UserRegistry
 		{
 			if (stored?.Ended is { } replaced)
 			{
-				await _context.Sessions.EndAsync(stored.Id, replaced);
-				ConfirmEnded(stored.Id);
+				await _context.Sessions.EndAsync(stored.Record.Id, replaced);
+				ConfirmEnded(stored.Record.Id);
 			}
 
-			await _context.Sessions.CreateAsync(session.State);
+			await _context.Sessions.CreateAsync(session.State.Record);
 		}
 		catch
 		{
@@ -141,19 +141,27 @@ public sealed class UserRegistry
 			throw new ArgumentNullException(nameof(client), "An osu! client login must report its client.");
 	}
 
+	private static SessionState? Wrap(SessionRecord? record)
+	{
+		return record is null ? null : new SessionState(record);
+	}
+
 	private static SessionState NewLoginState(UserRecord record, SessionType type, IPAddress ip, OsuClient? client,
 		DateTimeOffset now, string token)
 	{
-		return new SessionState
+		return new SessionState(new SessionRecord
 		{
 			Id = NewSessionId(),
-			User = record,
-			Type = type,
-			StartedAt = now,
-			Fingerprint = new SessionFingerprint(ip, client),
-			TokenHash = HashToken(token),
-			LastActiveAt = now
-		};
+			Value = new SessionData
+			{
+				User = record,
+				Type = type,
+				StartedAt = now,
+				Fingerprint = new SessionFingerprint(ip, client),
+				TokenHash = HashToken(token),
+				LastActiveAt = now
+			}
+		});
 	}
 
 	public async Task<LoginResult> ResumeAsync(string token, Func<UserRecord, bool>? accepts = null,
@@ -163,10 +171,10 @@ public sealed class UserRegistry
 		if (_tokens.GetValueOrDefault(token) is { IsOpen: true } open && open.Type == type)
 			return ResumeOpen(open, accepts);
 
-		var stored = await _context.Sessions.FindOpenByTokenAsync(type, HashToken(token), _context.Users.GetAsync, ct);
+		var stored = Wrap(await _context.Sessions.FindOpenByTokenAsync(type, HashToken(token), _context.Users.GetAsync, ct));
 		if (stored is null || IsEnding(stored)) return LoginResult.Fail(LoginFailure.InvalidToken);
 
-		var record = stored.User;
+		var record = stored.Record.Value.User;
 		if (accepts?.Invoke(record) == false) return LoginResult.Fail(LoginFailure.InvalidToken);
 
 		var now = _context.Clock.GetUtcNow();
@@ -174,7 +182,7 @@ public sealed class UserRegistry
 		if (refusal is not null || stored.StatusAt(now) is SessionStatus.Expired)
 		{
 			stored.End(now, refusal is null ? SessionEndReason.TimedOut : SessionEndReason.Revoked);
-			await _context.Sessions.EndAsync(stored.Id, stored.Ended!.Value);
+			await _context.Sessions.EndAsync(stored.Record.Id, stored.Ended!.Value);
 			return LoginResult.Fail(refusal ?? LoginFailure.InvalidToken);
 		}
 
@@ -228,9 +236,9 @@ public sealed class UserRegistry
 
 	private bool IsEnding(SessionState stored)
 	{
-		return _ended.ContainsKey(stored.Id) ||
-		       (_revoking.TryGetValue(stored.User.Id, out var pending) &&
-		        pending.Any(r => stored.StartedAt <= r.At && stored.Id != r.Except));
+		return _ended.ContainsKey(stored.Record.Id) ||
+		       (_revoking.TryGetValue(stored.Record.Value.User.Id, out var pending) &&
+		        pending.Any(r => stored.Record.Value.StartedAt <= r.At && stored.Record.Id != r.Except));
 	}
 
 	// Called before the sessions close and their end is written, so no resume slips in between.
@@ -262,7 +270,7 @@ public sealed class UserRegistry
 
 	private Session NewSession(SessionState state, string token, int utcOffset)
 	{
-		return state.Type switch
+		return state.Record.Value.Type switch
 		{
 			SessionType.Stable => new StableSession(state, token, utcOffset, _sessionContext),
 			SessionType.StableTourney => new TourneySession(state, token),
@@ -295,7 +303,7 @@ public sealed class UserRegistry
 	public void Close(Session connection, SessionEndReason reason)
 	{
 		if (reason is SessionEndReason.LoggedOut && connection is StableSession &&
-		    _context.Clock.GetUtcNow() - connection.State.StartedAt < IgnoreLogoutWithin)
+		    _context.Clock.GetUtcNow() - connection.State.Record.Value.StartedAt < IgnoreLogoutWithin)
 			return;
 
 		using var scope = Enter(connection.Record);
@@ -315,7 +323,7 @@ public sealed class UserRegistry
 		}
 
 		session.State.Heartbeat(now);
-		if (!session.IsServerOwned) _activity[session.State.Id] = session;
+		if (!session.IsServerOwned) _activity[session.State.Record.Id] = session;
 	}
 
 	public int CloseSilent()
@@ -459,7 +467,7 @@ public sealed class UserRegistry
 				break;
 		}
 
-		if (stored.Ended is not null) _ended[stored.Id] = 0;
+		if (stored.Ended is not null) _ended[stored.Record.Id] = 0;
 		return null;
 	}
 
@@ -468,16 +476,19 @@ public sealed class UserRegistry
 		var now = _context.Clock.GetUtcNow();
 		// A game client session must report a client, and none stands behind the bot's.
 		var client = type is SessionType.Stable ? ServerClient : null;
-		return new SessionState
+		return new SessionState(new SessionRecord
 		{
 			Id = NewSessionId(),
-			User = bot,
-			Type = type,
-			StartedAt = now,
-			Fingerprint = new SessionFingerprint(IPAddress.Loopback, client),
-			TokenHash = HashToken(token),
-			LastActiveAt = now
-		};
+			Value = new SessionData
+			{
+				User = bot,
+				Type = type,
+				StartedAt = now,
+				Fingerprint = new SessionFingerprint(IPAddress.Loopback, client),
+				TokenHash = HashToken(token),
+				LastActiveAt = now
+			}
+		});
 	}
 
 	internal static string NewToken()
@@ -492,8 +503,8 @@ public sealed class UserRegistry
 
 		// The osu! game client goes last: the user's logout reaches the other clients only when it closes last.
 		foreach (var connection in online.Connections
-			         .Where(connection => connection.IsOpen && connection.State.Id != except &&
-			                              (only is null || connection.State.Id == only))
+			         .Where(connection => connection.IsOpen && connection.State.Record.Id != except &&
+			                              (only is null || connection.State.Record.Id == only))
 			         .OrderByDescending(connection => connection.Type).ToList())
 			Close(connection, reason);
 	}
@@ -562,8 +573,8 @@ public sealed class UserRegistry
 		if (!connection.IsOpen) return;
 
 		connection.State.End(_context.Clock.GetUtcNow(), reason);
-		if (!connection.IsServerOwned) _ended[connection.State.Id] = 0;
-		_activity.TryRemove(connection.State.Id, out _);
+		if (!connection.IsServerOwned) _ended[connection.State.Record.Id] = 0;
+		_activity.TryRemove(connection.State.Record.Id, out _);
 		connection.IsOpen = false;
 		Unindex(connection);
 		connection.User.Remove(connection);

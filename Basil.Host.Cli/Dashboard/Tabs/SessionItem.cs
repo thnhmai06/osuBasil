@@ -39,12 +39,19 @@ internal sealed record SessionItem(
 		return moment.ToLocalTime().ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
 	}
 
-	public static SessionItem Of(Session data, DateTimeOffset now)
+	public static SessionItem Of(SessionRecord record, DateTimeOffset now)
 	{
-		var live = data.StatusAt(now) is not (SessionStatus.Expired or SessionStatus.Ended);
-		return new SessionItem(data.Id, data.User.Id, data.User.Value.Name, (ulong)data.User.Value.Privileges,
+		return Of(new Session(record), now);
+	}
+
+	public static SessionItem Of(Session session, DateTimeOffset now)
+	{
+		var record = session.Record;
+		var data = record.Value;
+		var live = session.StatusAt(now) is not (SessionStatus.Expired or SessionStatus.Ended);
+		return new SessionItem(record.Id, data.User.Id, data.User.Value.Name, (ulong)data.User.Value.Privileges,
 			data.Type, data.Fingerprint.Ip.ToString(), data.Fingerprint.ClientInformation ?? string.Empty,
 			data.StartedAt,
-			data.LastActiveAt, live, data.Ended?.Reason.ToString() ?? string.Empty);
+			session.LastActiveAt, live, session.Ended?.Reason.ToString() ?? string.Empty);
 	}
 }

@@ -48,7 +48,7 @@ public sealed class UserSessions
 		return _connections.TryGetValue(connection.Type, out var set) && set.Remove(connection);
 	}
 
-	internal async Task<Page<Domain.Authentication.Session>> ListAsync(Session viewer, PageRequest page,
+	internal async Task<Page<SessionRecord>> ListAsync(Session viewer, PageRequest page,
 		SessionFilter state, IReadOnlyList<SessionType>? types, CancellationToken ct)
 	{
 		var now = _user.Context.Clock.GetUtcNow();
@@ -65,7 +65,7 @@ public sealed class UserSessions
 			ct);
 	}
 
-	internal async Task<(UserOutcome Outcome, Domain.Authentication.Session? Session)> GetAsync(Session viewer,
+	internal async Task<(UserOutcome Outcome, SessionRecord? Session)> GetAsync(Session viewer,
 		long id, CancellationToken ct)
 	{
 		var session = await _user.Context.Sessions.GetAsync(_user.Record, id, ct);
@@ -87,8 +87,8 @@ public sealed class UserSessions
 	{
 		if (_user.Record.IsBasilBot()) return UserOutcome.SystemAccount;
 		// A session whose client is online exists even before its record reaches the store.
-		if (!Connections.Any(connection => connection.State.Id == id) &&
-		    await _user.Context.Sessions.GetAsync(_user.Record, id) is not { Ended: null })
+		if (!Connections.Any(connection => connection.State.Record.Id == id) &&
+		    await _user.Context.Sessions.GetAsync(_user.Record, id) is not { Value.Ended: null })
 			return UserOutcome.NotFound;
 
 		await CloseAsync(id, null, SessionEndReason.Revoked);
@@ -100,7 +100,7 @@ public sealed class UserSessions
 		if (_user.Record.IsBasilBot()) return UserOutcome.SystemAccount;
 
 		var isSelf = actor.Record.Equals(_user.Record);
-		long? keep = isSelf && keepCurrent && actor is ApiSession api ? api.State.Id : null;
+		long? keep = isSelf && keepCurrent && actor is ApiSession api ? api.State.Record.Id : null;
 		// The sessions live in another module's database, so no transaction covers both: log first, so an action is never unrecorded.
 		if (!isSelf)
 			await _user.Context.ModerationLog.AppendAsync(new ModerationLogData

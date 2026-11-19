@@ -7,9 +7,9 @@ using Mediator;
 namespace Basil.Infrastructure.Users.Handlers;
 
 internal sealed class GetUserSessionHandler(UserRegistry registry)
-	: IRequestHandler<GetUserSession, (UserOutcome Result, Session? Session)>
+	: IRequestHandler<GetUserSession, (UserOutcome Result, SessionRecord? Session)>
 {
-	public async ValueTask<(UserOutcome Result, Session? Session)> Handle(GetUserSession request,
+	public async ValueTask<(UserOutcome Result, SessionRecord? Session)> Handle(GetUserSession request,
 		CancellationToken ct)
 	{
 		return await registry.ScopeTo(request.Actor, request.Target).Sessions

@@ -13,4 +13,4 @@ public sealed record ListUserSessions(
 	PageRequest Page,
 	SessionFilter State,
 	IReadOnlyList<SessionType>? Types)
-	: IRequest<(UserOutcome Result, Page<Domain.Authentication.Session>? Sessions)>;
+	: IRequest<(UserOutcome Result, Page<SessionRecord>? Sessions)>;

@@ -22,15 +22,15 @@ internal sealed class SessionEndHandler(
 		var session = @event.Session.State;
 		try
 		{
-			await sessions.EndAsync(session.Id, session.Ended!.Value);
-			registry.ConfirmEnded(session.Id);
+			await sessions.EndAsync(session.Record.Id, session.Ended!.Value);
+			registry.ConfirmEnded(session.Record.Id);
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException ||
 		                                  !ct.IsCancellationRequested)
 		{
 			UpdateFailures.Add(1);
 			logger.LogError(exception, "Could not store the closing of session {SessionId} of user {UserId}",
-				session.Id, session.User.Id);
+				session.Record.Id, session.Record.Value.User.Id);
 		}
 	}
 }
