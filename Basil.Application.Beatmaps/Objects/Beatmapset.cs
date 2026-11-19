@@ -30,39 +30,39 @@ public sealed class Beatmapset
 		Context.Events.Publish(new BeatmapsetDeleted(Record));
 	}
 
-	internal async Task<BeatmapsetOutcome> DeleteAsync()
+	internal async Task<BeatmapsetEditResult> DeleteAsync()
 	{
-		if (Record.Locked) return BeatmapsetOutcome.Locked;
+		if (Record.Locked) return BeatmapsetEditResult.Locked;
 
 		await Context.Storage.DeleteAsync(Record);
 		await ForgetAsync();
-		return BeatmapsetOutcome.Ok;
+		return BeatmapsetEditResult.Ok;
 	}
 
-	internal async Task<BeatmapsetOutcome> SetVisibleAsync(bool visible)
+	internal async Task<BeatmapsetEditResult> SetVisibleAsync(bool visible)
 	{
-		if (Record.Visible == visible) return BeatmapsetOutcome.Ok;
+		if (Record.Visible == visible) return BeatmapsetEditResult.Ok;
 
 		Record.Visible = visible;
 		await Context.Repository.UpdateAsync(Record);
-		return BeatmapsetOutcome.Ok;
+		return BeatmapsetEditResult.Ok;
 	}
 
-	internal async Task<BeatmapsetOutcome> SetLockedAsync(bool locked)
+	internal async Task<BeatmapsetEditResult> SetLockedAsync(bool locked)
 	{
-		if (Record.Locked == locked) return BeatmapsetOutcome.Ok;
+		if (Record.Locked == locked) return BeatmapsetEditResult.Ok;
 
 		Record.Locked = locked;
 		await Context.Repository.UpdateAsync(Record);
-		return BeatmapsetOutcome.Ok;
+		return BeatmapsetEditResult.Ok;
 	}
 
-	internal async Task<BeatmapsetOutcome> SetStatusAsync(BeatmapsetStatus status)
+	internal async Task<BeatmapsetEditResult> SetStatusAsync(BeatmapsetStatus status)
 	{
-		if (Record.Status == status) return BeatmapsetOutcome.Ok;
+		if (Record.Status == status) return BeatmapsetEditResult.Ok;
 
 		Record.Status = status;
 		await Context.Repository.UpdateAsync(Record);
-		return BeatmapsetOutcome.Ok;
+		return BeatmapsetEditResult.Ok;
 	}
 }

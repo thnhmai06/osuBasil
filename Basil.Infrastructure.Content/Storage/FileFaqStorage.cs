@@ -41,7 +41,7 @@ internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage
 		ArgumentNullException.ThrowIfNull(entry);
 		return FaqRules.IsValidName(entry)
 			? FaqRules.FileNameOf(entry)
-			: throw new ArgumentException("An entry name and each part of it must name something.", nameof(entry));
+			: throw new InvalidFaqNameException();
 	}
 
 	private sealed class EntryWriter : StreamWriter, IFaqEntryWriter

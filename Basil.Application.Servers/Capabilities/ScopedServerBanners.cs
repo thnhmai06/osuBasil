@@ -13,14 +13,14 @@ public readonly struct ScopedServerBanners
 		_scoped = scoped;
 	}
 
-	private ServerOutcome? Denied()
+	private ServerActionResult? Denied()
 	{
 		return _scoped.Lacks(UserPrivileges.Owner)
-			? ServerOutcome.Denied
+			? ServerActionResult.Denied
 			: null;
 	}
 
-	public async Task<(ServerOutcome Result, MenuBanner? Banner)> CreateAsync(string name, Stream image,
+	public async Task<(ServerActionResult Result, MenuBanner? Banner)> CreateAsync(string name, Stream image,
 		Uri url, DateTimeOffset? startsAt, DateTimeOffset? endsAt)
 	{
 		if (Denied() is { } denied) return (denied, null);
@@ -28,7 +28,7 @@ public readonly struct ScopedServerBanners
 		return await _scoped.Server.Banners.CreateAsync(name, image, url, startsAt, endsAt);
 	}
 
-	public async Task<ServerOutcome> DeleteAsync(MenuBanner banner)
+	public async Task<ServerActionResult> DeleteAsync(MenuBanner banner)
 	{
 		if (Denied() is { } denied) return denied;
 

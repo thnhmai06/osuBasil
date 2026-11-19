@@ -4,4 +4,4 @@ using Mediator;
 
 namespace Basil.Application.Diagnostics.Messages;
 
-public sealed record ClearCaches(Session Actor) : IRequest<(DiagnosticsOutcome Result, int Deleted)>;
+public sealed record ClearCaches(Session Actor) : IRequest<(DiagnosticsCommandResult Result, int Deleted)>;

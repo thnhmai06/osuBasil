@@ -4,11 +4,11 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-internal sealed class StartRoundHandler : IRequestHandler<StartRound, RoomOutcome>
+internal sealed class StartRoundHandler : IRequestHandler<StartRound, RoomActionResult>
 {
-	public ValueTask<RoomOutcome> Handle(StartRound request, CancellationToken ct)
+	public ValueTask<RoomActionResult> Handle(StartRound request, CancellationToken ct)
 	{
-		return new ValueTask<RoomOutcome>(
+		return new ValueTask<RoomActionResult>(
 			request.Room.ScopeTo(request.Actor).Rounds.StartAsync());
 	}
 }

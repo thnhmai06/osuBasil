@@ -1,18 +1,12 @@
 namespace Basil.Application.Servers.Objects;
 
-public enum ServerOutcome : byte
+public enum ServerActionResult : byte
 {
 	Denied = 0,
 
 	Ok = 1,
 
 	NameTaken,
-
-	TooLarge,
-
-	InvalidImage,
-
-	DimensionsTooLarge,
 
 	Locked,
 

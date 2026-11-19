@@ -38,7 +38,7 @@ internal static class ContentRoutes
 	private static async Task<IResult> GetAllAsync(HttpContext context, ISender sender)
 	{
 		var (result, settings) = await sender.Send(new GetSettings(context.Session()), context.RequestAborted);
-		return result == ServerOutcome.Ok
+		return result == ServerActionResult.Ok
 			? Api.Ok(SettingsCategories.GetAll(settings!))
 			: result.Refusal();
 	}
@@ -48,7 +48,7 @@ internal static class ContentRoutes
 		if (!SettingsCategories.Exists(category)) return Api.NotFound("No such settings category.");
 
 		var (result, settings) = await sender.Send(new GetSettings(context.Session()), context.RequestAborted);
-		return result == ServerOutcome.Ok ? Api.Ok(SettingsCategories.Get(category, settings!)) : result.Refusal();
+		return result == ServerActionResult.Ok ? Api.Ok(SettingsCategories.Get(category, settings!)) : result.Refusal();
 	}
 
 	private static async Task<IResult> PatchCategoryAsync(HttpContext context, string category, JsonObject patch,
@@ -58,13 +58,13 @@ internal static class ContentRoutes
 
 		var actor = context.Session();
 		var (read, current) = await sender.Send(new GetSettings(actor), context.RequestAborted);
-		if (read != ServerOutcome.Ok) return read.Refusal();
+		if (read != ServerActionResult.Ok) return read.Refusal();
 
 		try
 		{
 			var changed = SettingsCategories.Patch(category, current!, patch);
 			var stored = await sender.Send(new UpdateSettings(actor, changed), context.RequestAborted);
-			return stored == ServerOutcome.Ok
+			return stored == ServerActionResult.Ok
 				? Api.Ok(SettingsCategories.Get(category, changed), "Updated successfully")
 				: stored.Refusal();
 		}
@@ -83,7 +83,7 @@ internal static class ContentRoutes
 		if (request.To is not { Length: > 0 } ids)
 		{
 			var (all, sent) = await sender.Send(new NotifyEveryone(actor, request.Text), context.RequestAborted);
-			return all == ServerOutcome.Ok ? Api.Ok(new AnnounceResponse(sent)) : all.Refusal();
+			return all == ServerActionResult.Ok ? Api.Ok(new AnnounceResponse(sent)) : all.Refusal();
 		}
 
 		var recipients = new List<int>();
@@ -95,13 +95,13 @@ internal static class ContentRoutes
 		}
 
 		var (some, count) = await sender.Send(new NotifyUsers(actor, request.Text, recipients), context.RequestAborted);
-		return some == ServerOutcome.Ok ? Api.Ok(new AnnounceResponse(count)) : some.Refusal();
+		return some == ServerActionResult.Ok ? Api.Ok(new AnnounceResponse(count)) : some.Refusal();
 	}
 
 	private static async Task<IResult> ListScreenshotsAsync(HttpContext context, ISender sender)
 	{
 		var (result, list) = await sender.Send(new ListScreenshots(context.Session()), context.RequestAborted);
-		return result == ServerOutcome.Ok
+		return result == ServerActionResult.Ok
 			? Api.Ok(list.Select(reference => new ScreenshotView(Path.GetFileName(reference.Value))).ToList())
 			: result.Refusal();
 	}
@@ -110,7 +110,7 @@ internal static class ContentRoutes
 	{
 		var actor = context.Session();
 		var (listed, list) = await sender.Send(new ListScreenshots(actor), context.RequestAborted);
-		if (listed != ServerOutcome.Ok) return listed.Refusal();
+		if (listed != ServerActionResult.Ok) return listed.Refusal();
 
 		var match = list.Where(reference => Path.GetFileName(reference.Value) == id).Cast<ContentReference?>()
 			.FirstOrDefault();

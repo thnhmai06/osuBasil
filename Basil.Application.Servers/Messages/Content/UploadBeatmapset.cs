@@ -6,4 +6,4 @@ using Mediator;
 namespace Basil.Application.Servers.Messages.Content;
 
 public sealed record UploadBeatmapset(Session Actor, Stream Archive)
-	: IRequest<(ServerOutcome Result, BeatmapsetImportResult? Import)>;
+	: IRequest<(ServerActionResult Result, BeatmapsetImportResult? Import)>;

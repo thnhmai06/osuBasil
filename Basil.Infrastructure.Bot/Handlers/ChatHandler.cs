@@ -1,3 +1,4 @@
+using Basil.Domain;
 using Basil.Application.Bot.Commands;
 using Basil.Application.Bot.Replies;
 using Basil.Application.Chat.Objects;
@@ -67,6 +68,10 @@ internal sealed class ChatHandler(
 		try
 		{
 			await commands.ExecuteAsync(context, content, workerToken);
+		}
+		catch (BasilException exception)
+		{
+			logger.LogDebug(exception, "Bot command from user {UserId} was not taken in", context.Actor.Record.Id);
 		}
 		catch (Exception exception) when
 			(exception is not OperationCanceledException || !workerToken.IsCancellationRequested)

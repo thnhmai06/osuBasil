@@ -1,3 +1,4 @@
+using Basil.Domain.Mechanics;
 using System.Collections.Frozen;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Bot.Commands;
@@ -41,14 +42,27 @@ internal sealed partial class MpCommands(
 			return true;
 		}
 
-		return subcommand.ToLowerInvariant() switch
+		try
 		{
-			"make" => await MakeAsync(context, subArgs, false, ct),
-			"makeprivate" => await MakeAsync(context, subArgs, true, ct),
-			"join" => await JoinAsync(context, subArgs, ct),
-			"in" => await InAsync(context, subArgs, ct),
-			_ => await ScopedAsync(context, subcommand, subArgs, ct)
-		};
+			return subcommand.ToLowerInvariant() switch
+			{
+				"make" => await MakeAsync(context, subArgs, false, ct),
+				"makeprivate" => await MakeAsync(context, subArgs, true, ct),
+				"join" => await JoinAsync(context, subArgs, ct),
+				"in" => await InAsync(context, subArgs, ct),
+				_ => await ScopedAsync(context, subcommand, subArgs, ct)
+			};
+		}
+		catch (InvalidModsException)
+		{
+			await context.Reply(MpReplies.InvalidMods, ct);
+			return false;
+		}
+		catch (Basil.Domain.Multiplayer.Room.InvalidRoomSettingsException)
+		{
+			await context.Reply(MpReplies.SettingsInvalid, ct);
+			return false;
+		}
 	}
 
 	public static bool IsChainable(string subcommand)
@@ -107,7 +121,7 @@ internal sealed partial class MpCommands(
 
 		return context with
 		{
-			Say = context.Channel == RoomChannelName.NameFor(roomId)
+			Say = context.Channel == RoomChannelRules.NameFor(roomId)
 				? context.Say
 				: (text, ct) => context.Say(NameLines(text), ct),
 			SayPrivately = (text, ct) => context.SayPrivately(NameLines(text), ct)
@@ -127,7 +141,7 @@ internal sealed partial class MpCommands(
 		var actor = context.Actor;
 
 		// (a) Channel takes precedence: if sent in #mp_{id}, use that room
-		if (context.Channel is not null && RoomChannelName.TryParse(context.Channel, out var channelRoomId))
+		if (context.Channel is not null && RoomChannelRules.TryParse(context.Channel, out var channelRoomId))
 		{
 			var channelRoom = lobby.Find(channelRoomId);
 			if (channelRoom is not null) return channelRoom;

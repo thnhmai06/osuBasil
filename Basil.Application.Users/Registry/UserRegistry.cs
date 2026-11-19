@@ -606,15 +606,14 @@ public sealed class UserRegistry
 		return _accounts.CreateAsync(data, passwordHash, privileges);
 	}
 
-	internal async Task<(UserRecord? User, UserOutcome Outcome)> RegisterAsync(UserData data, Md5Hash passwordHash,
+	internal async Task<(UserRecord? User, UserActionResult Outcome)> RegisterAsync(UserData data, Md5Hash passwordHash,
 		UserPrivileges? privileges)
 	{
 		var (user, failure) = await CreateAccountAsync(data, passwordHash, privileges);
 		return failure switch
 		{
-			null => (user, UserOutcome.Ok),
-			RegistrationFailure.InvalidName => (null, UserOutcome.InvalidName),
-			_ => (null, UserOutcome.NameTaken)
+			null => (user, UserActionResult.Ok),
+			_ => (null, UserActionResult.NameTaken)
 		};
 	}
 

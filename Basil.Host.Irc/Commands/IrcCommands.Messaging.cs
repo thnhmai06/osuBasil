@@ -39,7 +39,7 @@ internal sealed partial class IrcCommands
 				return;
 			}
 
-			destination = RoomChannelName.TryParse(target, out var roomId)
+			destination = RoomChannelRules.TryParse(target, out var roomId)
 				? new ChatTarget.Room(roomId)
 				: new ChatTarget.General(target);
 		}
@@ -56,9 +56,16 @@ internal sealed partial class IrcCommands
 
 		if (!await MayChatAsync(session, actor, message.Command, target, ct)) return;
 
-		var result = await sender.Send(
-			new PostChatMessage(actor, destination, IrcText.Limit(message.Parameters[1]), notice), ct);
-		ReplyToPost(session, target, result);
+		try
+		{
+			var result = await sender.Send(
+				new PostChatMessage(actor, destination, IrcText.Limit(message.Parameters[1]), notice), ct);
+			ReplyToPost(session, target, result);
+		}
+		catch (EmptyMessageException)
+		{
+			session.Numeric(IrcNumericReply.ErrNoTextToSend, "No text to send");
+		}
 	}
 
 	private async Task<bool> MayChatAsync(IrcSocket session, Session actor, string command, string target,
@@ -75,9 +82,9 @@ internal sealed partial class IrcCommands
 		return false;
 	}
 
-	private static void ReplyToPost(IrcSocket session, string target, ChannelOutcome result)
+	private static void ReplyToPost(IrcSocket session, string target, ChannelJoinResult result)
 	{
-		if (result == ChannelOutcome.Denied)
+		if (result == ChannelJoinResult.Denied)
 		{
 			session.Numeric(IrcNumericReply.ErrCannotSendToChannel, target, IrcReplies.Silenced);
 			return;
@@ -85,20 +92,17 @@ internal sealed partial class IrcCommands
 
 		switch (result)
 		{
-			case ChannelOutcome.Closed or ChannelOutcome.NotFound:
+			case ChannelJoinResult.Closed or ChannelJoinResult.NotFound:
 				session.Numeric(IrcNumericReply.ErrNoSuchChannel, target, IrcReplies.NoSuchChannel);
 				break;
-			case ChannelOutcome.NotMember or ChannelOutcome.AccessDenied:
+			case ChannelJoinResult.NotMember or ChannelJoinResult.AccessDenied:
 				session.Numeric(IrcNumericReply.ErrCannotSendToChannel, target, IrcReplies.CannotSend);
 				break;
-			case ChannelOutcome.Blocked:
+			case ChannelJoinResult.Blocked:
 				session.Numeric(IrcNumericReply.ErrCannotSendToChannel, target, IrcReplies.DmBlocked);
 				break;
-			case ChannelOutcome.TargetSilenced:
+			case ChannelJoinResult.TargetSilenced:
 				session.Numeric(IrcNumericReply.ErrCannotSendToChannel, target, IrcReplies.TargetSilenced);
-				break;
-			case ChannelOutcome.Empty:
-				session.Numeric(IrcNumericReply.ErrNoTextToSend, "No text to send");
 				break;
 		}
 	}
@@ -133,10 +137,10 @@ internal sealed partial class IrcCommands
 			var result = await sender.Send(new JoinChannel(actor, IrcTarget(name)), ct);
 			switch (result)
 			{
-				case ChannelOutcome.Closed or ChannelOutcome.NotFound:
+				case ChannelJoinResult.Closed or ChannelJoinResult.NotFound:
 					session.Numeric(IrcNumericReply.ErrNoSuchChannel, name, IrcReplies.NoSuchChannel);
 					break;
-				case ChannelOutcome.AccessDenied:
+				case ChannelJoinResult.AccessDenied:
 					session.Numeric(IrcNumericReply.ErrInviteOnlyChan, name, IrcReplies.CannotJoin);
 					break;
 			}
@@ -155,16 +159,16 @@ internal sealed partial class IrcCommands
 		foreach (var name in message.Parameters[0].Split(',', StringSplitOptions.RemoveEmptyEntries))
 		{
 			var result = await sender.Send(new PartChannel(actor, IrcTarget(name)), ct);
-			if (result == ChannelOutcome.NotFound)
+			if (result == ChannelJoinResult.NotFound)
 				session.Numeric(IrcNumericReply.ErrNoSuchChannel, name, IrcReplies.NoSuchChannel);
-			else if (result == ChannelOutcome.NotMember)
+			else if (result == ChannelJoinResult.NotMember)
 				session.Numeric(IrcNumericReply.ErrNotOnChannel, name, IrcReplies.NotOnChannel);
 		}
 	}
 
 	private static ChatTarget IrcTarget(string name)
 	{
-		return RoomChannelName.TryParse(name, out var roomId)
+		return RoomChannelRules.TryParse(name, out var roomId)
 			? new ChatTarget.Room(roomId)
 			: new ChatTarget.General(name);
 	}

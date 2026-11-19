@@ -30,12 +30,12 @@ public sealed class GeneralChannel : Channel
 		return privileges.Allows(Record.Value.WritePrivileges);
 	}
 
-	internal async Task<ChannelOutcome> ConfigureAsync(GeneralChannelChange change,
+	internal async Task<ChannelJoinResult> ConfigureAsync(GeneralChannelChange change,
 		Func<Session, UserPrivileges> privilegesOf)
 	{
 		using (Enter())
 		{
-			if (IsClosed) return ChannelOutcome.Closed;
+			if (IsClosed) return ChannelJoinResult.Closed;
 			var target = Record.Value;
 
 			change.Validate();
@@ -48,13 +48,13 @@ public sealed class GeneralChannel : Channel
 		}
 
 		await Context.Channels.CreateOrUpdateAsync(Record);
-		return ChannelOutcome.Ok;
+		return ChannelJoinResult.Ok;
 	}
 
-	internal async Task<ChannelOutcome> DeleteAsync()
+	internal async Task<ChannelJoinResult> DeleteAsync()
 	{
 		Close();
 		await Context.Channels.DeleteAsync(Record);
-		return ChannelOutcome.Ok;
+		return ChannelJoinResult.Ok;
 	}
 }

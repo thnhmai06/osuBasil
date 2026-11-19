@@ -5,4 +5,4 @@ using Mediator;
 namespace Basil.Application.Beatmaps.Messages;
 
 public sealed record DeleteBeatmapset(IActor Actor, int SetId)
-	: IRequest<BeatmapsetOutcome>;
+	: IRequest<BeatmapsetEditResult>;

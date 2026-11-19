@@ -5,9 +5,9 @@ using Mediator;
 namespace Basil.Infrastructure.Servers.Handlers.Content;
 
 internal sealed class DeleteMenuSeasonalHandler(Server server)
-	: IRequestHandler<DeleteMenuSeasonal, ServerOutcome>
+	: IRequestHandler<DeleteMenuSeasonal, ServerActionResult>
 {
-	public async ValueTask<ServerOutcome> Handle(DeleteMenuSeasonal request, CancellationToken ct)
+	public async ValueTask<ServerActionResult> Handle(DeleteMenuSeasonal request, CancellationToken ct)
 	{
 		return await server.ScopeTo(request.Actor).Seasonals.DeleteAsync(request.Image);
 	}

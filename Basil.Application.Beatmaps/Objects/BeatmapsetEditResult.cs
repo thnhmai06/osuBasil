@@ -1,10 +1,12 @@
 namespace Basil.Application.Beatmaps.Objects;
 
-public enum RulesetOutcome : byte
+public enum BeatmapsetEditResult : byte
 {
 	Denied = 0,
 
 	Ok = 1,
 
-	Busy
+	Locked,
+
+	NotFound
 }

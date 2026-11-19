@@ -4,11 +4,11 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-internal sealed class KickPlayerHandler : IRequestHandler<KickPlayer, RoomOutcome>
+internal sealed class KickPlayerHandler : IRequestHandler<KickPlayer, RoomActionResult>
 {
-	public ValueTask<RoomOutcome> Handle(KickPlayer request, CancellationToken ct)
+	public ValueTask<RoomActionResult> Handle(KickPlayer request, CancellationToken ct)
 	{
-		return new ValueTask<RoomOutcome>(
+		return new ValueTask<RoomActionResult>(
 			request.Room.ScopeTo(request.Actor).Members.KickAsync(request.Player));
 	}
 }

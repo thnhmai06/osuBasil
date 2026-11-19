@@ -5,9 +5,9 @@ using Mediator;
 
 namespace Basil.Infrastructure.Users.Handlers;
 
-internal sealed class UnblockUserHandler(UserRegistry registry) : IRequestHandler<UnblockUser, UserOutcome>
+internal sealed class UnblockUserHandler(UserRegistry registry) : IRequestHandler<UnblockUser, UserActionResult>
 {
-	public async ValueTask<UserOutcome> Handle(UnblockUser request, CancellationToken ct)
+	public async ValueTask<UserActionResult> Handle(UnblockUser request, CancellationToken ct)
 	{
 		return await registry.ScopeTo(request.Actor, request.Target).Relationships.UnblockAsync();
 	}

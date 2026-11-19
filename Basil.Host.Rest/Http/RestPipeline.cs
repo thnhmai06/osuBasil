@@ -1,3 +1,5 @@
+using Basil.Host.Shared.Errors;
+using Basil.Domain;
 using System.Globalization;
 using System.Text.Json;
 using Basil.Application.Shared.Settings;
@@ -34,6 +36,12 @@ internal sealed class RestPipeline(RequestDelegate next)
 		catch (Exception ex) when (!context.Response.HasStarted && ex is BadHttpRequestException or JsonException)
 		{
 			await RefuseAsync(context, ex);
+		}
+		catch (BasilException error) when (!context.Response.HasStarted)
+		{
+			context.Response.Clear();
+			var info = BusinessErrors.Describe(error);
+			await Api.Error(OutcomeResults.StatusOf(info.Kind), info.Code, info.Code).ExecuteAsync(context);
 		}
 		catch (Exception ex) when (!context.Response.HasStarted && ex is not OperationCanceledException)
 		{

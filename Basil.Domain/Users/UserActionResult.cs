@@ -1,6 +1,6 @@
 namespace Basil.Domain.Users;
 
-public enum UserOutcome : byte
+public enum UserActionResult : byte
 {
 	Denied = 0,
 
@@ -10,15 +10,11 @@ public enum UserOutcome : byte
 
 	SystemAccount,
 
-	InvalidSilence,
-
 	Self,
 
 	Deleted,
 
 	WrongPassword,
-
-	InvalidName,
 
 	NameTaken,
 
@@ -26,13 +22,5 @@ public enum UserOutcome : byte
 
 	Locked,
 
-	NotSelf,
-
-	InvalidCountry,
-
-	InvalidImage,
-
-	DimensionsTooLarge,
-
-	TooLarge
+	NotSelf
 }

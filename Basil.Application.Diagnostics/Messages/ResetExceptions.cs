@@ -4,4 +4,4 @@ using Mediator;
 
 namespace Basil.Application.Diagnostics.Messages;
 
-public sealed record ResetExceptions(Session Actor) : IRequest<DiagnosticsOutcome>;
+public sealed record ResetExceptions(Session Actor) : IRequest<DiagnosticsCommandResult>;

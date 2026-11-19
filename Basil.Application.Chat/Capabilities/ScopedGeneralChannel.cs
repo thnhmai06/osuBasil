@@ -26,17 +26,17 @@ public readonly struct ScopedGeneralChannel
 
 	public GeneralChannel Channel { get; }
 
-	public async Task<ChannelOutcome> ConfigureAsync(GeneralChannelChange change)
+	public async Task<ChannelJoinResult> ConfigureAsync(GeneralChannelChange change)
 	{
-		if (Lacks(UserPrivileges.Moderator)) return ChannelOutcome.Denied;
+		if (Lacks(UserPrivileges.Moderator)) return ChannelJoinResult.Denied;
 
 		var now = Channel.Context.Clock.GetUtcNow();
 		return await Channel.ConfigureAsync(change, member => member.EffectivePrivileges(now));
 	}
 
-	public async Task<ChannelOutcome> DeleteAsync()
+	public async Task<ChannelJoinResult> DeleteAsync()
 	{
-		if (Lacks(UserPrivileges.Moderator)) return ChannelOutcome.Denied;
+		if (Lacks(UserPrivileges.Moderator)) return ChannelJoinResult.Denied;
 
 		return await Channel.DeleteAsync();
 	}

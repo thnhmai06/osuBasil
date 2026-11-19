@@ -23,7 +23,7 @@ internal sealed class AccountRules(
 		if ((await settings.GetAsync(ct)).Locks.HasFlag(Locks.Accounts))
 			return RegistrationFailure.Locked;
 
-		if (!UserData.IsValidName(attempt.Username)) return RegistrationFailure.InvalidName;
+		if (!UserData.IsValidName(attempt.Username)) throw new InvalidUserNameException();
 
 		return await users.GetByNameAsync(attempt.Username, ct) is not null
 			? RegistrationFailure.NameTaken

@@ -47,7 +47,7 @@ The channel to manage is found through `server.ScopeTo(by).Channels.Find(name)`.
 
 ### Results
 
-Every operation returns a `ChannelOutcome` rather than throwing for ordinary refusals. A refusal for lack of a privilege is `Denied`.
+Every operation returns a `ChannelJoinResult` rather than throwing for ordinary refusals. A refusal for lack of a privilege is `Denied`.
 
 | Operation | Outcome | Meaning |
 |---|---|---|
@@ -107,7 +107,7 @@ BasilBot is online with a permanent `User` and one Stable and one Irc connection
 * [`ScopedChannel.cs`](../../Basil.Application.Chat/Capabilities/ScopedChannel.cs): join, part and post operations
 * [`ScopedGeneralChannel.cs`](../../Basil.Application.Chat/Capabilities/ScopedGeneralChannel.cs): general-channel configuration and deletion
 * [`ScopedServerChannels.cs`](../../Basil.Application.Servers/Capabilities/ScopedServerChannels.cs): general-channel creation, and the lookup of the channel to manage
-* [`ChannelOutcome.cs`](../../Basil.Application.Chat/Objects/ChannelOutcome.cs): operation outcomes
+* [`ChannelJoinResult.cs`](../../Basil.Domain/Chat/ChannelJoinResult.cs): operation outcomes
 * [`GeneralChannelRegistry.cs`](../../Basil.Application.Chat/Registry/GeneralChannelRegistry.cs): general-channel ownership and the automatic joins and parts
 * [`GeneralChannel.cs`](../../Basil.Application.Chat/Objects/GeneralChannel.cs), [`PmChannel.cs`](../../Basil.Application.Chat/Objects/PmChannel.cs), [`PmChannels.cs`](../../Basil.Application.Chat/Registry/PmChannels.cs): general and private-message channels, and the private-message channel of each online user; [`GeneralChannelRecord.cs`](../../src/Domain/Chat/GeneralChannelRecord.cs): the stored general channel
 * [`RoomChannel.cs`](../../Basil.Application.Chat/Objects/RoomChannel.cs), [`SpectatorChannel.cs`](../../Basil.Application.Chat/Objects/SpectatorChannel.cs), [`SpectatorChannels.cs`](../../Basil.Application.Chat/Registry/SpectatorChannels.cs): room and spectator channels, and the spectator channel of each watched client

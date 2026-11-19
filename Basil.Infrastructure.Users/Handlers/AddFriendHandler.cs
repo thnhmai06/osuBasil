@@ -5,9 +5,9 @@ using Mediator;
 
 namespace Basil.Infrastructure.Users.Handlers;
 
-internal sealed class AddFriendHandler(UserRegistry registry) : IRequestHandler<AddFriend, UserOutcome>
+internal sealed class AddFriendHandler(UserRegistry registry) : IRequestHandler<AddFriend, UserActionResult>
 {
-	public async ValueTask<UserOutcome> Handle(AddFriend request, CancellationToken ct)
+	public async ValueTask<UserActionResult> Handle(AddFriend request, CancellationToken ct)
 	{
 		return await registry.ScopeTo(request.Actor, request.Target).Relationships.AddFriendAsync();
 	}

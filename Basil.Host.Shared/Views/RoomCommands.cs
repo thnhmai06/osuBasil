@@ -38,7 +38,7 @@ public sealed record PrivateRequest(bool Private);
 
 public readonly record struct RoomCall(ISender Sender, Session Actor, Room Room)
 {
-	public Task<RoomOutcome> Ask(IRequest<RoomOutcome> request, CancellationToken ct)
+	public Task<RoomActionResult> Ask(IRequest<RoomActionResult> request, CancellationToken ct)
 	{
 		return Sender.Send(request, ct).AsTask();
 	}
@@ -48,13 +48,11 @@ public sealed record RoomCommand(
 	string Name,
 	string Summary,
 	Type? Body,
-	Func<RoomCall, object?, IServiceProvider, CancellationToken, Task<RoomOutcome>> Run);
+	Func<RoomCall, object?, IServiceProvider, CancellationToken, Task<RoomActionResult>> Run);
 
 public static class RoomCommands
 {
 	public const int MaxRoomNameLength = 50;
-
-	public const int MaxRoomSize = 16;
 
 	public static IReadOnlyList<RoomCommand> All { get; } =
 	[
@@ -63,19 +61,13 @@ public static class RoomCommands
 			(r, _, _, ct) => r.Ask(new SetRoomLocked(r.Actor, r.Room, true), ct)),
 		Command<object?>("unlock", "Unlock the room so players can join again.",
 			(r, _, _, ct) => r.Ask(new SetRoomLocked(r.Actor, r.Room, false), ct)),
-		Command<SizeRequest>("size", "Update the number of usable slots.", (r, b, _, ct) =>
-			b.Size is < 1 or > MaxRoomSize
-				? Refuse(RoomOutcome.InvalidSettings)
-				: r.Ask(new ConfigureRoom(r.Actor, r.Room, new RoomSettingsChange(Size: b.Size)), ct)),
+		Command<SizeRequest>("size", "Update the number of usable slots.",
+			(r, b, _, ct) => r.Ask(new ConfigureRoom(r.Actor, r.Room, new RoomSettingsChange(Size: b.Size)), ct)),
 		Command<SetRequest>("set", "Update the team mode, the win condition and optionally the size.",
-			(r, b, _, ct) => b.Size is < 1 or > MaxRoomSize
-				? Refuse(RoomOutcome.InvalidSettings)
-				: r.Ask(new ConfigureRoom(r.Actor, r.Room, new RoomSettingsChange(TeamType: b.TeamType,
-					WinCondition: b.WinCondition, Size: b.Size)), ct)),
+			(r, b, _, ct) => r.Ask(new ConfigureRoom(r.Actor, r.Room, new RoomSettingsChange(TeamType: b.TeamType,
+				WinCondition: b.WinCondition, Size: b.Size)), ct)),
 		Command<NameRequest>("name", "Update the name of the room.", (r, b, _, ct) =>
-			string.IsNullOrWhiteSpace(b.Name)
-				? Refuse(RoomOutcome.InvalidSettings)
-				: r.Ask(new ConfigureRoom(r.Actor, r.Room, new RoomSettingsChange(Truncate(b.Name))), ct)),
+			r.Ask(new ConfigureRoom(r.Actor, r.Room, new RoomSettingsChange(Truncate(b.Name ?? string.Empty))), ct)),
 		Command<PasswordRequest>("password", "Update the password of the room; empty removes it.",
 			(r, b, _, ct) =>
 				r.Ask(new ConfigureRoom(r.Actor, r.Room,
@@ -95,10 +87,8 @@ public static class RoomCommands
 				new ConfigureRoom(r.Actor, r.Room, new RoomSettingsChange(Mods: mods, Freemods: b.Freemod ?? false)),
 				ct);
 		}),
-		Command<MoveRequest>("move", "Move a player to a slot.", (r, b, _, ct) =>
-			b.Slot is < 1 or > MaxRoomSize
-				? Refuse(RoomOutcome.InvalidSettings)
-				: r.Ask(new MovePlayer(r.Actor, r.Room, UserReference.ById(b.User), b.Slot), ct)),
+		Command<MoveRequest>("move", "Move a player to a slot.",
+			(r, b, _, ct) => r.Ask(new MovePlayer(r.Actor, r.Room, UserReference.ById(b.User), b.Slot), ct)),
 		Command<TeamRequest>("team", "Update the team of a player.",
 			(r, b, _, ct) => r.Ask(new SetPlayerTeam(r.Actor, r.Room, UserReference.ById(b.User), b.Team), ct)),
 		Command<UserRequest>("host", "Update the host of the room to a player.", (r, b, s, ct) =>
@@ -106,7 +96,7 @@ public static class RoomCommands
 			var host = OnlineUser(s, b.User)?.Stable;
 			return host is { IsOpen: true }
 				? r.Ask(new SetRoomHost(r.Actor, r.Room, host), ct)
-				: Refuse(RoomOutcome.TargetOffline);
+				: Refuse(RoomActionResult.TargetOffline);
 		}),
 		Command<object?>("clearhost", "Remove the host of the room.",
 			(r, _, _, ct) => r.Ask(new SetRoomHost(r.Actor, r.Room, null), ct)),
@@ -119,7 +109,7 @@ public static class RoomCommands
 		Command<UserRequest>("invite", "Invite an online player to the room.", (r, b, s, ct) =>
 			OnlineUser(s, b.User) is { } target
 				? r.Ask(new InvitePlayer(r.Actor, r.Room, target), ct)
-				: Refuse(RoomOutcome.TargetOffline)),
+				: Refuse(RoomActionResult.TargetOffline)),
 		Command<UserRequest>("addref", "Add a player as a referee.",
 			(r, b, _, ct) => r.Ask(new AddReferee(r.Actor, r.Room, UserReference.ById(b.User)), ct)),
 		Command<UserRequest>("removeref", "Remove a referee of the room.",
@@ -142,28 +132,28 @@ public static class RoomCommands
 	}
 
 	private static RoomCommand Command<TBody>(string name, string summary,
-		Func<RoomCall, TBody, IServiceProvider, CancellationToken, Task<RoomOutcome>> run)
+		Func<RoomCall, TBody, IServiceProvider, CancellationToken, Task<RoomActionResult>> run)
 	{
 		return new RoomCommand(name, summary, typeof(TBody) == typeof(object) ? null : typeof(TBody),
 			(room, body, services, ct) => run(room, (TBody)body!, services, ct));
 	}
 
-	private static Task<RoomOutcome> Refuse(RoomOutcome outcome)
+	private static Task<RoomActionResult> Refuse(RoomActionResult outcome)
 	{
 		return Task.FromResult(outcome);
 	}
 
-	private static Task<RoomOutcome> Countdown(RoomCall room, int seconds, bool startsRound,
+	private static Task<RoomActionResult> Countdown(RoomCall room, int seconds, bool startsRound,
 		CancellationToken ct)
 	{
 		return room.Ask(new StartRoomCountdown(room.Actor, room.Room, TimeSpan.FromSeconds(seconds), startsRound), ct);
 	}
 
-	private static async Task<RoomOutcome> MapAsync(RoomCall room, MapRequest body, IServiceProvider services,
+	private static async Task<RoomActionResult> MapAsync(RoomCall room, MapRequest body, IServiceProvider services,
 		CancellationToken ct)
 	{
 		var beatmap = await services.GetRequiredService<ISender>().Send(new FindBeatmap(body.Beatmap), ct);
-		if (beatmap is null) return RoomOutcome.NoBeatmap;
+		if (beatmap is null) return RoomActionResult.NoBeatmap;
 
 		var reference = new BeatmapReference(beatmap.Hash, beatmap.Id, beatmap.FullName,
 			beatmap.Metadata.Difficulty.Mode,

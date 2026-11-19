@@ -213,7 +213,7 @@ internal static class ContentCommands
 		await using var stream = File.OpenRead(path);
 		var (result, banner) = await SendAsync(call,
 			actor => new AddMenuBanner(actor, Path.GetFileName(path), stream, url, begins, expires));
-		if (result != ServerOutcome.Ok) return call.Refuse(result);
+		if (result != ServerActionResult.Ok) return call.Refuse(result);
 
 		call.Output.Ok($"Added banner {Path.GetFileName(banner!.Image.Value)}.");
 		return ExitCodes.Success;
@@ -243,7 +243,7 @@ internal static class ContentCommands
 		await using var stream = File.OpenRead(path);
 		var (result, image) =
 			await SendAsync(call, actor => new AddMenuSeasonal(actor, Path.GetFileName(path), stream));
-		if (result != ServerOutcome.Ok) return call.Refuse(result);
+		if (result != ServerActionResult.Ok) return call.Refuse(result);
 
 		call.Output.Ok($"Added background {Path.GetFileName(image!.Value.Value)}.");
 		return ExitCodes.Success;
@@ -293,8 +293,7 @@ internal static class ContentCommands
 	private static async Task<int> ShowFaqAsync(CommandCall call)
 	{
 		var entry = call.Word("entry");
-		if (!FaqRules.IsValidName(entry) ||
-		    await call.Get<ISender>().Send(new ReadFaq(entry), call.CancellationToken) is not { } text)
+		if (await call.Get<ISender>().Send(new ReadFaq(entry), call.CancellationToken) is not { } text)
 			return call.NotFound("entry");
 
 		call.Output.Line(text);
@@ -304,8 +303,6 @@ internal static class ContentCommands
 	private static async Task<int> SetFaqAsync(CommandCall call)
 	{
 		var entry = call.Word("entry");
-		if (!FaqRules.IsValidName(entry)) throw CommandException.Invalid("The entry name is not valid.");
-
 		var text = await File.ReadAllTextAsync(call.Required("file"), call.CancellationToken);
 		return call.Report(
 			await SendAsync(call, actor => new SaveFaq(actor, entry, text)),
@@ -315,9 +312,7 @@ internal static class ContentCommands
 	private static async Task<int> DeleteFaqAsync(CommandCall call)
 	{
 		var entry = call.Word("entry");
-		return FaqRules.IsValidName(entry)
-			? call.Report(await SendAsync(call, actor => new DeleteFaq(actor, entry)), "Entry deleted.")
-			: call.NotFound("entry");
+		return call.Report(await SendAsync(call, actor => new DeleteFaq(actor, entry)), "Entry deleted.");
 	}
 
 	private static void Flatten(List<(string, string)> lines, string prefix, JsonNode? node)
@@ -343,7 +338,7 @@ internal static class ContentCommands
 	private static async Task<int> ShowSettingsAsync(CommandCall call)
 	{
 		var (result, settings) = await SendAsync(call, actor => new GetSettings(actor));
-		if (result != ServerOutcome.Ok) return call.Refuse(result);
+		if (result != ServerActionResult.Ok) return call.Refuse(result);
 
 		var lines = new List<(string, string)>();
 		foreach (var (name, value) in SettingsCategories.GetAll(settings!))
@@ -358,7 +353,7 @@ internal static class ContentCommands
 		if (!SettingsCategories.Exists(category)) return call.NotFound("settings category");
 
 		var (result, settings) = await SendAsync(call, actor => new GetSettings(actor));
-		if (result != ServerOutcome.Ok) return call.Refuse(result);
+		if (result != ServerActionResult.Ok) return call.Refuse(result);
 
 		var lines = new List<(string, string)>();
 		Flatten(lines, string.Empty,
@@ -385,7 +380,7 @@ internal static class ContentCommands
 		}
 
 		var (read, current) = await SendAsync(call, actor => new GetSettings(actor));
-		if (read != ServerOutcome.Ok) return call.Refuse(read);
+		if (read != ServerActionResult.Ok) return call.Refuse(read);
 
 		try
 		{
@@ -417,7 +412,7 @@ internal static class ContentCommands
 		if (call.List("to") is not { Length: > 0 } ids)
 		{
 			var (all, sent) = await SendAsync(call, actor => new NotifyEveryone(actor, text));
-			return all == ServerOutcome.Ok ? Announced(call, sent) : call.Refuse(all);
+			return all == ServerActionResult.Ok ? Announced(call, sent) : call.Refuse(all);
 		}
 
 		var recipients = new List<int>();
@@ -433,7 +428,7 @@ internal static class ContentCommands
 		}
 
 		var (some, count) = await SendAsync(call, actor => new NotifyUsers(actor, text, recipients));
-		return some == ServerOutcome.Ok ? Announced(call, count) : call.Refuse(some);
+		return some == ServerActionResult.Ok ? Announced(call, count) : call.Refuse(some);
 	}
 
 	private static int Announced(CommandCall call, int sent)
@@ -446,7 +441,7 @@ internal static class ContentCommands
 	{
 		var page = call.Page();
 		var (result, list) = await SendAsync(call, actor => new ListScreenshots(actor));
-		if (result != ServerOutcome.Ok) return call.Refuse(result);
+		if (result != ServerActionResult.Ok) return call.Refuse(result);
 
 		var views = list.Select(reference => new ScreenshotView(Path.GetFileName(reference.Value))).ToList();
 		call.PrintPage(
@@ -458,7 +453,7 @@ internal static class ContentCommands
 	private static async Task<int> DeleteScreenshotAsync(CommandCall call)
 	{
 		var (listed, list) = await SendAsync(call, actor => new ListScreenshots(actor));
-		if (listed != ServerOutcome.Ok) return call.Refuse(listed);
+		if (listed != ServerActionResult.Ok) return call.Refuse(listed);
 
 		var id = call.Word("id");
 		var match = list.Where(reference => Path.GetFileName(reference.Value) == id).Cast<ContentReference?>()

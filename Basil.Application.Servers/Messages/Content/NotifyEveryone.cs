@@ -4,4 +4,4 @@ using Mediator;
 
 namespace Basil.Application.Servers.Messages.Content;
 
-public sealed record NotifyEveryone(Session Actor, string Text) : IRequest<(ServerOutcome Result, int Sent)>;
+public sealed record NotifyEveryone(Session Actor, string Text) : IRequest<(ServerActionResult Result, int Sent)>;

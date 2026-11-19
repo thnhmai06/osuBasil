@@ -125,7 +125,7 @@ internal sealed class UserDetails(
 		var actor = await services.GetRequiredService<UserRegistry>().OperateAsync();
 		var (outcome, record) = await services.GetRequiredService<ISender>()
 			.Send(new GetUserSession(actor, UserReference.ById(userId), id));
-		return outcome == UserOutcome.Ok && record is not null
+		return outcome == UserActionResult.Ok && record is not null
 			? Of(SessionItem.Of(record, clock.GetUtcNow()))
 			: new DetailView(id.ToString(CultureInfo.InvariantCulture), [("Session", "does not exist", Ink.Warning)],
 				[]);
@@ -137,7 +137,7 @@ internal sealed class UserDetails(
 		var actor = await services.GetRequiredService<UserRegistry>().OperateAsync();
 		var (outcome, page) = await services.GetRequiredService<ISender>().Send(new ListUserSessions(actor,
 			UserReference.ById(user.Id), new PageRequest(0, RowsShown), SessionFilter.Any, null));
-		if (outcome != UserOutcome.Ok || page is null)
+		if (outcome != UserActionResult.Ok || page is null)
 			return new DetailView("Sessions", [("Sessions", "not available", Ink.Warning)], []);
 
 		var now = clock.GetUtcNow();
@@ -170,7 +170,7 @@ internal sealed class UserDetails(
 		var (outcome, records) = friends
 			? await sender.Send(new ListFriends(actor, target))
 			: await sender.Send(new ListBlocks(actor, target));
-		if (outcome != UserOutcome.Ok)
+		if (outcome != UserActionResult.Ok)
 			return new DetailView(title, [(title, "not available", Ink.Warning)], []);
 
 		var items = records.Select(ItemOf).ToList();

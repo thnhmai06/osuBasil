@@ -14,7 +14,7 @@ public sealed class RoomChannel : Channel
 
 	public Room Room { get; }
 
-	public override string Name => RoomChannelName.NameFor(Room.Id);
+	public override string Name => RoomChannelRules.NameFor(Room.Id);
 
 	public override string Topic => Room.Match.Value.Name;
 

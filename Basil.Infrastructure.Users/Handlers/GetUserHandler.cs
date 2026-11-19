@@ -14,6 +14,6 @@ internal sealed class GetUserHandler(IUserRepository users) : IRequestHandler<Ge
 			: request.Target.Name is { } name
 				? await users.GetByNameAsync(name, ct)
 				: null;
-		return record is { } found && found.Value.DeletedAt is null ? found : null;
+		return record != null && record.Value.DeletedAt is null ? record : null;
 	}
 }

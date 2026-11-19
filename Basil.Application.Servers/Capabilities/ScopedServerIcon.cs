@@ -12,21 +12,21 @@ public readonly struct ScopedServerIcon
 		_scoped = scoped;
 	}
 
-	private ServerOutcome? Denied()
+	private ServerActionResult? Denied()
 	{
 		return _scoped.Lacks(UserPrivileges.Owner)
-			? ServerOutcome.Denied
+			? ServerActionResult.Denied
 			: null;
 	}
 
-	public async Task<ServerOutcome> ReplaceAsync(string? name, Stream? image, Uri? url)
+	public async Task<ServerActionResult> ReplaceAsync(string? name, Stream? image, Uri? url)
 	{
 		if (Denied() is { } denied) return denied;
 
 		return await _scoped.Server.Icon.ReplaceAsync(name, image, url);
 	}
 
-	public async Task<ServerOutcome> DeleteAsync()
+	public async Task<ServerActionResult> DeleteAsync()
 	{
 		if (Denied() is { } denied) return denied;
 

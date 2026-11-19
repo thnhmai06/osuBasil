@@ -4,9 +4,9 @@ using Mediator;
 
 namespace Basil.Infrastructure.Servers.Handlers.Content;
 
-internal sealed class UpdateSettingsHandler(Server server) : IRequestHandler<UpdateSettings, ServerOutcome>
+internal sealed class UpdateSettingsHandler(Server server) : IRequestHandler<UpdateSettings, ServerActionResult>
 {
-	public async ValueTask<ServerOutcome> Handle(UpdateSettings request, CancellationToken ct)
+	public async ValueTask<ServerActionResult> Handle(UpdateSettings request, CancellationToken ct)
 	{
 		return await server.ScopeTo(request.Actor).Settings.UpdateAsync(request.Settings);
 	}

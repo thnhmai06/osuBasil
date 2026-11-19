@@ -4,11 +4,11 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-internal sealed class SkipRoundHandler : IRequestHandler<SkipRound, RoomOutcome>
+internal sealed class SkipRoundHandler : IRequestHandler<SkipRound, RoomActionResult>
 {
-	public ValueTask<RoomOutcome> Handle(SkipRound request, CancellationToken ct)
+	public ValueTask<RoomActionResult> Handle(SkipRound request, CancellationToken ct)
 	{
-		return new ValueTask<RoomOutcome>(
+		return new ValueTask<RoomActionResult>(
 			request.Room.ScopeTo(request.Actor).Rounds.SkipAsync());
 	}
 }

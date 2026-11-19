@@ -5,4 +5,4 @@ using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 
 namespace Basil.Application.Multiplayer.Messages;
 
-public sealed record SetRoomHost(Session Actor, Room Room, StableSession? Host) : IRequest<RoomOutcome>;
+public sealed record SetRoomHost(Session Actor, Room Room, StableSession? Host) : IRequest<RoomActionResult>;

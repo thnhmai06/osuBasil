@@ -12,79 +12,79 @@ public sealed record RoundDecision(Round Round, RoundResult? Result, IReadOnlyLi
 
 public sealed partial class Room
 {
-	public (RoomOutcome Outcome, Round? Round, IReadOnlyList<UserRecord> Players, RoundDecision? Previous) StartRound(
+	public (RoomActionResult Outcome, Round? Round, IReadOnlyList<UserRecord> Players, RoundDecision? Previous) StartRound(
 		DateTimeOffset now)
 	{
-		if (IsClosed) return (RoomOutcome.RoomClosed, null, [], null);
-		if (Rounds.InProgress) return (RoomOutcome.InProgress, null, [], null);
-		if (Settings.Beatmap is null) return (RoomOutcome.NoBeatmap, null, [], null);
+		if (IsClosed) return (RoomActionResult.RoomClosed, null, [], null);
+		if (Rounds.InProgress) return (RoomActionResult.InProgress, null, [], null);
+		if (Settings.Beatmap is null) return (RoomActionResult.NoBeatmap, null, [], null);
 
 		var (round, players, previous) = BeginRound(now);
-		return (RoomOutcome.Ok, round, players, previous);
+		return (RoomActionResult.Ok, round, players, previous);
 	}
 
-	public (RoomOutcome Outcome, Round? Round) AbortRound(DateTimeOffset now)
+	public (RoomActionResult Outcome, Round? Round) AbortRound(DateTimeOffset now)
 	{
-		if (IsClosed) return (RoomOutcome.RoomClosed, null);
-		if (!Rounds.InProgress) return (RoomOutcome.NotInProgress, null);
+		if (IsClosed) return (RoomActionResult.RoomClosed, null);
+		if (!Rounds.InProgress) return (RoomActionResult.NotInProgress, null);
 
-		return (RoomOutcome.Ok, EndCurrentRound(true, now));
+		return (RoomActionResult.Ok, EndCurrentRound(true, now));
 	}
 
-	public (RoomOutcome Outcome, RoundSignal? Signal) MarkLoaded(UserRecord player)
+	public (RoomActionResult Outcome, RoundSignal? Signal) MarkLoaded(UserRecord player)
 	{
-		if (IsClosed) return (RoomOutcome.RoomClosed, null);
-		if (!TryGetPlayingSlot(player, out var round, out var slot)) return (RoomOutcome.NotPlaying, null);
-		if (slot.Loaded is true) return (RoomOutcome.Ok, null);
+		if (IsClosed) return (RoomActionResult.RoomClosed, null);
+		if (!TryGetPlayingSlot(player, out var round, out var slot)) return (RoomActionResult.NotPlaying, null);
+		if (slot.Loaded is true) return (RoomActionResult.Ok, null);
 
 		slot.Loaded = true;
 		if (!Rounds.AllLoadedAnnounced &&
 		    Slots.Where(s => s.Status is RoomSlotStatus.Playing).All(s => s.Loaded is true))
 		{
 			Rounds.AllLoadedAnnounced = true;
-			return (RoomOutcome.Ok, new RoundSignal(round, slot.Index, true));
+			return (RoomActionResult.Ok, new RoundSignal(round, slot.Index, true));
 		}
 
-		return (RoomOutcome.Ok, new RoundSignal(round, slot.Index, false));
+		return (RoomActionResult.Ok, new RoundSignal(round, slot.Index, false));
 	}
 
-	public (RoomOutcome Outcome, RoundSignal? Signal) SkipIntro(UserRecord player)
+	public (RoomActionResult Outcome, RoundSignal? Signal) SkipIntro(UserRecord player)
 	{
-		if (IsClosed) return (RoomOutcome.RoomClosed, null);
-		if (!TryGetPlayingSlot(player, out var round, out var slot)) return (RoomOutcome.NotPlaying, null);
-		if (slot.IntroSkipped is true) return (RoomOutcome.Ok, null);
+		if (IsClosed) return (RoomActionResult.RoomClosed, null);
+		if (!TryGetPlayingSlot(player, out var round, out var slot)) return (RoomActionResult.NotPlaying, null);
+		if (slot.IntroSkipped is true) return (RoomActionResult.Ok, null);
 
 		slot.IntroSkipped = true;
 		if (!Rounds.AllSkippedAnnounced &&
 		    Slots.Where(s => s.Status is RoomSlotStatus.Playing).All(s => s.IntroSkipped is true))
 		{
 			Rounds.AllSkippedAnnounced = true;
-			return (RoomOutcome.Ok, new RoundSignal(round, slot.Index, true));
+			return (RoomActionResult.Ok, new RoundSignal(round, slot.Index, true));
 		}
 
-		return (RoomOutcome.Ok, new RoundSignal(round, slot.Index, false));
+		return (RoomActionResult.Ok, new RoundSignal(round, slot.Index, false));
 	}
 
-	public (RoomOutcome Outcome, RoundSignal? Signal) ReportFailed(UserRecord player)
+	public (RoomActionResult Outcome, RoundSignal? Signal) ReportFailed(UserRecord player)
 	{
-		if (IsClosed) return (RoomOutcome.RoomClosed, null);
-		if (!TryGetPlayingSlot(player, out var round, out var slot)) return (RoomOutcome.NotPlaying, null);
+		if (IsClosed) return (RoomActionResult.RoomClosed, null);
+		if (!TryGetPlayingSlot(player, out var round, out var slot)) return (RoomActionResult.NotPlaying, null);
 
-		return (RoomOutcome.Ok, new RoundSignal(round, slot.Index, false));
+		return (RoomActionResult.Ok, new RoundSignal(round, slot.Index, false));
 	}
 
-	public (RoomOutcome Outcome, RoundSignal? Signal) ReportCompleted(UserRecord player, DateTimeOffset now)
+	public (RoomActionResult Outcome, RoundSignal? Signal) ReportCompleted(UserRecord player, DateTimeOffset now)
 	{
-		if (IsClosed) return (RoomOutcome.RoomClosed, null);
-		if (!TryGetPlayingSlot(player, out var round, out var slot)) return (RoomOutcome.NotPlaying, null);
+		if (IsClosed) return (RoomActionResult.RoomClosed, null);
+		if (!TryGetPlayingSlot(player, out var round, out var slot)) return (RoomActionResult.NotPlaying, null);
 
 		slot.SetStatus(RoomSlotStatus.Complete);
 		Rounds.Settlement?.Complete(player);
 		if (Slots.Any(s => s.Status is RoomSlotStatus.Playing))
-			return (RoomOutcome.Ok, new RoundSignal(round, slot.Index, false));
+			return (RoomActionResult.Ok, new RoundSignal(round, slot.Index, false));
 
 		var ended = EndCurrentRound(false, now)!;
-		return (RoomOutcome.Ok, new RoundSignal(ended, slot.Index, true));
+		return (RoomActionResult.Ok, new RoundSignal(ended, slot.Index, true));
 	}
 
 	private bool TryGetPlayingSlot(UserRecord player, [MaybeNullWhen(false)] out Round round,

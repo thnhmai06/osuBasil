@@ -5,4 +5,4 @@ using Mediator;
 
 namespace Basil.Application.Servers.Messages.Content;
 
-public sealed record GetSettings(Session Actor) : IRequest<(ServerOutcome Result, ServerSettings? Settings)>;
+public sealed record GetSettings(Session Actor) : IRequest<(ServerActionResult Result, ServerSettings? Settings)>;

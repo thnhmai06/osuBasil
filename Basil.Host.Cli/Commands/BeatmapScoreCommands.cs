@@ -119,7 +119,7 @@ internal static class BeatmapScoreCommands
 		await using var stream = File.OpenRead(call.Required("file"));
 		var (result, import) = await call.Get<ISender>().Send(
 			new UploadBeatmapset(await call.ByAsync(), stream), call.CancellationToken);
-		if (result != ServerOutcome.Ok) return call.Refuse(result);
+		if (result != ServerActionResult.Ok) return call.Refuse(result);
 
 		switch (import!.Failure)
 		{
@@ -145,7 +145,7 @@ internal static class BeatmapScoreCommands
 		var result = await call.Get<ISender>().Send(
 			new PatchBeatmapset(await call.ByAsync(), call.Id("id"), status, call.Bool("visible"), call.Bool("locked")),
 			call.CancellationToken);
-		if (result != BeatmapsetOutcome.Ok) return call.Refuse(result);
+		if (result != BeatmapsetEditResult.Ok) return call.Refuse(result);
 
 		call.Output.Ok("Updated.");
 		return ExitCodes.Success;
@@ -189,9 +189,9 @@ internal static class BeatmapScoreCommands
 			call.CancellationToken);
 		switch (listing.Outcome)
 		{
-			case ScoreListOutcome.NoBeatmap:
+			case ScoreListResult.NoBeatmap:
 				return call.NotFound("beatmap");
-			case ScoreListOutcome.NoUser:
+			case ScoreListResult.NoUser:
 				return call.NotFound("user");
 		}
 

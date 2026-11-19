@@ -42,25 +42,25 @@ public readonly struct ScopedServer
 
 	public ScopedServerBeatmapsets Beatmapsets => new(this);
 
-	public (ServerOutcome Result, int Sent) Notify(string text, UserRecord to)
+	public (ServerActionResult Result, int Sent) Notify(string text, UserRecord to)
 	{
-		return Denied() is { } denied ? (denied, 0) : (ServerOutcome.Ok, Server.Notify(text, to));
+		return Denied() is { } denied ? (denied, 0) : (ServerActionResult.Ok, Server.Notify(text, to));
 	}
 
-	public (ServerOutcome Result, int Sent) Notify(string text, IReadOnlyCollection<int> to)
+	public (ServerActionResult Result, int Sent) Notify(string text, IReadOnlyCollection<int> to)
 	{
-		return Denied() is { } denied ? (denied, 0) : (ServerOutcome.Ok, Server.Notify(text, to));
+		return Denied() is { } denied ? (denied, 0) : (ServerActionResult.Ok, Server.Notify(text, to));
 	}
 
-	public (ServerOutcome Result, int Sent) NotifyAll(string text)
+	public (ServerActionResult Result, int Sent) NotifyAll(string text)
 	{
-		return Denied() is { } denied ? (denied, 0) : (ServerOutcome.Ok, Server.NotifyAll(text));
+		return Denied() is { } denied ? (denied, 0) : (ServerActionResult.Ok, Server.NotifyAll(text));
 	}
 
-	private ServerOutcome? Denied()
+	private ServerActionResult? Denied()
 	{
 		return Lacks(UserPrivileges.Moderator)
-			? ServerOutcome.Denied
+			? ServerActionResult.Denied
 			: null;
 	}
 }

@@ -6,9 +6,9 @@ using Mediator;
 namespace Basil.Infrastructure.Users.Handlers;
 
 internal sealed class UnsilenceUserHandler(UserRegistry registry)
-	: IRequestHandler<UnsilenceUser, UserOutcome>
+	: IRequestHandler<UnsilenceUser, UserActionResult>
 {
-	public async ValueTask<UserOutcome> Handle(UnsilenceUser request, CancellationToken ct)
+	public async ValueTask<UserActionResult> Handle(UnsilenceUser request, CancellationToken ct)
 	{
 		return await registry.ScopeTo(request.Actor, request.Target).Silence
 			.LiftAsync(request.Reason);

@@ -4,11 +4,11 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-internal sealed class SetRoomHostHandler : IRequestHandler<SetRoomHost, RoomOutcome>
+internal sealed class SetRoomHostHandler : IRequestHandler<SetRoomHost, RoomActionResult>
 {
-	public ValueTask<RoomOutcome> Handle(SetRoomHost request, CancellationToken ct)
+	public ValueTask<RoomActionResult> Handle(SetRoomHost request, CancellationToken ct)
 	{
-		return new ValueTask<RoomOutcome>(
+		return new ValueTask<RoomActionResult>(
 			request.Room.ScopeTo(request.Actor).Authority.SetHostAsync(request.Host));
 	}
 }

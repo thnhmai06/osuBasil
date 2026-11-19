@@ -8,4 +8,4 @@ namespace Basil.Application.Servers.Messages.Channels;
 public sealed record ConfigureGeneralChannel(Session Actor, string Name, GeneralChannelChange Change)
 	: IRequest<GeneralChannelAnswer>;
 
-public sealed record GeneralChannelAnswer(ChannelOutcome Result, GeneralChannel? Channel);
+public sealed record GeneralChannelAnswer(ChannelJoinResult Result, GeneralChannel? Channel);

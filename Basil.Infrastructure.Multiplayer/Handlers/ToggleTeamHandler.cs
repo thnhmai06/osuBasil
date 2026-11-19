@@ -4,11 +4,11 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-internal sealed class ToggleTeamHandler : IRequestHandler<ToggleTeam, RoomOutcome>
+internal sealed class ToggleTeamHandler : IRequestHandler<ToggleTeam, RoomActionResult>
 {
-	public ValueTask<RoomOutcome> Handle(ToggleTeam request, CancellationToken ct)
+	public ValueTask<RoomActionResult> Handle(ToggleTeam request, CancellationToken ct)
 	{
-		return new ValueTask<RoomOutcome>(
+		return new ValueTask<RoomActionResult>(
 			request.Room.ScopeTo(request.Actor).Slots.ToggleTeamAsync());
 	}
 }

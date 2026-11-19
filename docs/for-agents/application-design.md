@@ -14,18 +14,36 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   its Application project, so only a capability, which has checked the privileges, can change the owner. A behaviour states
   the requirement through `ScopedPrivileges.Lacks(held, required)`: `true` means something required is not held. A `[Flags]`
   enum is met when every required bit is held; any other enum is ordered levels and is met when the held value is at least
-  the required one. Most capabilities hold the caller's **effective** `UserPrivileges` and answer `XOutcome.Denied`;
+  the required one. Most capabilities hold the caller's **effective** `UserPrivileges` and answer `XResult.Denied`;
   `ScopedRoom` holds `RoomPrivileges`, the room privileges its roles give, computed once from creator, referee, host and player
   roles and the global privileges; a role refusal is the outcome `RoleDenied`, or `Denied` when the caller
   may not join rooms at all. An implementation never compares privileges itself.
-* **Every behaviour that can be refused returns the outcome enum of its object** (`RoomOutcome`, `ChannelOutcome`,
-  `UserOutcome`, `BeatmapsetOutcome`, …), with a tuple such as `(UserOutcome Outcome, T? Data)` when it also returns data.
+* **Every behaviour that can be refused returns the outcome enum of its object** (`RoomActionResult`, `ChannelJoinResult`,
+  `UserActionResult`, `BeatmapsetEditResult`, …), with a tuple such as `(UserActionResult Outcome, T? Data)` when it also returns data.
   Each enum has `Denied = 0` (the refusal for lack of privileges, which does not say which privileges are lacking, and
   which a default value can never confuse with success) and `Ok = 1`; the other members are `NotFound` and the object's
   own reasons. An operation on something that does not exist (an account, a session already closed, a silence nobody
   imposed, a file never stored) answers `NotFound`, never `Ok`; the console exits with 1 and the API answers 404. There is no shared result wrapper. There is no
   `NotAuthorized`, `Restricted`, `NoPermission` or `NotPermitted` member and no `bool` or `*Failure`
-  stand-in. Callers compare with `XOutcome.Ok` or `XOutcome.Denied`.
+  stand-in. Callers compare with `XResult.Ok` or `XResult.Denied`.
+* **A refusal and a business error are different things (decided 2026-11-19; the code is migrated phase by phase, a part
+  not migrated yet is a target).** A **business refusal** is a valid request that the rules do not allow: no privilege,
+  a name taken, a room full, a thing that does not exist, a wrong password, a locked object. It is not a fault, so it
+  is answered with the outcome enum above and never thrown. A **business error** is a request whose data breaks a rule
+  of the domain: a malformed name, a window that ends before it starts, an address that is not HTTP, an undefined enum
+  value, mods that do not fit the mode, an unreadable or oversized image. It is thrown as an exception defined in
+  Domain (a rule of one object on its own) or in Application (a rule that needs several objects), never as the BCL
+  `ArgumentException`, so that a host can tell it from a programming fault. A programming fault (an id that starts at 1,
+  an unknown `switch` arm, a missing error table, the wrong kind of client) stays a BCL exception and is answered with
+  500 and a log line.
+  * The exceptions of one module or category share one file (`Basil.Domain/Content/ContentExceptions.cs`); the name
+    states the broken rule (`InvalidBannerWindowException`) and is unique across modules.
+  * An exception carries a code, a kind and the business values that explain it. It carries no text for a client: the
+    wording belongs to each surface (HTTP, IRC, osu! client, console, BasilBot) and sits outside the domain.
+  * A host never checks these rules itself. It translates the wire into the system's own message, sends it, and
+    answers an outcome or a business error the same way each time: one place per surface maps a business error to its
+    reply. An enum no longer has members for invalid data (`InvalidName`, `InvalidCountry`, `InvalidMods`,
+    `InvalidSettings`, `InvalidText`, `Empty`, `InvalidImage`, `TooLarge`, `DimensionsTooLarge`, `InvalidSilence`).
 * **Granting uses the actor's privileges, ranking uses the granted ones.** An actor can grant only privileges they hold;
   the strict-superset hierarchy test compares the privileges the two accounts were granted.
 * **`ConfigureAwait` is not used** anywhere in the project's source (a server has no synchronization context). An
@@ -58,7 +76,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   (`room.Slots[3]`), never through an outside object that takes the owner as a parameter.
   **`x.ScopeTo(connection)`** returns `ScopedX`, a short-lived capability for one request or command (see "Scopes and
   results" below). It snapshots the caller's effective privileges once, and each behaviour checks that snapshot through
-  the base class and returns `XOutcome.Denied` before it takes the object's lock,
+  the base class and returns `XResult.Denied` before it takes the object's lock,
   keeps the invariants, acts and emits the event. The caller never passes `connection`, privileges or an actor into a
   call. **Anything whose actions
   depend on privileges or privileges is scoped; only a system that needs no check is not** (the server's own work:

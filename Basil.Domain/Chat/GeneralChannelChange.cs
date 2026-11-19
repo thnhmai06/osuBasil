@@ -1,5 +1,4 @@
 using Basil.Domain.Users;
-using Basil.Shared.Utilities;
 
 namespace Basil.Domain.Chat;
 
@@ -17,14 +16,15 @@ public sealed record GeneralChannelChange(
 
 	public void Validate()
 	{
-		if (ReadPrivileges is { } readPrivileges) readPrivileges.ThrowIfInvalid();
-		if (WritePrivileges is { } writePrivileges) writePrivileges.ThrowIfInvalid();
-		Topic?.ThrowIfHasNul();
+		if (Topic is not null && !GeneralChannelData.IsValidTopic(Topic)) throw new InvalidChannelTopicException();
+		if ((ReadPrivileges is { } read && !GeneralChannelData.IsValidPrivileges(read)) ||
+		    (WritePrivileges is { } write && !GeneralChannelData.IsValidPrivileges(write)))
+			throw new InvalidChannelPrivilegesException();
 	}
 
 	public void ApplyTo(GeneralChannelData target)
 	{
-		if (Topic is { } topic) target.Topic = topic;
+		if (Topic != null) target.Topic = Topic;
 		if (ReadPrivileges is { } read) target.ReadPrivileges = read;
 		if (WritePrivileges is { } write) target.WritePrivileges = write;
 		if (AutoJoin is { } autoJoin) target.AutoJoin = autoJoin;

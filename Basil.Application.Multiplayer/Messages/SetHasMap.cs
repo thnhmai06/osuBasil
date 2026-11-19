@@ -5,4 +5,4 @@ using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 
 namespace Basil.Application.Multiplayer.Messages;
 
-public sealed record SetHasMap(Session Actor, Room Room, bool Has) : IRequest<RoomOutcome>;
+public sealed record SetHasMap(Session Actor, Room Room, bool Has) : IRequest<RoomActionResult>;

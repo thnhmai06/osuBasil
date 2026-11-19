@@ -5,9 +5,9 @@ using Mediator;
 
 namespace Basil.Infrastructure.Users.Handlers;
 
-internal sealed class SetUserPmPrivateHandler(UserRegistry registry) : IRequestHandler<SetUserPmPrivate, UserOutcome>
+internal sealed class SetUserPmPrivateHandler(UserRegistry registry) : IRequestHandler<SetUserPmPrivate, UserActionResult>
 {
-	public async ValueTask<UserOutcome> Handle(SetUserPmPrivate request, CancellationToken ct)
+	public async ValueTask<UserActionResult> Handle(SetUserPmPrivate request, CancellationToken ct)
 	{
 		return await registry.ScopeTo(request.Actor, request.Target).Profile.SetPmPrivateAsync(request.PmPrivate);
 	}

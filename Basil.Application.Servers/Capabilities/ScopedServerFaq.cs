@@ -12,21 +12,21 @@ public readonly struct ScopedServerFaq
 		_scoped = scoped;
 	}
 
-	private ServerOutcome? Denied()
+	private ServerActionResult? Denied()
 	{
 		return _scoped.Lacks(UserPrivileges.Owner)
-			? ServerOutcome.Denied
+			? ServerActionResult.Denied
 			: null;
 	}
 
-	public async Task<ServerOutcome> SaveAsync(string entry, string text)
+	public async Task<ServerActionResult> SaveAsync(string entry, string text)
 	{
 		if (Denied() is { } denied) return denied;
 
 		return await _scoped.Server.Faq.SaveAsync(entry, text);
 	}
 
-	public async Task<ServerOutcome> DeleteAsync(string entry)
+	public async Task<ServerActionResult> DeleteAsync(string entry)
 	{
 		if (Denied() is { } denied) return denied;
 

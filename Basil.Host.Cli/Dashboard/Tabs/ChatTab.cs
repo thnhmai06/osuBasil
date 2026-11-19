@@ -1,3 +1,5 @@
+using Basil.Host.Shared.Errors;
+using Basil.Domain;
 using Basil.Application.Chat.Messages;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Multiplayer.Registry;
@@ -547,8 +549,12 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 				}
 
 				var outcome = await sender.Send(new PostChatMessage(actor, target, text));
-				if (outcome != ChannelOutcome.Ok)
+				if (outcome != ChannelJoinResult.Ok)
 					Report(channel, $"The message was not sent ({outcome}).");
+			}
+			catch (BasilException error)
+			{
+				Report(channel, $"The message was not sent ({BusinessErrors.Describe(error).Code}).");
 			}
 			catch (Exception exception)
 			{

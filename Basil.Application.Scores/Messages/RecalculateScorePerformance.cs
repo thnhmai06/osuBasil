@@ -5,4 +5,4 @@ using Mediator;
 namespace Basil.Application.Scores.Messages;
 
 public sealed record RecalculateScorePerformance(IActor Actor, ScorePerformanceScope Scope)
-	: IRequest<ScorePerformanceOutcome>;
+	: IRequest<ScoreRecalculationResult>;

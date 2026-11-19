@@ -93,7 +93,7 @@ with the typist's privileges, never with the bot's.
   [`ScopedUserSilence.cs`](../../Basil.Application.Users/Capabilities/ScopedUserSilence.cs),
   [`ScopedUserPrivileges.cs`](../../Basil.Application.Users/Capabilities/ScopedUserPrivileges.cs): account actions
 * [`UserSilence.cs`](../../Basil.Application.Users/Objects/UserSilence.cs): the silence of an account
-* [`UserOutcome.cs`](../../Basil.Application.Users/Objects/UserOutcome.cs): account-operation outcomes
+* [`UserActionResult.cs`](../../Basil.Application.Users/Objects/UserActionResult.cs): account-operation outcomes
 
 ## See also
 

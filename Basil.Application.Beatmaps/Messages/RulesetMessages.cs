@@ -6,9 +6,9 @@ using Mediator;
 namespace Basil.Application.Beatmaps.Messages;
 
 public sealed record GetRulesetVersion(IActor Actor)
-	: IRequest<(RulesetOutcome Result, RulesetVersions? Versions)>;
+	: IRequest<(RulesetUpdateResult Result, RulesetVersions? Versions)>;
 
 public sealed record UpdateRulesets(IActor Actor)
-	: IRequest<(RulesetOutcome Result, RulesetStageResult? Stage)>;
+	: IRequest<(RulesetUpdateResult Result, RulesetStageResult? Stage)>;
 
-public sealed record ReloadBeatmaps(IActor Actor) : IRequest<RulesetOutcome>;
+public sealed record ReloadBeatmaps(IActor Actor) : IRequest<RulesetUpdateResult>;

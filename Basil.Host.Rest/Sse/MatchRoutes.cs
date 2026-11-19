@@ -37,7 +37,7 @@ internal static class MatchRoutes
 		var (result, found) = await sender.Send(
 			new ListMatches(context.Session(), MatchQuery.Parse(query ?? string.Empty), page!),
 			context.RequestAborted);
-		return result == RoomOutcome.Ok
+		return result == RoomActionResult.Ok
 			? Api.Paged(new Page<MatchView>([.. found!.Items.Select(MatchView.Of)], found.HasNext), page!)
 			: result.Refusal();
 	}

@@ -1,6 +1,6 @@
 namespace Basil.Domain.Chat;
 
-public enum ChannelOutcome : byte
+public enum ChannelJoinResult : byte
 {
 	Denied = 0,
 
@@ -11,10 +11,6 @@ public enum ChannelOutcome : byte
 	NotMember,
 
 	Closed,
-
-	Empty,
-
-	InvalidText,
 
 	Blocked,
 

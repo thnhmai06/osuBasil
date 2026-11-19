@@ -1,3 +1,4 @@
+using Basil.Domain;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
@@ -182,6 +183,10 @@ internal sealed class IrcListener(
 		try
 		{
 			await commands.HandleAsync(session, message, ct);
+		}
+		catch (BasilException ex)
+		{
+			logger.LogDebug(ex, "IRC command {Command} was not taken in", message.Command);
 		}
 		catch (Exception ex) when (ex is not OperationCanceledException)
 		{

@@ -5,4 +5,4 @@ using Session = Basil.Application.Users.Objects.Sessions.Session;
 
 namespace Basil.Application.Users.Messages;
 
-public sealed record SpectateUser(Session Actor, StableSession Host) : IRequest<SessionOutcome>;
+public sealed record SpectateUser(Session Actor, StableSession Host) : IRequest<SessionAuthResult>;

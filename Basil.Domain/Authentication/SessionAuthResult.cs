@@ -1,6 +1,6 @@
 namespace Basil.Domain.Authentication;
 
-public enum SessionOutcome : byte
+public enum SessionAuthResult : byte
 {
 	Denied = 0,
 

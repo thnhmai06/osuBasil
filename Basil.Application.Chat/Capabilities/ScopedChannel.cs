@@ -29,23 +29,23 @@ public readonly struct ScopedChannel
 
 	public ScopedGeneralChannel? General { get; }
 
-	public ChannelOutcome Join()
+	public ChannelJoinResult Join()
 	{
 		return Channel.Join(Actor, Privileges);
 	}
 
-	public ChannelOutcome Part()
+	public ChannelJoinResult Part()
 	{
 		return Channel.Part(Actor);
 	}
 
-	public async Task<ChannelOutcome> PostAsync(string text, bool notice = false,
+	public async Task<ChannelJoinResult> PostAsync(string text, bool notice = false,
 		CancellationToken ct = default)
 	{
-		if (Channel.IsClosed) return ChannelOutcome.Closed;
+		if (Channel.IsClosed) return ChannelJoinResult.Closed;
 
 		if (Lacks(UserPrivileges.Player))
-			return ChannelOutcome.Denied;
+			return ChannelJoinResult.Denied;
 
 		var recipientSilenced = Channel is PmChannel pm
 			? pm.Owner.Record.Value.IsSilenced(Channel.Context.Clock.GetUtcNow())

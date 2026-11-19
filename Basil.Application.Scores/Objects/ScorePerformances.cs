@@ -21,8 +21,8 @@ public sealed class ScorePerformances
 		return new ScopedScorePerformances(this, actor);
 	}
 
-	internal ScorePerformanceOutcome Recalculate(ScorePerformanceScope scope)
+	internal ScoreRecalculationResult Recalculate(ScorePerformanceScope scope)
 	{
-		return Recalculator.TryStart(scope) ? ScorePerformanceOutcome.Ok : ScorePerformanceOutcome.Busy;
+		return Recalculator.TryStart(scope) ? ScoreRecalculationResult.Ok : ScoreRecalculationResult.Busy;
 	}
 }

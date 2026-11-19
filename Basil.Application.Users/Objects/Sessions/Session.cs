@@ -88,7 +88,7 @@ public sealed class StableSession : Session
 		                                         relationship.Target.Equals(other.Record));
 	}
 
-	internal SessionOutcome Spectate(Session spectator)
+	internal SessionAuthResult Spectate(Session spectator)
 	{
 		// Leave the previous host before entering this host's scope, so two spectator scopes are never held at once.
 		var previous = Context.Registry.FindSpectating(spectator);
@@ -96,14 +96,14 @@ public sealed class StableSession : Session
 
 		using var scope = EnterSpectators();
 
-		if (!IsOpen) return SessionOutcome.TargetOffline;
+		if (!IsOpen) return SessionAuthResult.TargetOffline;
 		// The connection may have closed during the awaits before; check it again before the spectator is added.
-		if (!spectator.IsOpen) return SessionOutcome.Closed;
-		if (spectator.Record.Equals(Record)) return SessionOutcome.Self;
+		if (!spectator.IsOpen) return SessionAuthResult.Closed;
+		if (spectator.Record.Equals(Record)) return SessionAuthResult.Self;
 
 		if (!Spectators.Contains(spectator)) MutableSpectators.Add(spectator);
 		Context.Events.Publish(new UserSpectatorJoined(this, spectator));
-		return SessionOutcome.Ok;
+		return SessionAuthResult.Ok;
 	}
 
 	internal bool StopSpectating(Session spectator)

@@ -15,36 +15,36 @@ public readonly struct ScopedDiagnostics
 		_privileges = privileges;
 	}
 
-	public DiagnosticsOutcome Access()
+	public DiagnosticsCommandResult Access()
 	{
-		return Denied() ?? DiagnosticsOutcome.Ok;
+		return Denied() ?? DiagnosticsCommandResult.Ok;
 	}
 
-	public (DiagnosticsOutcome Result, int Deleted) ClearCaches()
+	public (DiagnosticsCommandResult Result, int Deleted) ClearCaches()
 	{
-		return Denied() is { } denied ? (denied, 0) : (DiagnosticsOutcome.Ok, _diagnostics.ClearCaches());
+		return Denied() is { } denied ? (denied, 0) : (DiagnosticsCommandResult.Ok, _diagnostics.ClearCaches());
 	}
 
-	public DiagnosticsOutcome ResetExceptions()
+	public DiagnosticsCommandResult ResetExceptions()
 	{
 		if (Denied() is { } denied) return denied;
 
 		_diagnostics.ResetExceptions();
-		return DiagnosticsOutcome.Ok;
+		return DiagnosticsCommandResult.Ok;
 	}
 
-	public DiagnosticsOutcome CollectGarbage()
+	public DiagnosticsCommandResult CollectGarbage()
 	{
 		if (Denied() is { } denied) return denied;
 
 		ServerDiagnostics.CollectGarbage();
-		return DiagnosticsOutcome.Ok;
+		return DiagnosticsCommandResult.Ok;
 	}
 
-	private DiagnosticsOutcome? Denied()
+	private DiagnosticsCommandResult? Denied()
 	{
 		return ScopedPrivileges.Lacks(_privileges, UserPrivileges.Developer)
-			? DiagnosticsOutcome.Denied
+			? DiagnosticsCommandResult.Denied
 			: null;
 	}
 }

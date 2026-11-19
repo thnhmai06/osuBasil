@@ -6,9 +6,9 @@ using Mediator;
 namespace Basil.Infrastructure.Servers.Handlers.Content;
 
 internal sealed class GetSettingsHandler(Server server)
-	: IRequestHandler<GetSettings, (ServerOutcome Result, ServerSettings? Settings)>
+	: IRequestHandler<GetSettings, (ServerActionResult Result, ServerSettings? Settings)>
 {
-	public async ValueTask<(ServerOutcome Result, ServerSettings? Settings)> Handle(GetSettings request,
+	public async ValueTask<(ServerActionResult Result, ServerSettings? Settings)> Handle(GetSettings request,
 		CancellationToken ct)
 	{
 		return await server.ScopeTo(request.Actor).Settings.GetAsync(ct);

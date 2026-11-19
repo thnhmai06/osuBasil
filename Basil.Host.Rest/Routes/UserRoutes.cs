@@ -131,7 +131,7 @@ internal static class UserRoutes
 
 		var (record, result) = await context.Sender().Send(new CreateAccount(context.Session(), data,
 			new Md5Hash(Encoding.UTF8.GetBytes(request.Password)), request.Privileges), context.RequestAborted);
-		return result == UserOutcome.Ok ? Api.Created(UserView.Of(registry, record!, clock)) : result.Refusal();
+		return result == UserActionResult.Ok ? Api.Created(UserView.Of(registry, record!, clock)) : result.Refusal();
 	}
 
 	private static async Task<IResult> PatchAsync(HttpContext context, int id, PatchUserRequest request,
@@ -154,14 +154,14 @@ internal static class UserRoutes
 	{
 		if (request.Name is not null &&
 		    await context.Sender().Send(new RenameUser(context.Session(), target, request.Name), ct) is
-			    var renamed and not UserOutcome.Ok)
+			    var renamed and not UserActionResult.Ok)
 			return renamed.Refusal();
 
 		if (request.Country is null) return null;
 		if (Targets.ParseCountry(request.Country) is not { } country)
 			return Api.Invalid("country must be a two-letter code.");
 		return await context.Sender().Send(new SetUserCountry(context.Session(), target, country), ct) is
-			var changed and not UserOutcome.Ok
+			var changed and not UserActionResult.Ok
 			? changed.Refusal()
 			: null;
 	}
@@ -171,24 +171,24 @@ internal static class UserRoutes
 	{
 		if (request.Away is not null && await context.Sender().Send(
 				    new SetUserAway(context.Session(), target, request.Away.Length == 0 ? null : request.Away), ct) is
-			    var away and not UserOutcome.Ok)
+			    var away and not UserActionResult.Ok)
 			return NotSelf(away);
 		if (request.PmPrivate is { } pm &&
 		    await context.Sender().Send(new SetUserPmPrivate(context.Session(), target, pm), ct) is
-			    var pmPrivate and not UserOutcome.Ok)
+			    var pmPrivate and not UserActionResult.Ok)
 			return NotSelf(pmPrivate);
 		if (request.Privileges is { } privileges &&
 		    await context.Sender()
 				    .Send(new SetUserPrivileges(context.Session(), target, privileges), ct) is
-			    var set and not UserOutcome.Ok)
+			    var set and not UserActionResult.Ok)
 			return set.Refusal();
 
 		return null;
 	}
 
-	private static IResult NotSelf(UserOutcome refused)
+	private static IResult NotSelf(UserActionResult refused)
 	{
-		return refused == UserOutcome.Denied
+		return refused == UserActionResult.Denied
 			? Api.Error(StatusCodes.Status403Forbidden, "notSelf", "Only the account itself can do this.")
 			: refused.Refusal();
 	}
@@ -256,7 +256,7 @@ internal static class UserRoutes
 			await context.Sender().Send(
 				new ListUserSessions(context.Session(), target, page!, sessionState.Value, kinds),
 				context.RequestAborted);
-		if (result != UserOutcome.Ok) return result.Refusal();
+		if (result != UserActionResult.Ok) return result.Refusal();
 
 		return Api.Paged(new Page<SessionView>([.. sessions!.Items.Select(SessionView.Of)], sessions.HasNext), page!);
 	}
@@ -267,7 +267,7 @@ internal static class UserRoutes
 
 		var (result, session) = await context.Sender()
 			.Send(new GetUserSession(context.Session(), target, sid), context.RequestAborted);
-		return result == UserOutcome.Ok ? Api.Ok(SessionView.Of(session!)) : result.Refusal();
+		return result == UserActionResult.Ok ? Api.Ok(SessionView.Of(session!)) : result.Refusal();
 	}
 
 	private static async Task<IResult> CloseSessionAsync(HttpContext context, int id, long sid)
@@ -292,7 +292,7 @@ internal static class UserRoutes
 
 		var (result, list) =
 			await context.Sender().Send(new ListFriends(context.Session(), target), context.RequestAborted);
-		return result == UserOutcome.Ok ? Api.Ok(list.Select(UserRef.Of).ToList()) : result.Refusal();
+		return result == UserActionResult.Ok ? Api.Ok(list.Select(UserRef.Of).ToList()) : result.Refusal();
 	}
 
 	private static async Task<IResult> BlocksAsync(HttpContext context, int id)
@@ -301,11 +301,11 @@ internal static class UserRoutes
 
 		var (result, list) =
 			await context.Sender().Send(new ListBlocks(context.Session(), target), context.RequestAborted);
-		return result == UserOutcome.Ok ? Api.Ok(list.Select(UserRef.Of).ToList()) : result.Refusal();
+		return result == UserActionResult.Ok ? Api.Ok(list.Select(UserRef.Of).ToList()) : result.Refusal();
 	}
 
 	private static async Task<IResult> RelationAsync(HttpContext context, int id, int otherId,
-		Func<Session, UserReference, IRequest<UserOutcome>> ask)
+		Func<Session, UserReference, IRequest<UserActionResult>> ask)
 	{
 		if (id != context.Session().Record.Id)
 			return Api.Error(StatusCodes.Status403Forbidden, "notSelf", "Only the account itself can do this.");

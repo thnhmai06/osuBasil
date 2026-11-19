@@ -1,3 +1,6 @@
+using Basil.Domain.Users;
+using Basil.Domain.Content;
+using Basil.Domain;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
@@ -44,7 +47,18 @@ internal static class OsuWebRoutes
 	public static void MapOsuWeb(this IEndpointRouteBuilder app)
 	{
 		var web = app.MapGroup("").WithGroupName(StableDocumentation.Group).WithTags("Web")
-			.WithMetadata(new AdmissionPolicyAttribute()).AddEndpointFilter<StableAdmission>();
+			.WithMetadata(new AdmissionPolicyAttribute()).AddEndpointFilter<StableAdmission>()
+			.AddEndpointFilter(async (invocation, next) =>
+			{
+				try
+				{
+					return await next(invocation);
+				}
+				catch (BasilException)
+				{
+					return Results.BadRequest();
+				}
+			});
 		web.MapGet("/", () => "osu").WithSummary("Say that the web host of the osu! client is there.");
 		web.MapGet("/web/osu-osz2-getscores.php", GetScoresAsync)
 			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Listing })
@@ -245,12 +259,12 @@ internal static class OsuWebRoutes
 			await using var replay = OpenReplay(context);
 			var (result, _, receipt) = await sender.Send(new SubmitScore(client, submission,
 				known is null ? null : new BeatmapChecksums(known.Hash, storyboard), submittedClient, replay), ct);
-			return Text(result == ScoreSubmissionOutcome.Ok && submission.Score.IsPassed
+			return Text(result == ScoreSubmissionResult.Ok && submission.Score.IsPassed
 				? SubmissionCharts.Build(receipt!, known, $"{context.Request.Scheme}://{context.Request.Host}")
 				: OsuWebReplies.SubmissionRefused);
 		}
 		catch (Exception ex) when (ex is FormatException or ArgumentException or InvalidDataException
-			                           or OverflowException or InvalidOperationException)
+			                           or OverflowException or InvalidOperationException or BasilException)
 		{
 			return Text("error: no");
 		}
@@ -308,10 +322,21 @@ internal static class OsuWebRoutes
 			return Results.Unauthorized();
 		if (form.Files.GetFile("ss") is not { } file) return Results.BadRequest();
 		await using var stream = file.OpenReadStream();
-		var (reference, result) = await sender.Send(new UploadScreenshot(player, stream), ct);
-		return result == ServerOutcome.Ok
-			? Text(reference?.ToString() ?? string.Empty)
-			: Text(string.Empty, result == ServerOutcome.DimensionsTooLarge ? 413 : 400);
+		try
+		{
+			var (reference, result) = await sender.Send(new UploadScreenshot(player, stream), ct);
+			return result == ServerActionResult.Ok
+				? Text(reference?.ToString() ?? string.Empty)
+				: Text(string.Empty, 400);
+		}
+		catch (ImageDimensionsTooLargeException)
+		{
+			return Text(string.Empty, 413);
+		}
+		catch (BasilException)
+		{
+			return Text(string.Empty, 400);
+		}
 	}
 
 	private static async Task<IResult> LastFmAsync(HttpContext context, WebAuthentication auth,
@@ -515,8 +540,17 @@ internal static class OsuWebRoutes
 			return Results.Json(
 				new { form_error = new { user = new { username = new[] { "Too many registrations." } } } },
 				statusCode: 429);
-		var failure = await registry.CheckRegistrationAsync(
-			new RegisterAttempt(name, new Md5Hash(Encoding.UTF8.GetBytes(password))), ct);
+		RegistrationFailure? failure;
+		try
+		{
+			failure = await registry.CheckRegistrationAsync(
+				new RegisterAttempt(name, new Md5Hash(Encoding.UTF8.GetBytes(password))), ct);
+		}
+		catch (InvalidUserNameException)
+		{
+			return Results.Json(new { form_error = new { user = new { username = new[] { "InvalidName" } } } },
+				statusCode: 400);
+		}
 		if (failure is not null)
 			return Results.Json(new { form_error = new { user = new { username = new[] { failure.ToString() } } } },
 				statusCode: 400);

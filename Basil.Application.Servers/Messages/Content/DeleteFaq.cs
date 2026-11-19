@@ -4,4 +4,4 @@ using Mediator;
 
 namespace Basil.Application.Servers.Messages.Content;
 
-public sealed record DeleteFaq(Session Actor, string Entry) : IRequest<ServerOutcome>;
+public sealed record DeleteFaq(Session Actor, string Entry) : IRequest<ServerActionResult>;

@@ -4,11 +4,11 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-internal sealed class CloseRoomHandler : IRequestHandler<CloseRoom, RoomOutcome>
+internal sealed class CloseRoomHandler : IRequestHandler<CloseRoom, RoomActionResult>
 {
-	public ValueTask<RoomOutcome> Handle(CloseRoom request, CancellationToken ct)
+	public ValueTask<RoomActionResult> Handle(CloseRoom request, CancellationToken ct)
 	{
-		return new ValueTask<RoomOutcome>(
+		return new ValueTask<RoomActionResult>(
 			request.Room.ScopeTo(request.Actor).CloseAsync());
 	}
 }

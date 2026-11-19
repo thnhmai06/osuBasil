@@ -23,14 +23,14 @@ public sealed class UserSilence
 		return _user.Record.Value.IsSilenced(now);
 	}
 
-	public static UserOutcome ValidateImpose(DateTimeOffset endsAt, DateTimeOffset now)
+	public static void ValidateImpose(DateTimeOffset endsAt, DateTimeOffset now)
 	{
-		return endsAt <= now ? UserOutcome.InvalidSilence : UserOutcome.Ok;
+		if (endsAt <= now) throw new InvalidSilenceException();
 	}
 
-	public UserOutcome ValidateLift(DateTimeOffset now)
+	public UserActionResult ValidateLift(DateTimeOffset now)
 	{
-		return IsSilencedAt(now) ? UserOutcome.Ok : UserOutcome.NotFound;
+		return IsSilencedAt(now) ? UserActionResult.Ok : UserActionResult.NotFound;
 	}
 
 	public void Set(DateTimeOffset? endsAt)

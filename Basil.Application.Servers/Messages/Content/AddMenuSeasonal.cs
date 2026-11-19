@@ -6,4 +6,4 @@ using Mediator;
 namespace Basil.Application.Servers.Messages.Content;
 
 public sealed record AddMenuSeasonal(Session Actor, string Name, Stream Image)
-	: IRequest<(ServerOutcome Result, ContentReference? Image)>;
+	: IRequest<(ServerActionResult Result, ContentReference? Image)>;

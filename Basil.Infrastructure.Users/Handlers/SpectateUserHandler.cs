@@ -4,9 +4,9 @@ using Mediator;
 
 namespace Basil.Infrastructure.Users.Handlers;
 
-internal sealed class SpectateUserHandler : IRequestHandler<SpectateUser, SessionOutcome>
+internal sealed class SpectateUserHandler : IRequestHandler<SpectateUser, SessionAuthResult>
 {
-	public async ValueTask<SessionOutcome> Handle(SpectateUser request, CancellationToken ct)
+	public async ValueTask<SessionAuthResult> Handle(SpectateUser request, CancellationToken ct)
 	{
 		return await request.Host.ScopeTo(request.Actor).SpectateAsync();
 	}

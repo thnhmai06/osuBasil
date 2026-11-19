@@ -11,39 +11,39 @@ public readonly struct ScopedRoomRounds
 		_scoped = scoped;
 	}
 
-	public Task<RoomOutcome> StartAsync()
+	public Task<RoomActionResult> StartAsync()
 	{
 		return Task.FromResult(_scoped.Require(RoomPrivileges.RoundsStart) ??
 		                       _scoped.Room.StartRound());
 	}
 
-	public RoomOutcome? RequireStart()
+	public RoomActionResult? RequireStart()
 	{
 		return _scoped.Require(RoomPrivileges.RoundsStart);
 	}
 
-	public Task<RoomOutcome> AbortAsync()
+	public Task<RoomActionResult> AbortAsync()
 	{
 		return Task.FromResult(_scoped.Require(RoomPrivileges.RoundsAbort) ??
 		                       _scoped.Room.AbortRound());
 	}
 
-	public Task<RoomOutcome> MarkLoadedAsync()
+	public Task<RoomActionResult> MarkLoadedAsync()
 	{
 		return Task.FromResult(_scoped.Room.MarkLoaded(_scoped.Actor));
 	}
 
-	public Task<RoomOutcome> SkipAsync()
+	public Task<RoomActionResult> SkipAsync()
 	{
 		return Task.FromResult(_scoped.Room.SkipIntro(_scoped.Actor));
 	}
 
-	public Task<RoomOutcome> FailAsync()
+	public Task<RoomActionResult> FailAsync()
 	{
 		return Task.FromResult(_scoped.Room.ReportFailed(_scoped.Actor));
 	}
 
-	public Task<RoomOutcome> CompleteAsync()
+	public Task<RoomActionResult> CompleteAsync()
 	{
 		return Task.FromResult(_scoped.Room.ReportCompleted(_scoped.Actor));
 	}

@@ -6,13 +6,13 @@ using Mediator;
 namespace Basil.Infrastructure.Chat.Handlers;
 
 internal sealed class JoinChannelHandler(ChannelDirectory directory)
-	: IRequestHandler<JoinChannel, ChannelOutcome>
+	: IRequestHandler<JoinChannel, ChannelJoinResult>
 {
-	public ValueTask<ChannelOutcome> Handle(JoinChannel request, CancellationToken ct)
+	public ValueTask<ChannelJoinResult> Handle(JoinChannel request, CancellationToken ct)
 	{
 		var result = directory.Find(request.Target, request.Actor) is { } channel
 			? channel.ScopeTo(request.Actor).Join()
-			: ChannelOutcome.NotFound;
+			: ChannelJoinResult.NotFound;
 		return ValueTask.FromResult(result);
 	}
 }

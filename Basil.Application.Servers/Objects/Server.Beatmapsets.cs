@@ -1,5 +1,6 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Shared.Settings;
+using Basil.Domain.Content;
 
 namespace Basil.Application.Servers.Objects;
 
@@ -22,18 +23,18 @@ public readonly struct ServerBeatmapsets
 		return (await _server.Context.Settings.GetAsync(ct)).Locks.HasFlag(area);
 	}
 
-	internal async Task<(ServerOutcome Outcome, BeatmapsetImportResult? Import)> UploadAsync(Stream archive,
+	internal async Task<(ServerActionResult Outcome, BeatmapsetImportResult? Import)> UploadAsync(Stream archive,
 		CancellationToken ct)
 	{
 		var limit = (await _server.Context.Settings.GetAsync(ct)).Uploads.OszMaxSize;
 		try
 		{
-			return (ServerOutcome.Ok,
+			return (ServerActionResult.Ok,
 				await _server.Context.Beatmapsets.ImportAsync(new CappedStream(archive, limit), false, ct));
 		}
 		catch (ArchiveTooLargeException)
 		{
-			return (ServerOutcome.TooLarge, null);
+			throw new UploadTooLargeException(limit);
 		}
 	}
 }

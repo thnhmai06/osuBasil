@@ -6,4 +6,4 @@ using Mediator;
 namespace Basil.Application.Servers.Messages.Channels;
 
 public sealed record CreateGeneralChannel(Session Actor, GeneralChannelRecord Record)
-	: IRequest<ServerOutcome>;
+	: IRequest<ServerActionResult>;

@@ -31,7 +31,7 @@ public readonly struct ScopedLobby
 
 	public Lobby Lobby { get; }
 
-	public async Task<(Room? Room, RoomOutcome Result)> OpenRoomAsync(
+	public async Task<(Room? Room, RoomActionResult Result)> OpenRoomAsync(
 		string name,
 		string password,
 		RoomSource source,
@@ -48,19 +48,19 @@ public readonly struct ScopedLobby
 			settings);
 	}
 
-	private async Task<RoomOutcome?> OpenRefusalAsync(RoomSource source, CancellationToken ct = default)
+	private async Task<RoomActionResult?> OpenRefusalAsync(RoomSource source, CancellationToken ct = default)
 	{
 		var required = source is RoomSource.Api
 			? UserPrivileges.Player
 			: UserPrivileges.Player | UserPrivileges.Player;
-		if (Lacks(required)) return RoomOutcome.Denied;
+		if (Lacks(required)) return RoomActionResult.Denied;
 
 		if (await Lobby.IsRoomCreationLockedAsync(ct) &&
 		    Lacks(UserPrivileges.Tournament))
-			return RoomOutcome.Locked;
+			return RoomActionResult.Locked;
 
 		var limited = Lacks(UserPrivileges.Tournament);
-		if (limited && Lobby.TooManyRooms(Actor.Record)) return RoomOutcome.TooManyRooms;
+		if (limited && Lobby.TooManyRooms(Actor.Record)) return RoomActionResult.TooManyRooms;
 
 		return null;
 	}
@@ -76,13 +76,13 @@ public readonly struct ScopedLobby
 			: (StableSession)Actor;
 	}
 
-	public async Task<(RoomOutcome Result, Page<MatchRecord>? Matches)> ListMatchesAsync(
+	public async Task<(RoomActionResult Result, Page<MatchRecord>? Matches)> ListMatchesAsync(
 		MatchQuery query, PageRequest page, CancellationToken ct = default)
 	{
 		if (Lacks(UserPrivileges.Tournament))
-			return (RoomOutcome.Denied, null);
+			return (RoomActionResult.Denied, null);
 
-		return (RoomOutcome.Ok,
+		return (RoomActionResult.Ok,
 			await Lobby.Context.Matches.ListAsync(query.LimitTo(Privileges, Actor.Record), page, ct));
 	}
 

@@ -1,3 +1,4 @@
+using Basil.Domain;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Protocol.Game.Stable.Wire.Packets;
 
@@ -22,6 +23,11 @@ internal sealed class PacketDispatcher(PacketHandlers handlers, ILogger<PacketDi
 			try
 			{
 				await handlers.HandleAsync(actor, packet, ct);
+			}
+			catch (BasilException ex)
+			{
+				logger.LogDebug(ex, "Stable packet {PacketType} of user {UserId} was not taken in", packet.Type,
+					actor.Record.Id);
 			}
 			catch (Exception ex) when (ex is not OperationCanceledException)
 			{

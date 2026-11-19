@@ -7,17 +7,17 @@ namespace Basil.Domain.Multiplayer.Room;
 
 public sealed partial class Room
 {
-	public (RoomOutcome Outcome, RoundSettlement? Settlement, RoundScore? Score) ReceiveScore(ScoreRecord score,
+	public (RoomActionResult Outcome, RoundSettlement? Settlement, RoundScore? Score) ReceiveScore(ScoreRecord score,
 		UserRecord player)
 	{
-		if (IsClosed) return (RoomOutcome.RoomClosed, null, null);
+		if (IsClosed) return (RoomActionResult.RoomClosed, null, null);
 		if (Rounds.Settlement is not { } settlement || !settlement.Awaits(player, out var team) ||
 		    settlement.Round.BeatmapHash != score.Value.BeatmapHash)
-			return (RoomOutcome.RoundMismatch, null, null);
+			return (RoomActionResult.RoundMismatch, null, null);
 
 		var roundScore = new RoundScore(score, settlement.Round, team);
 		settlement.Scores.Add(roundScore);
-		return (RoomOutcome.Ok, settlement, roundScore);
+		return (RoomActionResult.Ok, settlement, roundScore);
 	}
 
 	public bool AwaitsScore(UserRecord player, Md5Hash beatmap)

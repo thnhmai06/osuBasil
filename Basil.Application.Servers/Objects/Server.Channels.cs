@@ -17,10 +17,10 @@ public readonly struct ServerChannels
 		_server = server;
 	}
 
-	internal async Task<ServerOutcome> CreateAsync(GeneralChannelRecord record)
+	internal async Task<ServerActionResult> CreateAsync(GeneralChannelRecord record)
 	{
 		var channel = _server.OpenChannel(record);
-		if (channel is null) return ServerOutcome.NameTaken;
+		if (channel is null) return ServerActionResult.NameTaken;
 
 		try
 		{
@@ -32,13 +32,13 @@ public readonly struct ServerChannels
 			throw;
 		}
 
-		return ServerOutcome.Ok;
+		return ServerActionResult.Ok;
 	}
 
-	internal (ChannelOutcome Outcome, GeneralChannel? Channel) FindGeneral(string name)
+	internal (ChannelJoinResult Outcome, GeneralChannel? Channel) FindGeneral(string name)
 	{
 		return _server.Context.Chat.Registry.Find(name) is { } channel
-			? (ChannelOutcome.Ok, channel)
-			: (ChannelOutcome.NotFound, null);
+			? (ChannelJoinResult.Ok, channel)
+			: (ChannelJoinResult.NotFound, null);
 	}
 }

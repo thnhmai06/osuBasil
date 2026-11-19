@@ -1,3 +1,4 @@
+using Basil.Domain.Content;
 using Basil.Shared.Utilities;
 
 namespace Basil.Infrastructure.Shared.Storage;
@@ -8,7 +9,7 @@ internal static class SafePath
 	{
 		ArgumentNullException.ThrowIfNull(name);
 		if (!PathValidation.IsValidPath(name))
-			throw new ArgumentException("The name is not a valid stored file name.", nameof(name));
+			throw new InvalidFileNameException();
 
 		var fullRoot = Path.GetFullPath(root);
 		var combined = Path.GetFullPath(Path.Combine(fullRoot, name));

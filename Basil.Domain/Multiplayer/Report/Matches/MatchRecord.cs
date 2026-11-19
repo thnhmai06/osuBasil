@@ -1,3 +1,4 @@
+using Basil.Domain.Multiplayer.Room;
 using Basil.Domain.Users;
 using Basil.Shared.Utilities;
 
@@ -42,7 +43,7 @@ public sealed class MatchData
 		get;
 		set => field = IsValidName(value)
 			? value
-			: throw new ArgumentException("Match name is not valid.", nameof(value));
+			: throw new InvalidRoomSettingsException();
 	}
 
 	public required UserRecord Creator { get; init; }

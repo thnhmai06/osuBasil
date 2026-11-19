@@ -4,4 +4,4 @@ using Mediator;
 
 namespace Basil.Application.Users.Messages;
 
-public sealed record RemoveUserAvatar(Session Actor, UserReference Target) : IRequest<UserOutcome>;
+public sealed record RemoveUserAvatar(Session Actor, UserReference Target) : IRequest<UserActionResult>;

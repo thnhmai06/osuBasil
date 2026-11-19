@@ -11,7 +11,7 @@ public sealed class GeneralChannelRecord : IEquatable<GeneralChannelRecord>
 		init
 		{
 			if (!IsValidName(value))
-				throw new ArgumentException("Channel name is invalid.", nameof(value));
+				throw new InvalidChannelNameException();
 			field = value;
 		}
 	}
@@ -49,7 +49,7 @@ public sealed class GeneralChannelData
 		{
 			ArgumentNullException.ThrowIfNull(value);
 			if (!IsValidTopic(value))
-				throw new ArgumentException("Text cannot contain the NUL character.", nameof(value));
+				throw new InvalidChannelTopicException();
 			field = value;
 		}
 	} = string.Empty;
@@ -59,7 +59,7 @@ public sealed class GeneralChannelData
 		get;
 		set => field = IsValidPrivileges(value)
 			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), value, "Enum value is undefined.");
+			: throw new InvalidChannelPrivilegesException();
 	} = UserPrivileges.None;
 
 	public UserPrivileges WritePrivileges
@@ -67,7 +67,7 @@ public sealed class GeneralChannelData
 		get;
 		set => field = IsValidPrivileges(value)
 			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), value, "Enum value is undefined.");
+			: throw new InvalidChannelPrivilegesException();
 	} = UserPrivileges.None;
 
 	public bool AutoJoin { get; set; }

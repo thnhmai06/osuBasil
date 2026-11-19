@@ -4,11 +4,11 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-internal sealed class ToggleSlotLockHandler : IRequestHandler<ToggleSlotLock, RoomOutcome>
+internal sealed class ToggleSlotLockHandler : IRequestHandler<ToggleSlotLock, RoomActionResult>
 {
-	public ValueTask<RoomOutcome> Handle(ToggleSlotLock request, CancellationToken ct)
+	public ValueTask<RoomActionResult> Handle(ToggleSlotLock request, CancellationToken ct)
 	{
-		return new ValueTask<RoomOutcome>(
+		return new ValueTask<RoomActionResult>(
 			request.Room.ScopeTo(request.Actor).Slots.ToggleLockAsync(request.Index));
 	}
 }

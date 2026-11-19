@@ -27,13 +27,13 @@ public readonly struct ScopedUserRegistry
 		_registry = registry;
 	}
 
-	public async Task<(UserRecord? User, UserOutcome Result)> CreateAccountAsync(UserData data,
+	public async Task<(UserRecord? User, UserActionResult Result)> CreateAccountAsync(UserData data,
 		Md5Hash passwordHash, UserPrivileges? privileges)
 	{
 		var granted = privileges ??
 		              (await Actor.User.Context.Settings.GetAsync()).Accounts.DefaultPrivileges;
 		if (Lacks(UserPrivileges.Owner | granted))
-			return (null, UserOutcome.Denied);
+			return (null, UserActionResult.Denied);
 
 		var (user, outcome) = await _registry.RegisterAsync(data, passwordHash, granted);
 		return (user, outcome);

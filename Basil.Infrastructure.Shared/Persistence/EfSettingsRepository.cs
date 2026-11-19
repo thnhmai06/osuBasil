@@ -1,3 +1,4 @@
+using Basil.Domain;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Basil.Application.Shared.Settings;
@@ -52,7 +53,7 @@ internal sealed class EfSettingsRepository(
 				{
 					settings = category.Read(settings, json);
 				}
-				catch (Exception exception) when (exception is JsonException or ArgumentException or FormatException)
+				catch (Exception exception) when (exception is JsonException or ArgumentException or FormatException or BasilException)
 				{
 					logger.LogWarning(exception, "The setting category {Category} is not valid and keeps its defaults",
 						category.Name);

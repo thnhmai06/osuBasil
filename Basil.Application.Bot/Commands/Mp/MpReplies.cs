@@ -302,55 +302,53 @@ internal static class MpReplies
 
 	public static readonly Reply MatchClosed = new("mp.matchClosed", "The match is closed.");
 
-	public static string Describe(IReplies replies, RoomOutcome result)
+	public static string Describe(IReplies replies, RoomActionResult result)
 	{
-		return result == RoomOutcome.Denied
+		return result == RoomActionResult.Denied
 			? replies.Text(MissingPrivileges)
 			: replies.Text(Of(result), new { outcome = result.ToString() });
 	}
 
-	public static Reply Of(RoomOutcome outcome)
+	public static Reply Of(RoomActionResult outcome)
 	{
 		return outcome switch
 		{
-			RoomOutcome.Denied => MissingPrivileges,
-			RoomOutcome.RoleDenied => NotAuthorizedInMatch,
-			RoomOutcome.AlreadySeated => AlreadyInThisMatch,
-			RoomOutcome.Banned => BannedFromMatch,
-			RoomOutcome.InAnotherRoom => TargetInAnotherMatch,
-			RoomOutcome.WrongPassword => IncorrectPassword,
-			RoomOutcome.Full => MatchIsFull,
-			RoomOutcome.IsObserver => TargetIsObserver,
-			RoomOutcome.NotInRoom => TargetNotInMatch,
-			RoomOutcome.IsManager => TargetIsManager,
-			RoomOutcome.NotBanned => TargetNotBanned,
-			RoomOutcome.TargetOffline => TargetNotOnline,
-			RoomOutcome.Blocked => CannotInvite,
-			RoomOutcome.NotFound => UserNotFound,
-			RoomOutcome.AlreadyInRoom => UserAlreadyInRoom,
-			RoomOutcome.TooManyReferees => RefereeLimitReached,
-			RoomOutcome.AlreadyReferee => TargetAlreadyReferee,
-			RoomOutcome.NotReferee => TargetNotReferee,
-			RoomOutcome.IsCreator => TargetIsCreator,
-			RoomOutcome.IsPlayer => TargetIsPlayer,
-			RoomOutcome.NotObserver => TargetNotObserver,
-			RoomOutcome.TooManyRooms => RoomLimitReached,
-			RoomOutcome.NoRoomId => NoMatchesAvailable,
-			RoomOutcome.SlotNotOpen => DestinationSlotNotOpen,
-			RoomOutcome.RoomLocked => MatchIsLocked,
-			RoomOutcome.Locked => RoomsLocked,
-			RoomOutcome.InProgress => MatchAlreadyInProgress,
-			RoomOutcome.OwnSlot => OwnSlotLocked,
-			RoomOutcome.NoTeams => MatchHasNoTeams,
-			RoomOutcome.NotFreemod => FreemodNotEnabled,
-			RoomOutcome.SpeedModNotAllowed => SpeedModsMatchWide,
-			RoomOutcome.InvalidMods => InvalidMods,
-			RoomOutcome.InvalidSettings => SettingsInvalid,
-			RoomOutcome.NoBeatmap => NoBeatmapSelected,
-			RoomOutcome.NotPlaying => TargetNotPlaying,
-			RoomOutcome.NotInProgress => MatchNotInProgress,
-			RoomOutcome.RoundMismatch => ScoreNotCurrentRound,
-			RoomOutcome.RoomClosed => MatchClosed,
+			RoomActionResult.Denied => MissingPrivileges,
+			RoomActionResult.RoleDenied => NotAuthorizedInMatch,
+			RoomActionResult.AlreadySeated => AlreadyInThisMatch,
+			RoomActionResult.Banned => BannedFromMatch,
+			RoomActionResult.InAnotherRoom => TargetInAnotherMatch,
+			RoomActionResult.WrongPassword => IncorrectPassword,
+			RoomActionResult.Full => MatchIsFull,
+			RoomActionResult.IsObserver => TargetIsObserver,
+			RoomActionResult.NotInRoom => TargetNotInMatch,
+			RoomActionResult.IsManager => TargetIsManager,
+			RoomActionResult.NotBanned => TargetNotBanned,
+			RoomActionResult.TargetOffline => TargetNotOnline,
+			RoomActionResult.Blocked => CannotInvite,
+			RoomActionResult.NotFound => UserNotFound,
+			RoomActionResult.AlreadyInRoom => UserAlreadyInRoom,
+			RoomActionResult.TooManyReferees => RefereeLimitReached,
+			RoomActionResult.AlreadyReferee => TargetAlreadyReferee,
+			RoomActionResult.NotReferee => TargetNotReferee,
+			RoomActionResult.IsCreator => TargetIsCreator,
+			RoomActionResult.IsPlayer => TargetIsPlayer,
+			RoomActionResult.NotObserver => TargetNotObserver,
+			RoomActionResult.TooManyRooms => RoomLimitReached,
+			RoomActionResult.NoRoomId => NoMatchesAvailable,
+			RoomActionResult.SlotNotOpen => DestinationSlotNotOpen,
+			RoomActionResult.RoomLocked => MatchIsLocked,
+			RoomActionResult.Locked => RoomsLocked,
+			RoomActionResult.InProgress => MatchAlreadyInProgress,
+			RoomActionResult.OwnSlot => OwnSlotLocked,
+			RoomActionResult.NoTeams => MatchHasNoTeams,
+			RoomActionResult.NotFreemod => FreemodNotEnabled,
+			RoomActionResult.SpeedModNotAllowed => SpeedModsMatchWide,
+			RoomActionResult.NoBeatmap => NoBeatmapSelected,
+			RoomActionResult.NotPlaying => TargetNotPlaying,
+			RoomActionResult.NotInProgress => MatchNotInProgress,
+			RoomActionResult.RoundMismatch => ScoreNotCurrentRound,
+			RoomActionResult.RoomClosed => MatchClosed,
 			_ => GenericFailed
 		};
 	}

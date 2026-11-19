@@ -15,15 +15,15 @@ public sealed partial class Room
 		return slot;
 	}
 
-	internal RoomOutcome TakeSeat(StableSession player, StableSession? stale)
+	internal RoomActionResult TakeSeat(StableSession player, StableSession? stale)
 	{
 		if (stale is not null) return ReplaceSeat(player, stale);
 
-		if (Seat(player) is not { } slot) return RoomOutcome.Full;
+		if (Seat(player) is not { } slot) return RoomActionResult.Full;
 
 		MarkOccupied();
 		Emit(new RoomPlayerJoined(this, player, slot.Index, null, null));
-		return RoomOutcome.Ok;
+		return RoomActionResult.Ok;
 	}
 
 	public bool IsPresent(Session connection)
@@ -39,14 +39,14 @@ public sealed partial class Room
 		       || privileges.Allows(UserPrivileges.Tournament);
 	}
 
-	private RoomOutcome LeaveSeat(StableSession actor)
+	private RoomActionResult LeaveSeat(StableSession actor)
 	{
-		if (Vacate(actor) is not { } slot) return RoomOutcome.NotInRoom;
+		if (Vacate(actor) is not { } slot) return RoomActionResult.NotInRoom;
 
 		var progress = AdvanceRound();
 		Emit(new RoomPlayerLeft(this, actor, slot.Index, Host, progress));
 		ReportIfEmpty();
-		return RoomOutcome.Ok;
+		return RoomActionResult.Ok;
 	}
 
 	internal RoomSlot? Vacate(StableSession player)
@@ -73,7 +73,7 @@ public sealed partial class Room
 		if (!Slots.Any(slot => slot.Player is not null)) Context.Lobby.Emptied(this);
 	}
 
-	private RoomOutcome ReplaceSeat(StableSession player, StableSession stale)
+	private RoomActionResult ReplaceSeat(StableSession player, StableSession stale)
 	{
 		_seats[player.Record] = player;
 		var slot = State.Reseat(player.Record);
@@ -81,6 +81,6 @@ public sealed partial class Room
 		var progress = AdvanceRound();
 		MarkOccupied();
 		Emit(new RoomPlayerJoined(this, player, slot.Index, stale, progress));
-		return RoomOutcome.Ok;
+		return RoomActionResult.Ok;
 	}
 }

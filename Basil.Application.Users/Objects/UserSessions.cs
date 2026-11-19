@@ -65,11 +65,11 @@ public sealed class UserSessions
 			ct);
 	}
 
-	internal async Task<(UserOutcome Outcome, SessionRecord? Session)> GetAsync(Session viewer,
+	internal async Task<(UserActionResult Outcome, SessionRecord? Session)> GetAsync(Session viewer,
 		long id, CancellationToken ct)
 	{
 		var session = await _user.Context.Sessions.GetAsync(_user.Record, id, ct);
-		if (session is null) return (UserOutcome.NotFound, null);
+		if (session is null) return (UserActionResult.NotFound, null);
 
 		if (!viewer.Record.Equals(_user.Record))
 			await _user.Context.ModerationLog.AppendAsync(new ModerationLogData
@@ -80,24 +80,24 @@ public sealed class UserSessions
 				Timestamp = _user.Context.Clock.GetUtcNow()
 			});
 
-		return (UserOutcome.Ok, session);
+		return (UserActionResult.Ok, session);
 	}
 
-	internal async Task<UserOutcome> CloseAsync(long id)
+	internal async Task<UserActionResult> CloseAsync(long id)
 	{
-		if (_user.Record.IsBasilBot()) return UserOutcome.SystemAccount;
+		if (_user.Record.IsBasilBot()) return UserActionResult.SystemAccount;
 		// A session whose client is online exists even before its record reaches the store.
 		if (!Connections.Any(connection => connection.State.Record.Id == id) &&
 		    await _user.Context.Sessions.GetAsync(_user.Record, id) is not { Value.Ended: null })
-			return UserOutcome.NotFound;
+			return UserActionResult.NotFound;
 
 		await CloseAsync(id, null, SessionEndReason.Revoked);
-		return UserOutcome.Ok;
+		return UserActionResult.Ok;
 	}
 
-	internal async Task<UserOutcome> CloseAllAsync(Session actor, bool keepCurrent)
+	internal async Task<UserActionResult> CloseAllAsync(Session actor, bool keepCurrent)
 	{
-		if (_user.Record.IsBasilBot()) return UserOutcome.SystemAccount;
+		if (_user.Record.IsBasilBot()) return UserActionResult.SystemAccount;
 
 		var isSelf = actor.Record.Equals(_user.Record);
 		long? keep = isSelf && keepCurrent && actor is ApiSession api ? api.State.Record.Id : null;
@@ -113,7 +113,7 @@ public sealed class UserSessions
 
 		await CloseAsync(null, keep, SessionEndReason.Revoked);
 
-		return UserOutcome.Ok;
+		return UserActionResult.Ok;
 	}
 
 	internal async Task CloseAsync(long? only, long? except, SessionEndReason reason)

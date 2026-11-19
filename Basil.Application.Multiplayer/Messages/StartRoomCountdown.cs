@@ -6,4 +6,4 @@ using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 namespace Basil.Application.Multiplayer.Messages;
 
 public sealed record StartRoomCountdown(Session Actor, Room Room, TimeSpan Duration, bool StartsRound)
-	: IRequest<RoomOutcome>;
+	: IRequest<RoomActionResult>;

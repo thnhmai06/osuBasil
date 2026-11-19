@@ -17,7 +17,7 @@ internal sealed class SearchScoresHandler(IScoreRepository scores, IBeatmapRepos
 		if (request.BeatmapId is { } beatmapId)
 		{
 			if (await beatmaps.GetAsync(beatmapId, ct) is not { } map)
-				return new ScoreListing(ScoreListOutcome.NoBeatmap, null);
+				return new ScoreListing(ScoreListResult.NoBeatmap, null);
 			hashes = [map.Hash];
 		}
 
@@ -34,11 +34,11 @@ internal sealed class SearchScoresHandler(IScoreRepository scores, IBeatmapRepos
 			var user = reference.Id is { } id
 				? await users.GetAsync(id, ct)
 				: await users.GetByNameAsync(reference.Name!, ct);
-			if (user is null) return new ScoreListing(ScoreListOutcome.NoUser, null);
+			if (user is null) return new ScoreListing(ScoreListResult.NoUser, null);
 			userIds = [user.Id];
 		}
 
-		return new ScoreListing(ScoreListOutcome.Ok,
+		return new ScoreListing(ScoreListResult.Ok,
 			await scores.ListAsync(new ScoreQuery(UserIds: userIds, BeatmapHashes: hashes), request.Page, ct));
 	}
 }

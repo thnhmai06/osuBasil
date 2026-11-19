@@ -90,12 +90,12 @@ public abstract class Channel
 		Context.Events.Publish(new ChannelMessagePosted(this, message, truncated, awayReply, actor, bypassesBlocks));
 	}
 
-	internal ChannelOutcome Join(Session connection, UserPrivileges privileges)
+	internal ChannelJoinResult Join(Session connection, UserPrivileges privileges)
 	{
 		using var scope = Enter();
-		if (IsClosed) return ChannelOutcome.Closed;
-		if (!CanRead(connection, privileges)) return ChannelOutcome.AccessDenied;
-		if (Members.Contains(connection)) return ChannelOutcome.AlreadyMember;
+		if (IsClosed) return ChannelJoinResult.Closed;
+		if (!CanRead(connection, privileges)) return ChannelJoinResult.AccessDenied;
+		if (Members.Contains(connection)) return ChannelJoinResult.AlreadyMember;
 
 		Session? replaced = null;
 		if (connection.Type.IsExclusive)
@@ -104,48 +104,48 @@ public abstract class Channel
 				member.Record.Equals(connection.Record) && member.Type == connection.Type);
 			if (replaced is not null)
 			{
-				if (replaced.IsOpen) return ChannelOutcome.AlreadyMember;
+				if (replaced.IsOpen) return ChannelJoinResult.AlreadyMember;
 				MutableMembers.Remove(replaced);
 			}
 		}
 
 		MutableMembers.Add(connection);
 		Context.Events.Publish(new ChannelMemberJoined(this, connection, replaced));
-		return ChannelOutcome.Ok;
+		return ChannelJoinResult.Ok;
 	}
 
-	internal ChannelOutcome Part(Session connection)
+	internal ChannelJoinResult Part(Session connection)
 	{
 		using var scope = Enter();
-		if (!MutableMembers.Remove(connection)) return ChannelOutcome.NotMember;
+		if (!MutableMembers.Remove(connection)) return ChannelJoinResult.NotMember;
 		Context.Events.Publish(new ChannelMemberParted(this, connection, false));
-		return ChannelOutcome.Ok;
+		return ChannelJoinResult.Ok;
 	}
 
-	internal async Task<ChannelOutcome> PostAsync(Session actor, UserPrivileges privileges,
+	internal async Task<ChannelJoinResult> PostAsync(Session actor, UserPrivileges privileges,
 		bool? recipientSilenced, string text, bool notice, CancellationToken ct)
 	{
-		if (IsClosed) return ChannelOutcome.Closed;
-		if (string.IsNullOrEmpty(text)) return ChannelOutcome.Empty;
-		if (!Message.IsValidContent(text)) return ChannelOutcome.InvalidText;
-		if (this is not PmChannel && !Members.Contains(actor)) return ChannelOutcome.NotMember;
+		if (IsClosed) return ChannelJoinResult.Closed;
+		if (string.IsNullOrEmpty(text)) throw new EmptyMessageException();
+		if (!Message.IsValidContent(text)) throw new InvalidMessageException();
+		if (this is not PmChannel && !Members.Contains(actor)) return ChannelJoinResult.NotMember;
 
 		var now = Context.Clock.GetUtcNow();
-		if (actor.User.Record.Value.IsSilenced(now)) return ChannelOutcome.Silenced;
-		if (!CanWrite(actor, privileges)) return ChannelOutcome.AccessDenied;
+		if (actor.User.Record.Value.IsSilenced(now)) return ChannelJoinResult.Silenced;
+		if (!CanWrite(actor, privileges)) return ChannelJoinResult.AccessDenied;
 
 		var mayMessageAnyone = privileges.Allows(UserPrivileges.Moderator);
 		if (this is PmChannel pm && recipientSilenced is { } recipient &&
 		    await PrivateMessageRefusalAsync(pm, actor, mayMessageAnyone, recipient, ct) is { } refusal)
 			return refusal;
 
-		if (IsClosed) return ChannelOutcome.Closed;
+		if (IsClosed) return ChannelJoinResult.Closed;
 
 		PostMessage(actor.Record, text, notice, now, actor, mayMessageAnyone);
-		return ChannelOutcome.Ok;
+		return ChannelJoinResult.Ok;
 	}
 
-	private async Task<ChannelOutcome?> PrivateMessageRefusalAsync(PmChannel pm, Session actor,
+	private async Task<ChannelJoinResult?> PrivateMessageRefusalAsync(PmChannel pm, Session actor,
 		bool mayMessageAnyone, bool recipientSilenced, CancellationToken ct)
 	{
 		if (!mayMessageAnyone)
@@ -156,11 +156,11 @@ public abstract class Channel
 				relationship.Type == RelationshipType.Block && relationship.Target.Equals(self));
 			var friend = relationships.Any(relationship =>
 				relationship.Type == RelationshipType.Friend && relationship.Target.Equals(self));
-			if (blocked || (pm.Owner.PmPrivate && !friend)) return ChannelOutcome.Blocked;
+			if (blocked || (pm.Owner.PmPrivate && !friend)) return ChannelJoinResult.Blocked;
 		}
 
 		if (!pm.Owner.Record.IsBasilBot() && recipientSilenced)
-			return ChannelOutcome.TargetSilenced;
+			return ChannelJoinResult.TargetSilenced;
 
 		return null;
 	}

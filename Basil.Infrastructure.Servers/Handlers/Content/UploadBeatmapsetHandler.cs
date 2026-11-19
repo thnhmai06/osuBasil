@@ -6,9 +6,9 @@ using Mediator;
 namespace Basil.Infrastructure.Servers.Handlers.Content;
 
 internal sealed class UploadBeatmapsetHandler(Server server)
-	: IRequestHandler<UploadBeatmapset, (ServerOutcome Result, BeatmapsetImportResult? Import)>
+	: IRequestHandler<UploadBeatmapset, (ServerActionResult Result, BeatmapsetImportResult? Import)>
 {
-	public async ValueTask<(ServerOutcome Result, BeatmapsetImportResult? Import)> Handle(
+	public async ValueTask<(ServerActionResult Result, BeatmapsetImportResult? Import)> Handle(
 		UploadBeatmapset request, CancellationToken ct)
 	{
 		return await server.ScopeTo(request.Actor).Beatmapsets.UploadAsync(request.Archive, ct);

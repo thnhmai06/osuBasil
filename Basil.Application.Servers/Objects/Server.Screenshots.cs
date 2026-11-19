@@ -16,30 +16,30 @@ public readonly struct ServerScreenshots
 		_server = server;
 	}
 
-	internal async Task<(ContentReference? Screenshot, ServerOutcome Outcome)> UploadAsync(Stream content,
+	internal async Task<(ContentReference? Screenshot, ServerActionResult Outcome)> UploadAsync(Stream content,
 		CancellationToken ct)
 	{
 		var limits = (await _server.Context.Settings.GetAsync(ct)).Uploads;
 
 		await using var upload = await _server.Context.Spool.SpoolAsync(content, limits.ScreenshotMaxSize, ct);
-		if (upload.TooLarge) return (null, ServerOutcome.TooLarge);
+		if (upload.TooLarge) throw new UploadTooLargeException(limits.ScreenshotMaxSize);
 
 		var info = await _server.Context.Inspector.InspectAsync(upload.Content);
 		if (info is null || info.Width < 1 || info.Height < 1)
 		{
 			await upload.QuarantineAsync();
-			return (null, ServerOutcome.InvalidImage);
+			throw new InvalidImageException();
 		}
 
 		if (info.Width > limits.ScreenshotMaxSide || info.Height > limits.ScreenshotMaxSide)
 		{
 			await upload.QuarantineAsync();
-			return (null, ServerOutcome.DimensionsTooLarge);
+			throw new ImageDimensionsTooLargeException(limits.ScreenshotMaxSide);
 		}
 
 		upload.Content.Position = 0;
 		var reference = await _server.Context.Screenshots.SaveAsync(upload.Content, info.Extension);
-		return (reference, ServerOutcome.Ok);
+		return (reference, ServerActionResult.Ok);
 	}
 
 	internal async Task<IReadOnlyList<ContentReference>> ListAsync(CancellationToken ct)
@@ -47,11 +47,11 @@ public readonly struct ServerScreenshots
 		return [.. await _server.Context.Screenshots.ListAsync(ct)];
 	}
 
-	internal async Task<ServerOutcome> DeleteAsync(ContentReference screenshot)
+	internal async Task<ServerActionResult> DeleteAsync(ContentReference screenshot)
 	{
-		if (!(await _server.Context.Screenshots.ListAsync()).Contains(screenshot)) return ServerOutcome.NotFound;
+		if (!(await _server.Context.Screenshots.ListAsync()).Contains(screenshot)) return ServerActionResult.NotFound;
 
 		await _server.Context.Screenshots.DeleteAsync(screenshot);
-		return ServerOutcome.Ok;
+		return ServerActionResult.Ok;
 	}
 }

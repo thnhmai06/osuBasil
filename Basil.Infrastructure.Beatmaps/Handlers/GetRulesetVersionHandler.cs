@@ -6,9 +6,9 @@ using Mediator;
 namespace Basil.Infrastructure.Beatmaps.Handlers;
 
 internal sealed class GetRulesetVersionHandler(Rulesets rulesets)
-	: IRequestHandler<GetRulesetVersion, (RulesetOutcome Result, RulesetVersions? Versions)>
+	: IRequestHandler<GetRulesetVersion, (RulesetUpdateResult Result, RulesetVersions? Versions)>
 {
-	public ValueTask<(RulesetOutcome Result, RulesetVersions? Versions)> Handle(GetRulesetVersion request,
+	public ValueTask<(RulesetUpdateResult Result, RulesetVersions? Versions)> Handle(GetRulesetVersion request,
 		CancellationToken ct)
 	{
 		return ValueTask.FromResult(rulesets.ScopeTo(request.Actor).Version());

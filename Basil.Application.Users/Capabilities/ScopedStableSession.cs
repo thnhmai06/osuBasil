@@ -28,15 +28,15 @@ public readonly struct ScopedStableSession
 
 	public StableSession Host { get; }
 
-	public async Task<SessionOutcome> SpectateAsync()
+	public async Task<SessionAuthResult> SpectateAsync()
 	{
 		if (Actor is IrcSession)
 			throw new ArgumentException("IRC clients cannot spectate.");
 
-		if (Lacks(UserPrivileges.Player)) return SessionOutcome.Denied;
+		if (Lacks(UserPrivileges.Player)) return SessionAuthResult.Denied;
 
 		if (await Host.HasBlockedAsync(Actor) && Lacks(UserPrivileges.Tournament))
-			return SessionOutcome.Blocked;
+			return SessionAuthResult.Blocked;
 
 		return Host.Spectate(Actor);
 	}

@@ -174,7 +174,7 @@ public static class ModsExtensions
 		public void ThrowIfInvalid(GameMode mode)
 		{
 			if (!gameMods.IsValid(mode))
-				throw new ArgumentException("The specified mods are not valid for the given mode.", nameof(gameMods));
+				throw new InvalidModsException();
 		}
 	}
 

@@ -4,11 +4,11 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-internal sealed class SetPlayerTeamHandler : IRequestHandler<SetPlayerTeam, RoomOutcome>
+internal sealed class SetPlayerTeamHandler : IRequestHandler<SetPlayerTeam, RoomActionResult>
 {
-	public ValueTask<RoomOutcome> Handle(SetPlayerTeam request, CancellationToken ct)
+	public ValueTask<RoomActionResult> Handle(SetPlayerTeam request, CancellationToken ct)
 	{
-		return new ValueTask<RoomOutcome>(
+		return new ValueTask<RoomActionResult>(
 			request.Room.ScopeTo(request.Actor).Slots.SetTeamAsync(request.Player, request.Team));
 	}
 }

@@ -15,7 +15,7 @@ public sealed class MenuBanner : IEquatable<MenuBanner>
 	public required Uri Url
 	{
 		get;
-		set => field = value.ThrowIfHttp();
+		set => field = value.IsHttp() ? value : throw new InvalidAddressException();
 	}
 
 	public required DateTimeOffset? StartsAt
@@ -24,7 +24,7 @@ public sealed class MenuBanner : IEquatable<MenuBanner>
 		set
 		{
 			if (!IsValidWindow(value, EndsAt))
-				throw new ArgumentOutOfRangeException(nameof(value), value, "A banner cannot start after it ends.");
+				throw new InvalidBannerWindowException(value, EndsAt);
 			field = value;
 		}
 	}
@@ -35,20 +35,14 @@ public sealed class MenuBanner : IEquatable<MenuBanner>
 		set
 		{
 			if (!IsValidWindow(StartsAt, value))
-				throw new ArgumentOutOfRangeException(nameof(value), value, "A banner cannot end before it starts.");
+				throw new InvalidBannerWindowException(StartsAt, value);
 			field = value;
 		}
 	}
 
 	public required DateTimeOffset CreatedAt { get; init; }
 
-	public bool Equals(MenuBanner? other)
-	{
-		if (other is null) return false;
-		return Image == other.Image;
-	}
-
-	public static bool IsValidWindow(DateTimeOffset? startsAt, DateTimeOffset? endsAt)
+	private static bool IsValidWindow(DateTimeOffset? startsAt, DateTimeOffset? endsAt)
 	{
 		return !(startsAt > endsAt);
 	}
@@ -56,6 +50,12 @@ public sealed class MenuBanner : IEquatable<MenuBanner>
 	public bool IsCurrent(DateTimeOffset now)
 	{
 		return (StartsAt is null || StartsAt <= now) && (EndsAt is null || now < EndsAt);
+	}
+
+	public bool Equals(MenuBanner? other)
+	{
+		if (other is null) return false;
+		return Image == other.Image;
 	}
 
 	public override bool Equals(object? obj)

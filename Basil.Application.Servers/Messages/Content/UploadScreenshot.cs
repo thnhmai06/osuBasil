@@ -6,4 +6,4 @@ using Mediator;
 namespace Basil.Application.Servers.Messages.Content;
 
 public sealed record UploadScreenshot(Session Actor, Stream Image)
-	: IRequest<(ContentReference? Screenshot, ServerOutcome Result)>;
+	: IRequest<(ContentReference? Screenshot, ServerActionResult Result)>;

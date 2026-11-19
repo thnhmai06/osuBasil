@@ -1,6 +1,6 @@
 namespace Basil.Application.Diagnostics.Objects;
 
-public enum DiagnosticsOutcome : byte
+public enum DiagnosticsCommandResult : byte
 {
 	Denied = 0,
 

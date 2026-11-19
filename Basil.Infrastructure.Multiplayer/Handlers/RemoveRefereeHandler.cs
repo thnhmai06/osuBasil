@@ -4,11 +4,11 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-internal sealed class RemoveRefereeHandler : IRequestHandler<RemoveReferee, RoomOutcome>
+internal sealed class RemoveRefereeHandler : IRequestHandler<RemoveReferee, RoomActionResult>
 {
-	public ValueTask<RoomOutcome> Handle(RemoveReferee request, CancellationToken ct)
+	public ValueTask<RoomActionResult> Handle(RemoveReferee request, CancellationToken ct)
 	{
-		return new ValueTask<RoomOutcome>(
+		return new ValueTask<RoomActionResult>(
 			request.Room.ScopeTo(request.Actor).Authority.RemoveRefereeAsync(request.User));
 	}
 }

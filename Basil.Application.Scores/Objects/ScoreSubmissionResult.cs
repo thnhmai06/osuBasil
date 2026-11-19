@@ -1,6 +1,6 @@
 namespace Basil.Application.Scores.Objects;
 
-public enum ScoreSubmissionOutcome : byte
+public enum ScoreSubmissionResult : byte
 {
 	Denied = 0,
 

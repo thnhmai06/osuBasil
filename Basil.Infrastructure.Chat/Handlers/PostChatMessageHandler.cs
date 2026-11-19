@@ -6,12 +6,12 @@ using Mediator;
 namespace Basil.Infrastructure.Chat.Handlers;
 
 internal sealed class PostChatMessageHandler(ChannelDirectory directory)
-	: IRequestHandler<PostChatMessage, ChannelOutcome>
+	: IRequestHandler<PostChatMessage, ChannelJoinResult>
 {
-	public async ValueTask<ChannelOutcome> Handle(PostChatMessage request,
+	public async ValueTask<ChannelJoinResult> Handle(PostChatMessage request,
 		CancellationToken ct)
 	{
-		if (directory.Find(request.Target, request.Actor) is not { } channel) return ChannelOutcome.NotFound;
+		if (directory.Find(request.Target, request.Actor) is not { } channel) return ChannelJoinResult.NotFound;
 		return await channel.ScopeTo(request.Actor).PostAsync(request.Text, request.Notice, ct);
 	}
 }

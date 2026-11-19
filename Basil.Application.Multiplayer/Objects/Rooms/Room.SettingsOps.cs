@@ -6,7 +6,7 @@ namespace Basil.Application.Multiplayer.Objects.Rooms;
 
 public sealed partial class Room
 {
-	internal RoomOutcome SetLocked(bool locked)
+	internal RoomActionResult SetLocked(bool locked)
 	{
 		using (State.Enter())
 		{
@@ -16,7 +16,7 @@ public sealed partial class Room
 		}
 	}
 
-	internal RoomOutcome Configure(Session actor, RoomSettingsChange change)
+	internal RoomActionResult Configure(Session actor, RoomSettingsChange change)
 	{
 		using (State.Enter())
 		{

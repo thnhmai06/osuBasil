@@ -22,25 +22,25 @@ public readonly struct ScopedRulesets
 		return ScopedPrivileges.Lacks(_privileges, UserPrivileges.Developer);
 	}
 
-	public (RulesetOutcome Result, RulesetVersions? Versions) Version()
+	public (RulesetUpdateResult Result, RulesetVersions? Versions) Version()
 	{
 		return Lacks()
-			? (RulesetOutcome.Denied, null)
-			: (RulesetOutcome.Ok, _rulesets.Updater.Version());
+			? (RulesetUpdateResult.Denied, null)
+			: (RulesetUpdateResult.Ok, _rulesets.Updater.Version());
 	}
 
-	public async Task<(RulesetOutcome Result, RulesetStageResult? Stage)> UpdateAsync(
+	public async Task<(RulesetUpdateResult Result, RulesetStageResult? Stage)> UpdateAsync(
 		CancellationToken ct = default)
 	{
 		return Lacks()
-			? (RulesetOutcome.Denied, null)
-			: (RulesetOutcome.Ok, await _rulesets.Updater.StageAsync(ct));
+			? (RulesetUpdateResult.Denied, null)
+			: (RulesetUpdateResult.Ok, await _rulesets.Updater.StageAsync(ct));
 	}
 
-	public RulesetOutcome Reload()
+	public RulesetUpdateResult Reload()
 	{
 		return Lacks()
-			? RulesetOutcome.Denied
+			? RulesetUpdateResult.Denied
 			: _rulesets.Reload();
 	}
 }

@@ -4,4 +4,4 @@ using Mediator;
 
 namespace Basil.Application.Chat.Messages;
 
-public sealed record PartChannel(Session Actor, ChatTarget Target) : IRequest<ChannelOutcome>;
+public sealed record PartChannel(Session Actor, ChatTarget Target) : IRequest<ChannelJoinResult>;

@@ -21,9 +21,9 @@ public readonly struct ServerSettingsView
 		return await _server.Context.Settings.GetAsync(ct);
 	}
 
-	internal async Task<ServerOutcome> UpdateAsync(ServerSettings settings)
+	internal async Task<ServerActionResult> UpdateAsync(ServerSettings settings)
 	{
 		await _server.Context.Settings.CreateOrUpdateAsync(settings);
-		return ServerOutcome.Ok;
+		return ServerActionResult.Ok;
 	}
 }

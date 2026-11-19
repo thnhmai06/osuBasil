@@ -5,9 +5,9 @@ using Mediator;
 namespace Basil.Infrastructure.Diagnostics.Handlers;
 
 internal sealed class CollectGarbageHandler(ServerDiagnostics diagnostics)
-	: IRequestHandler<CollectGarbage, DiagnosticsOutcome>
+	: IRequestHandler<CollectGarbage, DiagnosticsCommandResult>
 {
-	public ValueTask<DiagnosticsOutcome> Handle(CollectGarbage request, CancellationToken ct)
+	public ValueTask<DiagnosticsCommandResult> Handle(CollectGarbage request, CancellationToken ct)
 	{
 		return ValueTask.FromResult(diagnostics.ScopeTo(request.Actor).CollectGarbage());
 	}

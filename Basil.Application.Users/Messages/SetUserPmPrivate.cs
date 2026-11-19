@@ -4,4 +4,4 @@ using Mediator;
 
 namespace Basil.Application.Users.Messages;
 
-public sealed record SetUserPmPrivate(Session Actor, UserReference Target, bool PmPrivate) : IRequest<UserOutcome>;
+public sealed record SetUserPmPrivate(Session Actor, UserReference Target, bool PmPrivate) : IRequest<UserActionResult>;

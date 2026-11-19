@@ -4,9 +4,9 @@ using Mediator;
 
 namespace Basil.Infrastructure.Servers.Handlers.Content;
 
-internal sealed class ClearMenuIconHandler(Server server) : IRequestHandler<ClearMenuIcon, ServerOutcome>
+internal sealed class ClearMenuIconHandler(Server server) : IRequestHandler<ClearMenuIcon, ServerActionResult>
 {
-	public async ValueTask<ServerOutcome> Handle(ClearMenuIcon request, CancellationToken ct)
+	public async ValueTask<ServerActionResult> Handle(ClearMenuIcon request, CancellationToken ct)
 	{
 		return await server.ScopeTo(request.Actor).Icon.DeleteAsync();
 	}

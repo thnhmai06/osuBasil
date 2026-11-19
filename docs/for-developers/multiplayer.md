@@ -6,7 +6,7 @@ A `Room` is the live multiplayer state. It owns its slots, current round, settin
 
 This separation keeps current play state in one place while retaining the facts needed to understand completed matches.
 
-The room has two halves with the same name. The Domain `Room` (`Basil.Domain.Multiplayer`) holds the rules of the room on its own: slots, settings, authority, rounds and bans, as synchronous methods that answer `RoomOutcome` and identify players by `UserRecord`. The Application `Room` holds that state in `State` and keeps the live half: it takes the room's one lock (`State.Enter()`), calls the rule, publishes the event inside the lock, and does the steps that touch other objects (sessions, lobby, the score-wait timer, settings reads). It keeps the map from each seated `UserRecord` to its live `StableSession`.
+The room has two halves with the same name. The Domain `Room` (`Basil.Domain.Multiplayer`) holds the rules of the room on its own: slots, settings, authority, rounds and bans, as synchronous methods that answer `RoomActionResult` and identify players by `UserRecord`. The Application `Room` holds that state in `State` and keeps the live half: it takes the room's one lock (`State.Enter()`), calls the rule, publishes the event inside the lock, and does the steps that touch other objects (sessions, lobby, the score-wait timer, settings reads). It keeps the map from each seated `UserRecord` to its live `StableSession`.
 
 ## Room behavior and authority
 

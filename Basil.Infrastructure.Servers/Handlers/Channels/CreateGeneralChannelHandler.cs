@@ -5,11 +5,11 @@ using Mediator;
 namespace Basil.Infrastructure.Servers.Handlers.Channels;
 
 internal sealed class CreateGeneralChannelHandler(Server server)
-	: IRequestHandler<CreateGeneralChannel, ServerOutcome>
+	: IRequestHandler<CreateGeneralChannel, ServerActionResult>
 {
-	public ValueTask<ServerOutcome> Handle(CreateGeneralChannel request, CancellationToken ct)
+	public ValueTask<ServerActionResult> Handle(CreateGeneralChannel request, CancellationToken ct)
 	{
-		return new ValueTask<ServerOutcome>(
+		return new ValueTask<ServerActionResult>(
 			server.ScopeTo(request.Actor).Channels.CreateAsync(request.Record));
 	}
 }

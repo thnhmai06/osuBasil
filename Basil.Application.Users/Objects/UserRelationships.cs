@@ -39,40 +39,40 @@ public sealed class UserRelationships
 		return true;
 	}
 
-	internal async Task<UserOutcome> AddFriendAsync(UserRecord target)
+	internal async Task<UserActionResult> AddFriendAsync(UserRecord target)
 	{
-		if (_user.Record.Equals(target)) return UserOutcome.Self;
-		if (target.Value.DeletedAt is not null) return UserOutcome.Deleted;
-		if (target.IsBasilBot()) return UserOutcome.Ok;
+		if (_user.Record.Equals(target)) return UserActionResult.Self;
+		if (target.Value.DeletedAt is not null) return UserActionResult.Deleted;
+		if (target.IsBasilBot()) return UserActionResult.Ok;
 
 		await SetAsync(target, RelationshipType.Friend);
-		return UserOutcome.Ok;
+		return UserActionResult.Ok;
 	}
 
-	internal async Task<UserOutcome> RemoveFriendAsync(UserRecord target)
+	internal async Task<UserActionResult> RemoveFriendAsync(UserRecord target)
 	{
-		if (_user.Record.Equals(target)) return UserOutcome.Self;
-		if (target.IsBasilBot()) return UserOutcome.SystemAccount;
+		if (_user.Record.Equals(target)) return UserActionResult.Self;
+		if (target.IsBasilBot()) return UserActionResult.SystemAccount;
 
-		return await RemoveAsync(target, RelationshipType.Friend) ? UserOutcome.Ok : UserOutcome.NotFound;
+		return await RemoveAsync(target, RelationshipType.Friend) ? UserActionResult.Ok : UserActionResult.NotFound;
 	}
 
-	internal async Task<UserOutcome> BlockAsync(UserRecord target)
+	internal async Task<UserActionResult> BlockAsync(UserRecord target)
 	{
-		if (_user.Record.Equals(target)) return UserOutcome.Self;
-		if (target.Value.DeletedAt is not null) return UserOutcome.Deleted;
-		if (target.IsBasilBot()) return UserOutcome.SystemAccount;
+		if (_user.Record.Equals(target)) return UserActionResult.Self;
+		if (target.Value.DeletedAt is not null) return UserActionResult.Deleted;
+		if (target.IsBasilBot()) return UserActionResult.SystemAccount;
 
 		await SetAsync(target, RelationshipType.Block);
-		return UserOutcome.Ok;
+		return UserActionResult.Ok;
 	}
 
-	internal async Task<UserOutcome> UnblockAsync(UserRecord target)
+	internal async Task<UserActionResult> UnblockAsync(UserRecord target)
 	{
-		if (_user.Record.Equals(target)) return UserOutcome.Self;
-		if (target.IsBasilBot()) return UserOutcome.NotFound;
+		if (_user.Record.Equals(target)) return UserActionResult.Self;
+		if (target.IsBasilBot()) return UserActionResult.NotFound;
 
-		return await RemoveAsync(target, RelationshipType.Block) ? UserOutcome.Ok : UserOutcome.NotFound;
+		return await RemoveAsync(target, RelationshipType.Block) ? UserActionResult.Ok : UserActionResult.NotFound;
 	}
 
 	internal async Task<IReadOnlyList<UserRecord>> TargetsAsync(RelationshipType type,

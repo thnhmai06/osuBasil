@@ -6,4 +6,4 @@ using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 namespace Basil.Application.Multiplayer.Messages;
 
 public sealed record ConfigureRoom(Session Actor, Room Room, RoomSettingsChange Change)
-	: IRequest<RoomOutcome>;
+	: IRequest<RoomActionResult>;

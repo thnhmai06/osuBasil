@@ -4,11 +4,11 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-internal sealed class ChangeSlotHandler : IRequestHandler<ChangeSlot, RoomOutcome>
+internal sealed class ChangeSlotHandler : IRequestHandler<ChangeSlot, RoomActionResult>
 {
-	public ValueTask<RoomOutcome> Handle(ChangeSlot request, CancellationToken ct)
+	public ValueTask<RoomActionResult> Handle(ChangeSlot request, CancellationToken ct)
 	{
-		return new ValueTask<RoomOutcome>(
+		return new ValueTask<RoomActionResult>(
 			request.Room.ScopeTo(request.Actor).Slots.ChangeAsync(request.Index));
 	}
 }

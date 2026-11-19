@@ -49,13 +49,13 @@ public sealed class UserProfile
 		_pmPrivate = pmPrivate;
 	}
 
-	public static UserOutcome ValidateName(string name)
+	public static void ValidateName(string name)
 	{
-		return UserData.IsValidName(name) ? UserOutcome.Ok : UserOutcome.InvalidName;
+		if (!UserData.IsValidName(name)) throw new InvalidUserNameException();
 	}
 
-	public static UserOutcome ValidateCountry(Country country)
+	public static void ValidateCountry(Country country)
 	{
-		return Enum.IsDefined(country) ? UserOutcome.Ok : UserOutcome.InvalidCountry;
+		if (!Enum.IsDefined(country)) throw new InvalidCountryException();
 	}
 }

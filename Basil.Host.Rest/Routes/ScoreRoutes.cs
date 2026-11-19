@@ -37,8 +37,8 @@ internal static class ScoreRoutes
 		var listing = await sender.Send(new ListScores(beatmap, user, page!), context.RequestAborted);
 		return listing.Outcome switch
 		{
-			ScoreListOutcome.NoBeatmap => Api.NotFound("No such beatmap."),
-			ScoreListOutcome.NoUser => Api.NotFound("No such user."),
+			ScoreListResult.NoBeatmap => Api.NotFound("No such beatmap."),
+			ScoreListResult.NoUser => Api.NotFound("No such user."),
 			_ => Api.Paged(
 				new Page<ScoreView>([.. listing.Scores!.Items.Select(ScoreView.Of)],
 					listing.Scores.HasNext), page!)
@@ -49,7 +49,7 @@ internal static class ScoreRoutes
 	{
 		var result = await sender.Send(new RecalculateScorePerformance(context.Session(),
 			all == true ? ScorePerformanceScope.All : ScorePerformanceScope.Missing), context.RequestAborted);
-		return result == ScorePerformanceOutcome.Ok ? Api.Accepted("Calculation started") : result.Refusal();
+		return result == ScoreRecalculationResult.Ok ? Api.Accepted("Calculation started") : result.Refusal();
 	}
 
 	private static async Task<IResult> GetAsync(HttpContext context, int id, ISender sender)

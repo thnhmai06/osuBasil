@@ -1,4 +1,4 @@
-using Basil.Domain.Users;
+using Basil.Domain.Content;
 using Basil.Domain.Users;
 using DomainProfile = Basil.Domain.Users.UserProfile;
 
@@ -32,59 +32,59 @@ public sealed class UserProfile
 		_user.State.Profile.SetPmPrivate(pmPrivate);
 	}
 
-	internal async Task<UserOutcome> RenameAsync(string name)
+	internal async Task<UserActionResult> RenameAsync(string name)
 	{
-		if (DomainProfile.ValidateName(name) is var invalid and not UserOutcome.Ok) return invalid;
+		DomainProfile.ValidateName(name);
 
 		return await _user.Context.Users.RenameAsync(_user.Record, name)
-			? UserOutcome.Ok
-			: UserOutcome.NameTaken;
+			? UserActionResult.Ok
+			: UserActionResult.NameTaken;
 	}
 
-	internal async Task<UserOutcome> SetCountryAsync(Country country)
+	internal async Task<UserActionResult> SetCountryAsync(Country country)
 	{
-		if (DomainProfile.ValidateCountry(country) is var invalid and not UserOutcome.Ok) return invalid;
+		DomainProfile.ValidateCountry(country);
 
 		await _user.StoreChangeAsync(data => data.Country = country);
 		SetCountry(country);
-		return UserOutcome.Ok;
+		return UserActionResult.Ok;
 	}
 
-	internal async Task<UserOutcome> SetAvatarAsync(Stream image, CancellationToken ct)
+	internal async Task<UserActionResult> SetAvatarAsync(Stream image, CancellationToken ct)
 	{
 		var context = _user.Context;
 		var limits = (await context.Settings.GetAsync(ct)).Uploads;
 
 		await using var upload = await context.Spool.SpoolAsync(image, limits.AvatarMaxSize, ct);
-		if (upload.TooLarge) return UserOutcome.TooLarge;
+		if (upload.TooLarge) throw new UploadTooLargeException(limits.AvatarMaxSize);
 
 		var info = await context.Inspector.InspectAsync(upload.Content);
 		if (info is null || info.Width < 1 || info.Height < 1)
 		{
 			await upload.QuarantineAsync();
-			return UserOutcome.InvalidImage;
+			throw new InvalidImageException();
 		}
 
 		if (info.Width > limits.AvatarMaxSide || info.Height > limits.AvatarMaxSide)
 		{
 			await upload.QuarantineAsync();
-			return UserOutcome.DimensionsTooLarge;
+			throw new ImageDimensionsTooLargeException(limits.AvatarMaxSide);
 		}
 
 		upload.Content.Position = 0;
 		await context.Avatars.SaveAsync(_user.Record, upload.Content);
-		return UserOutcome.Ok;
+		return UserActionResult.Ok;
 	}
 
-	internal async Task<UserOutcome> RemoveAvatarAsync()
+	internal async Task<UserActionResult> RemoveAvatarAsync()
 	{
 		await using (var stored = await _user.Context.Avatars.OpenAsync(_user.Record))
 		{
 			if (stored is null)
-				return UserOutcome.NotFound;
+				return UserActionResult.NotFound;
 		}
 
 		await _user.Context.Avatars.DeleteAsync(_user.Record);
-		return UserOutcome.Ok;
+		return UserActionResult.Ok;
 	}
 }

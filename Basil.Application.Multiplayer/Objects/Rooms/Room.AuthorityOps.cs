@@ -7,32 +7,32 @@ namespace Basil.Application.Multiplayer.Objects.Rooms;
 
 public sealed partial class Room
 {
-	internal RoomOutcome AddReferee(UserRecord actor, UserRecord user)
+	internal RoomActionResult AddReferee(UserRecord actor, UserRecord user)
 	{
 		using (State.Enter())
 		{
 			var outcome = State.AddReferee(user);
-			if (outcome is RoomOutcome.Ok) Emit(new RoomRefereeAdded(this, actor, user));
+			if (outcome is RoomActionResult.Ok) Emit(new RoomRefereeAdded(this, actor, user));
 			return outcome;
 		}
 	}
 
-	internal RoomOutcome RemoveReferee(UserRecord actor, UserRecord user)
+	internal RoomActionResult RemoveReferee(UserRecord actor, UserRecord user)
 	{
 		using (State.Enter())
 		{
 			var outcome = State.RemoveReferee(user);
-			if (outcome is RoomOutcome.Ok) Emit(new RoomRefereeRemoved(this, actor, user));
+			if (outcome is RoomActionResult.Ok) Emit(new RoomRefereeRemoved(this, actor, user));
 			return outcome;
 		}
 	}
 
-	internal RoomOutcome SetHost(UserRecord actor, StableSession? host)
+	internal RoomActionResult SetHost(UserRecord actor, StableSession? host)
 	{
 		using (State.Enter())
 		{
 			if (host is not null && Seated(host) is null)
-				return IsClosed ? RoomOutcome.RoomClosed : RoomOutcome.NotInRoom;
+				return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotInRoom;
 
 			var record = host?.Record;
 

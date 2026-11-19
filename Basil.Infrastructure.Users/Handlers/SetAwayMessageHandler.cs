@@ -8,6 +8,6 @@ internal sealed class SetAwayMessageHandler : IRequestHandler<SetAwayMessage, bo
 {
 	public async ValueTask<bool> Handle(SetAwayMessage request, CancellationToken ct)
 	{
-		return await request.Actor.User.ScopeTo(request.Actor).Profile.SetAwayAsync(request.Message) == UserOutcome.Ok;
+		return await request.Actor.User.ScopeTo(request.Actor).Profile.SetAwayAsync(request.Message) == UserActionResult.Ok;
 	}
 }

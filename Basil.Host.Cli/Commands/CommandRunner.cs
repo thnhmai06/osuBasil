@@ -1,3 +1,5 @@
+using Basil.Host.Shared.Errors;
+using Basil.Domain;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Host.Cli.Commands;
@@ -44,6 +46,11 @@ public sealed class CommandRunner(
 		{
 			output.Error(exception.Code, exception.Message);
 			return exception.ExitCode;
+		}
+		catch (BasilException error)
+		{
+			output.Error(BusinessErrors.Describe(error).Code, error.Message);
+			return ExitCodes.Invalid;
 		}
 		catch (ArgumentException exception)
 		{

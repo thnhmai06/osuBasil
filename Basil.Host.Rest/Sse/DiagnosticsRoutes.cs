@@ -49,7 +49,7 @@ internal static class DiagnosticsRoutes
 		string? category)
 	{
 		var access = await sender.Send(new CheckDiagnosticsAccess(context.Session()), context.RequestAborted);
-		if (access != DiagnosticsOutcome.Ok) return access.Refusal();
+		if (access != DiagnosticsCommandResult.Ok) return access.Refusal();
 		if (category is not null && !Categories.Contains(category, StringComparer.OrdinalIgnoreCase))
 			return Api.NotFound("No such diagnostics category.");
 
@@ -63,7 +63,7 @@ internal static class DiagnosticsRoutes
 		RateLimiter limiter)
 	{
 		var access = await sender.Send(new CheckDiagnosticsAccess(context.Session()), context.RequestAborted);
-		if (access != DiagnosticsOutcome.Ok) return access.Refusal();
+		if (access != DiagnosticsCommandResult.Ok) return access.Refusal();
 
 		var actor = context.Session();
 		switch ($"{category}/{action}".ToLowerInvariant())
@@ -77,13 +77,13 @@ internal static class DiagnosticsRoutes
 				}
 
 				var collected = await sender.Send(new CollectGarbage(actor), context.RequestAborted);
-				return collected == DiagnosticsOutcome.Ok ? Api.Done("Garbage collected") : collected.Refusal();
+				return collected == DiagnosticsCommandResult.Ok ? Api.Done("Garbage collected") : collected.Refusal();
 			case "caches/clear":
 				var (cleared, deleted) = await sender.Send(new ClearCaches(actor), context.RequestAborted);
-				return cleared == DiagnosticsOutcome.Ok ? Api.Ok(new { deleted }, "Cache cleared") : cleared.Refusal();
+				return cleared == DiagnosticsCommandResult.Ok ? Api.Ok(new { deleted }, "Cache cleared") : cleared.Refusal();
 			case "exceptions/reset":
 				var reset = await sender.Send(new ResetExceptions(actor), context.RequestAborted);
-				return reset == DiagnosticsOutcome.Ok ? Api.Done("Exceptions reset") : reset.Refusal();
+				return reset == DiagnosticsCommandResult.Ok ? Api.Done("Exceptions reset") : reset.Refusal();
 			default:
 				return Api.NotFound("No such action.");
 		}

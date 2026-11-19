@@ -56,7 +56,7 @@ internal static class RulesetCommands
 	{
 		var (result, versions) = await call.Get<ISender>().Send(new GetRulesetVersion(await call.ByAsync()),
 			call.CancellationToken);
-		if (result != RulesetOutcome.Ok) return call.Refuse(result);
+		if (result != RulesetUpdateResult.Ok) return call.Refuse(result);
 
 		call.Output.Fields([("active", versions!.Active), ("staged", versions.Staged ?? "none")]);
 		return ExitCodes.Success;
@@ -68,7 +68,7 @@ internal static class RulesetCommands
 		{
 			var (result, stage) = await call.Get<ISender>().Send(new UpdateRulesets(await call.ByAsync()),
 				call.CancellationToken);
-			if (result != RulesetOutcome.Ok) return call.Refuse(result);
+			if (result != RulesetUpdateResult.Ok) return call.Refuse(result);
 
 			call.Output.Ok(string.Format(stage!.Staged ? RulesetReplies.Staged : RulesetReplies.UpToDate,
 				stage.Version));

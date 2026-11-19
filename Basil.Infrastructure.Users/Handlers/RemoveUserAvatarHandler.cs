@@ -6,9 +6,9 @@ using Mediator;
 namespace Basil.Infrastructure.Users.Handlers;
 
 internal sealed class RemoveUserAvatarHandler(UserRegistry registry)
-	: IRequestHandler<RemoveUserAvatar, UserOutcome>
+	: IRequestHandler<RemoveUserAvatar, UserActionResult>
 {
-	public async ValueTask<UserOutcome> Handle(RemoveUserAvatar request, CancellationToken ct)
+	public async ValueTask<UserActionResult> Handle(RemoveUserAvatar request, CancellationToken ct)
 	{
 		return await registry.ScopeTo(request.Actor, request.Target).Profile.RemoveAvatarAsync();
 	}

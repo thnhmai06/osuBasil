@@ -4,9 +4,9 @@ using Mediator;
 
 namespace Basil.Infrastructure.Servers.Handlers.Content;
 
-internal sealed class DeleteScreenshotHandler(Server server) : IRequestHandler<DeleteScreenshot, ServerOutcome>
+internal sealed class DeleteScreenshotHandler(Server server) : IRequestHandler<DeleteScreenshot, ServerActionResult>
 {
-	public async ValueTask<ServerOutcome> Handle(DeleteScreenshot request, CancellationToken ct)
+	public async ValueTask<ServerActionResult> Handle(DeleteScreenshot request, CancellationToken ct)
 	{
 		return await server.ScopeTo(request.Actor).Screenshots.DeleteAsync(request.Screenshot);
 	}

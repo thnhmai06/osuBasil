@@ -1,3 +1,4 @@
+using Basil.Domain;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Content;
@@ -75,7 +76,7 @@ internal sealed class EfMenuBannerRepository(
 		{
 			return ToBanner(row, image);
 		}
-		catch (Exception exception) when (exception is ArgumentException or FormatException)
+		catch (Exception exception) when (exception is ArgumentException or FormatException or BasilException)
 		{
 			logger.LogWarning(exception, "The stored menu banner {Image} is not valid and is not shown", row.Image);
 			return null;

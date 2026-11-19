@@ -6,9 +6,9 @@ using Mediator;
 namespace Basil.Infrastructure.Users.Handlers;
 
 internal sealed class SetUserPrivilegesHandler(UserRegistry registry)
-	: IRequestHandler<SetUserPrivileges, UserOutcome>
+	: IRequestHandler<SetUserPrivileges, UserActionResult>
 {
-	public async ValueTask<UserOutcome> Handle(SetUserPrivileges request, CancellationToken ct)
+	public async ValueTask<UserActionResult> Handle(SetUserPrivileges request, CancellationToken ct)
 	{
 		return await registry.ScopeTo(request.Actor, request.Target).Privileges
 			.SetAsync(request.Privileges);

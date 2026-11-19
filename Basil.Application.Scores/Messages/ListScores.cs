@@ -6,9 +6,9 @@ namespace Basil.Application.Scores.Messages;
 
 public sealed record ListScores(int? BeatmapId, int? UserId, PageRequest Page) : IRequest<ScoreListing>;
 
-public sealed record ScoreListing(ScoreListOutcome Outcome, Page<ScoreRecord>? Scores);
+public sealed record ScoreListing(ScoreListResult Outcome, Page<ScoreRecord>? Scores);
 
-public enum ScoreListOutcome
+public enum ScoreListResult
 {
 	Ok = 1,
 

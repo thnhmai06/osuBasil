@@ -5,4 +5,4 @@ using Mediator;
 namespace Basil.Application.Users.Messages;
 
 public sealed record GetFriends(Session Actor)
-	: IRequest<(UserOutcome Result, IReadOnlyList<UserRecord> Users)>;
+	: IRequest<(UserActionResult Result, IReadOnlyList<UserRecord> Users)>;

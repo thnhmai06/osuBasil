@@ -24,8 +24,8 @@ public sealed class Rulesets
 		return new ScopedRulesets(this, actor);
 	}
 
-	internal RulesetOutcome Reload()
+	internal RulesetUpdateResult Reload()
 	{
-		return Reloader.TryStart() ? RulesetOutcome.Ok : RulesetOutcome.Busy;
+		return Reloader.TryStart() ? RulesetUpdateResult.Ok : RulesetUpdateResult.Busy;
 	}
 }

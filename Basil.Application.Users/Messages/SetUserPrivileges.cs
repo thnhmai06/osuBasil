@@ -6,4 +6,4 @@ using Mediator;
 namespace Basil.Application.Users.Messages;
 
 public sealed record SetUserPrivileges(Session Actor, UserReference Target, UserPrivileges Privileges)
-	: IRequest<UserOutcome>;
+	: IRequest<UserActionResult>;

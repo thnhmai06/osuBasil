@@ -42,10 +42,6 @@ internal static class ChannelRoutes
 
 		var read = (UserPrivileges)(request.ReadPrivileges ?? 0);
 		var write = (UserPrivileges)(request.WritePrivileges ?? 0);
-		if (!GeneralChannelRecord.IsValidName(request.Name) ||
-		    !GeneralChannelData.IsValidTopic(request.Topic ?? string.Empty) ||
-		    !GeneralChannelData.IsValidPrivileges(read) || !GeneralChannelData.IsValidPrivileges(write))
-			return Api.Invalid("The channel is not valid.");
 
 		var record = new GeneralChannelRecord
 		{
@@ -61,7 +57,7 @@ internal static class ChannelRoutes
 		};
 
 		var result = await sender.Send(new CreateGeneralChannel(context.Session(), record), context.RequestAborted);
-		return result == ServerOutcome.Ok ? Api.Created(ChannelView.Of(record)) : result.Refusal();
+		return result == ServerActionResult.Ok ? Api.Created(ChannelView.Of(record)) : result.Refusal();
 	}
 
 	private static async Task<IResult> PatchAsync(HttpContext context, string name, PatchChannelRequest request,
@@ -70,11 +66,10 @@ internal static class ChannelRoutes
 		var change = new GeneralChannelChange(request.Topic,
 			(UserPrivileges?)request.ReadPrivileges, (UserPrivileges?)request.WritePrivileges, request.AutoJoin,
 			request.Visible);
-		if (!change.IsValid) return Api.Invalid("The change is not valid.");
 
 		var (result, channel) = await sender.Send(new ConfigureGeneralChannel(context.Session(), name, change),
 			context.RequestAborted);
-		return result == ChannelOutcome.Ok
+		return result == ChannelJoinResult.Ok
 			? Api.Ok(ChannelView.Of(channel!.Record), "Updated successfully")
 			: result.Refusal();
 	}

@@ -17,15 +17,15 @@ internal sealed class ListScoresHandler(IScoreRepository scores, IBeatmapReposit
 		if (request.BeatmapId is { } beatmapId)
 		{
 			if (await beatmaps.GetAsync(beatmapId, ct) is not { } map)
-				return new ScoreListing(ScoreListOutcome.NoBeatmap, null);
+				return new ScoreListing(ScoreListResult.NoBeatmap, null);
 			hash = map.Hash;
 		}
 
 		UserRecord? player = null;
 		if (request.UserId is { } userId && (player = await users.GetAsync(userId, ct)) is null)
-			return new ScoreListing(ScoreListOutcome.NoUser, null);
+			return new ScoreListing(ScoreListResult.NoUser, null);
 
-		return new ScoreListing(ScoreListOutcome.Ok,
+		return new ScoreListing(ScoreListResult.Ok,
 			await scores.ListAsync(new ScoreQuery(player, hash), request.Page, ct));
 	}
 }

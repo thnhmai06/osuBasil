@@ -6,19 +6,19 @@ namespace Basil.Domain.Multiplayer.Room;
 
 public sealed partial class Room
 {
-	public (RoomOutcome Outcome, bool Changed) Configure(UserRecord? caller, RoomSettingsChange change)
+	public (RoomActionResult Outcome, bool Changed) Configure(UserRecord? caller, RoomSettingsChange change)
 	{
-		if (IsClosed) return (RoomOutcome.RoomClosed, false);
+		if (IsClosed) return (RoomActionResult.RoomClosed, false);
 
-		if (Rounds.InProgress) return (RoomOutcome.InProgress, false);
+		if (Rounds.InProgress) return (RoomActionResult.InProgress, false);
 
-		if (!AreValid(change)) return (RoomOutcome.InvalidSettings, false);
+		if (!AreValid(change)) throw new InvalidRoomSettingsException();
 
-		if (change == new RoomSettingsChange()) return (RoomOutcome.Ok, false);
+		if (change == new RoomSettingsChange()) return (RoomActionResult.Ok, false);
 
 		var mode = change.Mode ?? Settings.Editable.Mode;
 		var freemods = change.Freemods ?? Settings.Editable.Freemods;
-		if (change.Mods is { } requestedMods && !requestedMods.IsValid(mode)) return (RoomOutcome.InvalidMods, false);
+		if (change.Mods is { } requestedMods && !requestedMods.IsValid(mode)) throw new InvalidModsException();
 
 		if (change.Name is { } name) Match.Value.Name = name;
 
@@ -34,7 +34,7 @@ public sealed partial class Room
 		if (change.Size is { } size) Slots.Resize(size);
 		if (change.IsPrivate is { } isPrivate) Match.Value.IsPrivate = isPrivate;
 
-		return (RoomOutcome.Ok, true);
+		return (RoomActionResult.Ok, true);
 	}
 
 	private static bool AreValid(RoomSettingsChange change)

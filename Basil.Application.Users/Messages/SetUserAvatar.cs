@@ -4,4 +4,4 @@ using Mediator;
 
 namespace Basil.Application.Users.Messages;
 
-public sealed record SetUserAvatar(Session Actor, UserReference Target, Stream Image) : IRequest<UserOutcome>;
+public sealed record SetUserAvatar(Session Actor, UserReference Target, Stream Image) : IRequest<UserActionResult>;

@@ -14,64 +14,64 @@ public readonly struct ScopedRoomSlots
 		_scoped = scoped;
 	}
 
-	public Task<RoomOutcome> ChangeAsync(int index)
+	public Task<RoomActionResult> ChangeAsync(int index)
 	{
 		return Task.FromResult(_scoped.Actor is StableSession stable
 			? _scoped.Room.ChangeSlot(stable, index)
-			: RoomOutcome.NotInRoom);
+			: RoomActionResult.NotInRoom);
 	}
 
-	public async Task<RoomOutcome> MoveAsync(UserReference player, int index)
+	public async Task<RoomActionResult> MoveAsync(UserReference player, int index)
 	{
 		if (_scoped.Require(RoomPrivileges.SlotsMovePlayers) is { } denied) return denied;
 		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
 			? _scoped.Room.MovePlayer(record, index)
-			: RoomOutcome.NotFound;
+			: RoomActionResult.NotFound;
 	}
 
-	public Task<RoomOutcome> ArrangeAsync(IReadOnlyList<SlotArrangement> arrangement)
+	public Task<RoomActionResult> ArrangeAsync(IReadOnlyList<SlotArrangement> arrangement)
 	{
 		return Task.FromResult(_scoped.Require(RoomPrivileges.SlotsMovePlayers) ??
 		                       _scoped.Room.ArrangeSlots(arrangement));
 	}
 
-	public Task<RoomOutcome> SetReadyAsync(bool ready)
+	public Task<RoomActionResult> SetReadyAsync(bool ready)
 	{
 		return Task.FromResult(_scoped.Actor is StableSession stable
 			? _scoped.Room.SetReady(stable, ready)
-			: RoomOutcome.NotInRoom);
+			: RoomActionResult.NotInRoom);
 	}
 
-	public Task<RoomOutcome> SetHasMapAsync(bool has)
+	public Task<RoomActionResult> SetHasMapAsync(bool has)
 	{
 		return Task.FromResult(_scoped.Actor is StableSession stable
 			? _scoped.Room.SetHasMap(stable, has)
-			: RoomOutcome.NotInRoom);
+			: RoomActionResult.NotInRoom);
 	}
 
-	public Task<RoomOutcome> ToggleTeamAsync()
+	public Task<RoomActionResult> ToggleTeamAsync()
 	{
 		return Task.FromResult(_scoped.Actor is StableSession stable
 			? _scoped.Room.ToggleTeam(stable)
-			: RoomOutcome.NotInRoom);
+			: RoomActionResult.NotInRoom);
 	}
 
-	public async Task<RoomOutcome> SetTeamAsync(UserReference player, GameTeam team)
+	public async Task<RoomActionResult> SetTeamAsync(UserReference player, GameTeam team)
 	{
 		if (_scoped.Require(RoomPrivileges.SlotsMovePlayers) is { } denied) return denied;
 		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
 			? _scoped.Room.SetTeam(record, team)
-			: RoomOutcome.NotFound;
+			: RoomActionResult.NotFound;
 	}
 
-	public Task<RoomOutcome> SetModsAsync(GameMods mods)
+	public Task<RoomActionResult> SetModsAsync(GameMods mods)
 	{
 		return Task.FromResult(_scoped.Actor is StableSession stable
 			? _scoped.Room.SetMods(stable, mods)
-			: RoomOutcome.NotInRoom);
+			: RoomActionResult.NotInRoom);
 	}
 
-	public Task<RoomOutcome> ToggleLockAsync(int index)
+	public Task<RoomActionResult> ToggleLockAsync(int index)
 	{
 		return Task.FromResult(_scoped.Require(RoomPrivileges.SlotsLock) ??
 		                       _scoped.Room.ToggleSlotLock(_scoped.Actor, index));

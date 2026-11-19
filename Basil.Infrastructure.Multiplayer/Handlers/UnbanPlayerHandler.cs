@@ -4,11 +4,11 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-internal sealed class UnbanPlayerHandler : IRequestHandler<UnbanPlayer, RoomOutcome>
+internal sealed class UnbanPlayerHandler : IRequestHandler<UnbanPlayer, RoomActionResult>
 {
-	public ValueTask<RoomOutcome> Handle(UnbanPlayer request, CancellationToken ct)
+	public ValueTask<RoomActionResult> Handle(UnbanPlayer request, CancellationToken ct)
 	{
-		return new ValueTask<RoomOutcome>(
+		return new ValueTask<RoomActionResult>(
 			request.Room.ScopeTo(request.Actor).Members.UnbanAsync(request.Player));
 	}
 }

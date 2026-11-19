@@ -229,23 +229,23 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 		return (await Context.Settings.GetAsync(ct)).Locks.HasFlag(Locks.Rooms);
 	}
 
-	internal async Task<(Room? Room, RoomOutcome Outcome)> OpenRoomAsync(UserRecord creator, StableSession? seat,
+	internal async Task<(Room? Room, RoomActionResult Outcome)> OpenRoomAsync(UserRecord creator, StableSession? seat,
 		bool seatsFromGame, string name, string password, bool isPrivate, MatchSettings? settings)
 	{
 		var now = Context.Clock.GetUtcNow();
-		if (seatsFromGame && RoomOf(seat!) is not null) return (null, RoomOutcome.AlreadyInRoom);
+		if (seatsFromGame && RoomOf(seat!) is not null) return (null, RoomActionResult.AlreadyInRoom);
 
-		if (!MatchData.IsValidName(name)) return (null, RoomOutcome.InvalidSettings);
+		if (!MatchData.IsValidName(name)) throw new InvalidRoomSettingsException();
 
 		// ponytail: two concurrent opens by one creator can both pass the room limit; count reservations per creator if that matters.
-		if (Reserve() is not { } id) return (null, RoomOutcome.NoRoomId);
+		if (Reserve() is not { } id) return (null, RoomActionResult.NoRoomId);
 
 		var match = await CreateMatchAsync(id, name, creator, isPrivate, now);
 		var room = Establish(id, match, settings, password, seat);
 
 		var closesAt = !room.Slots.Any(slot => slot.Player is not null) ? StartEmptyClock(room) : (DateTimeOffset?)null;
 		Context.Events.Publish(new LobbyRoomOpened(room, room.Host, closesAt));
-		return (room, RoomOutcome.Ok);
+		return (room, RoomActionResult.Ok);
 	}
 
 	private async Task<MatchRecord> CreateMatchAsync(int id, string name, UserRecord creator, bool isPrivate,

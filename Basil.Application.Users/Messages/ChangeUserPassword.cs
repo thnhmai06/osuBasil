@@ -10,4 +10,4 @@ public sealed record ChangeUserPassword(
 	UserReference Target,
 	Md5Hash NewPasswordHash,
 	Md5Hash? CurrentPasswordHash,
-	bool IncludeCurrent) : IRequest<UserOutcome>;
+	bool IncludeCurrent) : IRequest<UserActionResult>;

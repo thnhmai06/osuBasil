@@ -5,4 +5,4 @@ using Mediator;
 namespace Basil.Application.Users.Messages;
 
 public sealed record CloseUserSession(Session Actor, UserReference Target, long SessionId)
-	: IRequest<UserOutcome>;
+	: IRequest<UserActionResult>;

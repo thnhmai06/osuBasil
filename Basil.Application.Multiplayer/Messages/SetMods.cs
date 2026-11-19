@@ -6,4 +6,4 @@ using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 
 namespace Basil.Application.Multiplayer.Messages;
 
-public sealed record SetMods(Session Actor, Room Room, GameMods Mods) : IRequest<RoomOutcome>;
+public sealed record SetMods(Session Actor, Room Room, GameMods Mods) : IRequest<RoomActionResult>;

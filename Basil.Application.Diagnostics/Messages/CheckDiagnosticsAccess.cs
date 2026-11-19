@@ -4,4 +4,4 @@ using Mediator;
 
 namespace Basil.Application.Diagnostics.Messages;
 
-public sealed record CheckDiagnosticsAccess(Session Actor) : IRequest<DiagnosticsOutcome>;
+public sealed record CheckDiagnosticsAccess(Session Actor) : IRequest<DiagnosticsCommandResult>;

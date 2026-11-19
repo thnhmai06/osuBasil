@@ -47,38 +47,38 @@ public readonly struct ScopedBeatmapset
 		return await _context.Repository.GetAsync(_setId) is { } record ? new Beatmapset(record, _context) : null;
 	}
 
-	public async Task<BeatmapsetOutcome> DeleteAsync()
+	public async Task<BeatmapsetEditResult> DeleteAsync()
 	{
-		if (Lacks(UserPrivileges.Tournament)) return BeatmapsetOutcome.Denied;
+		if (Lacks(UserPrivileges.Tournament)) return BeatmapsetEditResult.Denied;
 
-		if (await ResolveAsync() is not { } set) return BeatmapsetOutcome.NotFound;
+		if (await ResolveAsync() is not { } set) return BeatmapsetEditResult.NotFound;
 
 		return await set.DeleteAsync();
 	}
 
-	public async Task<BeatmapsetOutcome> SetVisibleAsync(bool visible)
+	public async Task<BeatmapsetEditResult> SetVisibleAsync(bool visible)
 	{
-		if (Lacks(UserPrivileges.Tournament)) return BeatmapsetOutcome.Denied;
+		if (Lacks(UserPrivileges.Tournament)) return BeatmapsetEditResult.Denied;
 
-		if (await ResolveAsync() is not { } set) return BeatmapsetOutcome.NotFound;
+		if (await ResolveAsync() is not { } set) return BeatmapsetEditResult.NotFound;
 
 		return await set.SetVisibleAsync(visible);
 	}
 
-	public async Task<BeatmapsetOutcome> SetLockedAsync(bool locked)
+	public async Task<BeatmapsetEditResult> SetLockedAsync(bool locked)
 	{
-		if (Lacks(UserPrivileges.Tournament)) return BeatmapsetOutcome.Denied;
+		if (Lacks(UserPrivileges.Tournament)) return BeatmapsetEditResult.Denied;
 
-		if (await ResolveAsync() is not { } set) return BeatmapsetOutcome.NotFound;
+		if (await ResolveAsync() is not { } set) return BeatmapsetEditResult.NotFound;
 
 		return await set.SetLockedAsync(locked);
 	}
 
-	public async Task<BeatmapsetOutcome> SetStatusAsync(BeatmapsetStatus status)
+	public async Task<BeatmapsetEditResult> SetStatusAsync(BeatmapsetStatus status)
 	{
-		if (Lacks(UserPrivileges.Tournament)) return BeatmapsetOutcome.Denied;
+		if (Lacks(UserPrivileges.Tournament)) return BeatmapsetEditResult.Denied;
 
-		if (await ResolveAsync() is not { } set) return BeatmapsetOutcome.NotFound;
+		if (await ResolveAsync() is not { } set) return BeatmapsetEditResult.NotFound;
 
 		return await set.SetStatusAsync(status);
 	}

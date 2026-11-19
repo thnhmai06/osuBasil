@@ -160,7 +160,7 @@ internal static class UserCommands
 		var actor = await call.ByAsync();
 		var (record, result) = await call.Get<ISender>().Send(new CreateAccount(actor, data,
 			CommandHelpers.Md5Of(call.Required("password")), privileges), call.CancellationToken);
-		return result == UserOutcome.Ok
+		return result == UserActionResult.Ok
 			? Created(call, record!)
 			: call.Refuse(result);
 	}
@@ -196,24 +196,24 @@ internal static class UserCommands
 		var sender = call.Get<ISender>();
 		var actor = await call.ByAsync();
 		if (call.Text("username") is { } name && await sender.Send(new RenameUser(actor, target, name), ct) is
-			    var renamed and not UserOutcome.Ok)
+			    var renamed and not UserActionResult.Ok)
 			return call.Refuse(renamed);
 
 		if (call.Text("country") is { } code)
 		{
 			if (!(code.Length == 2 && Enum.TryParse<Country>(code, true, out var country) && Enum.IsDefined(country)))
 				throw CommandException.Invalid("--country must be a two-letter code.");
-			if (await sender.Send(new SetUserCountry(actor, target, country), ct) is var changed and not UserOutcome.Ok)
+			if (await sender.Send(new SetUserCountry(actor, target, country), ct) is var changed and not UserActionResult.Ok)
 				return call.Refuse(changed);
 		}
 
 		if (call.Text("away") is { } away &&
 		    await sender.Send(new SetUserAway(actor, target, away.Length == 0 ? null : away), ct) is
-			    var awaySet and not UserOutcome.Ok)
+			    var awaySet and not UserActionResult.Ok)
 			return call.Refuse(awaySet);
 
 		if (call.Bool("pmPrivate") is { } pm &&
-		    await sender.Send(new SetUserPmPrivate(actor, target, pm), ct) is var pmSet and not UserOutcome.Ok)
+		    await sender.Send(new SetUserPmPrivate(actor, target, pm), ct) is var pmSet and not UserActionResult.Ok)
 			return call.Refuse(pmSet);
 
 		return null;
@@ -226,12 +226,12 @@ internal static class UserCommands
 		var actor = await call.ByAsync();
 		if (call.Mask("privileges") is { } privileges &&
 		    await sender.Send(new SetUserPrivileges(actor, target, (UserPrivileges)privileges), ct) is
-			    var set and not UserOutcome.Ok)
+			    var set and not UserActionResult.Ok)
 			return call.Refuse(set);
 
 		if (call.Text("password") is { } password &&
 		    await sender.Send(new ChangeUserPassword(actor, target, CommandHelpers.Md5Of(password), null, false), ct) is
-			    var changedPassword and not UserOutcome.Ok)
+			    var changedPassword and not UserActionResult.Ok)
 			return call.Refuse(changedPassword);
 
 		return null;
@@ -260,7 +260,7 @@ internal static class UserCommands
 		var (result, users) = type == RelationshipType.Friend
 			? await call.Get<ISender>().Send(new ListFriends(await call.ByAsync(), target), call.CancellationToken)
 			: await call.Get<ISender>().Send(new ListBlocks(await call.ByAsync(), target), call.CancellationToken);
-		if (result != UserOutcome.Ok) return call.Refuse(result);
+		if (result != UserActionResult.Ok) return call.Refuse(result);
 
 		call.Formatter.PrintTable(call.Output, [.. users.Select(UserRef.Of)]);
 		return ExitCodes.Success;
@@ -297,7 +297,7 @@ internal static class UserCommands
 		var (result, sessions) = await call.Get<ISender>()
 			.Send(new ListUserSessions(await call.ByAsync(), call.UserOf(), page, state, kinds),
 				call.CancellationToken);
-		if (result != UserOutcome.Ok) return call.Refuse(result);
+		if (result != UserActionResult.Ok) return call.Refuse(result);
 
 		call.PrintPage(new Page<SessionView>([.. sessions!.Items.Select(SessionView.Of)],
 			sessions.HasNext), page);
@@ -311,7 +311,7 @@ internal static class UserCommands
 				new GetUserSession(await call.ByAsync(), call.UserOf(),
 					long.Parse(call.Word("sid"), CultureInfo.InvariantCulture)),
 				call.CancellationToken);
-		if (result != UserOutcome.Ok) return call.Refuse(result);
+		if (result != UserActionResult.Ok) return call.Refuse(result);
 
 		call.Formatter.Print(call.Output, SessionView.Of(session!));
 		return ExitCodes.Success;

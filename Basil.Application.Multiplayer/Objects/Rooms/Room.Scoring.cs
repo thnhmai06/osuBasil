@@ -8,16 +8,16 @@ namespace Basil.Application.Multiplayer.Objects.Rooms;
 
 public sealed partial class Room
 {
-	internal RoomOutcome ReceiveScore(ScoreRecord score, UserRecord player)
+	internal RoomActionResult ReceiveScore(ScoreRecord score, UserRecord player)
 	{
 		using (State.Enter())
 		{
 			var (outcome, settlement, roundScore) = State.ReceiveScore(score, player);
-			if (outcome is not RoomOutcome.Ok) return outcome;
+			if (outcome is not RoomActionResult.Ok) return outcome;
 
 			Context.Events.Publish(new RoomRoundScoreSubmitted(this, settlement!.Round, player, roundScore!.Value));
 			if (settlement.Round.EndedAt is not null && settlement.Missing().Count == 0) Decide(settlement);
-			return RoomOutcome.Ok;
+			return RoomActionResult.Ok;
 		}
 	}
 
@@ -73,7 +73,7 @@ public sealed partial class Room
 
 	private void Publish(RoundDecision? decision)
 	{
-		if (decision is { } d)
-			Context.Events.Publish(new RoomRoundDecided(this, d.Round, d.Result, d.Missing));
+		if (decision != null)
+			Context.Events.Publish(new RoomRoundDecided(this, decision.Round, decision.Result, decision.Missing));
 	}
 }

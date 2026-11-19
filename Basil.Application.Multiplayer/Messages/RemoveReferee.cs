@@ -6,4 +6,4 @@ using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 
 namespace Basil.Application.Multiplayer.Messages;
 
-public sealed record RemoveReferee(Session Actor, Room Room, UserReference User) : IRequest<RoomOutcome>;
+public sealed record RemoveReferee(Session Actor, Room Room, UserReference User) : IRequest<RoomActionResult>;

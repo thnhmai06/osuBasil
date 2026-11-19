@@ -4,11 +4,11 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-internal sealed class MarkRoundLoadedHandler : IRequestHandler<MarkRoundLoaded, RoomOutcome>
+internal sealed class MarkRoundLoadedHandler : IRequestHandler<MarkRoundLoaded, RoomActionResult>
 {
-	public ValueTask<RoomOutcome> Handle(MarkRoundLoaded request, CancellationToken ct)
+	public ValueTask<RoomActionResult> Handle(MarkRoundLoaded request, CancellationToken ct)
 	{
-		return new ValueTask<RoomOutcome>(
+		return new ValueTask<RoomActionResult>(
 			request.Room.ScopeTo(request.Actor).Rounds.MarkLoadedAsync());
 	}
 }

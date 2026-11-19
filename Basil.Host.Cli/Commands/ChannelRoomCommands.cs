@@ -214,7 +214,7 @@ internal static class ChannelRoomCommands
 		var (room, result) = await call.Get<ISender>().Send(new OpenRoom(await call.ByAsync(),
 			RoomCommands.Truncate(call.Required("name")), call.Text("password") ?? string.Empty, RoomSource.Api,
 			call.Bool("private") ?? false), call.CancellationToken);
-		if (result != RoomOutcome.Ok) return call.Refuse(result);
+		if (result != RoomActionResult.Ok) return call.Refuse(result);
 
 		call.Output.Ok($"Opened room {room!.Id}.");
 		return ExitCodes.Success;
@@ -244,7 +244,7 @@ internal static class ChannelRoomCommands
 		var (result, found) = await call.Get<ISender>().Send(
 			new ListMatches(await call.ByAsync(), MatchQuery.Parse(call.Text("query") ?? string.Empty), page),
 			call.CancellationToken);
-		if (result != RoomOutcome.Ok) return call.Refuse(result);
+		if (result != RoomActionResult.Ok) return call.Refuse(result);
 
 		call.PrintPage(new Page<MatchView>([.. found!.Items.Select(MatchView.Of)], found.HasNext), page);
 		return ExitCodes.Success;

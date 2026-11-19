@@ -1,6 +1,6 @@
 namespace Basil.Domain.Multiplayer.Room;
 
-public enum RoomOutcome : byte
+public enum RoomActionResult : byte
 {
 	Denied = 0,
 
@@ -61,10 +61,6 @@ public enum RoomOutcome : byte
 	NotFreemod,
 
 	SpeedModNotAllowed,
-
-	InvalidMods,
-
-	InvalidSettings,
 
 	NoBeatmap,
 

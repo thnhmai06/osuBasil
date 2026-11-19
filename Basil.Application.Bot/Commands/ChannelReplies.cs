@@ -33,24 +33,24 @@ internal static class ChannelReplies
 
 	public static readonly Reply Refused = new("channel.refused", "The server refused that: {outcome}.", "outcome");
 
-	public static (Reply Reply, object Arguments) Of(ServerOutcome result, string name)
+	public static (Reply Reply, object Arguments) Of(ServerActionResult result, string name)
 	{
 		return result switch
 		{
-			ServerOutcome.Denied => (MissingPrivileges, new { }),
-			ServerOutcome.Ok => (Created, new { name }),
-			ServerOutcome.NameTaken => (NameTaken, new { name }),
+			ServerActionResult.Denied => (MissingPrivileges, new { }),
+			ServerActionResult.Ok => (Created, new { name }),
+			ServerActionResult.NameTaken => (NameTaken, new { name }),
 			_ => (Refused, new { outcome = result.ToString() })
 		};
 	}
 
-	public static (Reply Reply, object Arguments) Of(ChannelOutcome result, string name, Reply success)
+	public static (Reply Reply, object Arguments) Of(ChannelJoinResult result, string name, Reply success)
 	{
 		return result switch
 		{
-			ChannelOutcome.Denied => (MissingPrivileges, new { }),
-			ChannelOutcome.Ok => (success, new { name }),
-			ChannelOutcome.NotFound or ChannelOutcome.Closed => (NotFound, new { name }),
+			ChannelJoinResult.Denied => (MissingPrivileges, new { }),
+			ChannelJoinResult.Ok => (success, new { name }),
+			ChannelJoinResult.NotFound or ChannelJoinResult.Closed => (NotFound, new { name }),
 			_ => (Refused, new { outcome = result.ToString() })
 		};
 	}

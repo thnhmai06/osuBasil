@@ -42,7 +42,7 @@ internal static class RulesetRoutes
 	private static async Task<IResult> RulesetVersionAsync(HttpContext context, ISender sender)
 	{
 		var (result, versions) = await sender.Send(new GetRulesetVersion(context.Session()), context.RequestAborted);
-		return result == RulesetOutcome.Ok ? Api.Ok(versions!) : result.Refusal();
+		return result == RulesetUpdateResult.Ok ? Api.Ok(versions!) : result.Refusal();
 	}
 
 	private static async Task<IResult> UpdateAsync(HttpContext context, ISender sender)
@@ -50,7 +50,7 @@ internal static class RulesetRoutes
 		try
 		{
 			var (result, stage) = await sender.Send(new UpdateRulesets(context.Session()), context.RequestAborted);
-			return result == RulesetOutcome.Ok
+			return result == RulesetUpdateResult.Ok
 				? Api.Ok(new UpdateBody(stage!.Version, stage.Staged, stage.Staged, stage.Staged))
 				: result.Refusal();
 		}
@@ -63,7 +63,7 @@ internal static class RulesetRoutes
 	private static async Task<IResult> ReloadAsync(HttpContext context, ISender sender)
 	{
 		var result = await sender.Send(new ReloadBeatmaps(context.Session()), context.RequestAborted);
-		return result == RulesetOutcome.Ok ? Api.Accepted("Reload started") : result.Refusal();
+		return result == RulesetUpdateResult.Ok ? Api.Accepted("Reload started") : result.Refusal();
 	}
 
 	internal sealed record VersionBody(string App, string Ruleset);

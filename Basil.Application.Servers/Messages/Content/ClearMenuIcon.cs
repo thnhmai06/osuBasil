@@ -4,4 +4,4 @@ using Mediator;
 
 namespace Basil.Application.Servers.Messages.Content;
 
-public sealed record ClearMenuIcon(Session Actor) : IRequest<ServerOutcome>;
+public sealed record ClearMenuIcon(Session Actor) : IRequest<ServerActionResult>;

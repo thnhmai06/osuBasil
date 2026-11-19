@@ -1,9 +1,12 @@
+using Basil.Domain;
 using System.Globalization;
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Scores.Objects;
 using Basil.Application.Servers.Objects;
 using Basil.Domain.Authentication;
 using Basil.Domain.Chat;
+using Basil.Domain.Content;
+using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer.Room;
 using Basil.Domain.Users;
 
@@ -32,6 +35,35 @@ public enum ErrorKind : byte
 
 public readonly record struct ErrorInfo(string Code, ErrorKind Kind);
 
+public static class BusinessErrors
+{
+	public static ErrorInfo Describe(BasilException error)
+	{
+		var code = error switch
+		{
+			InvalidAddressException => "invalidAddress",
+			InvalidBannerWindowException => "invalidBannerWindow",
+			InvalidFileNameException => "invalidFileName",
+			InvalidFaqNameException => "invalidFaqName",
+			InvalidImageException => "invalidImage",
+			UploadTooLargeException => "tooLarge",
+			ImageDimensionsTooLargeException => "dimensionsTooLarge",
+			InvalidChannelNameException => "invalidChannelName",
+			InvalidChannelTopicException => "invalidChannelTopic",
+			InvalidChannelPrivilegesException => "invalidChannelPrivileges",
+			EmptyMessageException => "empty",
+			InvalidMessageException => "invalidText",
+			InvalidUserNameException => "invalidName",
+			InvalidCountryException => "invalidCountry",
+			InvalidSilenceException => "invalidSilence",
+			InvalidModsException => "invalidMods",
+			InvalidRoomSettingsException => "invalidSettings",
+			_ => "invalid"
+		};
+		return new ErrorInfo(code, ErrorKind.Invalid);
+	}
+}
+
 public static class OutcomeErrors
 {
 	public const string PrivilegeDeniedCode = "privilegeDenied";
@@ -52,47 +84,46 @@ public static class OutcomeErrors
 		var code = char.ToLowerInvariant(name[0]) + name[1..];
 		var kind = outcome switch
 		{
-			UserOutcome user => user switch
+			UserActionResult user => user switch
 			{
-				UserOutcome.NotOutranking or UserOutcome.NotSelf => ErrorKind.Forbidden,
-				UserOutcome.SystemAccount => ErrorKind.SystemAccount,
-				UserOutcome.WrongPassword => ErrorKind.WrongPassword,
-				UserOutcome.Deleted or UserOutcome.NotFound => ErrorKind.NotFound,
-				UserOutcome.NameTaken => ErrorKind.Conflict,
-				UserOutcome.Locked => ErrorKind.Locked,
+				UserActionResult.NotOutranking or UserActionResult.NotSelf => ErrorKind.Forbidden,
+				UserActionResult.SystemAccount => ErrorKind.SystemAccount,
+				UserActionResult.WrongPassword => ErrorKind.WrongPassword,
+				UserActionResult.Deleted or UserActionResult.NotFound => ErrorKind.NotFound,
+				UserActionResult.NameTaken => ErrorKind.Conflict,
+				UserActionResult.Locked => ErrorKind.Locked,
 				_ => ErrorKind.Invalid
 			},
-			RoomOutcome room => room switch
+			RoomActionResult room => room switch
 			{
-				RoomOutcome.RoleDenied or RoomOutcome.IsManager or RoomOutcome.Blocked => ErrorKind.Forbidden,
-				RoomOutcome.WrongPassword => ErrorKind.WrongPassword,
-				RoomOutcome.NotFound => ErrorKind.NotFound,
-				RoomOutcome.RoomClosed => ErrorKind.Gone,
-				RoomOutcome.Locked => ErrorKind.Locked,
-				RoomOutcome.InvalidMods or RoomOutcome.InvalidSettings or RoomOutcome.SpeedModNotAllowed
-					or RoomOutcome.NotFreemod or RoomOutcome.NoTeams => ErrorKind.Invalid,
+				RoomActionResult.RoleDenied or RoomActionResult.IsManager or RoomActionResult.Blocked => ErrorKind.Forbidden,
+				RoomActionResult.WrongPassword => ErrorKind.WrongPassword,
+				RoomActionResult.NotFound => ErrorKind.NotFound,
+				RoomActionResult.RoomClosed => ErrorKind.Gone,
+				RoomActionResult.Locked => ErrorKind.Locked,
+				RoomActionResult.SpeedModNotAllowed or RoomActionResult.NotFreemod or RoomActionResult.NoTeams =>
+					ErrorKind.Invalid,
 				_ => ErrorKind.Conflict
 			},
-			ChannelOutcome channel => channel switch
+			ChannelJoinResult channel => channel switch
 			{
-				ChannelOutcome.AccessDenied or ChannelOutcome.Blocked or ChannelOutcome.Silenced => ErrorKind.Forbidden,
-				ChannelOutcome.NotFound => ErrorKind.NotFound,
-				ChannelOutcome.Closed => ErrorKind.Gone,
-				ChannelOutcome.Empty or ChannelOutcome.InvalidText => ErrorKind.Invalid,
+				ChannelJoinResult.AccessDenied or ChannelJoinResult.Blocked or ChannelJoinResult.Silenced => ErrorKind.Forbidden,
+				ChannelJoinResult.NotFound => ErrorKind.NotFound,
+				ChannelJoinResult.Closed => ErrorKind.Gone,
 				_ => ErrorKind.Conflict
 			},
-			ServerOutcome server => server switch
+			ServerActionResult server => server switch
 			{
-				ServerOutcome.Locked => ErrorKind.Locked,
-				ServerOutcome.NotFound => ErrorKind.NotFound,
-				ServerOutcome.NameTaken => ErrorKind.Conflict,
+				ServerActionResult.Locked => ErrorKind.Locked,
+				ServerActionResult.NotFound => ErrorKind.NotFound,
+				ServerActionResult.NameTaken => ErrorKind.Conflict,
 				_ => ErrorKind.Invalid
 			},
-			BeatmapsetOutcome beatmapset => beatmapset == BeatmapsetOutcome.NotFound
+			BeatmapsetEditResult beatmapset => beatmapset == BeatmapsetEditResult.NotFound
 				? ErrorKind.NotFound
 				: ErrorKind.Locked,
-			RulesetOutcome or ScorePerformanceOutcome => ErrorKind.Conflict,
-			SessionOutcome connection => connection == SessionOutcome.Rejected
+			RulesetUpdateResult or ScoreRecalculationResult => ErrorKind.Conflict,
+			SessionAuthResult connection => connection == SessionAuthResult.Rejected
 				? ErrorKind.Invalid
 				: ErrorKind.Conflict,
 			_ => throw new ArgumentException($"No error table for {typeof(TOutcome).Name}.", nameof(outcome))

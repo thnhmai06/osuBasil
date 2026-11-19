@@ -6,9 +6,9 @@ using Mediator;
 namespace Basil.Infrastructure.Users.Handlers;
 
 internal sealed class CloseUserSessionHandler(UserRegistry registry)
-	: IRequestHandler<CloseUserSession, UserOutcome>
+	: IRequestHandler<CloseUserSession, UserActionResult>
 {
-	public async ValueTask<UserOutcome> Handle(CloseUserSession request, CancellationToken ct)
+	public async ValueTask<UserActionResult> Handle(CloseUserSession request, CancellationToken ct)
 	{
 		return await registry.ScopeTo(request.Actor, request.Target).Sessions
 			.CloseAsync(request.SessionId);

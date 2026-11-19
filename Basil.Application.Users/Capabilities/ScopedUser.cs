@@ -66,7 +66,7 @@ public readonly struct ScopedUser
 			: _target.Name is { } name
 				? await users.GetByNameAsync(name, ct)
 				: null;
-		return record is { } found && found.Value.DeletedAt is null ? _registry!.Of(found) : null;
+		return record != null && record.Value.DeletedAt is null ? _registry!.Of(record) : null;
 	}
 
 	internal bool Outranks(User target)
@@ -74,15 +74,15 @@ public readonly struct ScopedUser
 		return Actor.Outranks(Granted, target.Record.Value.Privileges);
 	}
 
-	internal UserOutcome? Deny(UserPrivileges needed)
+	internal UserActionResult? Deny(UserPrivileges needed)
 	{
-		return Lacks(needed) ? UserOutcome.Denied : null;
+		return Lacks(needed) ? UserActionResult.Denied : null;
 	}
 
-	internal UserOutcome? Guard(User target, bool selfAllowed)
+	internal UserActionResult? Guard(User target, bool selfAllowed)
 	{
-		if (target.Record.IsBasilBot()) return UserOutcome.SystemAccount;
-		return (IsSelf && selfAllowed) || Outranks(target) ? null : UserOutcome.NotOutranking;
+		if (target.Record.IsBasilBot()) return UserActionResult.SystemAccount;
+		return (IsSelf && selfAllowed) || Outranks(target) ? null : UserActionResult.NotOutranking;
 	}
 
 	internal async Task<bool> IsLockedAsync(Locks area, UserPrivileges manager,
@@ -92,10 +92,10 @@ public readonly struct ScopedUser
 		       Lacks(manager);
 	}
 
-	public async Task<UserOutcome> DeleteAsync()
+	public async Task<UserActionResult> DeleteAsync()
 	{
 		if (Deny(UserPrivileges.Owner) is { } denied) return denied;
-		if (await ResolveAsync() is not { } user) return UserOutcome.NotFound;
+		if (await ResolveAsync() is not { } user) return UserActionResult.NotFound;
 		if (Guard(user, true) is { } refused) return refused;
 		return await user.DeleteAsync();
 	}

@@ -6,38 +6,38 @@ namespace Basil.Application.Multiplayer.Objects.Rooms;
 
 public sealed partial class Room
 {
-	internal RoomOutcome StartRound()
+	internal RoomActionResult StartRound()
 	{
 		using (State.Enter())
 		{
 			var (outcome, round, players, previous) = State.StartRound(Now);
-			if (outcome is not RoomOutcome.Ok) return outcome;
+			if (outcome is not RoomActionResult.Ok) return outcome;
 
 			SyncTimer();
 			Publish(previous);
 			Emit(new RoomRoundStarted(this, round!, [.. players.Select(player => SessionOf(player)!)]));
-			return RoomOutcome.Ok;
+			return RoomActionResult.Ok;
 		}
 	}
 
-	internal RoomOutcome AbortRound()
+	internal RoomActionResult AbortRound()
 	{
 		using (State.Enter())
 		{
 			var (outcome, round) = State.AbortRound(Now);
-			if (outcome is not RoomOutcome.Ok) return outcome;
+			if (outcome is not RoomActionResult.Ok) return outcome;
 
 			SyncTimer();
 			Emit(new RoomRoundAborted(this, round!));
-			return RoomOutcome.Ok;
+			return RoomActionResult.Ok;
 		}
 	}
 
-	internal RoomOutcome MarkLoaded(Session actor)
+	internal RoomActionResult MarkLoaded(Session actor)
 	{
 		using (State.Enter())
 		{
-			if (PlayerOf(actor) is not { } player) return IsClosed ? RoomOutcome.RoomClosed : RoomOutcome.NotPlaying;
+			if (PlayerOf(actor) is not { } player) return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotPlaying;
 
 			var (outcome, signal) = State.MarkLoaded(player);
 			if (signal is { } s)
@@ -52,11 +52,11 @@ public sealed partial class Room
 		}
 	}
 
-	internal RoomOutcome SkipIntro(Session actor)
+	internal RoomActionResult SkipIntro(Session actor)
 	{
 		using (State.Enter())
 		{
-			if (PlayerOf(actor) is not { } player) return IsClosed ? RoomOutcome.RoomClosed : RoomOutcome.NotPlaying;
+			if (PlayerOf(actor) is not { } player) return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotPlaying;
 
 			var (outcome, signal) = State.SkipIntro(player);
 			if (signal is { } s)
@@ -71,11 +71,11 @@ public sealed partial class Room
 		}
 	}
 
-	internal RoomOutcome ReportFailed(Session actor)
+	internal RoomActionResult ReportFailed(Session actor)
 	{
 		using (State.Enter())
 		{
-			if (PlayerOf(actor) is not { } player) return IsClosed ? RoomOutcome.RoomClosed : RoomOutcome.NotPlaying;
+			if (PlayerOf(actor) is not { } player) return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotPlaying;
 
 			var (outcome, signal) = State.ReportFailed(player);
 			if (signal is { } s) Emit(new RoomRoundPlayerFailed(this, s.Round, s.Slot));
@@ -83,11 +83,11 @@ public sealed partial class Room
 		}
 	}
 
-	internal RoomOutcome ReportCompleted(Session actor)
+	internal RoomActionResult ReportCompleted(Session actor)
 	{
 		using (State.Enter())
 		{
-			if (PlayerOf(actor) is not { } player) return IsClosed ? RoomOutcome.RoomClosed : RoomOutcome.NotPlaying;
+			if (PlayerOf(actor) is not { } player) return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotPlaying;
 
 			var (outcome, signal) = State.ReportCompleted(player, Now);
 			if (signal is { } s)

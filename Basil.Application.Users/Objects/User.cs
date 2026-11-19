@@ -97,9 +97,9 @@ public sealed class User
 		return Context.Users.UpdateAsync(new UserRecord { Id = Record.Id, Value = copy });
 	}
 
-	internal async Task<UserOutcome> DeleteAsync()
+	internal async Task<UserActionResult> DeleteAsync()
 	{
-		if (Record.Value.DeletedAt is not null) return UserOutcome.Ok;
+		if (Record.Value.DeletedAt is not null) return UserActionResult.Ok;
 
 		var now = Context.Clock.GetUtcNow();
 		await StoreChangeAsync(data =>
@@ -109,7 +109,7 @@ public sealed class User
 		});
 		Grants.MarkDeleted(now);
 		Context.Registry.CloseAll(Record, SessionEndReason.Deleted);
-		return UserOutcome.Ok;
+		return UserActionResult.Ok;
 	}
 
 	internal void Add(Session connection)

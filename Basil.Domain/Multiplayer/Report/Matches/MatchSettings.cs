@@ -12,7 +12,7 @@ public sealed class MatchSettings : IMatchSettings
 		{
 			value.ThrowIfInvalid();
 			if (!Mods.IsValid(value))
-				throw new ArgumentException("The current mods are not valid in that mode.", nameof(value));
+				throw new InvalidModsException();
 			field = value;
 		}
 	} = GameMode.Standard;
@@ -24,8 +24,7 @@ public sealed class MatchSettings : IMatchSettings
 		{
 			value.ThrowIfInvalid(Mode);
 			if (Freemods && (value & ~GameModsGroups.SpeedChanging) != GameMods.NoMod)
-				throw new ArgumentException("With freemods on, the room mods may only be speed-changing mods.",
-					nameof(value));
+				throw new InvalidModsException();
 			field = value;
 		}
 	} = GameMods.NoMod;
@@ -36,8 +35,7 @@ public sealed class MatchSettings : IMatchSettings
 		set
 		{
 			if (value && (Mods & ~GameModsGroups.SpeedChanging) != GameMods.NoMod)
-				throw new ArgumentException("Freemods needs the room mods to be speed-changing mods only.",
-					nameof(value));
+				throw new InvalidModsException();
 			field = value;
 		}
 	} = false;

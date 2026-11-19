@@ -27,7 +27,7 @@ public sealed class UserCredentials
 		return _user.Context.Credentials.CreateOrUpdateAsync(new Credentials(_user.Record, passwordHash));
 	}
 
-	internal async Task<UserOutcome> ChangeAsync(Md5Hash newPasswordHash, Md5Hash? currentPasswordHash, Session actor,
+	internal async Task<UserActionResult> ChangeAsync(Md5Hash newPasswordHash, Md5Hash? currentPasswordHash, Session actor,
 		bool includeCurrent)
 	{
 		var isSelf = actor.Record.Equals(_user.Record);
@@ -35,13 +35,13 @@ public sealed class UserCredentials
 		if (isSelf)
 		{
 			if (currentPasswordHash is not { } current || !await IsPasswordAsync(current))
-				return UserOutcome.WrongPassword;
+				return UserActionResult.WrongPassword;
 
 			unchanged = current == newPasswordHash;
 		}
 
 		await ReplaceAsync(newPasswordHash);
-		if (unchanged) return UserOutcome.Ok;
+		if (unchanged) return UserActionResult.Ok;
 
 		var keep = isSelf && !includeCurrent && actor is ApiSession api ? api.State.Record.Id : (long?)null;
 		await _user.Sessions.CloseAsync(null, keep, SessionEndReason.CredentialsChanged);
@@ -54,6 +54,6 @@ public sealed class UserCredentials
 				Timestamp = _user.Context.Clock.GetUtcNow()
 			});
 
-		return UserOutcome.Ok;
+		return UserActionResult.Ok;
 	}
 }

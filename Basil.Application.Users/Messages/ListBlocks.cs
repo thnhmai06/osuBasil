@@ -5,4 +5,4 @@ using Mediator;
 namespace Basil.Application.Users.Messages;
 
 public sealed record ListBlocks(Session Actor, UserReference Target)
-	: IRequest<(UserOutcome Result, IReadOnlyList<UserRecord> Users)>;
+	: IRequest<(UserActionResult Result, IReadOnlyList<UserRecord> Users)>;

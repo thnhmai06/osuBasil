@@ -13,14 +13,14 @@ public readonly struct ScopedServerSeasonals
 		_scoped = scoped;
 	}
 
-	private ServerOutcome? Denied()
+	private ServerActionResult? Denied()
 	{
 		return _scoped.Lacks(UserPrivileges.Owner)
-			? ServerOutcome.Denied
+			? ServerActionResult.Denied
 			: null;
 	}
 
-	public async Task<(ServerOutcome Result, ContentReference? Image)> CreateAsync(string name,
+	public async Task<(ServerActionResult Result, ContentReference? Image)> CreateAsync(string name,
 		Stream image)
 	{
 		if (Denied() is { } denied) return (denied, null);
@@ -28,7 +28,7 @@ public readonly struct ScopedServerSeasonals
 		return await _scoped.Server.Seasonals.CreateAsync(name, image);
 	}
 
-	public async Task<ServerOutcome> DeleteAsync(ContentReference image)
+	public async Task<ServerActionResult> DeleteAsync(ContentReference image)
 	{
 		if (Denied() is { } denied) return denied;
 

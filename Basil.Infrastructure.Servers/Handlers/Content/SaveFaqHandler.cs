@@ -4,9 +4,9 @@ using Mediator;
 
 namespace Basil.Infrastructure.Servers.Handlers.Content;
 
-internal sealed class SaveFaqHandler(Server server) : IRequestHandler<SaveFaq, ServerOutcome>
+internal sealed class SaveFaqHandler(Server server) : IRequestHandler<SaveFaq, ServerActionResult>
 {
-	public async ValueTask<ServerOutcome> Handle(SaveFaq request, CancellationToken ct)
+	public async ValueTask<ServerActionResult> Handle(SaveFaq request, CancellationToken ct)
 	{
 		return await server.ScopeTo(request.Actor).Faq.SaveAsync(request.Entry, request.Text);
 	}

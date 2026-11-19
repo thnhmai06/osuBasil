@@ -16,10 +16,10 @@ public readonly struct ScopedScorePerformances
 		_privileges = actor.EffectivePrivileges(performances.Clock.GetUtcNow());
 	}
 
-	public ScorePerformanceOutcome Recalculate(ScorePerformanceScope scope)
+	public ScoreRecalculationResult Recalculate(ScorePerformanceScope scope)
 	{
 		return ScopedPrivileges.Lacks(_privileges, UserPrivileges.Developer)
-			? ScorePerformanceOutcome.Denied
+			? ScoreRecalculationResult.Denied
 			: _performances.Recalculate(scope);
 	}
 }

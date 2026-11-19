@@ -4,49 +4,49 @@ namespace Basil.Domain.Multiplayer.Room;
 
 public sealed partial class Room
 {
-	public RoomOutcome AddReferee(UserRecord user)
+	public RoomActionResult AddReferee(UserRecord user)
 	{
-		if (IsClosed) return RoomOutcome.RoomClosed;
-		if (Authority.Creator.Equals(user)) return RoomOutcome.IsCreator;
-		if (Authority.Referees.Contains(user)) return RoomOutcome.AlreadyReferee;
-		if (Authority.Referees.Count >= RoomAuthority.MaxReferees) return RoomOutcome.TooManyReferees;
+		if (IsClosed) return RoomActionResult.RoomClosed;
+		if (Authority.Creator.Equals(user)) return RoomActionResult.IsCreator;
+		if (Authority.Referees.Contains(user)) return RoomActionResult.AlreadyReferee;
+		if (Authority.Referees.Count >= RoomAuthority.MaxReferees) return RoomActionResult.TooManyReferees;
 
 		Authority.MutableReferees.Add(user);
-		return RoomOutcome.Ok;
+		return RoomActionResult.Ok;
 	}
 
-	public RoomOutcome RemoveReferee(UserRecord user)
+	public RoomActionResult RemoveReferee(UserRecord user)
 	{
-		if (IsClosed) return RoomOutcome.RoomClosed;
-		return Authority.MutableReferees.Remove(user) ? RoomOutcome.Ok : RoomOutcome.NotReferee;
+		if (IsClosed) return RoomActionResult.RoomClosed;
+		return Authority.MutableReferees.Remove(user) ? RoomActionResult.Ok : RoomActionResult.NotReferee;
 	}
 
-	public (RoomOutcome Outcome, bool Changed) SetHost(UserRecord? host)
+	public (RoomActionResult Outcome, bool Changed) SetHost(UserRecord? host)
 	{
-		if (IsClosed) return (RoomOutcome.RoomClosed, false);
-		if (host is not null && Slots.Find(host) is null) return (RoomOutcome.NotInRoom, false);
-		if (Equals(Authority.Host, host)) return (RoomOutcome.Ok, false);
+		if (IsClosed) return (RoomActionResult.RoomClosed, false);
+		if (host is not null && Slots.Find(host) is null) return (RoomActionResult.NotInRoom, false);
+		if (Equals(Authority.Host, host)) return (RoomActionResult.Ok, false);
 
 		Authority.Host = host;
-		return (RoomOutcome.Ok, true);
+		return (RoomActionResult.Ok, true);
 	}
 
-	public (RoomOutcome Outcome, int Slot, RoomRoundProgress? Progress) Kick(UserRecord player, DateTimeOffset now)
+	public (RoomActionResult Outcome, int Slot, RoomRoundProgress? Progress) Kick(UserRecord player, DateTimeOffset now)
 	{
-		if (IsClosed) return (RoomOutcome.RoomClosed, 0, null);
-		if (Authority.IsManagedBy(player)) return (RoomOutcome.IsManager, 0, null);
-		if (Slots.Find(player) is null) return (RoomOutcome.NotInRoom, 0, null);
+		if (IsClosed) return (RoomActionResult.RoomClosed, 0, null);
+		if (Authority.IsManagedBy(player)) return (RoomActionResult.IsManager, 0, null);
+		if (Slots.Find(player) is null) return (RoomActionResult.NotInRoom, 0, null);
 
 		var slot = Vacate(player)!;
-		return (RoomOutcome.Ok, slot.Index, AdvanceRound(now));
+		return (RoomActionResult.Ok, slot.Index, AdvanceRound(now));
 	}
 
-	public (RoomOutcome Outcome, bool Added, int? Vacated, RoomRoundProgress? Progress) Ban(UserRecord player,
+	public (RoomActionResult Outcome, bool Added, int? Vacated, RoomRoundProgress? Progress) Ban(UserRecord player,
 		DateTimeOffset now)
 	{
-		if (IsClosed) return (RoomOutcome.RoomClosed, false, null, null);
-		if (Authority.IsManagedBy(player)) return (RoomOutcome.IsManager, false, null, null);
-		if (!_banned.Add(player)) return (RoomOutcome.Ok, false, null, null);
+		if (IsClosed) return (RoomActionResult.RoomClosed, false, null, null);
+		if (Authority.IsManagedBy(player)) return (RoomActionResult.IsManager, false, null, null);
+		if (!_banned.Add(player)) return (RoomActionResult.Ok, false, null, null);
 
 		int? vacated = null;
 		RoomRoundProgress? progress = null;
@@ -56,13 +56,13 @@ public sealed partial class Room
 			progress = AdvanceRound(now);
 		}
 
-		return (RoomOutcome.Ok, true, vacated, progress);
+		return (RoomActionResult.Ok, true, vacated, progress);
 	}
 
-	public RoomOutcome Unban(UserRecord player)
+	public RoomActionResult Unban(UserRecord player)
 	{
-		if (IsClosed) return RoomOutcome.RoomClosed;
-		return _banned.Remove(player) ? RoomOutcome.Ok : RoomOutcome.NotBanned;
+		if (IsClosed) return RoomActionResult.RoomClosed;
+		return _banned.Remove(player) ? RoomActionResult.Ok : RoomActionResult.NotBanned;
 	}
 
 	public bool IsWrongPassword(string password, bool managesAnyRoom)

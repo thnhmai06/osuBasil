@@ -27,7 +27,7 @@ public readonly struct ScopedScoreSubmitter
 		_submitter = submitter;
 	}
 
-	public async Task<(ScoreSubmissionOutcome Result, SubmissionRejectionReason? Rejection, ScoreReceipt? Receipt)>
+	public async Task<(ScoreSubmissionResult Result, SubmissionRejectionReason? Rejection, ScoreReceipt? Receipt)>
 		SubmitAsync(
 			Submission submission,
 			BeatmapChecksums? beatmap,
@@ -36,7 +36,7 @@ public readonly struct ScopedScoreSubmitter
 			CancellationToken ct = default)
 	{
 		if (Lacks(UserPrivileges.Player))
-			return (ScoreSubmissionOutcome.Denied, null, null);
+			return (ScoreSubmissionResult.Denied, null, null);
 
 		return await _submitter.SubmitAsync(Actor, submission, beatmap, client, replay, ct);
 	}

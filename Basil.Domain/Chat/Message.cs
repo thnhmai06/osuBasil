@@ -12,9 +12,8 @@ public sealed record Message
 		init
 		{
 			ArgumentNullException.ThrowIfNull(value);
-			if (!IsValidContent(value))
-				throw new ArgumentException("Message content cannot be empty or hold control characters.",
-					nameof(value));
+			if (value.Length == 0) throw new EmptyMessageException();
+			if (!IsValidContent(value)) throw new InvalidMessageException();
 			field = value;
 		}
 	}

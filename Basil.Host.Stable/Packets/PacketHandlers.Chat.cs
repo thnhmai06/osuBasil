@@ -13,7 +13,7 @@ internal sealed partial class PacketHandlers
 	private async Task JoinChannelAsync(StableSession osu, string name, CancellationToken ct)
 	{
 		var result = await sender.Send(new JoinChannel(osu, TargetOf(name)), ct);
-		if (result != ChannelOutcome.Ok && result != ChannelOutcome.AlreadyMember)
+		if (result != ChannelJoinResult.Ok && result != ChannelJoinResult.AlreadyMember)
 			outbox.Send(osu, writer => writer.ChannelKick(name));
 	}
 
@@ -43,7 +43,7 @@ internal sealed partial class PacketHandlers
 		{
 			StableView.MultiplayerAlias => new ChatTarget.OwnRoom(),
 			StableView.SpectatorAlias => new ChatTarget.OwnSpectators(),
-			_ when RoomChannelName.TryParse(name, out var roomId) => new ChatTarget.Room(roomId),
+			_ when RoomChannelRules.TryParse(name, out var roomId) => new ChatTarget.Room(roomId),
 			_ => new ChatTarget.General(name)
 		};
 	}
@@ -68,10 +68,10 @@ internal sealed partial class PacketHandlers
 			ct);
 		switch (result)
 		{
-			case ChannelOutcome.Blocked:
+			case ChannelJoinResult.Blocked:
 				outbox.Send(osu, writer => writer.UserDmBlocked(message.Recipient));
 				break;
-			case ChannelOutcome.TargetSilenced:
+			case ChannelJoinResult.TargetSilenced:
 				outbox.Send(osu, writer => writer.TargetSilenced(message.Recipient));
 				break;
 		}

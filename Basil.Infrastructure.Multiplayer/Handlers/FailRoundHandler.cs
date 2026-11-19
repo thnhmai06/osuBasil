@@ -4,11 +4,11 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-internal sealed class FailRoundHandler : IRequestHandler<FailRound, RoomOutcome>
+internal sealed class FailRoundHandler : IRequestHandler<FailRound, RoomActionResult>
 {
-	public ValueTask<RoomOutcome> Handle(FailRound request, CancellationToken ct)
+	public ValueTask<RoomActionResult> Handle(FailRound request, CancellationToken ct)
 	{
-		return new ValueTask<RoomOutcome>(
+		return new ValueTask<RoomActionResult>(
 			request.Room.ScopeTo(request.Actor).Rounds.FailAsync());
 	}
 }

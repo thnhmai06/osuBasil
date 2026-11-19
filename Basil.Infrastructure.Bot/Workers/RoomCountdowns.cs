@@ -43,12 +43,12 @@ internal sealed class RoomCountdowns(
 		return _running.ContainsKey(room);
 	}
 
-	public async Task<RoomOutcome> StartAsync(Session actor, Room room, TimeSpan length, bool startsRound,
+	public async Task<RoomActionResult> StartAsync(Session actor, Room room, TimeSpan length, bool startsRound,
 		CancellationToken ct)
 	{
-		if (room.IsClosed) return RoomOutcome.RoomClosed;
-		if (length < RoomCountdown.Min || length > RoomCountdown.Max) return RoomOutcome.InvalidSettings;
-		if (startsRound && room.Rounds.InProgress) return RoomOutcome.InProgress;
+		if (room.IsClosed) return RoomActionResult.RoomClosed;
+		if (length < RoomCountdown.Min || length > RoomCountdown.Max) throw new InvalidRoomSettingsException();
+		if (startsRound && room.Rounds.InProgress) return RoomActionResult.InProgress;
 
 		var running = new Running(new RoomCountdown(actor, length, startsRound, clock.GetUtcNow()));
 		running.Timers =
@@ -86,7 +86,7 @@ internal sealed class RoomCountdowns(
 		await SayAsync(room, startsRound
 			? replies.Text(AnnouncementReplies.CountdownStartedForRound, new { seconds })
 			: replies.Text(AnnouncementReplies.CountdownStarted, new { seconds }), ct);
-		return RoomOutcome.Ok;
+		return RoomActionResult.Ok;
 	}
 
 	public async Task<bool> CancelAsync(Room room, CountdownCancelReason reason, bool onlyIfStartsRound,
@@ -152,12 +152,12 @@ internal sealed class RoomCountdowns(
 			}
 
 			var started = await sender.Send(new StartRound(countdown.Actor, room), CancellationToken.None);
-			var reply = started == RoomOutcome.Ok
+			var reply = started == RoomActionResult.Ok
 				? AnnouncementReplies.RoundStartedByCountdown
 				: started switch
 				{
-					RoomOutcome.NoBeatmap => AnnouncementReplies.CountdownElapsedForRound,
-					RoomOutcome.InProgress or RoomOutcome.RoomClosed => null,
+					RoomActionResult.NoBeatmap => AnnouncementReplies.CountdownElapsedForRound,
+					RoomActionResult.InProgress or RoomActionResult.RoomClosed => null,
 					_ => AnnouncementReplies.CountdownCancelled
 				};
 			if (reply is not null) await SayAsync(room, replies.Text(reply), CancellationToken.None);

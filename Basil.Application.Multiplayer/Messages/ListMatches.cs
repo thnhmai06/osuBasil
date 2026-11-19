@@ -9,4 +9,4 @@ namespace Basil.Application.Multiplayer.Messages;
 
 public sealed record ListMatches(Session Actor, MatchQuery Query, PageRequest Page) : IRequest<MatchListing>;
 
-public sealed record MatchListing(RoomOutcome Result, Page<MatchRecord>? Matches);
+public sealed record MatchListing(RoomActionResult Result, Page<MatchRecord>? Matches);

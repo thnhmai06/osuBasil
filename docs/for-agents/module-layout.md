@@ -30,15 +30,15 @@ service implementations and `Workers/` for the loops and hosted services. Tests 
 Users/         IUserRepository and friends, UserQuery, login inputs    (Persistence)
                IUserAvatarStorage                                      (Storage)
                IAccountRules (internal)                                (Ports)
-               User, UserContext, UserGrants, UserProfile, UserOutcome  (Objects)
-               Session, SessionContext, SessionOutcome,
+               User, UserContext, UserGrants, UserProfile, UserActionResult  (Objects)
+               Session, SessionContext, SessionAuthResult,
                PlayerStatus                                            (Objects/Sessions)
                UserRegistry                                            (Registry)
                ScopedUser*, ScopedStableSession                         (Capabilities)
                AccountRules                                            (Infrastructure Logic)
                ConnectionHandler                                       (Infrastructure Handlers)
 Chat/          IChannelRepository                                      (Persistence)
-               the channel tree, ChannelContext, ChannelOutcome,
+               the channel tree, ChannelContext, ChannelJoinResult,
                ChannelEvents                                            (Objects)
                GeneralChannelRegistry, RoomChannels, PmChannels,
                SpectatorChannels                                       (Registry)
@@ -47,7 +47,7 @@ Chat/          IChannelRepository                                      (Persiste
                PostChatMessageHandler and the room, lobby, connection
                and spectator handlers                                  (Infrastructure Handlers)
 Multiplayer/   match, round, event and report repositories             (Persistence)
-               Room and its parts, RoomOutcome, the event records       (Objects)
+               Room and its parts, RoomActionResult, the event records       (Objects)
                Lobby, LobbyContext                                      (Registry)
                ScopedLobby and the room's scopes                        (Capabilities)
                the match recorders, ScoreHandler, the lobby handlers    (Infrastructure Handlers)
@@ -62,7 +62,7 @@ Beatmaps/      beatmap and beatmapset repositories, import and scan
 Scores/        score, stats repositories, submission inputs             (Persistence)
                IReplayStorage                                           (Storage)
                ScoreSubmitter, IScoreBeatmapAcceptance,
-               ScoreSubmissionOutcome, ScoreOutcome, ScoreEvents        (Objects)
+               ScoreSubmissionResult, ScoreOutcome, ScoreEvents        (Objects)
                ScopedScoreSubmitter                                     (Capabilities)
                IScoreRecorder (internal)                                (Ports)
                ScoreRecorder                                            (Infrastructure Logic)
@@ -72,9 +72,9 @@ Anticheat/     IAnticheatReporter                                       (Service
 Content/       IMenuBannerRepository                                    (Persistence)
                the FAQ, menu, screenshot and seasonals storages          (Storage)
                IScreenshotInspector                                     (Ports)
-Servers/       Server, ServerContext, ServerOutcome, ServerRecovery     (Objects)
+Servers/       Server, ServerContext, ServerActionResult, ServerRecovery     (Objects)
                ScopedServer and its parts                               (Capabilities)
-Diagnostics/   ServerDiagnostics, DiagnosticsOutcome                    (Objects)
+Diagnostics/   ServerDiagnostics, DiagnosticsCommandResult                    (Objects)
                ScopedDiagnostics                                        (Capabilities)
                IDiagnosticsIntake, IDiagnosticsFeed                     (Services)
 ```

@@ -80,24 +80,24 @@ public readonly struct ScopedRoom
 		return privileges;
 	}
 
-	internal RoomOutcome? Require(RoomPrivileges needed)
+	internal RoomActionResult? Require(RoomPrivileges needed)
 	{
 		if (!ScopedPrivileges.Lacks(Privileges, needed))
 			return null;
 
-		return !ManagesAnyRoom && RequireJoin() is { } cannotJoin ? cannotJoin : RoomOutcome.RoleDenied;
+		return !ManagesAnyRoom && RequireJoin() is { } cannotJoin ? cannotJoin : RoomActionResult.RoleDenied;
 	}
 
 	public bool Involves => Room.Involves(Actor, _global);
 
-	internal RoomOutcome? RequireJoin()
+	internal RoomActionResult? RequireJoin()
 	{
 		return _global.Allows(UserPrivileges.Player)
 			? null
-			: RoomOutcome.Denied;
+			: RoomActionResult.Denied;
 	}
 
-	public Task<RoomOutcome> CloseAsync()
+	public Task<RoomActionResult> CloseAsync()
 	{
 		return Task.FromResult(Require(RoomPrivileges.RoomClose) ?? Room.Close(Actor.Record));
 	}

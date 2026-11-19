@@ -5,9 +5,9 @@ using Mediator;
 namespace Basil.Infrastructure.Beatmaps.Handlers;
 
 internal sealed class DeleteBeatmapsetHandler(Beatmapsets beatmapsets)
-	: IRequestHandler<DeleteBeatmapset, BeatmapsetOutcome>
+	: IRequestHandler<DeleteBeatmapset, BeatmapsetEditResult>
 {
-	public async ValueTask<BeatmapsetOutcome> Handle(DeleteBeatmapset request,
+	public async ValueTask<BeatmapsetEditResult> Handle(DeleteBeatmapset request,
 		CancellationToken ct)
 	{
 		return await beatmapsets.ScopeTo(request.Actor, request.SetId).DeleteAsync();

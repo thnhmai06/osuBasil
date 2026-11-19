@@ -25,7 +25,7 @@ public sealed class UserGrants
 		_user.Apply(user => user.Grants.Replace(privileges));
 	}
 
-	internal async Task<UserOutcome> SetAsync(UserPrivileges privileges)
+	internal async Task<UserActionResult> SetAsync(UserPrivileges privileges)
 	{
 		await _user.StoreChangeAsync(data => data.Privileges = privileges);
 		Replace(privileges);
@@ -33,7 +33,7 @@ public sealed class UserGrants
 			_user.Context.Registry.CloseDisallowed(user);
 
 		_user.Context.Events.Publish(new UserPrivilegesChanged(_user.Record, privileges));
-		return UserOutcome.Ok;
+		return UserActionResult.Ok;
 	}
 
 	internal void MarkDeleted(DateTimeOffset at)

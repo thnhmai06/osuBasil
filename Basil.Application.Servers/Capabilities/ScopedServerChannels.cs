@@ -14,18 +14,18 @@ public readonly struct ScopedServerChannels
 		_scoped = scoped;
 	}
 
-	public async Task<ServerOutcome> CreateAsync(GeneralChannelRecord record)
+	public async Task<ServerActionResult> CreateAsync(GeneralChannelRecord record)
 	{
 		if (_scoped.Lacks(UserPrivileges.Moderator))
-			return ServerOutcome.Denied;
+			return ServerActionResult.Denied;
 
 		return await _scoped.Server.Channels.CreateAsync(record);
 	}
 
-	public (ChannelOutcome Result, GeneralChannel? Channel) FindGeneral(string name)
+	public (ChannelJoinResult Result, GeneralChannel? Channel) FindGeneral(string name)
 	{
 		if (_scoped.Lacks(UserPrivileges.Moderator))
-			return (ChannelOutcome.Denied, null);
+			return (ChannelJoinResult.Denied, null);
 
 		return _scoped.Server.Channels.FindGeneral(name);
 	}

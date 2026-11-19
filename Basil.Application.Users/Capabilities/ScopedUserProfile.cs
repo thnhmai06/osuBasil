@@ -8,56 +8,56 @@ namespace Basil.Application.Users.Capabilities;
 
 public readonly struct ScopedUserProfile(ScopedUser scoped)
 {
-	public async Task<UserOutcome> SetAwayAsync(string? message)
+	public async Task<UserActionResult> SetAwayAsync(string? message)
 	{
-		if (scoped is { IsSelf: false, Actor: not OperatorSession }) return UserOutcome.Denied;
-		if (await scoped.ResolveAsync() is not { } user) return UserOutcome.NotFound;
+		if (scoped is { IsSelf: false, Actor: not OperatorSession }) return UserActionResult.Denied;
+		if (await scoped.ResolveAsync() is not { } user) return UserActionResult.NotFound;
 
 		user.Profile.SetAway(message);
-		return UserOutcome.Ok;
+		return UserActionResult.Ok;
 	}
 
-	public async Task<UserOutcome> SetPmPrivateAsync(bool pmPrivate)
+	public async Task<UserActionResult> SetPmPrivateAsync(bool pmPrivate)
 	{
-		if (scoped is { IsSelf: false, Actor: not OperatorSession }) return UserOutcome.Denied;
-		if (await scoped.ResolveAsync() is not { } user) return UserOutcome.NotFound;
+		if (scoped is { IsSelf: false, Actor: not OperatorSession }) return UserActionResult.Denied;
+		if (await scoped.ResolveAsync() is not { } user) return UserActionResult.NotFound;
 
 		user.Profile.SetPmPrivate(pmPrivate);
-		return UserOutcome.Ok;
+		return UserActionResult.Ok;
 	}
 
-	public async Task<UserOutcome> RenameAsync(string name)
+	public async Task<UserActionResult> RenameAsync(string name)
 	{
 		var (user, refusal) = await GuardAsync();
 		return user is null ? refusal : await user.Profile.RenameAsync(name);
 	}
 
-	public async Task<UserOutcome> SetCountryAsync(Country country)
+	public async Task<UserActionResult> SetCountryAsync(Country country)
 	{
 		var (user, refusal) = await GuardAsync();
 		return user is null ? refusal : await user.Profile.SetCountryAsync(country);
 	}
 
-	public async Task<UserOutcome> SetAvatarAsync(Stream image, CancellationToken ct = default)
+	public async Task<UserActionResult> SetAvatarAsync(Stream image, CancellationToken ct = default)
 	{
 		var (user, refusal) = await GuardAsync();
 		return user is null ? refusal : await user.Profile.SetAvatarAsync(image, ct);
 	}
 
-	public async Task<UserOutcome> RemoveAvatarAsync()
+	public async Task<UserActionResult> RemoveAvatarAsync()
 	{
 		var (user, refusal) = await GuardAsync();
 		return user is null ? refusal : await user.Profile.RemoveAvatarAsync();
 	}
 
 	// BasilBot's metadata changes like any user's; only its privileges, password and sessions are fixed.
-	private async Task<(User? User, UserOutcome Refusal)> GuardAsync()
+	private async Task<(User? User, UserActionResult Refusal)> GuardAsync()
 	{
 		if (await scoped.IsLockedAsync(Locks.Profiles, UserPrivileges.Owner))
-			return (null, UserOutcome.Locked);
+			return (null, UserActionResult.Locked);
 		if (!scoped.IsSelf && scoped.Deny(UserPrivileges.Owner) is { } denied) return (null, denied);
-		if (await scoped.ResolveAsync() is not { } user) return (null, UserOutcome.NotFound);
+		if (await scoped.ResolveAsync() is not { } user) return (null, UserActionResult.NotFound);
 
-		return scoped.IsSelf || scoped.Outranks(user) ? (user, default) : (null, UserOutcome.NotOutranking);
+		return scoped.IsSelf || scoped.Outranks(user) ? (user, default) : (null, UserActionResult.NotOutranking);
 	}
 }

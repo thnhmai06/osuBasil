@@ -13,28 +13,28 @@ public readonly struct ScopedServerScreenshots
 		_scoped = scoped;
 	}
 
-	public async Task<(ContentReference? Screenshot, ServerOutcome Result)> UploadAsync(Stream content,
+	public async Task<(ContentReference? Screenshot, ServerActionResult Result)> UploadAsync(Stream content,
 		CancellationToken ct = default)
 	{
 		if (_scoped.Lacks(UserPrivileges.Player))
-			return (null, ServerOutcome.Denied);
+			return (null, ServerActionResult.Denied);
 
 		return await _scoped.Server.Screenshots.UploadAsync(content, ct);
 	}
 
-	public async Task<(ServerOutcome Result, IReadOnlyList<ContentReference> Screenshots)> ListAsync(
+	public async Task<(ServerActionResult Result, IReadOnlyList<ContentReference> Screenshots)> ListAsync(
 		CancellationToken ct = default)
 	{
 		if (_scoped.Lacks(UserPrivileges.Moderator))
-			return (ServerOutcome.Denied, []);
+			return (ServerActionResult.Denied, []);
 
-		return (ServerOutcome.Ok, await _scoped.Server.Screenshots.ListAsync(ct));
+		return (ServerActionResult.Ok, await _scoped.Server.Screenshots.ListAsync(ct));
 	}
 
-	public async Task<ServerOutcome> DeleteAsync(ContentReference screenshot)
+	public async Task<ServerActionResult> DeleteAsync(ContentReference screenshot)
 	{
 		if (_scoped.Lacks(UserPrivileges.Moderator))
-			return ServerOutcome.Denied;
+			return ServerActionResult.Denied;
 
 		return await _scoped.Server.Screenshots.DeleteAsync(screenshot);
 	}

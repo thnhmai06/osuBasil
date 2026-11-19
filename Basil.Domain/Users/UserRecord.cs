@@ -43,7 +43,7 @@ public sealed partial class UserData
 		set
 		{
 			ArgumentNullException.ThrowIfNull(value);
-			if (NameError(value) is { } error) throw new ArgumentException(error, nameof(value));
+			if (NameError(value) is not null) throw new InvalidUserNameException();
 			field = value;
 		}
 	}

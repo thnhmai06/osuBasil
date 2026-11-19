@@ -1,6 +1,6 @@
 namespace Basil.Domain.Chat;
 
-public static class RoomChannelName
+public static class RoomChannelRules
 {
 	public const string Prefix = "#mp_";
 

@@ -314,7 +314,7 @@ public sealed record ServerSettings
 		public Uri? Url
 		{
 			get;
-			init => field = value?.ThrowIfHttp();
+			init => field = value is null || value.IsHttp() ? value : throw new InvalidAddressException();
 		}
 
 		public ContentReference? Image { get; init; }

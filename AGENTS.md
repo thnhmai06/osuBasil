@@ -556,11 +556,12 @@ See [`docs/for-developers/multiplayer.md`](docs/for-developers/multiplayer.md) b
 
 #### Outcomes and refusals
 
-A behaviour that can be refused returns the outcome enum of the object that owns it (`RoomOutcome`, `UserOutcome`), or a tuple of
+A behaviour that can be refused returns the outcome enum of the object that owns it (`RoomActionResult`, `UserActionResult`), or a tuple of
 the outcome and the data. Every outcome enum has `Denied = 0` (the caller lacks the privileges the action needs; the refusal
-does not say which) and `Ok = 1`; the other members start at 2. A predictable failure is an outcome; an exception reports a
-broken precondition. Room privileges (`RoomPrivileges`) are derived per room from the roles and are separate from the account's
-`UserPrivileges`. See [`docs/for-agents/application-design.md`](docs/for-agents/application-design.md).
+does not say which) and `Ok = 1`; the other members start at 2. A business refusal (a valid request the rules do not
+allow) is an outcome. A business error (data that breaks a rule of the domain; target) is an exception defined in Domain or
+Application, and a broken precondition stays a BCL exception. Room privileges (`RoomPrivileges`) are derived per room from
+the roles and are separate from the account's `UserPrivileges`. See [`docs/for-agents/application-design.md`](docs/for-agents/application-design.md).
 
 #### Streaming
 
