@@ -76,7 +76,7 @@ internal static class AuthRoutes
 	// The session expires once it has been silent this long; every use moves the moment on.
 	private static DateTimeOffset ExpiresAt(Session session)
 	{
-		return session.LastActiveAt + session.Record.Value.Type.ExpiresAfter;
+		return session.Record.Value.LastActiveAt + session.Record.Value.Type.ExpiresAfter;
 	}
 
 	private static async Task<IResult> LogoutAsync(HttpContext context, CancellationToken ct)

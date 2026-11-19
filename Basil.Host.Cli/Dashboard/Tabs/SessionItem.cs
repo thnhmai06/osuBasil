@@ -52,6 +52,6 @@ internal sealed record SessionItem(
 		return new SessionItem(record.Id, data.User.Id, data.User.Value.Name, (ulong)data.User.Value.Privileges,
 			data.Type, data.Fingerprint.Ip.ToString(), data.Fingerprint.ClientInformation ?? string.Empty,
 			data.StartedAt,
-			session.LastActiveAt, live, session.Ended?.Reason.ToString() ?? string.Empty);
+			session.Record.Value.LastActiveAt, live, session.Record.Value.Ended?.Reason.ToString() ?? string.Empty);
 	}
 }

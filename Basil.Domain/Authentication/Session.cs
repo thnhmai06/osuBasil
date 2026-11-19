@@ -6,24 +6,6 @@ public sealed class Session(SessionRecord record) : IEquatable<Session>
 
 	public SessionRecord Record { get; } = record;
 
-	public DateTimeOffset LastActiveAt
-	{
-		get
-		{
-			using var scope = _sync.EnterScope();
-			return Record.Value.LastActiveAt;
-		}
-	}
-
-	public SessionEnded? Ended
-	{
-		get
-		{
-			using var scope = _sync.EnterScope();
-			return Record.Value.Ended;
-		}
-	}
-
 	public void Heartbeat(DateTimeOffset at)
 	{
 		using var scope = _sync.EnterScope();

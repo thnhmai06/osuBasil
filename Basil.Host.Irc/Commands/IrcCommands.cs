@@ -56,7 +56,7 @@ internal sealed partial class IrcCommands(
 			// A closed session, such as one silent past its expiry, takes its socket with it.
 			if (!connection.IsOpen)
 			{
-				session.Close(IrcReplies.Closing(connection.State.Ended?.Reason ?? SessionEndReason.TimedOut));
+				session.Close(IrcReplies.Closing(connection.State.Record.Value.Ended?.Reason ?? SessionEndReason.TimedOut));
 				return;
 			}
 		}

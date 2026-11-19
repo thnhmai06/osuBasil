@@ -22,7 +22,7 @@ internal sealed class SessionEndHandler(
 		var session = @event.Session.State;
 		try
 		{
-			await sessions.EndAsync(session.Record.Id, session.Ended!.Value);
+			await sessions.EndAsync(session.Record.Id, session.Record.Value.Ended!.Value);
 			registry.ConfirmEnded(session.Record.Id);
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException ||

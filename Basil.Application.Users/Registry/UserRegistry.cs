@@ -116,7 +116,7 @@ public sealed class UserRegistry
 
 		try
 		{
-			if (stored?.Ended is { } replaced)
+			if (stored?.Record.Value.Ended is { } replaced)
 			{
 				await _context.Sessions.EndAsync(stored.Record.Id, replaced);
 				ConfirmEnded(stored.Record.Id);
@@ -182,7 +182,7 @@ public sealed class UserRegistry
 		if (refusal is not null || stored.StatusAt(now) is SessionStatus.Expired)
 		{
 			stored.End(now, refusal is null ? SessionEndReason.TimedOut : SessionEndReason.Revoked);
-			await _context.Sessions.EndAsync(stored.Record.Id, stored.Ended!.Value);
+			await _context.Sessions.EndAsync(stored.Record.Id, stored.Record.Value.Ended!.Value);
 			return LoginResult.Fail(refusal ?? LoginFailure.InvalidToken);
 		}
 
@@ -467,7 +467,7 @@ public sealed class UserRegistry
 				break;
 		}
 
-		if (stored.Ended is not null) _ended[stored.Record.Id] = 0;
+		if (stored.Record.Value.Ended is not null) _ended[stored.Record.Id] = 0;
 		return null;
 	}
 
@@ -514,7 +514,7 @@ public sealed class UserRegistry
 		var sessions = new List<SessionActivity>();
 		foreach (var (id, _) in _activity)
 			if (_activity.TryRemove(id, out var session))
-				sessions.Add(new SessionActivity(id, session.Type, session.State.LastActiveAt));
+				sessions.Add(new SessionActivity(id, session.Type, session.State.Record.Value.LastActiveAt));
 
 		await _context.Sessions.WriteActivityAsync(sessions);
 	}
