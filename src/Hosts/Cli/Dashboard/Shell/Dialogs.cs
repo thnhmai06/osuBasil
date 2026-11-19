@@ -1,5 +1,5 @@
 using System.Text;
-using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using XenoAtom.Terminal;
 using XenoAtom.Terminal.UI;
 using XenoAtom.Terminal.UI.Commands;

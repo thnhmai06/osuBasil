@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Collections.Immutable;
-using Basil.Domain.Game.Mechanics;
-using Basil.Domain.Game.Scores;
+using Basil.Domain.Mechanics;
+using Basil.Domain.Scores;
 
 namespace Basil.Domain.Multiplayer.Report.Rounds;
 

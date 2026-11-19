@@ -20,7 +20,7 @@ Paths are under `/mnt/shared/Development/osuBasil`. Known findings F-021, F-038,
 4. **Hardware-ban check is documented as a feature; it is out of scope.** `authentication.md:119` "the account being blocked by a hardware-ban check",
    `:149` "Basil can compare the supplied hardware information with hardware associated with banned accounts", `:153` "Established verified accounts are not rejected...".
    `docs/for-developers/working-scopes.md:154` says "Multi-account detection, hardware bans, client hash checks, the `Verified` grant | Out of scope",
-   and no such check exists in `src/Application/Users`. The page also mentions "verified accounts" while `:159` says there is no verification. (verified)
+   and no such check exists in `Basil.Application.Users`. The page also mentions "verified accounts" while `:159` says there is no verification. (verified)
 5. **IRC host name contradicts itself across pages.** `docs/for-client/irc-client.md:18` "Server | `irc.<domain>`" and `src/Basil/ServerOptions.cs`
    ("the IRC server is `irc.` plus this domain", and `LanAdvertiser.Labels` advertises `irc`) versus
    `docs/for-technicians/https.md:48` "It needs no `irc.<domain>` record" and `troubleshooting.md:226` "There is also no `irc.<domain>` hostname requirement".
@@ -34,7 +34,7 @@ Paths are under `/mnt/shared/Development/osuBasil`. Known findings F-021, F-038,
    (`RestPipeline.cs:28`, `SseHub.cs:285`); `BeatmapPreviewMaker` just writes no preview. An operator diagnosing a missing preview looks for a status that never appears. (verified)
 8. **Stale "console is not implemented" in the scope document.** `docs/for-developers/working-scopes.md` ("Account creation and operator console"):
    "The console is planned for the Host phase in `Basil.Cli`; it is not implemented yet ... The hosts have not been migrated to the new Application contracts".
-   `src/Hosts/Cli` exists, `docs/for-technicians/console.md` specifies it, and `migration-status.md` says the host migration is done. This is the page the owner names as the scope authority. (verified)
+   `Basil.Host.Cli` exists, `docs/for-technicians/console.md` specifies it, and `migration-status.md` says the host migration is done. This is the page the owner names as the scope authority. (verified)
 9. **`protocol.md` contradicts `authentication.md` on session storage, and both misdescribe it.** `docs/for-client/osu-stable/protocol.md:115`
    "Sessions are stored in server memory ... active sessions do not survive the restart" vs `authentication.md:137` "Sessions are recorded in the database, not only in server memory".
    Two pages for one fact; the reader cannot tell what a restart does. (verified contradiction)
@@ -49,7 +49,7 @@ Further notable items (not in the top ten): `docs/for-developers/testing.md:49` 
 
 ## Part A: generated references
 
-### A1. Route coverage (`src/Hosts/Rest`)
+### A1. Route coverage (`Basil.Host.Rest`)
 
 82 `Map*` calls. 80 `WithSummary` call sites (two of the route-generating loops make several routes from one call). Routes with **no summary and no description**: the three
 `/guides`, `/guides/{slug}`, `/guides/{slug}.md` routes in `Routes/GuideRoutes.cs:16-25` (documentation pages, so arguably not API; they are not tagged and not in OpenAPI).
@@ -230,7 +230,7 @@ No description names PostgreSQL, Redis, DI, middleware, `Channel<T>` or file pat
 ### `docs/for-developers/working-scopes.md`
 
 * Verified: `Basil.Infrastructure.Bot` exists; the hardware-ban row is correct and contradicts `authentication.md` (top 4).
-* Problems: stale console text (top 8), truncated sentence at `:56` and bad link `:59`, `:78` `GET /menu-content.json` (F-055 confirmed: not in any `MapGet` under `src/Hosts/Rest`), `:141` "adding a note" moderation feature not checked.
+* Problems: stale console text (top 8), truncated sentence at `:56` and bad link `:59`, `:78` `GET /menu-content.json` (F-055 confirmed: not in any `MapGet` under `Basil.Host.Rest`), `:141` "adding a note" moderation feature not checked.
 * Verdict: fix.
 
 ### `docs/for-developers/testing.md`

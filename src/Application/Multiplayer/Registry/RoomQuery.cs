@@ -2,7 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Shared.Paging;
-using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer.Registry;

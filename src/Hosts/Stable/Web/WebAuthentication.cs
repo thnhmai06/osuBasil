@@ -5,7 +5,7 @@ using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using Basil.Domain.Users;
 using Basil.Gateway.RateLimiting;
 using Basil.Host.Stable.Support;

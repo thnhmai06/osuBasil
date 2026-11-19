@@ -1,4 +1,4 @@
-﻿namespace Basil.Domain.Game.Mechanics;
+﻿namespace Basil.Domain.Mechanics;
 
 public enum GameTeam : byte
 {

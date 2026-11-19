@@ -1,5 +1,5 @@
 using Basil.Application.Shared.Settings;
-using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;
 

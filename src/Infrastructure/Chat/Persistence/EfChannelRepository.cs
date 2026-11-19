@@ -1,7 +1,7 @@
 using Basil.Application.Chat.Persistence;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Chat;
-using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.EntityFrameworkCore;
 

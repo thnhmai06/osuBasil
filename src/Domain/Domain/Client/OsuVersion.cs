@@ -1,4 +1,4 @@
-namespace Basil.Domain.Game.Client;
+namespace Basil.Domain.Client;
 
 public readonly record struct OsuVersion(DateOnly Date, int? Revision, OsuVersionStream Stream);
 

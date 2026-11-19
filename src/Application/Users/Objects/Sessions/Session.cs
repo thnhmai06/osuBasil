@@ -2,8 +2,8 @@ using Basil.Application.Shared.Actors;
 using Basil.Application.Users.Capabilities;
 using Basil.Application.Users.Objects.Events;
 using Basil.Domain.Authentication;
-using Basil.Domain.Game.Spectating;
-using Basil.Domain.Game.Users;
+using Basil.Domain.Spectating;
+using Basil.Domain.Users;
 using Basil.Domain.Users;
 using Basil.Shared.Structures.Data;
 

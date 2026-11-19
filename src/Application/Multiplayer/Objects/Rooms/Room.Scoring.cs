@@ -1,5 +1,5 @@
 using Basil.Application.Multiplayer.Objects.Events;
-using Basil.Domain.Game.Scores;
+using Basil.Domain.Scores;
 using Basil.Domain.Multiplayer.Room;
 using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;

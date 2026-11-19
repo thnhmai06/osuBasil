@@ -1,7 +1,7 @@
 using System.Globalization;
 using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Game.Beatmaps;
+using Basil.Domain.Beatmaps;
 using Basil.Host.Cli.Dashboard.Shell;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;

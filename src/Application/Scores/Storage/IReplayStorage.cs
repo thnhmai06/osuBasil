@@ -1,5 +1,5 @@
-using Basil.Domain.Game.Client;
-using Basil.Domain.Game.Scores;
+using Basil.Domain.Client;
+using Basil.Domain.Scores;
 
 namespace Basil.Application.Scores.Storage;
 

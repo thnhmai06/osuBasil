@@ -465,6 +465,6 @@ the dashboard without `--now` they ask `y/N` in the command box. Given on the co
 
 ## Related code
 
-* `src/Hosts/Cli` - the dashboard, the command parser, the runner and the socket.
-* `src/Hosts/Shared` - the record views and the outcome table both HTTP and console use.
+* `Basil.Host.Cli` - the dashboard, the command parser, the runner and the socket.
+* `Basil.Host.Shared` - the record views and the outcome table both HTTP and console use.
 * [`configuration.md`](configuration.md) - the data directory the socket lives in.

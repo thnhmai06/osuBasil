@@ -1,8 +1,8 @@
 using Basil.Application.Shared.Privileges;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Authentication;
-using Basil.Domain.Game.Spectating;
-using Basil.Domain.Game.Users;
+using Basil.Domain.Spectating;
+using Basil.Domain.Users;
 using Basil.Domain.Users;
 using Session = Basil.Application.Users.Objects.Sessions.Session;
 

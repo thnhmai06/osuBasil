@@ -1,4 +1,4 @@
-using Basil.Domain.Game.Scores;
+using Basil.Domain.Scores;
 using Basil.Domain.Multiplayer.Report.Rounds;
 using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;

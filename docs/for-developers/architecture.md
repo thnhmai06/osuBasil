@@ -38,7 +38,7 @@ Basil.Infrastructure.Persistence    Npgsql provider (IDatabaseProvider), design-
 Basil.Protocol.Stable / .Irc     the translation language of each wire            -> Domain / nothing
 Basil.Gateway                    (target) admission control                       -> (nothing but the rate-limiting library)
 Basil.Host.Shared                views and outcome-to-error mapping               -> Application projects
-Basil.Host.Stable/.Irc/.Rest/.Cli  transports                                     -> Host.Shared, Protocol, Gateway, Application
+src/Hosts/Stable/.Irc/.Rest/.Cli  transports                                     -> Host.Shared, Protocol, Gateway, Application
 Basil                            composition root -> everything
 ```
 

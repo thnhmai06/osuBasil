@@ -1,6 +1,6 @@
 using Basil.Application.Beatmaps.Ports;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Mechanics;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Formats;
 using osu.Game.Beatmaps.Legacy;

@@ -18,11 +18,11 @@
 
 - Thresholds, exact: `ReplaceableAfter = 30 s` for every type; `ExpiresAfter = 300 s` for Stable, StableTourney, Irc; `8 h` for Api. Boundaries: silence `< 30 s` → Active; `≥ 30 s` → Replaceable; `≥ ExpiresAfter` → Expired.
 - One active session per user per `SessionType`, except `StableTourney` (no duplicate check, no count limit).
-- Domain (`src/Domain/Domain`, project `Basil.Domain`) references no `Basil.Application.*`, no `Basil.Infrastructure.*`, no `Mediator*`, no repository, no `IEventPublisher`. Synchronous only.
+- Domain (`Basil.Domain`, project `Basil.Domain`) references no `Basil.Application.*`, no `Basil.Infrastructure.*`, no `Mediator*`, no repository, no `IEventPublisher`. Synchronous only.
 - Room invariants stay: one `Lock` per room held across the whole transition, events published inside it, never `await` under it, a closed room answers `RoomClosed`.
 - Every outcome enum keeps `Denied = 0`, `Ok = 1`.
 - AGENTS.md rules apply: no `.ConfigureAwait(false)`, no reflowed lines, `nameof`/`typeof` instead of type-name strings, internal handlers.
-- Owner rule (2026-11-18): **no tests.** Skip every test step in every task; do not touch `tests/`. The build gate is `dotnet build src/Basil -c Release --nologo -v q` → 0 errors. Task 12 is the build plus the diff review only. At most two agents at once, each in its own worktree.
+- Owner rule (2026-11-18): **no tests.** Skip every test step in every task; do not touch `tests/`. The build gate is `dotnet build Basil -c Release --nologo -v q` → 0 errors. Task 12 is the build plus the diff review only. At most two agents at once, each in its own worktree.
 - New EF migration per module touched; do not edit `InitialCreate`.
 
 ## Review Focus
@@ -70,7 +70,7 @@
   - `StatusAt_Ended_Ended`; `Heartbeat_AfterEnd_Ignored`; `Heartbeat_Earlier_Ignored`; `End_Twice_FirstReasonKept`.
   - `IsExclusive_Tourney_False`, `IsExclusive_Others_True` (theory over the other three types).
 - [ ] **Step 2:** Implement the three files.
-- [ ] **Step 3:** `dotnet build src/Domain/Domain -c Release --nologo -v q` → succeeds. (Callers of `SessionRecord` break; Task 3 fixes them.)
+- [ ] **Step 3:** `dotnet build Basil.Domain -c Release --nologo -v q` → succeeds. (Callers of `SessionRecord` break; Task 3 fixes them.)
 - [ ] **Step 4:** Commit `feat(domain): Session with heartbeat status rules`.
 
 ### Task 3: Persistence — one `sessions` table
@@ -96,7 +96,7 @@
 
 - [ ] **Step 1: Tests** in `EfSessionRepositoryTests`: `FindOpenByToken_Ended_Null`, `FindOpenAsync_OtherType_Null`, `EndSilent_OsuPast300_Ended`, `EndSilent_ApiUnderEightHours_Open`, `WriteActivity_UpdatesLastActive`.
 - [ ] **Step 2:** Implement; generate the migration with `dotnet ef migrations add MergeConnectionsIntoSessions` against `AuthenticationDbContext` (design-time factory in `src/Infrastructure/Persistence/DesignTime`).
-- [ ] **Step 3:** Build `src/Infrastructure/Authentication` and `src/Infrastructure/Persistence` → succeed.
+- [ ] **Step 3:** Build `Basil.Infrastructure.Authentication` and `Basil.Infrastructure.Persistence` → succeed.
 - [ ] **Step 4:** Commit `feat(auth): one sessions table, drop connections`.
 
 ### Task 4: Application `Session` and `UserRegistry` login rules
@@ -134,7 +134,7 @@
   - `Login_Irc_WithPassword_Opens`.
   - In `SessionSweeperTests`: `Sweep_SilentPastExpiry_Ended`, `Sweep_Replaceable_KeptOpen`.
 - [ ] **Step 2:** Do the type renames with Rider (`mcp__mcpm_rider__rename_refactoring`) one type at a time, then the logic changes.
-- [ ] **Step 3:** Build `src/Application/Users`, `src/Infrastructure/Users` → succeed.
+- [ ] **Step 3:** Build `Basil.Application.Users`, `Basil.Infrastructure.Users` → succeed.
 - [ ] **Step 4:** Commit `feat(users): one Session per connection with A/B login rule`.
 
 ### Task 5: Hosts follow the Session
@@ -176,7 +176,7 @@ The split, for every object below: Domain type with the same name in `Basil.Doma
 
 - [ ] **Step 1: Tests** (Domain, no fakes): one test per rule method's outcomes, deriving expected values from the osu! rules and current behaviour docs, e.g. `ChangeSlot_LockedTarget_SlotNotOpen`, `ChangeSlot_RoundInProgress_InProgress`, `Configure_SizeSeventeen_InvalidSettings`, `Configure_FreemodsOn_RoomKeepsOnlySpeedMods`, `ApplyTeamType_TeamVs_AlternatesRedBlue`, `AddReferee_NinthReferee_Refused`, `Decide_AccuracyWin_HighestAverageTeamWins`, `AnyRule_ClosedRoom_RoomClosed`.
 - [ ] **Step 2:** Move, then rewire the Application partials.
-- [ ] **Step 3:** Build `src/Application/Multiplayer` and dependants (`Chat`, `Bot`, `Servers`, hosts) → succeed.
+- [ ] **Step 3:** Build `Basil.Application.Multiplayer` and dependants (`Chat`, `Bot`, `Servers`, hosts) → succeed.
 - [ ] **Step 4:** Commit `refactor(multiplayer): Room rules into Domain`.
 
 ### Task 8: Users — `User` and `Session` rules

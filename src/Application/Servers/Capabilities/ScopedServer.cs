@@ -1,7 +1,7 @@
 using Basil.Application.Servers.Objects;
 using Basil.Application.Shared.Privileges;
 using Basil.Application.Users.Objects.Sessions;
-using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Servers.Capabilities;

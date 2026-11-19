@@ -1,4 +1,4 @@
-namespace Basil.Domain.Game.Users;
+namespace Basil.Domain.Users;
 
 public enum UserActivity : byte
 {

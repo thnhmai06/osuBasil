@@ -1,7 +1,7 @@
-using Basil.Domain.Game.Client;
+using Basil.Domain.Client;
 using Basil.Shared.Structures.Cryptography;
 
-namespace Basil.Domain.Game.Scores;
+namespace Basil.Domain.Scores;
 
 public sealed record Submission
 {

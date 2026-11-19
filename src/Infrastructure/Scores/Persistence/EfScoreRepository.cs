@@ -1,8 +1,8 @@
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Shared.Exceptions;
 using Basil.Application.Shared.Paging;
-using Basil.Domain.Game.Mechanics;
-using Basil.Domain.Game.Scores;
+using Basil.Domain.Mechanics;
+using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Persistence;
 using Basil.Shared.Structures.Cryptography;

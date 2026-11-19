@@ -191,7 +191,7 @@ the connection) is answered with the `RestartServer` packet, which makes the cli
 | Packet handlers            | [`PacketHandlers.cs`](../../src/Hosts/Stable/Packets/PacketHandlers.cs), [`PacketHandlers.Multiplayer.cs`](../../src/Hosts/Stable/Packets/PacketHandlers.Multiplayer.cs) |
 | Outgoing queue             | [`Outbox.cs`](../../src/Hosts/Stable/Support/Outbox.cs) |
 | Event delivery             | [`UserDelivery.cs`](../../src/Hosts/Stable/Delivery/UserDelivery.cs), [`ChatDelivery.cs`](../../src/Hosts/Stable/Delivery/ChatDelivery.cs), [`RoomDelivery.cs`](../../src/Hosts/Stable/Delivery/RoomDelivery.cs) |
-| Wire format                | [`src/Protocol/Stable`](../../src/Protocol/Stable) |
+| Wire format                | [`Basil.Protocol.Game.Stable`](../../Basil.Protocol.Game.Stable) |
 | Room runtime state         | [`Room.cs`](../../src/Application/Multiplayer/Objects/Rooms/Room.cs) |
 | Room race tests            | [`RoomConcurrencyTests.cs`](../../tests/Application/Multiplayer/Objects/Rooms/RoomConcurrencyTests.cs) |
 | Host tests                 | [`tests/Hosts/Stable`](../../tests/Hosts/Stable) |

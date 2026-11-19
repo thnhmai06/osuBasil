@@ -2,7 +2,7 @@ using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Services;
 using Basil.Application.Shared.Actors;
 using Basil.Application.Shared.Privileges;
-using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Beatmaps.Capabilities;
 

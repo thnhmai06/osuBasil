@@ -263,7 +263,7 @@ Tests are what verify the software for the owner, who reads the code only for pa
 * **Pin properties of computed values, not the number** (star rating, difficulty, length: valid, finite, monotone under a
   modifier). Pin the exact value only when the value is itself a contract (wire bytes, accuracy and grade of the
   ruleset, the score submission checksum) with hand-written input and output pairs, never a copy of the formula.
-* **Layout mirrors the sources.** One test project per source project (`tests/` tree = `src/` tree, `Basil.X.Tests`),
+* **Layout mirrors the sources.** One test project per source project (`tests/` tree = the project folders, `Basil.X.Tests`),
   folders inside mirror the feature folders; shared fixtures live in `tests/Support/Basil.Testing`; sample content in
   `tests/Assets`.
 * **A refusal test checks the outcome `Denied`** of the object's outcome enum (a refusal does not say which privileges
@@ -299,7 +299,7 @@ dotnet build --configuration Release
 Run Basil locally:
 
 ```bash
-dotnet run --project src/Basil
+dotnet run --project Basil
 ```
 
 Run every test project listed in `Basil.slnx`, one at a time; never pass the solution to `dotnet test`:
@@ -309,7 +309,7 @@ dotnet test tests/Domain -c Release --nologo -v q
 dotnet test tests/Application/Users -c Release --nologo -v q
 ```
 
-Run one test project (the test tree mirrors `src/`):
+Run one test project (the test tree mirrors the project folders):
 
 ```bash
 dotnet test tests/Application/Users
@@ -428,12 +428,11 @@ value is never renumbered for a client. `Basil.Protocol.Irc` wraps IRC the same 
 transport hosts reference Protocol; Application and Infrastructure never do. Protocol is the language the hosts use to
 translate the wire into the system's own messages and back; it does not validate and coordinates nothing.
 
-Projects live under `src/` in folders that mirror the solution folders under `/Sources/`, each named by
-its short name without `Basil.`: `src/Domain/`,
-`src/{Application,Infrastructure}/{Shared,<Module>}/`, `src/Hosts/{Host,Shared,Stable,Irc,Rest,Cli}/`,
-`src/Protocol/{Stable,Irc}/`. The project file and the namespace keep the full name
+Every project is a folder at the repository root named after its project: `src/Domain/Domain/`,
+`Basil.Application.<Module>/`, `Basil.Infrastructure.<Module>/`, `Basil.Host.{Shared,Stable,Irc,Rest,Cli}/`,
+`Basil.Protocol.{Game.Stable,Irc}/`. The project file and the namespace keep the full name
 (`Basil.Domain.csproj`, `Basil.Domain.*`, `Basil.Application.Users.Persistence`). Tests mirror the same tree under
-`tests/` (`tests/Application/Users/Basil.Application.Users.Tests.csproj` tests `src/Application/Users`;
+`tests/` (`tests/Application/Users/Basil.Application.Users.Tests.csproj` tests `Basil.Application.Users`;
 shared fixtures are under `tests/Support/`, and the tests that build the whole composition and run several hosts
 under `tests/Architecture/` and `tests/Hosts/`).
 
@@ -518,7 +517,7 @@ The detailed rules moved out of this file so each can be read when needed. **Rea
 
 * [`docs/for-agents/application-design.md`](docs/for-agents/application-design.md): Domain models, Application objects, capabilities (`ScopeTo`), contexts, events, channels, naming. Before touching `src/Domain`, `src/Application/*`, `src/Bot`.
 * [`docs/for-agents/identity-privileges.md`](docs/for-agents/identity-privileges.md): privileges, silence, hierarchy, sessions, BasilBot. Before touching users, connections, privileges or the bot.
-* [`docs/for-agents/persistence.md`](docs/for-agents/persistence.md): repositories, byte storages, the Registry / Repository (cache-aside) / Storage model, beatmapset storage. Before touching a repository, a storage or `src/Infrastructure/*` or `src/Infrastructure/Shared`.
+* [`docs/for-agents/persistence.md`](docs/for-agents/persistence.md): repositories, byte storages, the Registry / Repository (cache-aside) / Storage model, beatmapset storage. Before touching a repository, a storage or `src/Infrastructure/*` or `Basil.Infrastructure.Shared`.
 * [`docs/for-agents/code-style.md`](docs/for-agents/code-style.md): C# code style and IDE-suggestion rules. Before writing or reviewing C#.
 
 ### Important invariants

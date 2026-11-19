@@ -1,6 +1,6 @@
-using Basil.Domain.Game.Scores;
+using Basil.Domain.Scores;
 
-namespace Basil.Domain.Game.Spectating;
+namespace Basil.Domain.Spectating;
 
 public readonly record struct ScoreFrame(
 	TimeSpan Time,

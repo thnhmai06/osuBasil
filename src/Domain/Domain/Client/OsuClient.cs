@@ -1,3 +1,3 @@
-namespace Basil.Domain.Game.Client;
+namespace Basil.Domain.Client;
 
 public sealed record OsuClient(OsuVersion Version, OsuFingerprint Fingerprint);

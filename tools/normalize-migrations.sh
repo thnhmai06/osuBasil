@@ -29,10 +29,10 @@ find "$root" -name '*.cs' -print0 | while IFS= read -r -d '' file; do
 		s/\n\s*\.HasAnnotation\("Relational:MaxIdentifierLength", \d+\)//g;
 		s/^[^\n]*Npgsql[^\n]*\n//mg;
 		# Entity names written as types, not as strings.
-		s/"(Basil\.[A-Za-z0-9_.]+Row)"/typeof($1).FullName!/g;
+		s/"(src/Basil\.[A-Za-z0-9_.]+Row)"/typeof($1).FullName!/g;
 		s/"UsersPrincipal"/ContextModel.UsersTable/g;
 		s/"ScoresPrincipal"/ContextModel.ScoresTable/g;
-		if (/ContextModel\./ && !/using Basil\.Infrastructure\.Shared\.Persistence;/) {
+		if (/ContextModel\./ && !/using src/Basil\.Infrastructure\.Shared\.Persistence;/) {
 			s/(using System;\r?\n)/$1using Basil.Infrastructure.Shared.Persistence;\n/;
 		}
 	' "$file"

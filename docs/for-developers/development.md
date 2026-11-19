@@ -19,7 +19,7 @@ Clone the repository, start a PostgreSQL server and point Basil at it:
 git clone https://github.com/thnhmai06/osuBasil.git
 cd osuBasil
 docker run -d --name basil-pg -e POSTGRES_PASSWORD=basil -e POSTGRES_DB=basil -p 5432:5432 postgres:17-alpine
-dotnet run --project src/Basil -- --console 0
+dotnet run --project Basil -- --console 0
 ```
 
 The default connection string in
@@ -32,7 +32,7 @@ On the first run Basil creates its `Data/` directory next to the build output
 administrator with the console, which runs the command against the storage without starting the server:
 
 ```bash
-dotnet run --project src/Basil -- users create --username admin --password change-me --admin
+dotnet run --project Basil -- users create --username admin --password change-me --admin
 ```
 
 The console commands are specified in [`console.md`](../for-technicians/console.md). Without `--console 0` the server shows
@@ -159,7 +159,7 @@ connection. Forwarding headers (`X-Forwarded-For`, `X-Real-IP`) are honoured onl
 
 ## Run tests
 
-The test tree mirrors `src/`: one test project per source project, `tests/{Application,Infrastructure}/<Module>` for
+The test tree mirrors the project folders at the repository root: one test project per source project, `tests/{Application,Infrastructure}/<Module>` for
 the modules, `tests/Domain/`, `tests/Protocol/`, `tests/Hosts/<Host>` for the hosts, `tests/Architecture/`
 (the project graph, the host graph and the container check) and `tests/Support/` for the shared fixtures and simulated
 clients. Run the project you changed first:
@@ -187,7 +187,7 @@ development workflow.
 You can produce the same kind of self-contained output used by the release pipeline:
 
 ```bash
-dotnet publish src/Basil \
+dotnet publish Basil \
   -c Release \
   -r win-x64 \
   --self-contained true \

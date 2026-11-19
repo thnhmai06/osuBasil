@@ -2,7 +2,7 @@ using System.Globalization;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Authentication;
-using Basil.Domain.Game.Client;
+using Basil.Domain.Client;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Persistence;
 using Basil.Shared.Structures.Cryptography;

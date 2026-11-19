@@ -1,6 +1,6 @@
 using Basil.Application.Scores.Messages;
 using Basil.Application.Scores.Persistence;
-using Basil.Domain.Game.Scores;
+using Basil.Domain.Scores;
 using Mediator;
 
 namespace Basil.Infrastructure.Scores.Handlers;

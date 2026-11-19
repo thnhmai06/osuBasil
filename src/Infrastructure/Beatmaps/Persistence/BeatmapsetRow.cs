@@ -1,4 +1,4 @@
-using Basil.Domain.Game.Beatmaps;
+using Basil.Domain.Beatmaps;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

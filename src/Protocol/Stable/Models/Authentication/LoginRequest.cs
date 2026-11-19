@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Text;
-using Basil.Domain.Game.Client;
+using Basil.Domain.Client;
 using Basil.Protocol.Game.Stable.Models.Client;
 
 namespace Basil.Protocol.Game.Stable.Models.Authentication;

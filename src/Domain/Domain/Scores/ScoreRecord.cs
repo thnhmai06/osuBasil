@@ -1,8 +1,8 @@
-﻿using Basil.Domain.Game.Mechanics;
+﻿using Basil.Domain.Mechanics;
 using Basil.Shared.Structures.Cryptography;
 using Basil.Shared.Utilities;
 
-namespace Basil.Domain.Game.Scores;
+namespace Basil.Domain.Scores;
 
 public sealed class ScoreRecord : IEquatable<ScoreRecord>
 {

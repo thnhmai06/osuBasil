@@ -2,7 +2,7 @@ using System.Globalization;
 using Basil.Application.Shared.Exceptions;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Persistence;
-using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.EntityFrameworkCore;

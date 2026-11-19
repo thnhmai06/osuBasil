@@ -6,7 +6,7 @@ using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Servers.Messages.Channels;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Chat;
-using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using Basil.Domain.Multiplayer.Report.Matches;
 using Basil.Domain.Multiplayer.Report.Rounds;
 using Basil.Domain.Multiplayer.Room;

@@ -1,8 +1,8 @@
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Shared.Actors;
 using Basil.Application.Shared.Privileges;
-using Basil.Domain.Game.Beatmaps;
-using Basil.Domain.Game.Users;
+using Basil.Domain.Beatmaps;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Beatmaps.Capabilities;
 

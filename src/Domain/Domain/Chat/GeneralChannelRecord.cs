@@ -1,4 +1,4 @@
-﻿using Basil.Domain.Game.Users;
+﻿using Basil.Domain.Users;
 using Basil.Shared.Utilities;
 
 namespace Basil.Domain.Chat;

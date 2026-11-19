@@ -1,8 +1,8 @@
 using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Game.Mechanics;
-using Basil.Domain.Game.Scores;
+using Basil.Domain.Mechanics;
+using Basil.Domain.Scores;
 using Basil.Infrastructure.Beatmaps.Storage;
 using Basil.Shared.Structures.Cryptography;
 using Microsoft.Extensions.Logging;

@@ -1,4 +1,4 @@
-namespace Basil.Domain.Game.Scores;
+namespace Basil.Domain.Scores;
 
 public readonly record struct ScoreState(
 	HitCounts HitCounts,

@@ -1,7 +1,7 @@
 using Basil.Application.Bot.Commands;
 using Basil.Application.Bot.Commands.Mp;
 using Basil.Application.Multiplayer.Messages;
-using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer.Room;
 using Basil.Domain.Users;
 using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;

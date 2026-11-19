@@ -1,4 +1,4 @@
-namespace Basil.Domain.Game.Beatmaps;
+namespace Basil.Domain.Beatmaps;
 
 public enum BeatmapsetStatus : sbyte
 {

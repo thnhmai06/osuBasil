@@ -8,7 +8,7 @@ module="${1:?module, such as Users}"
 name="${2:?migration name}"
 cd "$(dirname "$0")/.."
 
-project="src/Infrastructure/Persistence"
+project="Basil.Infrastructure.Persistence"
 dotnet ef migrations add "$name" --project "$project" --startup-project "$project" \
 	--context "${module}DbContext" --output-dir "Migrations/${module}" \
 	--namespace "Basil.Infrastructure.Persistence.Migrations.${module}"

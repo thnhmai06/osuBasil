@@ -1,8 +1,8 @@
-using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Mechanics;
 
 // ReSharper disable InconsistentNaming
 
-namespace Basil.Domain.Game.Scores;
+namespace Basil.Domain.Scores;
 
 public readonly record struct HitCounts(int Num300, int Num100, int Num50, int NumGeki, int NumKatu, int NumMiss)
 {

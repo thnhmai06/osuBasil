@@ -4,7 +4,7 @@ using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Shared.Privileges;
 using Basil.Application.Users.Objects.Sessions;
-using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using Basil.Domain.Multiplayer.Report.Matches;
 using Basil.Domain.Multiplayer.Room;
 using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;

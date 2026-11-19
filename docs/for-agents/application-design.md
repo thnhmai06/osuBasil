@@ -1,6 +1,6 @@
 # Application design rules
 
-Rules for Domain and Application objects, capabilities, events and naming. Moved out of `AGENTS.md`; the rules are binding. Read this before touching `src/Domain`, `src/Application/*` or `src/Infrastructure/Bot`.
+Rules for Domain and Application objects, capabilities, events and naming. Moved out of `AGENTS.md`; the rules are binding. Read this before touching `src/Domain`, `src/Application/*` or `Basil.Infrastructure.Bot`.
 
 > **Migration status.** The target architecture ([`architecture.md`](../for-developers/architecture.md)) moves handlers, object-free logic and service implementations from `Basil.Application.<Module>` into `Basil.Infrastructure.<Module>`, makes hosts send Mediator messages instead of calling `ScopeTo`, and moves BasilBot into its own module. The handlers, the object-free logic and the service implementations are already in `Basil.Infrastructure.<Module>`; the contracts stay in Application. A rule below that mentions `Handlers/`, `Logic/` or `Workers/` means the folder of the module's Infrastructure project. Hosts still call `ScopeTo` for the modules not yet migrated. New code follows the target.
 

@@ -11,7 +11,7 @@ The client-facing wire contract is the generated OpenAPI page. This page explain
 
 Every live route has the same shape: a root owns some state (a player, a room, a match, the server), several clients
 watch it, and the state changes independently of those clients. Building one pipeline per route would duplicate
-bundling, backpressure, connection limits and shutdown. `Basil.Host.Rest/Sse/SseHub.cs` is that one pipeline.
+bundling, backpressure, connection limits and shutdown. `src/Hosts/Rest/Sse/SseHub.cs` is that one pipeline.
 
 ## How a stream works
 

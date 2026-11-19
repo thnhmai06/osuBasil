@@ -5,7 +5,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\Domain\Game\Basil.Domain.Game.csproj"/>
+		<ProjectReference Include="..\..\Domain\Domain\Basil.Domain.csproj"/>
 	</ItemGroup>
 
 </Project>

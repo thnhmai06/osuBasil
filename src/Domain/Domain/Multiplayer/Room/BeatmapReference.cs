@@ -1,5 +1,5 @@
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Mechanics;
 using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Domain.Multiplayer.Room;

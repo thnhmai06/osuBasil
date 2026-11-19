@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text.RegularExpressions;
-using Basil.Domain.Game.Client;
+using Basil.Domain.Client;
 
 namespace Basil.Protocol.Game.Stable.Models.Client;
 

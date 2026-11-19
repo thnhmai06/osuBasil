@@ -1,7 +1,7 @@
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Authentication;
-using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using Basil.Domain.Users;
 using User = Basil.Application.Users.Objects.User;
 

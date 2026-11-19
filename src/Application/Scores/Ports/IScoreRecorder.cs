@@ -1,6 +1,6 @@
 using Basil.Application.Scores.Persistence;
-using Basil.Domain.Game.Client;
-using Basil.Domain.Game.Scores;
+using Basil.Domain.Client;
+using Basil.Domain.Scores;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Scores.Ports;

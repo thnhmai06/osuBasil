@@ -1,5 +1,5 @@
 using System.Net;
-using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 
 namespace Basil.Host.Stable.Support;
 

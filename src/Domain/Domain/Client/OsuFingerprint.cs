@@ -1,7 +1,7 @@
 using Basil.Shared.Structures.Cryptography;
 using Basil.Shared.Utilities;
 
-namespace Basil.Domain.Game.Client;
+namespace Basil.Domain.Client;
 
 public readonly record struct OsuFingerprint(
 	Md5Hash PathHash,

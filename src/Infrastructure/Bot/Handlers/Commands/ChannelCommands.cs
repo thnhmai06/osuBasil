@@ -3,7 +3,7 @@ using Basil.Application.Chat.Registry;
 using Basil.Application.Servers.Messages.Channels;
 using Basil.Application.Servers.Objects;
 using Basil.Domain.Chat;
-using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using Mediator;
 
 namespace Basil.Infrastructure.Bot.Handlers.Commands;

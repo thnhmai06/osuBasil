@@ -2,7 +2,7 @@ using Basil.Application.Shared.Privileges;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using Basil.Domain.Users;
 using User = Basil.Application.Users.Objects.User;
 

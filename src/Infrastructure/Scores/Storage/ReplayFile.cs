@@ -1,9 +1,9 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
-using Basil.Domain.Game.Client;
-using Basil.Domain.Game.Mechanics;
-using Basil.Domain.Game.Scores;
+using Basil.Domain.Client;
+using Basil.Domain.Mechanics;
+using Basil.Domain.Scores;
 
 namespace Basil.Infrastructure.Scores.Storage;
 

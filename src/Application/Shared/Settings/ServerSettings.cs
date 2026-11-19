@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 using Basil.Domain.Content;
-using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using Basil.Shared.Utilities;
 
 namespace Basil.Application.Shared.Settings;

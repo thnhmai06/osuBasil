@@ -1,5 +1,5 @@
 using Basil.Application.Shared.Paging;
-using Basil.Domain.Game.Scores;
+using Basil.Domain.Scores;
 using Mediator;
 
 namespace Basil.Application.Scores.Messages;

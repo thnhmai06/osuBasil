@@ -1,4 +1,4 @@
-using Basil.Domain.Game.Spectating;
+using Basil.Domain.Spectating;
 using Basil.Protocol.Game.Stable.Models.Beatmaps;
 using Basil.Protocol.Game.Stable.Models.Multiplayer;
 using Basil.Protocol.Game.Stable.Wire.Binary;

@@ -11,7 +11,7 @@ every host references no Infrastructure and no other host. The real problems are
 ## Top 15 problems, most serious first
 
 ### 1. The IRC host writes user-visible text outside `IrcReplies` (AGENTS rule 9) - verified
-32 `session.Numeric(..., "literal")` calls in `src/Hosts/Irc` carry literals that are not in `IrcReplies`
+32 `session.Numeric(..., "literal")` calls in `Basil.Host.Irc` carry literals that are not in `IrcReplies`
 (`src/Hosts/Irc/Support/IrcReplies.cs`, 129 lines, which has the right idea for other strings). Examples:
 - `src/Hosts/Irc/Commands/IrcCommands.cs:208` `session.Numeric(IrcNumericReply.ErrNoMotd, "MOTD File is missing");`
 - `src/Hosts/Irc/Commands/IrcCommands.cs:362` `session.Numeric(IrcNumericReply.ErrSaslFail, "SASL authentication failed");`
@@ -94,10 +94,10 @@ smell from item 7. Not a defect today, a maintainability blocker for "clean insi
   `tests/Hosts/Cli/Dashboard/GroupFoldTests.cs:29,35` (`GetMethod("Fold", NonPublic)`, `GetField("_rows", NonPublic)`),
   `tests/Hosts/Cli/Dashboard/SmallPartsTests.cs:102,115` (`GetMethod("Relative"|"Matches", NonPublic)`).
 - Real sleeps: `tests/Hosts/Cli/Dashboard/ListPageTests.cs:44,49` `await Task.Delay(50, ...)` (twice, in a test that already has a fake clock);
-  `tests/Basil/EndToEnd/Streams.cs:21` `Task.Delay(50)`; `tests/Hosts/Rest/Sse/StreamHelpers.cs:13` `Task.Delay(100)`;
-  `tests/Basil/EndToEnd/ShutdownEndToEndTests.cs:176` `Task.Delay(20)`; `tests/Support/Basil.Testing.Clients/OsuClient.cs:131,148` 25 ms polling;
+  `tests/src/Basil/EndToEnd/Streams.cs:21` `Task.Delay(50)`; `tests/Hosts/Rest/Sse/StreamHelpers.cs:13` `Task.Delay(100)`;
+  `tests/src/Basil/EndToEnd/ShutdownEndToEndTests.cs:176` `Task.Delay(20)`; `tests/Support/Basil.Testing.Clients/OsuClient.cs:131,148` 25 ms polling;
   `tests/Support/Basil.Testing.Persistence/StoredRows.cs:114` 50 ms. (No `Thread.Sleep` anywhere.)
-- Sync-over-async / blocking: `tests/Basil/Configuration/ConfigurationWatcherTests.cs:41` `_watcher.StartAsync(...).GetAwaiter().GetResult();`, `tests/Basil/Logging/LogQueueTests.cs:53` `_release.Wait();`.
+- Sync-over-async / blocking: `tests/src/Basil/Configuration/ConfigurationWatcherTests.cs:41` `_watcher.StartAsync(...).GetAwaiter().GetResult();`, `tests/src/Basil/Logging/LogQueueTests.cs:53` `_release.Wait();`.
 - Log assertions (rule 8 says do not): `tests/Infrastructure/Bot/Replies/ReplyCatalogTests.cs:187-188` `Assert.Contains(Joined.Key, entry.Message)`, `:203` `Assert.Equal(LogLevel.Warning, ...)`.
 
 ### 9. Tests duplicate reply literals instead of the production constants - verified
@@ -105,7 +105,7 @@ Rule 8/9: "Tests reference those constants rather than duplicating literals." IR
 `IrcReplies` constants: "Password incorrect" (`tests/Hosts/Irc/Users/RegistrationTests.cs`, constant `IrcReplies.BadCredentials`),
 "Too many failed login" (same file, `IrcReplies.TooManyAttempts`), "No text to send" (`tests/Hosts/Irc/Chat/ChatTests.cs`),
 "End of /NAMES" (`ChannelTests.cs`, `QueryTests.cs`), "SASL authentication" (`tests/Hosts/Irc/Users/CapabilityTests.cs`,
-`tests/Basil/EndToEnd/IrcEndToEndTests.cs`, `tests/Support/Basil.Testing.Clients/IrcClient.cs`). CLI tests assert literals
+`tests/src/Basil/EndToEnd/IrcEndToEndTests.cs`, `tests/Support/Basil.Testing.Clients/IrcClient.cs`). CLI tests assert literals
 too (`tests/Hosts/Cli/Commands/ContentCommandTests.cs:272,274` "Sent to 0 clients.", "No such user: 999999"; `UserCommandTests.cs:44`).
 This is a consequence of problem 1: the strings have no constant to reference.
 
@@ -190,7 +190,7 @@ Every "(target)" claim checked:
 - Host calling `ScopeTo`: 0 hits in `src/Hosts` (verified). Host referencing Infrastructure: 0 (csproj and `using`). Host referencing another host: 0 (script over `using Basil.Host.*`). Rest/Cli referencing `Protocol.Stable`: 0.
 - Module Infrastructure referencing another module: 0 (csproj project references and `using Basil.Infrastructure.*`; only `Shared`, which is allowed). Application project references match the documented graph.
 - Application holding handlers/logic/workers: none (no `Handlers`/`Logic`/`Workers`/`Adapters` folder and no `INotificationHandler`/`BackgroundService` under `src/Application`). Note `src/Application/Bot/Commands/` holds `CommandCatalog`, `CommandContext`, replies (contracts); the command handlers are in `Infrastructure/Bot/Handlers/Commands`. Fine.
-- Type names as literals: `grep '"Basil\.'` finds only the `Meter` names (`"Basil.Multiplayer"` etc., 13 of them, and `AddMeter("Basil.*")` in `src/Basil/Logging/TelemetrySetup.cs:29`). These are telemetry names, not type names; acceptable.
+- Type names as literals: `grep '"src/Basil\.'` finds only the `Meter` names (`"Basil.Multiplayer"` etc., 13 of them, and `AddMeter("Basil.*")` in `src/Basil/Logging/TelemetrySetup.cs:29`). These are telemetry names, not type names; acceptable.
 - `Priv` abbreviation: none.
 - `await` under a room lock: none. `lock (_sync)` blocks in `Room.*.cs` are synchronous (the compiler forbids await); `Room.Enter()`, `User.Enter()`, `Channel.Enter()`, `Connection.EnterSpectators()` callers (`Lobby.cs:272`, `UserGrants/UserProfile/UserSessions/UserSilence`, `Connection.cs:182,212,229`) never await inside the scope (checked the files). `UserRegistry.AccountScope` is a `ref struct`, so it cannot cross an await.
 - Handler that waits: no handler class contains `Task.Delay`/`WaitAsync` (files with delays are workers, lifetime and tests). Handler serving several event types: see 3.
@@ -256,7 +256,7 @@ Per project (test attributes: `[Fact]`/`[Theory]` lines; theories count once eve
 | Architecture | 87 | 17 | - |
 Total about 3,333 `[Fact]/[Theory]`.
 
-Thin relative to source (likely gaps): `Hosts/Shared` (7 tests / 17 files; `OutcomeErrors.cs` 123 lines, `RoomCommands.cs` 203 lines, `AdmissionRefusals.cs`), `Application/Diagnostics` (10 / 15), `Application/Shared` (15 / 25; `ServerSettings.cs` 492 lines), `Application/Scores` (37 / 26 in 2 files), `Infrastructure/Servers` (28 / 22 in 2 files), `Infrastructure/Multiplayer` (105 / 69), `Infrastructure/Anticheat` (3), `Application/Content` (empty). There is no test project for `Basil.Infrastructure.Persistence` itself (migrations are covered by `tests/Basil/ModuleMigrationTests.cs`), none for `Application.Anticheat`/`Application.Authentication` (interfaces only).
+Thin relative to source (likely gaps): `Hosts/Shared` (7 tests / 17 files; `OutcomeErrors.cs` 123 lines, `RoomCommands.cs` 203 lines, `AdmissionRefusals.cs`), `Application/Diagnostics` (10 / 15), `Application/Shared` (15 / 25; `ServerSettings.cs` 492 lines), `Application/Scores` (37 / 26 in 2 files), `Infrastructure/Servers` (28 / 22 in 2 files), `Infrastructure/Multiplayer` (105 / 69), `Infrastructure/Anticheat` (3), `Application/Content` (empty). There is no test project for `Basil.Infrastructure.Persistence` itself (migrations are covered by `tests/src/Basil/ModuleMigrationTests.cs`), none for `Application.Anticheat`/`Application.Authentication` (interfaces only).
 
 Quality findings: see 8 and 9. Also `MemberData`/`Skip` use: no `Skip =` on a test. Known gaps listed by the owner in `migration-status.md` (kick/unban/team/removeref unknown-name tests; no load test) are still open.
 

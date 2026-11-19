@@ -1,5 +1,5 @@
 using Basil.Application.Users.Objects.Sessions;
-using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using Basil.Domain.Users;
 using Mediator;
 

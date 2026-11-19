@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace Basil.Domain.Game.Users;
+namespace Basil.Domain.Users;
 
 public enum Country : byte
 {

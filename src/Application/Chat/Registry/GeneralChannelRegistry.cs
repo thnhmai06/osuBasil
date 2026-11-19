@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Users.Objects.Sessions;
-using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Chat.Registry;
 

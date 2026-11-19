@@ -1,6 +1,6 @@
 using System.Drawing;
 
-namespace Basil.Domain.Game.Spectating;
+namespace Basil.Domain.Spectating;
 
 public readonly record struct ReplayFrame(KeyState Keys, TaikoDrumState Drum, PointF Position, TimeSpan Time);
 

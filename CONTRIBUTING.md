@@ -49,14 +49,15 @@ Follow that guide rather than creating an ad-hoc local setup.
 ## Project structure
 
 ```text
-src/
-    Domain/                      business model
-    Application/<Module>/        the module's ports and live objects
-    Infrastructure/<Module>/     the module's implementations
-    Protocol/{Stable,Irc}/       wire formats
-    Hosts/{Host,Shared,Stable,Irc,Rest,Cli}/
-                                 the entry point and the transports
-    Bot/                         BasilBot
+src/Domain/Domain/                    business model
+Basil.Application.<Module>/      the module's ports and live objects
+Basil.Infrastructure.<Module>/   the module's implementations
+Basil.Protocol.{Game.Stable,Irc}/ wire formats
+Basil.Host.{Shared,Stable,Irc,Rest,Cli}/
+                                 the transports
+src/Basil/                           the entry point
+src/Application/Bot/, src/Infrastructure/Bot/
+                                 BasilBot
 
 tests/
     one test project per source project, in the same folders,
@@ -100,8 +101,8 @@ The basic rule is:
 
 See [`docs/for-developers/testing.md`](docs/for-developers/testing.md) for the complete testing policy.
 
-Every source project has a test project of its own, and the folders under `tests/` mirror the ones under `src/` (for
-example `tests/Application/Users` tests `src/Application/Users`).
+Every source project has a test project of its own, and the folders under `tests/` mirror the project folders (for
+example `tests/Application/Users` tests `Basil.Application.Users`).
 
 During development, run the smallest relevant test project first:
 

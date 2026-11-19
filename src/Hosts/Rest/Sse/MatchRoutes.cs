@@ -2,7 +2,7 @@ using System.Text.Json;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Shared.Paging;
-using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer.Report.Matches;
 using Basil.Domain.Multiplayer.Report.Rounds;
 using Basil.Domain.Multiplayer.Room;

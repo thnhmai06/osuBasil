@@ -1,5 +1,5 @@
-using Basil.Domain.Game.Mechanics;
-using Basil.Domain.Game.Users;
+using Basil.Domain.Mechanics;
+using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Domain.Users;

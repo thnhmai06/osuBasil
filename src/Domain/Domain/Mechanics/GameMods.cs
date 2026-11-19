@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 
-namespace Basil.Domain.Game.Mechanics;
+namespace Basil.Domain.Mechanics;
 
 [Flags]
 public enum GameMods

@@ -1,5 +1,5 @@
 using System.Globalization;
-using Basil.Domain.Game.Client;
+using Basil.Domain.Client;
 
 namespace Basil.Protocol.Game.Stable.Models.Scores;
 

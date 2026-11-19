@@ -1,6 +1,6 @@
 using Basil.Application.Chat.Objects;
 using Basil.Application.Users.Objects.Sessions;
-using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using Basil.Host.Irc.Clients;
 using Basil.Host.Irc.Support;
 using Basil.Protocol.Irc.Models;

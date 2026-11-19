@@ -4,7 +4,7 @@ using Basil.Application.Scores.Persistence;
 using Basil.Application.Scores.Ports;
 using Basil.Application.Shared.Events;
 using Basil.Application.Users.Objects.Sessions;
-using Basil.Domain.Game.Scores;
+using Basil.Domain.Scores;
 
 namespace Basil.Application.Scores.Objects;
 

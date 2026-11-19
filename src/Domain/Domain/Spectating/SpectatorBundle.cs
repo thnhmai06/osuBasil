@@ -1,4 +1,4 @@
-namespace Basil.Domain.Game.Spectating;
+namespace Basil.Domain.Spectating;
 
 public sealed record SpectatorBundle(
 	SpectatorAction Action,

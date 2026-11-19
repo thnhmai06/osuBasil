@@ -1,4 +1,4 @@
-namespace Basil.Domain.Game.Client;
+namespace Basil.Domain.Client;
 
 [Flags]
 public enum OsuFlags : uint

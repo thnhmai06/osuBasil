@@ -1,5 +1,5 @@
 using Basil.Application.Users.Objects.Sessions;
-using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer.Room;
 using Basil.Domain.Users;
 using Mediator;

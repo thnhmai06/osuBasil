@@ -5,7 +5,7 @@ using Basil.Application.Beatmaps.Storage;
 using Basil.Application.Servers.Messages.Content;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Shared.Paging;
-using Basil.Domain.Game.Beatmaps;
+using Basil.Domain.Beatmaps;
 using Basil.Gateway.Limits;
 using Basil.Host.Rest.Http;
 using Basil.Host.Shared.Views;

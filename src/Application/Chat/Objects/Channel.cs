@@ -2,7 +2,7 @@ using Basil.Application.Chat.Capabilities;
 using Basil.Application.Chat.Objects.Events;
 using Basil.Domain.Authentication;
 using Basil.Domain.Chat;
-using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 using Basil.Domain.Users;
 using Basil.Shared.Structures.Data;
 using Session = Basil.Application.Users.Objects.Sessions.Session;

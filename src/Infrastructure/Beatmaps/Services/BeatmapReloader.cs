@@ -4,7 +4,7 @@ using Basil.Application.Beatmaps.Services;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Mechanics;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Beatmaps.Services;

@@ -1,5 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
-using Basil.Domain.Game.Client;
+using Basil.Domain.Client;
 using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Protocol.Game.Stable.Models.Client;

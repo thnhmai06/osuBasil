@@ -1,7 +1,7 @@
 using Basil.Application.Chat.Objects.Events;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Chat;
-using Basil.Domain.Game.Users;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Chat.Objects;
 

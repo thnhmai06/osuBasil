@@ -1,6 +1,6 @@
 using System.Drawing;
-using Basil.Domain.Game.Scores;
-using Basil.Domain.Game.Spectating;
+using Basil.Domain.Scores;
+using Basil.Domain.Spectating;
 using Basil.Protocol.Game.Stable.Models.Beatmaps;
 using Basil.Protocol.Game.Stable.Models.Chat;
 using Basil.Protocol.Game.Stable.Models.Multiplayer;
