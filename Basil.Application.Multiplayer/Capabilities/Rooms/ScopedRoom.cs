@@ -51,14 +51,14 @@ public readonly struct ScopedRoom
 			? RoomPrivileges.Creator
 			: global.Allows(UserPrivileges.Player)
 				? RoleGroups(room, actor)
-				: RoomPrivileges.None;
+				: RoomPrivileges.Viewer;
 
 		return (global, privileges);
 	}
 
 	private static RoomPrivileges RoleGroups(Room room, Session actor)
 	{
-		var privileges = RoomPrivileges.None;
+		var privileges = RoomPrivileges.Viewer;
 
 		// Player: seated StableSession
 		if (actor is StableSession stable && room.SlotOf(stable) is not null)
@@ -69,11 +69,11 @@ public readonly struct ScopedRoom
 			privileges |= RoomPrivileges.Host;
 
 		// Referee: managed by but not creator
-		if (room.Authority.IsManagedBy(actor.Record) && !Equals(room.Authority.Creator, actor.Record))
+		if (room.IsManagedBy(actor.Record) && !Equals(room.Creator, actor.Record))
 			privileges |= RoomPrivileges.Referee;
 
 		// Creator: creator equals
-		if (Equals(room.Authority.Creator, actor.Record))
+		if (Equals(room.Creator, actor.Record))
 			privileges |= RoomPrivileges.Creator;
 
 		return privileges;
@@ -85,7 +85,7 @@ public readonly struct ScopedRoom
 		if ((Privileges & allowed) != 0)
 			return null;
 
-		return !ManagesAnyRoom && RequireJoin() is { } cannotJoin ? cannotJoin : RoomActionResult.RoleDenied;
+		return RoomActionResult.Denied;
 	}
 
 	public bool Involves => Room.Involves(Actor, _global);

@@ -1,3 +1,4 @@
+using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Bot.Commands;
 using Basil.Application.Bot.Commands.Mp;
 using Basil.Application.Multiplayer.Messages;
@@ -30,7 +31,7 @@ internal sealed partial class MpCommands
 		}
 
 		var outcome = await sender.Send(new AddReferee(actor, room, UserReference.ById(target.Id)), ct);
-		if (outcome != RoomActionResult.Ok)
+		if (outcome != LobbyResult.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
@@ -59,7 +60,7 @@ internal sealed partial class MpCommands
 		}
 
 		var outcome = await sender.Send(new RemoveReferee(actor, room, UserReference.ById(target.Id)), ct);
-		if (outcome != RoomActionResult.Ok)
+		if (outcome != LobbyResult.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
@@ -72,13 +73,13 @@ internal sealed partial class MpCommands
 	private static async Task<bool> ListRefsAsync(CommandContext context, Room room,
 		CancellationToken ct)
 	{
-		if (room.Authority.Referees.Count == 0)
+		if (room.Referees.Count == 0)
 		{
 			await context.Reply(MpReplies.NoReferees, ct);
 			return true;
 		}
 
-		var lines = room.Authority.Referees
+		var lines = room.Referees
 			.Select(u => $"#{u.Id} {u.Value.Name}");
 		await context.Say(context.Replies.Text(MpReplies.MatchReferees) + "\n" + string.Join('\n', lines),
 			ct);

@@ -2,6 +2,7 @@ using Basil.Application.Bot.Commands;
 using Basil.Application.Bot.Commands.Mp;
 using Basil.Application.Bot.Replies;
 using Basil.Application.Multiplayer.Messages;
+using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer.Room;
 using Basil.Domain.Users;
@@ -22,7 +23,7 @@ internal sealed partial class MpCommands
 			replies.Text(MpReplies.SettingsRoomName, new { name = room.Settings.Name, room = room.Id }),
 			room.Settings.Beatmap is not { } beatmap
 				? replies.Text(MpReplies.SettingsBeatmapNotSelected)
-				: replies.Text(MpReplies.SettingsBeatmap, new { beatmap = beatmap.Id, name = beatmap.Name }),
+				: replies.Text(MpReplies.SettingsBeatmap, new { beatmap = beatmap.Id, name = beatmap.FullName }),
 			replies.Text(MpReplies.SettingsTeamMode,
 				new
 				{
@@ -33,7 +34,7 @@ internal sealed partial class MpCommands
 
 		if (ActiveModsLine(replies, room) is { } modsLine) lines.Add(modsLine);
 
-		var creator = room.Authority.Creator;
+		var creator = room.Creator;
 		lines.Add(replies.Text(MpReplies.SettingsCreator, new { id = creator.Id, name = creator.Value.Name }));
 
 		var occupied = room.Slots.Count(slot => slot.Player is not null);
@@ -65,7 +66,7 @@ internal sealed partial class MpCommands
 		bool showTeam)
 	{
 		var tags = new List<string>();
-		if (room.Authority.Host is not null && player.Equals(room.Authority.Host))
+		if (room.State.Members.Host is not null && player.Equals(room.State.Members.Host.Record))
 			tags.Add(replies.Text(MpReplies.HostTag));
 		if (slot.Mods is { } slotMods && slotMods != GameMods.NoMod) tags.Add(slotMods.ToString());
 		var tagText = tags.Count > 0
@@ -300,8 +301,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var reference = new BeatmapReference(beatmap.Hash, beatmap.Id, beatmap.FullName,
-			beatmap.Metadata.Difficulty.Mode, beatmap);
+		var reference = beatmap.Reference;
 		var outcome =
 			await sender.Send(
 				new ConfigureRoom(context.Actor, room,

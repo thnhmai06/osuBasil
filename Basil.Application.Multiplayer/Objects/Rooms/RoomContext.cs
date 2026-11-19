@@ -10,7 +10,7 @@ internal sealed record RoomContext(
 	TimeProvider Clock,
 	IEventPublisher<RoomEvent> Events,
 	IRoomLobbyPort Lobby,
-	RoomUsers Users,
+	RoomUserLookup Users,
 	ISettingsRepository Settings);
 
 internal interface IRoomLobbyPort

@@ -9,7 +9,7 @@ internal sealed class RoomPlayerBannedHandler(RoomChannels channels) : INotifica
 	public ValueTask Handle(RoomPlayerBanned @event, CancellationToken ct)
 	{
 		if (@event.Evicted is { } evicted && channels.Find(@event.Room) is { } channel &&
-		    !@event.Room.Authority.IsManagedBy(evicted.Record))
+		    !@event.Room.IsManagedBy(evicted.Record))
 			channel.ScopeTo(evicted).Part();
 
 		return ValueTask.CompletedTask;

@@ -1,6 +1,7 @@
 using Basil.Domain;
 using System.Globalization;
 using Basil.Application.Beatmaps.Objects;
+using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Scores.Objects;
 using Basil.Application.Servers.Objects;
 using Basil.Domain.Authentication;
@@ -96,14 +97,19 @@ public static class OutcomeErrors
 			},
 			RoomActionResult room => room switch
 			{
-				RoomActionResult.RoleDenied or RoomActionResult.IsManager or RoomActionResult.Blocked => ErrorKind.Forbidden,
-				RoomActionResult.WrongPassword => ErrorKind.WrongPassword,
-				RoomActionResult.NotFound => ErrorKind.NotFound,
+				RoomActionResult.IsManager => ErrorKind.Forbidden,
 				RoomActionResult.RoomClosed => ErrorKind.Gone,
-				RoomActionResult.Locked => ErrorKind.Locked,
 				RoomActionResult.SpeedModNotAllowed or RoomActionResult.NotFreemod or RoomActionResult.NoTeams =>
 					ErrorKind.Invalid,
 				_ => ErrorKind.Conflict
+			},
+			LobbyResult lobby => lobby switch
+			{
+				LobbyResult.Blocked => ErrorKind.Forbidden,
+				LobbyResult.WrongPassword => ErrorKind.WrongPassword,
+				LobbyResult.NotFound => ErrorKind.NotFound,
+				LobbyResult.Locked => ErrorKind.Locked,
+				_ => lobby.ToRoom() is { } room ? Describe(room).Kind : ErrorKind.Conflict
 			},
 			ChannelJoinResult channel => channel switch
 			{

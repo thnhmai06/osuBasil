@@ -1,14 +1,14 @@
+using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Messages;
-using Basil.Domain.Multiplayer.Room;
 using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-internal sealed class StopObservingRoomHandler : IRequestHandler<StopObservingRoom, RoomActionResult>
+internal sealed class StopObservingRoomHandler : IRequestHandler<StopObservingRoom, LobbyResult>
 {
-	public ValueTask<RoomActionResult> Handle(StopObservingRoom request, CancellationToken ct)
+	public ValueTask<LobbyResult> Handle(StopObservingRoom request, CancellationToken ct)
 	{
-		return new ValueTask<RoomActionResult>(
+		return new ValueTask<LobbyResult>(
 			request.Room.ScopeTo(request.Actor).Members.ObserverLeaveAsync());
 	}
 }

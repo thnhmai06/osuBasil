@@ -12,6 +12,7 @@ namespace Basil.Application.Multiplayer.Objects.Rooms;
 
 public sealed partial class Room : IEquatable<Room>
 {
+	private readonly Lock _lock = new();
 	private readonly ConcurrentDictionary<UserRecord, StableSession> _seats = new();
 
 	private ITimer? _timer;
@@ -19,8 +20,9 @@ public sealed partial class Room : IEquatable<Room>
 
 	internal Room(int id, MatchRecord match, MatchSettings settings, RoomContext context, string password = "")
 	{
-		State = new DomainRoom(id, match, settings, password);
-		Members = new RoomMembers(State.Banned);
+		Id = id;
+		State = new DomainRoom(match, settings, password);
+		Members = new RoomMembers(State.Members.Banned);
 		Context = context;
 	}
 
@@ -30,13 +32,20 @@ public sealed partial class Room : IEquatable<Room>
 
 	public MatchRecord Match => State.Match;
 
-	public int Id => State.Id;
+	public int Id { get; }
 
 	public RoomSlots Slots => State.Slots;
 
 	public RoomSettings Settings => State.Settings;
 
-	public RoomAuthority Authority => State.Authority;
+	public UserRecord Creator => State.Members.Creator.Record;
+
+	public IReadOnlyCollection<UserRecord> Referees => [.. State.Members.Referees.Select(referee => referee.Record)];
+
+	public bool IsManagedBy(UserRecord user)
+	{
+		return State.Members.Find(user)?.Has(RoomPrivileges.Moderators) is true;
+	}
 
 	public RoomMembers Members { get; }
 
@@ -44,7 +53,7 @@ public sealed partial class Room : IEquatable<Room>
 
 	public bool IsClosed => State.IsClosed;
 
-	public StableSession? Host => Authority.Host is { } host ? SessionOf(host) : null;
+	public StableSession? Host => State.Members.Host is { } host ? SessionOf(host.Record) : null;
 
 	public IEnumerable<StableSession> Players => Slots.Select(PlayerAt).OfType<StableSession>();
 
@@ -85,12 +94,12 @@ public sealed partial class Room : IEquatable<Room>
 
 	internal Lock.Scope Enter()
 	{
-		return State.Enter();
+		return _lock.EnterScope();
 	}
 
 	internal void MarkClosed()
 	{
-		State.Close();
+		State.Close(Now);
 	}
 
 	private UserRecord? Seated(StableSession player)
@@ -113,9 +122,6 @@ public sealed partial class Room : IEquatable<Room>
 	private void Emit(RoomEvent @event)
 	{
 		Context.Events.Publish(@event);
-		if (!Rounds.TakeSettlePending()) return;
-
-		SettleRound();
 	}
 
 	public override bool Equals(object? obj)

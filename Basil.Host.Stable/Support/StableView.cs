@@ -40,17 +40,17 @@ internal static class StableView
 		var client = user.Stable;
 		writer.UserPresence(user.Record.Id, user.Record.Value.Name, client?.UtcOffset ?? 0,
 			(int)user.Record.Value.Country, Privileges(user.EffectivePrivileges(now)),
-			(int)(client?.Status.Detail?.GameMode ?? GameMode.Standard), 0, 0, stats.Rank);
+			(int)(client?.Status.Detail?.Mode ?? GameMode.Standard), 0, 0, stats.Rank);
 	}
 
 	public static void WriteStats(PacketWriter writer, User user, UserStats stats)
 	{
 		var status = user.Stable?.Status ?? new UserStatus();
 		var detail = status.Detail;
-		writer.UserStats(user.Record.Id, (int)status.Activity, detail?.BeatmapFullName ?? string.Empty,
-			detail?.BeatmapHash.ToString() ?? string.Empty,
-			(int)(detail?.GameMods ?? GameMods.NoMod), (int)(detail?.GameMode ?? GameMode.Standard),
-			detail?.BeatmapId ?? 0,
+		writer.UserStats(user.Record.Id, (int)status.Activity, detail?.BeatmapReference.FullName ?? string.Empty,
+			detail?.BeatmapReference.Hash.ToString() ?? string.Empty,
+			(int)(detail?.Mods ?? GameMods.NoMod), (int)(detail?.Mode ?? GameMode.Standard),
+			detail?.BeatmapReference.Id ?? 0,
 			stats.RankedScore,
 			UserStats.Accuracy, stats.PlayCount, stats.TotalScore, stats.Rank, UserStats.Pp);
 	}
@@ -63,9 +63,9 @@ internal static class StableView
 		var beatmap = room.Settings.Beatmap;
 		return new RoomPacket(room.Id, room.Rounds.InProgress, (int)room.Settings.MatchSettings.Mods,
 			room.Settings.Name,
-			room.Settings.Password, beatmap?.Name ?? string.Empty, beatmap?.Id ?? 0,
+			room.Settings.Password, beatmap?.FullName ?? string.Empty, beatmap?.Id ?? 0,
 			beatmap?.Hash.ToString() ?? string.Empty,
-			slots, room.Authority.Host?.Id ?? RoomPacket.NoHostId,
+			slots, room.State.Members.Host?.Record.Id ?? RoomPacket.NoHostId,
 			(int)room.Settings.MatchSettings.Mode,
 			(int)room.Settings.MatchSettings.WinCondition,
 			(int)room.Settings.MatchSettings.TeamType,

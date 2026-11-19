@@ -1,3 +1,4 @@
+using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Users;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Multiplayer.Room;
@@ -13,20 +14,20 @@ public readonly struct ScopedRoomAuthority
 		_scoped = scoped;
 	}
 
-	public async Task<RoomActionResult> AddRefereeAsync(UserReference user)
+	public async Task<LobbyResult> AddRefereeAsync(UserReference user)
 	{
-		if (_scoped.Require(RoomPrivileges.Creator) is { } denied) return denied;
+		if (_scoped.Require(RoomPrivileges.Creator) is { } denied) return denied.ToLobby();
 		return await _scoped.Room.Context.Users.FindAsync(user) is { } record
-			? _scoped.Room.AddReferee(_scoped.Actor.Record, record)
-			: RoomActionResult.NotFound;
+			? _scoped.Room.AddReferee(_scoped.Actor.Record, record).ToLobby()
+			: LobbyResult.NotFound;
 	}
 
-	public async Task<RoomActionResult> RemoveRefereeAsync(UserReference user)
+	public async Task<LobbyResult> RemoveRefereeAsync(UserReference user)
 	{
-		if (_scoped.Require(RoomPrivileges.Creator) is { } denied) return denied;
+		if (_scoped.Require(RoomPrivileges.Creator) is { } denied) return denied.ToLobby();
 		return await _scoped.Room.Context.Users.FindAsync(user) is { } record
-			? _scoped.Room.RemoveReferee(_scoped.Actor.Record, record)
-			: RoomActionResult.NotFound;
+			? _scoped.Room.RemoveReferee(_scoped.Actor.Record, record).ToLobby()
+			: LobbyResult.NotFound;
 	}
 
 	public Task<RoomActionResult> SetHostAsync(StableSession? host)

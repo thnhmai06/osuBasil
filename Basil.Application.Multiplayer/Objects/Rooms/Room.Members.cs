@@ -10,13 +10,13 @@ public sealed partial class Room
 {
 	internal bool Involves(UserRecord user)
 	{
-		return Authority.IsManagedBy(user) || Slots.Find(user) is not null;
+		return IsManagedBy(user) || Slots.Find(user) is not null;
 	}
 
-	internal RoomActionResult JoinClaiming(StableSession actor, string password, bool managesAnyRoom)
+	internal LobbyResult JoinClaiming(StableSession actor, string password, bool managesAnyRoom)
 	{
 		var lobby = Context.Lobby;
-		if (!lobby.TryClaim(actor, this)) return RoomActionResult.InAnotherRoom;
+		if (!lobby.TryClaim(actor, this)) return LobbyResult.InAnotherRoom;
 
 		try
 		{
@@ -28,14 +28,14 @@ public sealed partial class Room
 		}
 	}
 
-	internal RoomActionResult Join(StableSession actor, string password, bool managesAnyRoom)
+	internal LobbyResult Join(StableSession actor, string password, bool managesAnyRoom)
 	{
-		using (State.Enter())
+		using (Enter())
 		{
-			if (IsClosed) return RoomActionResult.RoomClosed;
+			if (IsClosed) return LobbyResult.RoomClosed;
 
 			var stale = SessionOf(actor.Record);
-			if (stale is not null && (ReferenceEquals(stale, actor) || stale.IsOpen)) return RoomActionResult.AlreadySeated;
+			if (stale is not null && (ReferenceEquals(stale, actor) || stale.IsOpen)) return LobbyResult.AlreadySeated;
 
 			if (JoinRefusal(actor, password, managesAnyRoom) is { } refusal) return refusal;
 
@@ -43,20 +43,20 @@ public sealed partial class Room
 		}
 	}
 
-	private RoomActionResult? JoinRefusal(StableSession actor, string password, bool managesAnyRoom)
+	private LobbyResult? JoinRefusal(StableSession actor, string password, bool managesAnyRoom)
 	{
-		if (Members.Banned.Contains(actor.Record)) return RoomActionResult.Banned;
+		if (Members.Banned.Contains(actor.Record)) return LobbyResult.Banned;
 
-		if (RoomOf(actor) is { } other && !ReferenceEquals(other, this)) return RoomActionResult.InAnotherRoom;
-		if (Members.Observers.Any(observer => observer.Record.Equals(actor.Record))) return RoomActionResult.IsObserver;
-		if (State.IsWrongPassword(password, managesAnyRoom)) return RoomActionResult.WrongPassword;
+		if (RoomOf(actor) is { } other && !ReferenceEquals(other, this)) return LobbyResult.InAnotherRoom;
+		if (Members.Observers.Any(observer => observer.Record.Equals(actor.Record))) return LobbyResult.IsObserver;
+		if (!managesAnyRoom && !State.Settings.PasswordMatches(password)) return LobbyResult.WrongPassword;
 
 		return null;
 	}
 
 	internal RoomActionResult Leave(StableSession actor)
 	{
-		using (State.Enter())
+		using (Enter())
 		{
 			return IsClosed ? RoomActionResult.RoomClosed : LeaveSeat(actor);
 		}
@@ -64,14 +64,15 @@ public sealed partial class Room
 
 	internal RoomActionResult Kick(UserRecord actor, UserRecord player)
 	{
-		using (State.Enter())
+		using (Enter())
 		{
 			var seated = SessionOf(player);
-			var (outcome, slot, progress) = State.Kick(player, Now);
+			var (outcome, slot, progress) = State.Members.Kick(State.Members.Of(player), Now);
 			if (outcome is not RoomActionResult.Ok) return outcome;
 
 			Unseat(player);
 			Emit(new RoomPlayerKicked(this, actor, seated!, slot, Host, progress));
+			if (progress is { Completed: true }) SettleRound();
 			ReportIfEmpty();
 			return RoomActionResult.Ok;
 		}
@@ -79,13 +80,14 @@ public sealed partial class Room
 
 	internal RoomActionResult Ban(UserRecord actor, UserRecord player)
 	{
-		using (State.Enter())
+		using (Enter())
 		{
-			var (outcome, added, vacated, progress) = State.Ban(player, Now);
+			var (outcome, added, vacated, progress) = State.Members.Ban(State.Members.Of(player), Now);
 			if (outcome is not RoomActionResult.Ok || !added) return outcome;
 
 			var evicted = vacated is null ? null : Unseat(player);
 			Emit(new RoomPlayerBanned(this, actor, player, vacated, evicted, Host, progress));
+			if (progress is { Completed: true }) SettleRound();
 			if (evicted is not null) ReportIfEmpty();
 
 			return RoomActionResult.Ok;
@@ -94,55 +96,58 @@ public sealed partial class Room
 
 	internal RoomActionResult Unban(UserRecord player)
 	{
-		using (State.Enter())
+		using (Enter())
 		{
-			var outcome = State.Unban(player);
+			var outcome = State.Members.Unban(State.Members.Of(player));
 			if (outcome is RoomActionResult.Ok) Emit(new RoomPlayerUnbanned(this, player));
 			return outcome;
 		}
 	}
 
-	internal RoomActionResult Invite(UserRecord actor, User target)
+	internal LobbyResult Invite(UserRecord actor, User target)
 	{
-		using (State.Enter())
+		using (Enter())
 		{
-			if (IsClosed) return RoomActionResult.RoomClosed;
-			if (!target.Connections.Any(connection => connection.IsOpen)) return RoomActionResult.TargetOffline;
-			if (Slots.Find(target.Record) is not null) return RoomActionResult.AlreadyInRoom;
+			if (IsClosed) return LobbyResult.RoomClosed;
+			if (!target.Connections.Any(connection => connection.IsOpen)) return LobbyResult.TargetOffline;
+			if (Slots.Find(target.Record) is not null) return LobbyResult.AlreadyInRoom;
 
 			Emit(new RoomPlayerInvited(this, actor, target.Record));
-			return RoomActionResult.Ok;
+			return LobbyResult.Ok;
 		}
 	}
 
-	internal RoomActionResult ObserverJoin(TourneySession actor)
+	internal LobbyResult ObserverJoin(TourneySession actor)
 	{
-		using (State.Enter())
+		using (Enter())
 		{
-			if (IsClosed) return RoomActionResult.RoomClosed;
-			if (Slots.Find(actor.Record) is not null) return RoomActionResult.IsPlayer;
-			if (!Members.MutableObservers.Add(actor)) return RoomActionResult.Ok;
+			if (IsClosed) return LobbyResult.RoomClosed;
+			if (Slots.Find(actor.Record) is not null) return LobbyResult.IsPlayer;
+			if (!Members.MutableObservers.Add(actor)) return LobbyResult.Ok;
 
+			State.Members.Add(State.Members.Of(actor.Record));
 			Emit(new RoomObserverJoined(this, actor));
-			return RoomActionResult.Ok;
+			return LobbyResult.Ok;
 		}
 	}
 
-	internal RoomActionResult ObserverLeave(TourneySession actor)
+	internal LobbyResult ObserverLeave(TourneySession actor)
 	{
-		using (State.Enter())
+		using (Enter())
 		{
-			if (IsClosed) return RoomActionResult.RoomClosed;
-			if (!Members.MutableObservers.Remove(actor)) return RoomActionResult.NotObserver;
+			if (IsClosed) return LobbyResult.RoomClosed;
+			if (!Members.MutableObservers.Remove(actor)) return LobbyResult.NotObserver;
 
+			if (!Members.Observers.Any(observer => observer.Record.Equals(actor.Record)))
+				State.Members.Remove(State.Members.Of(actor.Record));
 			Emit(new RoomObserverLeft(this, actor));
-			return RoomActionResult.Ok;
+			return LobbyResult.Ok;
 		}
 	}
 
 	internal RoomActionResult Close(UserRecord? actor)
 	{
-		using (State.Enter())
+		using (Enter())
 		{
 			if (!IsClosed) Context.Lobby.Close(this, actor);
 			return RoomActionResult.Ok;

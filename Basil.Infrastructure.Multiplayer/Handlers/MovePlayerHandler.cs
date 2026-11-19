@@ -1,14 +1,14 @@
+using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Messages;
-using Basil.Domain.Multiplayer.Room;
 using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-internal sealed class MovePlayerHandler : IRequestHandler<MovePlayer, RoomActionResult>
+internal sealed class MovePlayerHandler : IRequestHandler<MovePlayer, LobbyResult>
 {
-	public ValueTask<RoomActionResult> Handle(MovePlayer request, CancellationToken ct)
+	public ValueTask<LobbyResult> Handle(MovePlayer request, CancellationToken ct)
 	{
-		return new ValueTask<RoomActionResult>(
+		return new ValueTask<LobbyResult>(
 			request.Room.ScopeTo(request.Actor).Slots.MoveAsync(request.Player, request.Index));
 	}
 }

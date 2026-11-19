@@ -10,9 +10,9 @@ public sealed partial class Room
 {
 	internal RoomActionResult ReceiveScore(ScoreRecord score, UserRecord player)
 	{
-		using (State.Enter())
+		using (Enter())
 		{
-			var (outcome, settlement, roundScore) = State.ReceiveScore(score, player);
+			var (outcome, settlement, roundScore) = State.Rounds.ReceiveScore(score, player);
 			if (outcome is not RoomActionResult.Ok) return outcome;
 
 			Context.Events.Publish(new RoomRoundScoreSubmitted(this, settlement!.Round, player, roundScore!.Value));
@@ -23,9 +23,9 @@ public sealed partial class Room
 
 	internal bool AwaitsScore(UserRecord player, Md5Hash beatmap)
 	{
-		using (State.Enter())
+		using (Enter())
 		{
-			return State.AwaitsScore(player, beatmap);
+			return State.Rounds.AwaitsScore(player, beatmap);
 		}
 	}
 
@@ -50,13 +50,13 @@ public sealed partial class Room
 
 	internal void DecideForClosing()
 	{
-		Publish(State.DecideForClosing());
+		Publish(State.Rounds.DecideForClosing());
 		SyncTimer();
 	}
 
 	private void DecideAfterWait(RoundSettlement settlement)
 	{
-		using (State.Enter())
+		using (Enter())
 		{
 			if (IsClosed || settlement.Closed) return;
 
@@ -66,7 +66,7 @@ public sealed partial class Room
 
 	private void Decide(RoundSettlement settlement)
 	{
-		var decision = Domain.Multiplayer.Room.Room.Decide(settlement);
+		var decision = Domain.Multiplayer.Room.RoomRounds.Decide(settlement);
 		SyncTimer();
 		Publish(decision);
 	}

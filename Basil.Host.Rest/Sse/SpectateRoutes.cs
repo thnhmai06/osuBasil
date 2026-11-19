@@ -60,10 +60,10 @@ internal static class SpectateRoutes
 	{
 		return new
 		{
-			activity = status.Activity, text = status.Detail?.BeatmapFullName ?? string.Empty,
-			beatmapId = status.Detail?.BeatmapId,
-			mods = (status.Detail?.GameMods ?? GameMods.NoMod).ToString(),
-			mode = status.Detail?.GameMode ?? GameMode.Standard
+			activity = status.Activity, text = status.Detail?.BeatmapReference.FullName ?? string.Empty,
+			beatmapId = status.Detail?.BeatmapReference.Id,
+			mods = (status.Detail?.Mods ?? GameMods.NoMod).ToString(),
+			mode = status.Detail?.Mode ?? GameMode.Standard
 		};
 	}
 

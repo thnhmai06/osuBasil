@@ -15,4 +15,4 @@ public sealed record OpenRoom(
 	bool IsPrivate,
 	MatchSettings? Settings = null) : IRequest<OpenedRoom>;
 
-public sealed record OpenedRoom(Room? Room, RoomActionResult Result);
+public sealed record OpenedRoom(Room? Room, LobbyResult Result);

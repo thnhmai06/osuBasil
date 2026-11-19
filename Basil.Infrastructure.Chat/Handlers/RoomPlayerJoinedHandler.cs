@@ -11,7 +11,7 @@ internal sealed class RoomPlayerJoinedHandler(RoomChannels channels) : INotifica
 		if (@event.Room.IsClosed || channels.Find(@event.Room) is not { } channel)
 			return ValueTask.CompletedTask;
 
-		if (@event.Replaced is { } replaced && !@event.Room.Authority.IsManagedBy(replaced.Record))
+		if (@event.Replaced is { } replaced && !@event.Room.IsManagedBy(replaced.Record))
 			channel.ScopeTo(replaced).Part();
 		channel.ScopeTo(@event.Player).Join();
 		return ValueTask.CompletedTask;

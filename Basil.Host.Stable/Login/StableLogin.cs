@@ -126,7 +126,7 @@ internal sealed class StableLogin(
 		var others = new List<(User User, UserStats Stats)>();
 		foreach (var other in registry.Online.Values.Where(other => !ReferenceEquals(other, user)))
 			others.Add((other, await sender.Send(new GetUserStats(other,
-				other.Stable?.Status.Detail?.GameMode ?? GameMode.Standard), ct)));
+				other.Stable?.Status.Detail?.Mode ?? GameMode.Standard), ct)));
 
 		var welcome = Outbox.Build(writer =>
 		{

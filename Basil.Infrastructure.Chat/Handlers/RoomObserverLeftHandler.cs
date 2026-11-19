@@ -8,7 +8,7 @@ internal sealed class RoomObserverLeftHandler(RoomChannels channels) : INotifica
 {
 	public ValueTask Handle(RoomObserverLeft @event, CancellationToken ct)
 	{
-		if (channels.Find(@event.Room) is { } channel && !@event.Room.Authority.IsManagedBy(@event.Observer.Record))
+		if (channels.Find(@event.Room) is { } channel && !@event.Room.IsManagedBy(@event.Observer.Record))
 			channel.ScopeTo(@event.Observer).Part();
 
 		return ValueTask.CompletedTask;

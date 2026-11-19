@@ -31,7 +31,7 @@ public readonly struct ScopedLobby
 
 	public Lobby Lobby { get; }
 
-	public async Task<(Room? Room, RoomActionResult Result)> OpenRoomAsync(
+	public async Task<(Room? Room, LobbyResult Result)> OpenRoomAsync(
 		string name,
 		string password,
 		RoomSource source,
@@ -48,19 +48,19 @@ public readonly struct ScopedLobby
 			settings);
 	}
 
-	private async Task<RoomActionResult?> OpenRefusalAsync(RoomSource source, CancellationToken ct = default)
+	private async Task<LobbyResult?> OpenRefusalAsync(RoomSource source, CancellationToken ct = default)
 	{
 		var required = source is RoomSource.Api
 			? UserPrivileges.Player
 			: UserPrivileges.Player | UserPrivileges.Player;
-		if (Lacks(required)) return RoomActionResult.Denied;
+		if (Lacks(required)) return LobbyResult.Denied;
 
 		if (await Lobby.IsRoomCreationLockedAsync(ct) &&
 		    Lacks(UserPrivileges.Tournament))
-			return RoomActionResult.Locked;
+			return LobbyResult.Locked;
 
 		var limited = Lacks(UserPrivileges.Tournament);
-		if (limited && Lobby.TooManyRooms(Actor.Record)) return RoomActionResult.TooManyRooms;
+		if (limited && Lobby.TooManyRooms(Actor.Record)) return LobbyResult.TooManyRooms;
 
 		return null;
 	}

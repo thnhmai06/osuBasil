@@ -2,6 +2,7 @@ using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Users.Objects.Sessions;
+using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer.Report.Matches;
 using Basil.Domain.Multiplayer.Room;
@@ -64,7 +65,7 @@ internal sealed partial class PacketHandlers
 		var matchSettings = SettingsOf(match);
 		var (room, result) = await sender.Send(
 			new OpenRoom(osu, match.Name, match.Password, RoomSource.Game, false, matchSettings), ct);
-		if (room is null || result != RoomActionResult.Ok)
+		if (room is null || result != LobbyResult.Ok)
 		{
 			outbox.Send(osu, writer => writer.MatchJoinFail());
 			return;
@@ -80,7 +81,7 @@ internal sealed partial class PacketHandlers
 		var result = lobby.Find(request.MatchId) is { IsClosed: false } room
 			? await sender.Send(new JoinRoom(osu, room, request.Password), ct)
 			: default;
-		if (result != RoomActionResult.Ok) outbox.Send(osu, writer => writer.MatchJoinFail());
+		if (result != LobbyResult.Ok) outbox.Send(osu, writer => writer.MatchJoinFail());
 	}
 
 	private static MatchSettings SettingsOf(RoomStatePacket match)
@@ -100,14 +101,14 @@ internal sealed partial class PacketHandlers
 
 	private Task<RoomSettingsChange>? BeatmapOf(RoomStatePacket match)
 	{
-		return match.MapMd5.Length == 32 && ModeOf(match) is { } mode ? BuildAsync(mode) : null;
+		return match.MapMd5.Length == 32 && ModeOf(match) is not null ? BuildAsync() : null;
 
-		async Task<RoomSettingsChange> BuildAsync(GameMode mode)
+		async Task<RoomSettingsChange> BuildAsync()
 		{
 			var hash = new Md5Hash(match.MapMd5);
 			var known = await sender.Send(new FindBeatmapByHash(hash));
 			return new RoomSettingsChange(
-				Beatmap: new BeatmapReference(hash, match.MapId, match.MapName, mode, known));
+				Beatmap: new BeatmapReference(hash, match.MapId, match.MapName, known));
 		}
 	}
 
@@ -141,7 +142,7 @@ internal sealed partial class PacketHandlers
 
 	private Task TransferHostAsync(StableSession osu, Room room, int slot, CancellationToken ct)
 	{
-		return room.Slots.At(slot) is { } target && room.PlayerAt(target) is { } player
+		return room.Slots.FirstOrDefault(candidate => candidate.Index == slot) is { } target && room.PlayerAt(target) is { } player
 			? Ask(new SetRoomHost(osu, room, player), ct)
 			: Task.CompletedTask;
 	}

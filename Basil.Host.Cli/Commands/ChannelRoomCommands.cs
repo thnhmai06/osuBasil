@@ -214,7 +214,7 @@ internal static class ChannelRoomCommands
 		var (room, result) = await call.Get<ISender>().Send(new OpenRoom(await call.ByAsync(),
 			RoomCommands.Truncate(call.Required("name")), call.Text("password") ?? string.Empty, RoomSource.Api,
 			call.Bool("private") ?? false), call.CancellationToken);
-		if (result != RoomActionResult.Ok) return call.Refuse(result);
+		if (result != LobbyResult.Ok) return call.Refuse(result);
 
 		call.Output.Ok($"Opened room {room!.Id}.");
 		return ExitCodes.Success;

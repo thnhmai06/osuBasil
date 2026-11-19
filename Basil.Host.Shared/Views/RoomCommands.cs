@@ -1,8 +1,10 @@
 using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Multiplayer.Messages;
+using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Users;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;
+using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer.Room;
 using Mediator;
@@ -38,7 +40,12 @@ public sealed record PrivateRequest(bool Private);
 
 public readonly record struct RoomCall(ISender Sender, Session Actor, Room Room)
 {
-	public Task<RoomActionResult> Ask(IRequest<RoomActionResult> request, CancellationToken ct)
+	public async Task<LobbyResult> Ask(IRequest<RoomActionResult> request, CancellationToken ct)
+	{
+		return (await Sender.Send(request, ct)).ToLobby();
+	}
+
+	public Task<LobbyResult> Ask(IRequest<LobbyResult> request, CancellationToken ct)
 	{
 		return Sender.Send(request, ct).AsTask();
 	}
@@ -48,7 +55,7 @@ public sealed record RoomCommand(
 	string Name,
 	string Summary,
 	Type? Body,
-	Func<RoomCall, object?, IServiceProvider, CancellationToken, Task<RoomActionResult>> Run);
+	Func<RoomCall, object?, IServiceProvider, CancellationToken, Task<LobbyResult>> Run);
 
 public static class RoomCommands
 {
@@ -96,7 +103,7 @@ public static class RoomCommands
 			var host = OnlineUser(s, b.User)?.Stable;
 			return host is { IsOpen: true }
 				? r.Ask(new SetRoomHost(r.Actor, r.Room, host), ct)
-				: Refuse(RoomActionResult.TargetOffline);
+				: Refuse(LobbyResult.TargetOffline);
 		}),
 		Command<object?>("clearhost", "Remove the host of the room.",
 			(r, _, _, ct) => r.Ask(new SetRoomHost(r.Actor, r.Room, null), ct)),
@@ -109,7 +116,7 @@ public static class RoomCommands
 		Command<UserRequest>("invite", "Invite an online player to the room.", (r, b, s, ct) =>
 			OnlineUser(s, b.User) is { } target
 				? r.Ask(new InvitePlayer(r.Actor, r.Room, target), ct)
-				: Refuse(RoomActionResult.TargetOffline)),
+				: Refuse(LobbyResult.TargetOffline)),
 		Command<UserRequest>("addref", "Add a player as a referee.",
 			(r, b, _, ct) => r.Ask(new AddReferee(r.Actor, r.Room, UserReference.ById(b.User)), ct)),
 		Command<UserRequest>("removeref", "Remove a referee of the room.",
@@ -132,32 +139,30 @@ public static class RoomCommands
 	}
 
 	private static RoomCommand Command<TBody>(string name, string summary,
-		Func<RoomCall, TBody, IServiceProvider, CancellationToken, Task<RoomActionResult>> run)
+		Func<RoomCall, TBody, IServiceProvider, CancellationToken, Task<LobbyResult>> run)
 	{
 		return new RoomCommand(name, summary, typeof(TBody) == typeof(object) ? null : typeof(TBody),
 			(room, body, services, ct) => run(room, (TBody)body!, services, ct));
 	}
 
-	private static Task<RoomActionResult> Refuse(RoomActionResult outcome)
+	private static Task<LobbyResult> Refuse(LobbyResult outcome)
 	{
 		return Task.FromResult(outcome);
 	}
 
-	private static Task<RoomActionResult> Countdown(RoomCall room, int seconds, bool startsRound,
+	private static Task<LobbyResult> Countdown(RoomCall room, int seconds, bool startsRound,
 		CancellationToken ct)
 	{
 		return room.Ask(new StartRoomCountdown(room.Actor, room.Room, TimeSpan.FromSeconds(seconds), startsRound), ct);
 	}
 
-	private static async Task<RoomActionResult> MapAsync(RoomCall room, MapRequest body, IServiceProvider services,
+	private static async Task<LobbyResult> MapAsync(RoomCall room, MapRequest body, IServiceProvider services,
 		CancellationToken ct)
 	{
 		var beatmap = await services.GetRequiredService<ISender>().Send(new FindBeatmap(body.Beatmap), ct);
-		if (beatmap is null) return RoomActionResult.NoBeatmap;
+		if (beatmap is null) return LobbyResult.NoBeatmap;
 
-		var reference = new BeatmapReference(beatmap.Hash, beatmap.Id, beatmap.FullName,
-			beatmap.Metadata.Difficulty.Mode,
-			beatmap);
+		var reference = beatmap.Reference;
 		return await room.Ask(new ConfigureRoom(room.Actor, room.Room,
 			new RoomSettingsChange(Beatmap: reference, Mode: body.Mode ?? beatmap.Metadata.Difficulty.Mode)), ct);
 	}

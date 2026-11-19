@@ -468,10 +468,10 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		if (_current.StartsWith("#mp_") && int.TryParse(_current[4..], out var id) &&
 		    _services.GetRequiredService<Lobby>().Rooms.TryGetValue(id, out var room))
 		{
-			var host = room.Authority.Host;
-			referees.Add(new MemberItem(room.Authority.Creator.Value.Name, string.Empty,
-				(ulong)room.Authority.Creator.Value.Privileges));
-			referees.AddRange(room.Authority.Referees.ToArray()
+			var host = room.State.Members.Host?.Record;
+			referees.Add(new MemberItem(room.Creator.Value.Name, string.Empty,
+				(ulong)room.Creator.Value.Privileges));
+			referees.AddRange(room.Referees.ToArray()
 				.Select(r => new MemberItem(r.Value.Name, string.Empty, (ulong)r.Value.Privileges)));
 			foreach (var slot in room.Slots)
 			{

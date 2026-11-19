@@ -1,14 +1,14 @@
+using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Messages;
-using Basil.Domain.Multiplayer.Room;
 using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-internal sealed class KickPlayerHandler : IRequestHandler<KickPlayer, RoomActionResult>
+internal sealed class KickPlayerHandler : IRequestHandler<KickPlayer, LobbyResult>
 {
-	public ValueTask<RoomActionResult> Handle(KickPlayer request, CancellationToken ct)
+	public ValueTask<LobbyResult> Handle(KickPlayer request, CancellationToken ct)
 	{
-		return new ValueTask<RoomActionResult>(
+		return new ValueTask<LobbyResult>(
 			request.Room.ScopeTo(request.Actor).Members.KickAsync(request.Player));
 	}
 }

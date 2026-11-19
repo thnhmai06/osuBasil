@@ -4,12 +4,12 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer.Objects.Rooms;
 
-internal sealed class RoomUsers
+internal sealed class RoomUserLookup
 {
 	private readonly IRelationshipRepository _relationships;
 	private readonly IUserRepository _users;
 
-	internal RoomUsers(IRelationshipRepository relationships, IUserRepository users)
+	internal RoomUserLookup(IRelationshipRepository relationships, IUserRepository users)
 	{
 		_relationships = relationships;
 		_users = users;

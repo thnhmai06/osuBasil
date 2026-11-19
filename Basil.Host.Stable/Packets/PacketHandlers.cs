@@ -7,6 +7,7 @@ using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
+using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 using Basil.Gateway.Admission;
@@ -118,14 +119,8 @@ internal sealed partial class PacketHandlers(
 		{
 			Activity = activity,
 			Detail = hash is { } beatmapHash
-				? new UserStatusDetail
-				{
-					BeatmapHash = beatmapHash,
-					BeatmapFullName = action.InfoText,
-					BeatmapId = action.MapId == 0 ? null : action.MapId,
-					GameMode = mode,
-					GameMods = WireMap.Mods(action.Mods)
-				}
+				? new UserStatusDetail(new BeatmapReference(beatmapHash, action.MapId, action.InfoText, null), mode,
+					WireMap.Mods(action.Mods))
 				: null
 		};
 		await sender.Send(new SetPlayerStatus(osu, status), ct);
@@ -137,7 +132,7 @@ internal sealed partial class PacketHandlers(
 
 		var stats = new List<UserStats>();
 		foreach (var user in wanted)
-			stats.Add(await sender.Send(new GetUserStats(user, user.Stable?.Status.Detail?.GameMode ?? GameMode.Standard),
+			stats.Add(await sender.Send(new GetUserStats(user, user.Stable?.Status.Detail?.Mode ?? GameMode.Standard),
 				ct));
 		outbox.Send(actor, writer =>
 		{
@@ -153,7 +148,7 @@ internal sealed partial class PacketHandlers(
 		var now = clock.GetUtcNow();
 		var stats = new List<UserStats>();
 		foreach (var user in wanted)
-			stats.Add(await sender.Send(new GetUserStats(user, user.Stable?.Status.Detail?.GameMode ?? GameMode.Standard),
+			stats.Add(await sender.Send(new GetUserStats(user, user.Stable?.Status.Detail?.Mode ?? GameMode.Standard),
 				ct));
 		outbox.Send(actor, writer =>
 		{

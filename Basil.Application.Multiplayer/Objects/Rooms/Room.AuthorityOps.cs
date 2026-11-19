@@ -9,9 +9,9 @@ public sealed partial class Room
 {
 	internal RoomActionResult AddReferee(UserRecord actor, UserRecord user)
 	{
-		using (State.Enter())
+		using (Enter())
 		{
-			var outcome = State.AddReferee(user);
+			var outcome = State.Members.AddReferee(State.Members.Of(user));
 			if (outcome is RoomActionResult.Ok) Emit(new RoomRefereeAdded(this, actor, user));
 			return outcome;
 		}
@@ -19,9 +19,9 @@ public sealed partial class Room
 
 	internal RoomActionResult RemoveReferee(UserRecord actor, UserRecord user)
 	{
-		using (State.Enter())
+		using (Enter())
 		{
-			var outcome = State.RemoveReferee(user);
+			var outcome = State.Members.RemoveReferee(State.Members.Of(user));
 			if (outcome is RoomActionResult.Ok) Emit(new RoomRefereeRemoved(this, actor, user));
 			return outcome;
 		}
@@ -29,14 +29,14 @@ public sealed partial class Room
 
 	internal RoomActionResult SetHost(UserRecord actor, StableSession? host)
 	{
-		using (State.Enter())
+		using (Enter())
 		{
 			if (host is not null && Seated(host) is null)
 				return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotInRoom;
 
 			var record = host?.Record;
 
-			var (outcome, changed) = State.SetHost(record);
+			var (outcome, changed) = State.Members.SetHost(record is null ? null : State.Members.Of(record));
 			if (changed) Emit(new RoomHostChanged(this, actor, host));
 			return outcome;
 		}

@@ -73,8 +73,8 @@ public sealed record RoomQuery(
 			: room.Slots.Locked ? RoomStatus.Locked
 			: RoomStatus.Open;
 		return (Text is null || room.Settings.Name.Contains(Text, StringComparison.OrdinalIgnoreCase))
-		       && (Host is null || (room.Authority.Host is { } host && Names(host, Host)))
-		       && (Creator is null || Names(room.Authority.Creator, Creator))
+		       && (Host is null || (room.State.Members.Host is { } host && Names(host.Record, Host)))
+		       && (Creator is null || Names(room.Creator, Creator))
 		       && (Player is null || room.Slots.Any(slot => slot.Player is { } seated && Names(seated, Player)))
 		       && (Status is null || Status == status)
 		       && (Mode is null || Mode == room.Settings.MatchSettings.Mode)

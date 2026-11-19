@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 
 namespace Basil.Shared.Structures.Data;
 
-public sealed class ConcurrentSet<T> : ISet<T>, IReadOnlySet<T> where T : notnull
+public class ConcurrentSet<T> : ISet<T>, IReadOnlySet<T> where T : notnull
 {
 	private const byte Present = 0;
 	private readonly ConcurrentDictionary<T, byte> _items = new();

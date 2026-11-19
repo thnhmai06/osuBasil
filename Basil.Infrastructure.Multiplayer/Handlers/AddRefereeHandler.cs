@@ -1,14 +1,14 @@
+using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Messages;
-using Basil.Domain.Multiplayer.Room;
 using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-internal sealed class AddRefereeHandler : IRequestHandler<AddReferee, RoomActionResult>
+internal sealed class AddRefereeHandler : IRequestHandler<AddReferee, LobbyResult>
 {
-	public ValueTask<RoomActionResult> Handle(AddReferee request, CancellationToken ct)
+	public ValueTask<LobbyResult> Handle(AddReferee request, CancellationToken ct)
 	{
-		return new ValueTask<RoomActionResult>(
+		return new ValueTask<LobbyResult>(
 			request.Room.ScopeTo(request.Actor).Authority.AddRefereeAsync(request.User));
 	}
 }

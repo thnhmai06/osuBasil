@@ -130,7 +130,7 @@ public sealed class DashboardSampler(IServiceProvider services, DashboardModel m
 			.. lobby.Rooms.Values.OrderBy(room => room.Id).Select(room => new RoomRow(room.Id, room.Settings.Name,
 				room.Slots.Count(slot => slot.Player is not null), room.Slots.Count(slot => !slot.Locked),
 				room.Rounds.InProgress ? "playing" : room.Slots.Locked ? "locked" : "waiting",
-				room.Authority.Host?.Value.Name ?? "-",
+				room.State.Members.Host?.Record.Value.Name ?? "-",
 				[
 					.. room.Slots.Select(slot => new SlotRow(slot.Index, slot.Player?.Value.Name ?? "-",
 						slot.Locked ? "locked" : slot.Status?.ToString() ?? "open"))

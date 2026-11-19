@@ -1,4 +1,5 @@
 using Basil.Application.Bot.Replies;
+using Basil.Application.Multiplayer.Objects;
 using Basil.Domain.Multiplayer.Room;
 
 namespace Basil.Application.Bot.Commands.Mp;
@@ -309,36 +310,50 @@ internal static class MpReplies
 			: replies.Text(Of(result), new { outcome = result.ToString() });
 	}
 
+	public static string Describe(IReplies replies, LobbyResult result)
+	{
+		return result == LobbyResult.Denied
+			? replies.Text(MissingPrivileges)
+			: replies.Text(Of(result), new { outcome = result.ToString() });
+	}
+
+	public static Reply Of(LobbyResult outcome)
+	{
+		return outcome switch
+		{
+			LobbyResult.AlreadySeated => AlreadyInThisMatch,
+			LobbyResult.InAnotherRoom => TargetInAnotherMatch,
+			LobbyResult.WrongPassword => IncorrectPassword,
+			LobbyResult.IsObserver => TargetIsObserver,
+			LobbyResult.TargetOffline => TargetNotOnline,
+			LobbyResult.Blocked => CannotInvite,
+			LobbyResult.NotFound => UserNotFound,
+			LobbyResult.AlreadyInRoom => UserAlreadyInRoom,
+			LobbyResult.IsPlayer => TargetIsPlayer,
+			LobbyResult.NotObserver => TargetNotObserver,
+			LobbyResult.TooManyRooms => RoomLimitReached,
+			LobbyResult.NoRoomId => NoMatchesAvailable,
+			LobbyResult.Locked => RoomsLocked,
+			_ => outcome.ToRoom() is { } room ? Of(room) : GenericFailed
+		};
+	}
+
 	public static Reply Of(RoomActionResult outcome)
 	{
 		return outcome switch
 		{
 			RoomActionResult.Denied => MissingPrivileges,
-			RoomActionResult.RoleDenied => NotAuthorizedInMatch,
-			RoomActionResult.AlreadySeated => AlreadyInThisMatch,
 			RoomActionResult.Banned => BannedFromMatch,
-			RoomActionResult.InAnotherRoom => TargetInAnotherMatch,
-			RoomActionResult.WrongPassword => IncorrectPassword,
 			RoomActionResult.Full => MatchIsFull,
-			RoomActionResult.IsObserver => TargetIsObserver,
 			RoomActionResult.NotInRoom => TargetNotInMatch,
 			RoomActionResult.IsManager => TargetIsManager,
 			RoomActionResult.NotBanned => TargetNotBanned,
-			RoomActionResult.TargetOffline => TargetNotOnline,
-			RoomActionResult.Blocked => CannotInvite,
-			RoomActionResult.NotFound => UserNotFound,
-			RoomActionResult.AlreadyInRoom => UserAlreadyInRoom,
 			RoomActionResult.TooManyReferees => RefereeLimitReached,
 			RoomActionResult.AlreadyReferee => TargetAlreadyReferee,
 			RoomActionResult.NotReferee => TargetNotReferee,
 			RoomActionResult.IsCreator => TargetIsCreator,
-			RoomActionResult.IsPlayer => TargetIsPlayer,
-			RoomActionResult.NotObserver => TargetNotObserver,
-			RoomActionResult.TooManyRooms => RoomLimitReached,
-			RoomActionResult.NoRoomId => NoMatchesAvailable,
 			RoomActionResult.SlotNotOpen => DestinationSlotNotOpen,
 			RoomActionResult.RoomLocked => MatchIsLocked,
-			RoomActionResult.Locked => RoomsLocked,
 			RoomActionResult.InProgress => MatchAlreadyInProgress,
 			RoomActionResult.OwnSlot => OwnSlotLocked,
 			RoomActionResult.NoTeams => MatchHasNoTeams,

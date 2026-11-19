@@ -73,7 +73,7 @@ internal sealed class UsersSource(IServiceProvider services, TimeProvider clock)
 				? $"#{id}"
 				: string.Empty;
 		var managed = string.Join(", ", lobby.Rooms.Values
-			.Where(r => r.Authority.Creator.Id == record.Id || r.Authority.Referees.Any(x => x.Id == record.Id))
+			.Where(r => r.Creator.Id == record.Id || r.Referees.Any(x => x.Id == record.Id))
 			.Select(r => $"#{r.Id}"));
 		return new UserItem(record.Id, record.Value.Name, record.Value.Country.ToAcronym().ToUpperInvariant(),
 			((UserPrivileges)mask).ToString(), mask,

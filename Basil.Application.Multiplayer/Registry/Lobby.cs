@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Basil.Application.Multiplayer.Capabilities;
+using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Multiplayer.Persistence;
@@ -166,13 +167,12 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 		RoomOccupied(room);
 		if (room.IsClosed) return;
 
-		var aborted = room.EndCurrentRound(true);
+		var aborted = room.AbortCurrentRound();
 		room.DecideForClosing();
 
 		var evicted = room.Players.ToList();
 		foreach (var player in evicted) room.Vacate(player);
 
-		room.Match.Value.EndedAt = Context.Clock.GetUtcNow();
 		room.Members.MutableObservers.Clear();
 		room.MarkClosed();
 		Remove(room);
@@ -221,7 +221,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 
 	internal bool TooManyRooms(UserRecord creator)
 	{
-		return _rooms.Count(pair => creator.Equals(pair.Value.Authority.Creator)) >= MaxRoomsPerCreator;
+		return _rooms.Count(pair => creator.Equals(pair.Value.Creator)) >= MaxRoomsPerCreator;
 	}
 
 	internal async Task<bool> IsRoomCreationLockedAsync(CancellationToken ct = default)
@@ -229,23 +229,23 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 		return (await Context.Settings.GetAsync(ct)).Locks.HasFlag(Locks.Rooms);
 	}
 
-	internal async Task<(Room? Room, RoomActionResult Outcome)> OpenRoomAsync(UserRecord creator, StableSession? seat,
+	internal async Task<(Room? Room, LobbyResult Outcome)> OpenRoomAsync(UserRecord creator, StableSession? seat,
 		bool seatsFromGame, string name, string password, bool isPrivate, MatchSettings? settings)
 	{
 		var now = Context.Clock.GetUtcNow();
-		if (seatsFromGame && RoomOf(seat!) is not null) return (null, RoomActionResult.AlreadyInRoom);
+		if (seatsFromGame && RoomOf(seat!) is not null) return (null, LobbyResult.AlreadyInRoom);
 
 		if (!MatchData.IsValidName(name)) throw new InvalidRoomSettingsException();
 
 		// ponytail: two concurrent opens by one creator can both pass the room limit; count reservations per creator if that matters.
-		if (Reserve() is not { } id) return (null, RoomActionResult.NoRoomId);
+		if (Reserve() is not { } id) return (null, LobbyResult.NoRoomId);
 
 		var match = await CreateMatchAsync(id, name, creator, isPrivate, now);
 		var room = Establish(id, match, settings, password, seat);
 
 		var closesAt = !room.Slots.Any(slot => slot.Player is not null) ? StartEmptyClock(room) : (DateTimeOffset?)null;
 		Context.Events.Publish(new LobbyRoomOpened(room, room.Host, closesAt));
-		return (room, RoomActionResult.Ok);
+		return (room, LobbyResult.Ok);
 	}
 
 	private async Task<MatchRecord> CreateMatchAsync(int id, string name, UserRecord creator, bool isPrivate,
@@ -305,8 +305,8 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 
 	internal static void SeatCreator(Room room, StableSession creator)
 	{
-		if (room.Seat(creator) is null) return;
-		room.State.SetHost(creator.Record);
+		if (room.Seat(creator).Slot is null) return;
+		room.State.Members.SetHost(room.State.Members.Of(creator.Record));
 	}
 
 	public Task ReleaseAsync(Session connection)

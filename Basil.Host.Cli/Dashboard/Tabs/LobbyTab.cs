@@ -50,13 +50,13 @@ internal sealed class LobbySource(IServiceProvider services) : IListSource<RoomI
 		var open = new List<RoomItem>();
 		foreach (var room in found.Items)
 		{
-			var host = room.Authority.Host;
+			var host = room.State.Members.Host?.Record;
 			open.Add(new RoomItem(room.Id, room.Settings.Name, room.Slots.Count(slot => slot.Player is not null),
 				room.Slots.Count(slot => !slot.Locked),
 				room.Rounds.InProgress ? "playing" : room.Slots.Locked ? "locked" : "waiting",
-				host?.Value.Name ?? string.Empty, room.Authority.Creator.Value.Name,
-				string.Join(", ", room.Authority.Referees.Select(referee => referee.Value.Name)),
-				host is null ? 0UL : (ulong)host.Value.Privileges, (ulong)room.Authority.Creator.Value.Privileges, true,
+				host?.Value.Name ?? string.Empty, room.Creator.Value.Name,
+				string.Join(", ", room.Referees.Select(referee => referee.Value.Name)),
+				host is null ? 0UL : (ulong)host.Value.Privileges, (ulong)room.Creator.Value.Privileges, true,
 				room.Slots.Locked,
 				[
 					.. room.Slots.Where(slot => slot.Player is not null).Select(slot => (slot.Index,
@@ -64,7 +64,7 @@ internal sealed class LobbySource(IServiceProvider services) : IListSource<RoomI
 						slot.Status?.ToString() ?? "open"))
 				],
 				new RoomRules(room.Settings.IsPrivate, room.Settings.Password.Length > 0,
-					room.Settings.Beatmap?.Name ?? string.Empty, room.Settings.MatchSettings.Mode.ToString(),
+					room.Settings.Beatmap?.FullName ?? string.Empty, room.Settings.MatchSettings.Mode.ToString(),
 					room.Settings.MatchSettings.Mods.ToString(), room.Settings.MatchSettings.Freemods,
 					room.Settings.MatchSettings.TeamType.ToString(),
 					room.Settings.MatchSettings.WinCondition.ToString()),

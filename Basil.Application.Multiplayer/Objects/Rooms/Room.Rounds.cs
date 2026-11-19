@@ -18,16 +18,11 @@ public sealed partial class Room
 		}
 	}
 
-	internal Round? EndCurrentRound(bool aborted)
+	internal Round? AbortCurrentRound()
 	{
-		var round = State.EndCurrentRound(aborted, Now);
+		var round = State.Rounds.AbortRound(Now).Round;
 		SyncTimer();
 		return round;
-	}
-
-	internal RoomRoundProgress? AdvanceRound()
-	{
-		return State.AdvanceRound(Now);
 	}
 
 	private void SyncTimer()

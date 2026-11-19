@@ -10,11 +10,11 @@ public sealed partial class Room
 {
 	internal RoomActionResult ChangeSlot(StableSession stable, int index)
 	{
-		using (State.Enter())
+		using (Enter())
 		{
 			if (Seated(stable) is not { } player) return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotInRoom;
 
-			var (outcome, move) = State.ChangeSlot(player, index);
+			var (outcome, move) = State.Slots.ChangeSlot(player, index);
 			if (move is { } moved) Emit(new RoomPlayerMoved(this, stable, moved.From, moved.To));
 			return outcome;
 		}
@@ -22,9 +22,9 @@ public sealed partial class Room
 
 	internal RoomActionResult MovePlayer(UserRecord player, int index)
 	{
-		using (State.Enter())
+		using (Enter())
 		{
-			var (outcome, move) = State.MovePlayer(player, index);
+			var (outcome, move) = State.Slots.MovePlayer(player, index);
 			if (move is { } moved) Emit(new RoomPlayerMoved(this, SessionOf(player)!, moved.From, moved.To));
 			return outcome;
 		}
@@ -32,9 +32,9 @@ public sealed partial class Room
 
 	internal RoomActionResult ArrangeSlots(IReadOnlyList<SlotArrangement> arrangement)
 	{
-		using (State.Enter())
+		using (Enter())
 		{
-			var outcome = State.ArrangeSlots(arrangement);
+			var outcome = State.Slots.ArrangeSlots(arrangement);
 			if (outcome is RoomActionResult.Ok) Emit(new RoomSlotsArranged(this));
 			return outcome;
 		}
@@ -42,11 +42,11 @@ public sealed partial class Room
 
 	internal RoomActionResult SetReady(StableSession stable, bool ready)
 	{
-		using (State.Enter())
+		using (Enter())
 		{
 			if (Seated(stable) is not { } player) return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotInRoom;
 
-			var (outcome, changed) = State.SetReady(player, ready);
+			var (outcome, changed) = State.Slots.SetReady(player, ready);
 			if (changed is { } slot)
 				Emit(new RoomSlotStatusChanged(this, slot, ready ? RoomSlotStatus.Ready : RoomSlotStatus.NotReady));
 			return outcome;
@@ -55,11 +55,11 @@ public sealed partial class Room
 
 	internal RoomActionResult SetHasMap(StableSession stable, bool has)
 	{
-		using (State.Enter())
+		using (Enter())
 		{
 			if (Seated(stable) is not { } player) return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotInRoom;
 
-			var (outcome, changed) = State.SetHasMap(player, has);
+			var (outcome, changed) = State.Slots.SetHasMap(player, has);
 			if (changed is { } slot)
 				Emit(new RoomSlotStatusChanged(this, slot, has ? RoomSlotStatus.NotReady : RoomSlotStatus.NoMap));
 			return outcome;
@@ -68,11 +68,11 @@ public sealed partial class Room
 
 	internal RoomActionResult ToggleTeam(StableSession stable)
 	{
-		using (State.Enter())
+		using (Enter())
 		{
 			if (Seated(stable) is not { } player) return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotInRoom;
 
-			var (outcome, slot, team) = State.ToggleTeam(player);
+			var (outcome, slot, team) = State.Slots.ToggleTeam(player);
 			if (outcome is RoomActionResult.Ok) Emit(new RoomSlotTeamChanged(this, slot, team));
 			return outcome;
 		}
@@ -80,9 +80,9 @@ public sealed partial class Room
 
 	internal RoomActionResult SetTeam(UserRecord player, GameTeam team)
 	{
-		using (State.Enter())
+		using (Enter())
 		{
-			var (outcome, changed) = State.SetTeam(player, team);
+			var (outcome, changed) = State.Slots.SetTeam(player, team);
 			if (changed is { } slot) Emit(new RoomSlotTeamChanged(this, slot, team));
 			return outcome;
 		}
@@ -90,11 +90,11 @@ public sealed partial class Room
 
 	internal RoomActionResult SetMods(StableSession stable, GameMods mods)
 	{
-		using (State.Enter())
+		using (Enter())
 		{
 			if (Seated(stable) is not { } player) return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotInRoom;
 
-			var (outcome, changed) = State.SetMods(player, mods);
+			var (outcome, changed) = State.Slots.SetMods(player, mods);
 			if (changed is { } slot) Emit(new RoomSlotModsChanged(this, slot, mods));
 			return outcome;
 		}
@@ -102,13 +102,14 @@ public sealed partial class Room
 
 	internal RoomActionResult ToggleSlotLock(Session actor, int index)
 	{
-		using (State.Enter())
+		using (Enter())
 		{
-			var (outcome, slot, locking, evicted, progress) = State.LockSlot(PlayerOf(actor), index, Now);
+			var (outcome, slot, locking, evicted, progress) = State.Slots.LockSlot(PlayerOf(actor), index, Now);
 			if (outcome is not RoomActionResult.Ok) return outcome;
 
 			var session = evicted is null ? null : Unseat(evicted);
 			Emit(new RoomSlotLockChanged(this, slot, locking, session, Host, progress));
+			if (progress is { Completed: true }) SettleRound();
 
 			if (session is not null) ReportIfEmpty();
 

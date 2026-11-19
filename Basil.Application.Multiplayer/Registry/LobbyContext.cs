@@ -15,4 +15,4 @@ internal sealed record LobbyContext(
 	IUserRepository UserRepository,
 	ISettingsRepository Settings,
 	IEventPublisher<RoomEvent> RoomEvents,
-	RoomUsers Users);
+	RoomUserLookup Users);

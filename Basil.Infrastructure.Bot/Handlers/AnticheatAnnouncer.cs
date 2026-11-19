@@ -38,9 +38,9 @@ internal sealed class AnticheatAnnouncer(
 
 	private async Task WhisperStaffAsync(Room room, string text, CancellationToken ct)
 	{
-		await WhisperIfOnlineAsync(room.Authority.Creator);
+		await WhisperIfOnlineAsync(room.Creator);
 
-		foreach (var referee in room.Authority.Referees)
+		foreach (var referee in room.Referees)
 			await WhisperIfOnlineAsync(referee);
 		return;
 

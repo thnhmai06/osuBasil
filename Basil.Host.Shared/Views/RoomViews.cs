@@ -36,12 +36,12 @@ public sealed record RoomView(
 {
 	public static RoomView Of(Room room)
 	{
-		var host = room.Authority.Host;
+		var host = room.State.Members.Host?.Record;
 		var settings = room.Settings.MatchSettings;
 		return new RoomView(room.Id, room.Match.Id, room.Settings.Name, room.Settings.IsPrivate,
 			room.Settings.Password.Length > 0, room.Slots.Locked, room.Rounds.InProgress,
-			UserRef.Of(room.Authority.Creator),
-			host is null ? null : UserRef.Of(host), [.. room.Authority.Referees.Select(UserRef.Of)],
+			UserRef.Of(room.Creator),
+			host is null ? null : UserRef.Of(host), [.. room.Referees.Select(UserRef.Of)],
 			[.. room.Members.Banned.Select(UserRef.Of)], room.Settings.Beatmap?.Id, settings.Mode,
 			settings.Mods.ToString(),
 			settings.Freemods, settings.TeamType, settings.WinCondition,

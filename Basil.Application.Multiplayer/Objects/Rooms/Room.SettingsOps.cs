@@ -8,9 +8,9 @@ public sealed partial class Room
 {
 	internal RoomActionResult SetLocked(bool locked)
 	{
-		using (State.Enter())
+		using (Enter())
 		{
-			var (outcome, changed) = State.SetLocked(locked);
+			var (outcome, changed) = State.Slots.SetLocked(locked);
 			if (changed) Emit(new RoomLockChanged(this, locked));
 			return outcome;
 		}
@@ -18,9 +18,9 @@ public sealed partial class Room
 
 	internal RoomActionResult Configure(Session actor, RoomSettingsChange change)
 	{
-		using (State.Enter())
+		using (Enter())
 		{
-			var (outcome, changed) = State.Configure(PlayerOf(actor), change);
+			var (outcome, changed) = State.Settings.Configure(PlayerOf(actor), change);
 			if (changed)
 				Emit(new RoomSettingsChanged(this, change with { Password = null },
 					change.Password is not null));

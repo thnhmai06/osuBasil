@@ -22,7 +22,7 @@ internal sealed partial class MpCommands
 
 		var (room, outcome) =
 			await sender.Send(new OpenRoom(actor, name, "", RoomSource.Api, isPrivate), ct);
-		if (outcome != RoomActionResult.Ok || room is null)
+		if (outcome != LobbyResult.Ok || room is null)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
@@ -56,7 +56,7 @@ internal sealed partial class MpCommands
 
 		var password = args.Count > 1 ? string.Join(' ', args.Skip(1)) : string.Empty;
 		var outcome = await sender.Send(new JoinRoom(actor, room, password), ct);
-		if (outcome != RoomActionResult.Ok)
+		if (outcome != LobbyResult.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;

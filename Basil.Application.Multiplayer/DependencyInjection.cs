@@ -15,7 +15,7 @@ public static class DependencyInjection
 	public static IServiceCollection AddMultiplayerApplication(this IServiceCollection services)
 	{
 		services.AddSingleton<IScoreBeatmapAcceptance>(sp => sp.GetRequiredService<Lobby>());
-		services.AddSingleton<RoomUsers>(sp => new RoomUsers(
+		services.AddSingleton<RoomUserLookup>(sp => new RoomUserLookup(
 			sp.GetRequiredService<IRelationshipRepository>(),
 			sp.GetRequiredService<IUserRepository>()));
 		services.AddSingleton<LobbyContext>(sp => new LobbyContext(
@@ -26,7 +26,7 @@ public static class DependencyInjection
 			sp.GetRequiredService<IUserRepository>(),
 			sp.GetRequiredService<ISettingsRepository>(),
 			sp.GetRequiredService<IEventPublisher<RoomEvent>>(),
-			sp.GetRequiredService<RoomUsers>()));
+			sp.GetRequiredService<RoomUserLookup>()));
 		services.AddSingleton<Lobby>(sp => new Lobby(sp.GetRequiredService<LobbyContext>()));
 		return services;
 	}
