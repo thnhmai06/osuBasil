@@ -148,7 +148,7 @@ internal sealed partial class MpCommands
 	private async Task<bool> SetSizeAsync(CommandContext context, Room room, IReadOnlyList<string> args,
 		CancellationToken ct)
 	{
-		if (args.Count < 1 || !int.TryParse(args[0], out var size) || size is < 1 or > RoomRules.MaxPlayers)
+		if (args.Count < 1 || !int.TryParse(args[0], out var size) || size is < RoomRules.MinPlayers or > RoomRules.MaxPlayers)
 		{
 			await context.Reply(MpReplies.SizeUsage, ct);
 			return false;
@@ -265,7 +265,7 @@ internal sealed partial class MpCommands
 	{
 		size = null;
 		if (args.Count < 3) return true;
-		if (!int.TryParse(args[2], out var parsedSize) || parsedSize is < 1 or > RoomRules.MaxPlayers) return false;
+		if (!int.TryParse(args[2], out var parsedSize) || parsedSize is < RoomRules.MinPlayers or > RoomRules.MaxPlayers) return false;
 
 		size = parsedSize;
 		return true;

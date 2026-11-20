@@ -44,11 +44,11 @@ public sealed class RoomSettings
 	public BeatmapReference? Beatmap { get; internal set; }
 
 	/// <summary>Applies a change to the room's settings; refused when the room is closed or a round is in progress.</summary>
-	/// <remarks>Choosing a beatmap resets ready slots to not ready. Changing the mode strips mods the new mode does not allow from the room and every slot. Changing the team type reassigns the seated players' teams. Changing the size locks or opens empty slots. Turning freemods on or off moves mods between the room and the players' slots.</remarks>
+	/// <remarks>Choosing a beatmap resets ready slots to not ready. Changing the mode strips mods the new mode does not allow from the room and every slot, and turns a tag team type into the matching team type without tags, as tag team types exist only in osu!. Changing the team type to another one puts every seated player on the red team in a team mode. Changing the size locks or opens empty slots. Turning freemods on or off moves mods between the room and the players' slots.</remarks>
 	/// <param name="caller">The user making the change, whose own slot keeps the non-speed mods when the room is in freemods; <see langword="null"/> when no user acts.</param>
 	/// <param name="change">The changes; a member left unset keeps its current value.</param>
-	/// <returns>The outcome, and whether any setting changed (false for an empty change).</returns>
-	/// <exception cref="InvalidRoomSettingsException">The name is blank, the size is outside 1 to <see cref="RoomRules.MaxPlayers"/>, a beatmap is both set and cleared, or an enum value is undefined.</exception>
+	/// <returns>The outcome, and whether any setting changed (false for an empty change); <see cref="RoomActionResult.TagNotAvailable"/> when a tag team type is asked for in a mode other than osu!.</returns>
+	/// <exception cref="InvalidRoomSettingsException">The name is blank, the size is outside <see cref="RoomRules.MinPlayers"/> to <see cref="RoomRules.MaxPlayers"/>, a beatmap is both set and cleared, or an enum value is undefined.</exception>
 	/// <exception cref="InvalidModsException">The requested mods are not valid for the mode.</exception>
 	public (RoomActionResult Outcome, bool Changed) Configure(UserRecord? caller, RoomSettingsChange change)
 	{
@@ -60,6 +60,8 @@ public sealed class RoomSettings
 		var mode = change.Mode ?? Editable.Mode;
 		var freemods = change.Freemods ?? Editable.Freemods;
 		if (change.Mods is { } requestedMods && !requestedMods.IsValid(mode)) throw new InvalidModsException();
+		if (change.TeamType is { } requestedType && requestedType.IsTagMode() && mode != GameMode.Standard)
+			return (RoomActionResult.TagNotAvailable, false);
 
 		if (change.Name is { } name) _match.Value.Name = name;
 
@@ -70,7 +72,8 @@ public sealed class RoomSettings
 			ApplyFreemods(newFreemods);
 		if (change.Mods is { } newMods) ApplyMods(caller, newMods, freemods);
 
-		if (change.TeamType is { } teamType) ApplyTeamType(teamType);
+		var teamType = change.TeamType ?? (mode != GameMode.Standard ? WithoutTags(Editable.TeamType) : null);
+		if (teamType is { } newTeamType && newTeamType != Editable.TeamType) ApplyTeamType(newTeamType);
 		if (change.WinCondition is { } winCondition) Editable.WinCondition = winCondition;
 		if (change.Size is { } size) _room.Slots.Resize(size);
 		if (change.IsPrivate is { } isPrivate) _match.Value.IsPrivate = isPrivate;
@@ -81,11 +84,21 @@ public sealed class RoomSettings
 	private static bool AreValid(RoomSettingsChange change)
 	{
 		return !((change.Name is { } newName && !MatchData.IsValidName(newName)) ||
-		         change.Size is < 1 or > RoomRules.MaxPlayers ||
+		         change.Size is < RoomRules.MinPlayers or > RoomRules.MaxPlayers ||
 		         change is { ClearBeatmap: true, Beatmap: not null } ||
 		         (change.Mode is { } requestedMode && !Enum.IsDefined(requestedMode)) ||
 		         (change.TeamType is { } requestedTeamType && !Enum.IsDefined(requestedTeamType)) ||
 		         (change.WinCondition is { } requestedWinCondition && !Enum.IsDefined(requestedWinCondition)));
+	}
+
+	private static GameTeamType WithoutTags(GameTeamType type)
+	{
+		return type switch
+		{
+			GameTeamType.TagCoop => GameTeamType.HeadToHead,
+			GameTeamType.TagTeamVs => GameTeamType.TeamVs,
+			_ => type
+		};
 	}
 
 	private void ApplyBeatmap(RoomSettingsChange change)
@@ -141,27 +154,8 @@ public sealed class RoomSettings
 	{
 		Editable.TeamType = value;
 
-		if (value.IsTeamMode())
-		{
-			var redCount = 0;
-			var blueCount = 0;
-
-			foreach (var slot in _room.Slots.Where(s => s.Player is not null))
-			{
-				var team = redCount <= blueCount ? GameTeam.Red : GameTeam.Blue;
-				slot.Team = team;
-
-				if (team == GameTeam.Red)
-					redCount++;
-				else
-					blueCount++;
-			}
-		}
-		else
-		{
-			foreach (var slot in _room.Slots.Where(s => s.Player is not null))
-				slot.Team = null;
-		}
+		foreach (var slot in _room.Slots.Where(s => s.Player is not null))
+			slot.Team = value.IsTeamMode() ? GameTeam.Red : null;
 	}
 
 	/// <summary>Gets whether a password lets a player join: always when the room has no password, otherwise only when equal.</summary>

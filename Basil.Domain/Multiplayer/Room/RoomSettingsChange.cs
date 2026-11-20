@@ -12,7 +12,7 @@ namespace Basil.Domain.Multiplayer.Room;
 /// <param name="TeamType">The new team type.</param>
 /// <param name="WinCondition">The new win condition.</param>
 /// <param name="Password">The new password; empty removes it.</param>
-/// <param name="Size">The number of usable slots, from 1 to <see cref="RoomRules.MaxPlayers"/>.</param>
+/// <param name="Size">The number of usable slots, from <see cref="RoomRules.MinPlayers"/> to <see cref="RoomRules.MaxPlayers"/>.</param>
 /// <param name="ClearBeatmap">Whether to remove the beatmap.</param>
 /// <param name="IsPrivate">Whether the room is private.</param>
 public sealed record RoomSettingsChange(

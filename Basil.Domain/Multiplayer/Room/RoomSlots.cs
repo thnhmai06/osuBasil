@@ -37,11 +37,11 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 	}
 
 	/// <summary>Makes the given number of slots usable, counting seated players, by locking or opening empty slots.</summary>
-	/// <param name="size">The number of usable slots, from 1 to <see cref="RoomRules.MaxPlayers"/>.</param>
+	/// <param name="size">The number of usable slots, from <see cref="RoomRules.MinPlayers"/> to <see cref="RoomRules.MaxPlayers"/>.</param>
 	/// <exception cref="ArgumentOutOfRangeException"><paramref name="size"/> is outside that range.</exception>
 	internal void Resize(int size)
 	{
-		ArgumentOutOfRangeException.ThrowIfLessThan(size, 1);
+		ArgumentOutOfRangeException.ThrowIfLessThan(size, RoomRules.MinPlayers);
 		ArgumentOutOfRangeException.ThrowIfGreaterThan(size, RoomRules.MaxPlayers);
 
 		// Players may sit in any slot, so the size counts usable slots rather than naming a slot
@@ -196,7 +196,7 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		return (RoomActionResult.Ok, slot.Index);
 	}
 
-	/// <summary>Sets the mods of a player; refused when the room is closed, the player holds no slot, a round is in progress, the room is not in freemods or the mods include a speed-changing one.</summary>
+	/// <summary>Sets the mods of a player; refused when the room is closed, the player holds no slot, a round is in progress, the player is ready, the room is not in freemods or the mods include a speed-changing one.</summary>
 	/// <param name="player">The player.</param>
 	/// <param name="mods">The mods the player chose.</param>
 	/// <returns>The outcome and the player's slot index, or <see langword="null"/> when the mods did not change.</returns>
@@ -206,6 +206,7 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		if (_room.IsClosed) return (RoomActionResult.RoomClosed, null);
 		if (Find(player) is not { } slot) return (RoomActionResult.NotInRoom, null);
 		if (_room.Rounds.InProgress) return (RoomActionResult.InProgress, null);
+		if (slot.Status is RoomSlotStatus.Ready) return (RoomActionResult.PlayerReady, null);
 		if (!_room.Settings.Editable.Freemods) return (RoomActionResult.NotFreemod, null);
 		if ((mods & GameModsGroups.SpeedChanging) != GameMods.NoMod) return (RoomActionResult.SpeedModNotAllowed, null);
 		if (!mods.IsValid(_room.Settings.Editable.Mode)) throw new InvalidModsException();
@@ -255,7 +256,7 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 	}
 
 	/// <summary>Seats a player in the first open slot and gives them the player role; refused when the room is closed, the player is banned or no slot is open.</summary>
-	/// <remarks>A player who already holds a slot keeps it. In a team mode the player joins the smaller team, red on a tie.</remarks>
+	/// <remarks>A player who already holds a slot keeps it. In a team mode the player joins the red team.</remarks>
 	/// <param name="player">The player to seat.</param>
 	/// <returns>The outcome and the slot the player holds.</returns>
 	public (RoomActionResult Outcome, RoomSlot? Slot) Seat(UserRecord player)
@@ -270,12 +271,7 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		slot.Occupy(player);
 		_room.Members.Grant(_room.Members.Of(player), RoomPrivileges.Player);
 
-		if (_room.Settings.Editable.TeamType.IsTeamMode())
-		{
-			var redCount = this.Count(s => s.Team == GameTeam.Red);
-			var blueCount = this.Count(s => s.Team == GameTeam.Blue);
-			slot.Team = redCount <= blueCount ? GameTeam.Red : GameTeam.Blue;
-		}
+		if (_room.Settings.Editable.TeamType.IsTeamMode()) slot.Team = GameTeam.Red;
 
 		return (RoomActionResult.Ok, slot);
 	}

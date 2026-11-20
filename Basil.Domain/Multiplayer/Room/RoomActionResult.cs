@@ -73,5 +73,11 @@ public enum RoomActionResult : byte
 	AlreadyMember,
 
 	/// <summary>The user holds a slot, which the action does not allow.</summary>
-	IsPlayer
+	IsPlayer,
+
+	/// <summary>A tag team type was asked for in a game mode other than osu!, where only the other team types exist.</summary>
+	TagNotAvailable,
+
+	/// <summary>The player is ready, so their mods cannot change until they are not ready.</summary>
+	PlayerReady
 }

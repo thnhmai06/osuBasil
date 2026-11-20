@@ -101,7 +101,8 @@ public static class OutcomeErrors
 			{
 				RoomActionResult.IsManager => ErrorKind.Forbidden,
 				RoomActionResult.RoomClosed => ErrorKind.Gone,
-				RoomActionResult.SpeedModNotAllowed or RoomActionResult.NotFreemod or RoomActionResult.NoTeams =>
+				RoomActionResult.SpeedModNotAllowed or RoomActionResult.NotFreemod or RoomActionResult.NoTeams
+					or RoomActionResult.TagNotAvailable =>
 					ErrorKind.Invalid,
 				_ => ErrorKind.Conflict
 			},

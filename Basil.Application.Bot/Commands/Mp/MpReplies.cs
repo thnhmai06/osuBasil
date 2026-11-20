@@ -83,7 +83,7 @@ internal static class MpReplies
 
 	public static readonly Reply UnlockedMatch = new("mp.unlockedMatch", "Unlocked the match");
 
-	public static readonly Reply SizeUsage = new("mp.sizeUsage", "Usage: !mp size <1-16>");
+	public static readonly Reply SizeUsage = new("mp.sizeUsage", "Usage: !mp size <2-16>");
 
 	public static readonly Reply ChangedMatchSize = new("mp.changedMatchSize", "Changed match to size {size}", "size");
 
@@ -156,7 +156,7 @@ internal static class MpReplies
 	public static readonly Reply MovedToTeam = new("mp.movedToTeam", "Moved {player} to team {team}", "player", "team");
 
 	public static readonly Reply SetUsage = new("mp.setUsage",
-		"Usage: !mp set <teammode 0-3> [scoremode 0-3] [size 1-16]");
+		"Usage: !mp set <teammode 0-3> [scoremode 0-3] [size 2-16]");
 
 	public static readonly Reply ChangedMatchSettings = new("mp.changedMatchSettings",
 		"Changed match settings to {teamType}, {winCondition}{size, select, none {.} other {, {size} slots.}}",
@@ -285,6 +285,12 @@ internal static class MpReplies
 
 	public static readonly Reply SpeedModsMatchWide = new("mp.speedModsMatchWide",
 		"Speed-changing mods can only be set for the whole match.");
+
+	public static readonly Reply TagNotAvailable =
+		new("mp.tagNotAvailable", "Tag team types are only available in osu!.");
+
+	public static readonly Reply PlayerReady =
+		new("mp.playerReady", "Mods can't be changed while the player is ready.");
 
 	public static readonly Reply SettingsInvalid = new("mp.settingsInvalid", "Those settings are not valid.");
 
@@ -419,6 +425,8 @@ internal static class MpReplies
 			RoomActionResult.NoTeams => MatchHasNoTeams,
 			RoomActionResult.NotFreemod => FreemodNotEnabled,
 			RoomActionResult.SpeedModNotAllowed => SpeedModsMatchWide,
+			RoomActionResult.TagNotAvailable => TagNotAvailable,
+			RoomActionResult.PlayerReady => PlayerReady,
 			RoomActionResult.NoBeatmap => NoBeatmapSelected,
 			RoomActionResult.NotPlaying => TargetNotPlaying,
 			RoomActionResult.NotInProgress => MatchNotInProgress,
