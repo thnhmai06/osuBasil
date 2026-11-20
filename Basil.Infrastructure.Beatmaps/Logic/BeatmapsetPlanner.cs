@@ -9,7 +9,6 @@ namespace Basil.Infrastructure.Beatmaps.Logic;
 internal sealed class BeatmapsetPlanner(
 	IBeatmapsetReader reader,
 	IBeatmapRepository beatmaps,
-	DifficultyAnalyser analyser,
 	BeatmapsetMatcher matcher)
 {
 	internal async Task<(BeatmapsetContent? Content, Stream? Stream)> ReadAsync(BeatmapsetArchive archive,
@@ -53,8 +52,7 @@ internal sealed class BeatmapsetPlanner(
 		var synced = new List<BeatmapData>(content.Difficulties.Count);
 
 		foreach (var difficulty in content.Difficulties)
-			synced.Add(await SyncDifficultyAsync(difficulty, hashes[difficulty], stored[difficulty], backgrounds, audio,
-				video, ct));
+			synced.Add(SyncDifficulty(difficulty, hashes[difficulty], stored[difficulty], backgrounds, audio, video));
 
 		var data = new BeatmapsetData(
 			existing is null && content.OnlineSetId is > 0 ? content.OnlineSetId : null,
@@ -67,13 +65,11 @@ internal sealed class BeatmapsetPlanner(
 			await matcher.TouchesLockedAsync(existing, content, hashes, stored, ct));
 	}
 
-	private async Task<BeatmapData> SyncDifficultyAsync(BeatmapsetDifficulty difficulty, Md5Hash hash,
+	private static BeatmapData SyncDifficulty(BeatmapsetDifficulty difficulty, Md5Hash hash,
 		BeatmapRecord? stored, IReadOnlyDictionary<BeatmapsetContentFile, string> backgrounds,
 		IReadOnlyDictionary<BeatmapsetContentFile, string> audio,
-		IReadOnlyDictionary<BeatmapsetContentFile, string> video,
-		CancellationToken ct)
+		IReadOnlyDictionary<BeatmapsetContentFile, string> video)
 	{
-		var analysis = await analyser.AnalyseAsync(difficulty, stored, ct);
 		var background = difficulty.Background is null ? null : backgrounds[difficulty.Background];
 		var sound = difficulty.Audio is null ? null : audio[difficulty.Audio];
 		var clip = difficulty.Video is null ? null : video[difficulty.Video];
@@ -83,7 +79,8 @@ internal sealed class BeatmapsetPlanner(
 			hash,
 			new BeatmapMetadata
 			{
-				VersionName = difficulty.Version, Difficulty = analysis.Difficulty, ObjectCount = analysis.ObjectCount
+				VersionName = difficulty.Version, Mode = difficulty.Mode, Difficulty = stored?.Metadata.Difficulty,
+				ObjectCount = stored?.Metadata.ObjectCount ?? BeatmapObjectCount.Empty(difficulty.Mode)
 			},
 			new BeatmapAssets
 			{

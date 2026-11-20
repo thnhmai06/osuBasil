@@ -1,14 +1,13 @@
 using Basil.Application.Scores.Objects;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Scores.Services;
-using Basil.Infrastructure.Scores.Logic;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Scores.Services;
 
 internal sealed class ScorePerformanceRecalculator(
 	IScoreRepository scores,
-	ScorePerformanceCalculator calculator,
+	ScorePerformanceRequests requests,
 	ILogger<ScorePerformanceRecalculator> logger) : IScorePerformanceRecalculator, IDisposable
 {
 	private const int BatchSize = 100;
@@ -38,16 +37,16 @@ internal sealed class ScorePerformanceRecalculator(
 		try
 		{
 			var (done, skipped) = await CalculateAllAsync(scope, ct);
-			logger.LogInformation("Calculated the performance of {Done} scores ({Skipped} kept what they have)", done,
+			logger.LogInformation("Asked for the performance of {Done} scores ({Skipped} kept what they have)", done,
 				skipped);
 		}
 		catch (OperationCanceledException)
 		{
-			logger.LogInformation("Calculating the performance of scores was stopped");
+			logger.LogInformation("Asking for the performance of scores was stopped");
 		}
 		catch (Exception exception)
 		{
-			logger.LogError(exception, "Calculating the performance of scores failed:");
+			logger.LogError(exception, "Asking for the performance of scores failed:");
 		}
 		finally
 		{
@@ -65,11 +64,11 @@ internal sealed class ScorePerformanceRecalculator(
 
 			foreach (var score in batch)
 			{
-				if (await calculator.CalculateAsync(score, ct)) done++;
+				if (await requests.RequestAsync(score, ct)) done++;
 				else skipped++;
 
 				if ((done + skipped) % ProgressEvery == 0)
-					logger.LogInformation("Calculating the performance of scores: {Count} done", done + skipped);
+					logger.LogInformation("Asking for the performance of scores: {Count} done", done + skipped);
 			}
 
 			afterId = batch[^1].Id;

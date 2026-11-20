@@ -12,16 +12,19 @@ public sealed class ScoreSubmitter
 {
 	private readonly TimeProvider _clock;
 
-	internal ScoreSubmitter(IScoreRecorder recorder, IEventPublisher<ScoreEvent> events,
-		IScoreBeatmapAcceptance acceptance, TimeProvider clock)
+	internal ScoreSubmitter(IScoreRecorder recorder, ScorePerformanceRequests performances,
+		IEventPublisher<ScoreEvent> events, IScoreBeatmapAcceptance acceptance, TimeProvider clock)
 	{
 		Recorder = recorder;
+		Performances = performances;
 		Events = events;
 		Acceptance = acceptance;
 		_clock = clock;
 	}
 
 	internal IScoreRecorder Recorder { get; }
+
+	internal ScorePerformanceRequests Performances { get; }
 
 	internal IEventPublisher<ScoreEvent> Events { get; }
 
@@ -44,10 +47,29 @@ public sealed class ScoreSubmitter
 		if (checkedBeatmap is null)
 			return (ScoreSubmissionResult.Rejected, SubmissionRejectionReason.UnknownBeatmap, null);
 
-		var outcome = await Recorder.ValidateAndRecordAsync(
-			actor.Record, actor.State.Record.Value.Fingerprint.Client!, submission, checkedBeatmap, client, replay,
-			ct);
-		if (outcome.Rejection is { } rejection) return (ScoreSubmissionResult.Rejected, rejection, null);
+		var loginClient = actor.State.Record.Value.Fingerprint.Client!;
+		if (Recorder.Validate(actor.Record, loginClient, submission, checkedBeatmap, client) is { } invalid)
+			return (ScoreSubmissionResult.Rejected, invalid, null);
+
+		var (key, pp) = await Performances.RequestAndWaitAsync(submission.Score, ct);
+		ScoreOutcome outcome;
+		try
+		{
+			outcome = await Recorder.RecordAsync(actor.Record, loginClient, submission, pp, replay, ct);
+		}
+		catch
+		{
+			if (key is { } failed) Performances.Forget(failed);
+			throw;
+		}
+
+		if (outcome.Rejection is { } rejection)
+		{
+			if (key is { } refused) Performances.Forget(refused);
+			return (ScoreSubmissionResult.Rejected, rejection, null);
+		}
+
+		if (key is { } waiting) await Performances.StoredAsync(waiting, outcome.Score!.Id);
 
 		Events.Publish(new ScoreSubmitted(actor.Record, outcome.Score!, outcome.Stats!));
 		return (ScoreSubmissionResult.Ok, null,

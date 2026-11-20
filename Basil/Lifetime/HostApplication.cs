@@ -11,7 +11,7 @@ using Basil.Host.Shared.Info;
 using Basil.Host.Stable.Routes;
 using Basil.Http;
 using Basil.Infrastructure.Beatmaps;
-using Basil.Infrastructure.Beatmaps.Storage;
+using Basil.Infrastructure.Rulesets.Storage;
 using Basil.Infrastructure.Bot;
 using Basil.Infrastructure.Diagnostics.Services;
 using Basil.Infrastructure.Shared;

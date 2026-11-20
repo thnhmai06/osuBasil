@@ -15,10 +15,17 @@ public sealed class BeatmapMetadata
 			: value.ThrowIfHasNul();
 	}
 
-	/// <summary>The difficulty values of the beatmap.</summary>
-	public required BeatmapDifficulty Difficulty { get; init; }
+	/// <summary>The game mode the beatmap is played in.</summary>
+	public required GameMode Mode
+	{
+		get;
+		init => field = value.ThrowIfInvalid();
+	}
 
-	/// <summary>How many hit objects the beatmap has, of the kinds its mode uses.</summary>
+	/// <summary>The difficulty values of the beatmap; null until they have been calculated.</summary>
+	public BeatmapDifficulty? Difficulty { get; init; }
+
+	/// <summary>How many hit objects the beatmap has, of the kinds its mode uses; every number is zero until the difficulty has been calculated.</summary>
 	public required BeatmapObjectCount ObjectCount { get; init; }
 }
 

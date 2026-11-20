@@ -1,6 +1,7 @@
 using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Persistence;
+using Basil.Application.Rulesets.Objects;
 using Basil.Application.Scores.Messages;
 using Basil.Application.Scores.Objects;
 using Basil.Application.Servers.Messages.Content;

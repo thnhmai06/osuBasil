@@ -19,18 +19,24 @@ internal sealed class ScoreRecorder(
 {
 	internal const int MinReplayLength = 24;
 
-	public async Task<ScoreOutcome> ValidateAndRecordAsync(
+	public SubmissionRejectionReason? Validate(
 		UserRecord player,
 		OsuClient loginClient,
 		Submission submission,
 		BeatmapChecksums checkedBeatmap,
-		SubmittedClient client,
+		SubmittedClient client)
+	{
+		return Validate(submission, loginClient, checkedBeatmap, player.Value.Name, client);
+	}
+
+	public async Task<ScoreOutcome> RecordAsync(
+		UserRecord player,
+		OsuClient loginClient,
+		Submission submission,
+		double? pp,
 		Stream? replay,
 		CancellationToken ct = default)
 	{
-		if (Validate(submission, loginClient, checkedBeatmap, player.Value.Name, client) is { } rejection)
-			return new ScoreOutcome(rejection, null, null);
-
 		var previousBest = submission.Score.IsPassed ? await PreviousBestAsync(player, submission.Score) : null;
 
 		// Every passed score counts toward ranked score, whatever status the beatmapset is reported with.
@@ -39,7 +45,7 @@ internal sealed class ScoreRecorder(
 		try
 		{
 			(score, current) = await scores.CreateWithPlayAsync(
-				submission.Score with { UserId = player.Id, Checksum = submission.HashByClient },
+				submission.Score with { UserId = player.Id, Checksum = submission.HashByClient, PerformancePoints = pp },
 				submission.Score.IsPassed ? submission.Score.LastState.TotalScore : 0);
 		}
 		catch (AlreadyExistsException)

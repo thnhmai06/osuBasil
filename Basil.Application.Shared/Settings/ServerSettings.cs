@@ -267,6 +267,18 @@ public sealed record ServerSettings
 			get;
 			init => field = Positive(value);
 		} = TimeSpan.FromSeconds(30);
+
+		public TimeSpan ScoreWait
+		{
+			get;
+			init => field = Positive(value);
+		} = TimeSpan.FromSeconds(5);
+
+		public TimeSpan BeatmapWait
+		{
+			get;
+			init => field = Positive(value);
+		} = TimeSpan.FromSeconds(10);
 	}
 
 	public sealed record MultiplayerSettings

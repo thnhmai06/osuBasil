@@ -5,6 +5,8 @@ using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Beatmaps.Services;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Application.Shared.Events;
+using Basil.Application.Shared.Settings;
+using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Application.Beatmaps;
@@ -21,10 +23,12 @@ public static class DependencyInjection
 		services.AddSingleton<Beatmapsets>(sp => new Beatmapsets(
 			sp.GetRequiredService<BeatmapsetContext>(),
 			sp.GetRequiredService<IBeatmapsetImporter>(),
-			sp.GetRequiredService<IBeatmapsetScanner>()));
-		services.AddSingleton<Rulesets>(sp => new Rulesets(
+			sp.GetRequiredService<IBeatmapsetScanner>(),
+			sp.GetRequiredService<IBeatmapRepository>(),
+			sp.GetRequiredService<ISender>(),
+			sp.GetRequiredService<ISettingsRepository>()));
+		services.AddSingleton<BeatmapReloads>(sp => new BeatmapReloads(
 			sp.GetRequiredService<TimeProvider>(),
-			sp.GetRequiredService<IRulesetUpdater>(),
 			sp.GetRequiredService<IBeatmapReloader>()));
 		return services;
 	}

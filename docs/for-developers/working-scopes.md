@@ -95,13 +95,14 @@ The server calculates performance points and a score carries its pp; `null` mean
 display-only: it never ranks, orders a leaderboard or decides a match win condition. Star rating is calculated with
 ppy's osu!lazer rulesets and is display-only as well.
 
-A score is stored with `pp = null` and the submission never waits for it. A background job then calculates the pp within
+A submission waits up to `beatmaps.scoreWait` (5 seconds by default) for the pp and stores the score with them. When
+they are late the score is stored with `pp = null` and the pp is written once calculated, within
 `beatmaps.performanceTimeout` (30 seconds by default); on a timeout or an error the pp stays `null` and the submission
 is never refused for it. A failed play never has pp, and a score on a beatmap the server does not hold keeps `null`. The
 API shows `pp`, `null` when there is none. `POST /v1/scores/performance/recalculate`
 (`Developer`; console `scores recalculate [--all]`) calculates the missing pp, or every passed score with `all`; it
 also runs for the missing ones at startup. The answer to a stable score submission has the bancho.py charts, with
-`ppAfter` always empty and the overall chart without pp, rank, accuracy and combo (Basil keeps none of them).
+`ppAfter` filled when the pp was ready and empty otherwise, and the overall chart without pp, rank, accuracy and combo (Basil keeps none of them).
 
 ### osu! (stable) endpoints
 

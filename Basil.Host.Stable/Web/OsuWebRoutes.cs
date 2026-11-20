@@ -9,6 +9,7 @@ using Basil.Application.Anticheat.Services;
 using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Storage;
+using Basil.Application.Rulesets.Messages;
 using Basil.Application.Scores.Messages;
 using Basil.Application.Scores.Objects;
 using Basil.Application.Scores.Persistence;
@@ -395,11 +396,12 @@ internal static class OsuWebRoutes
 	private static string SearchLine(BeatmapsetDetail detail)
 	{
 		var meta = detail.Set.Metadata;
-		var diffs = string.Join(',', detail.Beatmaps.OrderBy(map => map.Metadata.Difficulty.Star).Select(map =>
+		var diffs = string.Join(',', detail.Beatmaps.OrderBy(map => map.Metadata.Difficulty?.Star ?? 0).Select(map =>
 		{
-			var d = map.Metadata.Difficulty;
+			// The client has no "not calculated yet": it shows zeros.
+			var d = map.Metadata.Difficulty ?? default;
 			return string.Create(CultureInfo.InvariantCulture,
-				$"[{d.Star:0.00}\u2b50] {DirectText(map.Metadata.VersionName)} {{cs: {Decimal(d.Cs)} / od: {Decimal(d.Od)} / ar: {Decimal(d.Ar)} / hp: {Decimal(d.Hp)}}}@{(int)d.Mode}");
+				$"[{d.Star:0.00}\u2b50] {DirectText(map.Metadata.VersionName)} {{cs: {Decimal(d.Cs)} / od: {Decimal(d.Od)} / ar: {Decimal(d.Ar)} / hp: {Decimal(d.Hp)}}}@{(int)map.Metadata.Mode}");
 		}));
 		var hasVideo = detail.Beatmaps.Any(map => map.Assets.VideoFile is not null) ? 1 : 0;
 		return
@@ -461,7 +463,7 @@ internal static class OsuWebRoutes
 		if (!int.TryParse(query["b"], out var id) || !int.TryParse(query["mods"], out var mods))
 			return Results.BadRequest();
 		if (await sender.Send(new GetBeatmap(null, id), ct) is not { } map ||
-		    await sender.Send(new GetBeatmapStars(map, (GameMods)mods), ct) is not { } stars)
+		    await sender.Send(new GetBeatmapStars(map.Id, map.Hash, map.Metadata.Mode, (GameMods)mods), ct) is not { } stars)
 			return Results.NotFound();
 		return Results.Text(
 			JsonSerializer.Serialize(new DifficultyRatingBody(map.Id, mods, Math.Round(stars, 2))),

@@ -17,5 +17,9 @@ public interface IBeatmapRepository
 	Task<Page<BeatmapRecord>> ListAsync(BeatmapQuery query, PageRequest page,
 		CancellationToken ct = default);
 
+	/// <summary>Lists, by id, the beatmaps after <paramref name="afterId"/> whose difficulty is not calculated yet.</summary>
+	Task<IReadOnlyList<BeatmapRecord>> ListUncalculatedAsync(int afterId, int limit,
+		CancellationToken ct = default);
+
 	Task RetainAsync(BeatmapsetRecord set, IReadOnlyCollection<BeatmapRecord> keep);
 }

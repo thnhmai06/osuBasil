@@ -28,6 +28,7 @@
 		<ProjectReference Include="..\Basil.Application.Content\Basil.Application.Content.csproj"/>
 		<ProjectReference Include="..\Basil.Application.Users\Basil.Application.Users.csproj"/>
 		<ProjectReference Include="..\Basil.Application.Anticheat\Basil.Application.Anticheat.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Rulesets\Basil.Application.Rulesets.csproj"/>
 		<ProjectReference Include="..\Basil.Application.Scores\Basil.Application.Scores.csproj"/>
 		<ProjectReference Include="..\Basil.Application.Multiplayer\Basil.Application.Multiplayer.csproj"/>
 		<ProjectReference Include="..\Basil.Application.Chat\Basil.Application.Chat.csproj"/>
@@ -44,6 +45,7 @@
 		<ProjectReference Include="..\Basil.Infrastructure.Beatmaps\Basil.Infrastructure.Beatmaps.csproj"/>
 		<ProjectReference Include="..\Basil.Infrastructure.Content\Basil.Infrastructure.Content.csproj"/>
 		<ProjectReference Include="..\Basil.Infrastructure.Users\Basil.Infrastructure.Users.csproj"/>
+		<ProjectReference Include="..\Basil.Infrastructure.Rulesets\Basil.Infrastructure.Rulesets.csproj"/>
 		<ProjectReference Include="..\Basil.Infrastructure.Scores\Basil.Infrastructure.Scores.csproj"/>
 		<ProjectReference Include="..\Basil.Infrastructure.Multiplayer\Basil.Infrastructure.Multiplayer.csproj"/>
 		<ProjectReference Include="..\Basil.Infrastructure.Chat\Basil.Infrastructure.Chat.csproj"/>

@@ -9,6 +9,8 @@ using Basil.Application.Chat.Objects.Events;
 using Basil.Application.Diagnostics;
 using Basil.Application.Multiplayer;
 using Basil.Application.Multiplayer.Objects.Events;
+using Basil.Application.Rulesets;
+using Basil.Application.Rulesets.Objects.Events;
 using Basil.Application.Scores;
 using Basil.Application.Scores.Objects.Events;
 using Basil.Application.Servers;
@@ -35,6 +37,7 @@ using Basil.Infrastructure.Diagnostics;
 using Basil.Infrastructure.Diagnostics.Pipeline;
 using Basil.Infrastructure.Multiplayer;
 using Basil.Infrastructure.Persistence;
+using Basil.Infrastructure.Rulesets;
 using Basil.Infrastructure.Scores;
 using Basil.Infrastructure.Servers;
 using Basil.Infrastructure.Shared;
@@ -54,6 +57,8 @@ public static class DependencyInjection
 			services.AddUsersBackgroundWork();
 			services.AddMultiplayerBackgroundWork();
 			services.AddBotInfrastructure();
+			// Before the work that waits for it: a scan at start-up waits for the difficulty of what it finds.
+			services.AddRulesetsBackgroundWork();
 			services.AddBeatmapsBackgroundWork();
 			services.AddScoresBackgroundWork();
 			services.AddGatewayLimits();
@@ -68,6 +73,7 @@ public static class DependencyInjection
 			// The foreign keys decide the order of the migrations, not the project references.
 			services.AddUsersInfrastructure();
 			services.AddSessionsInfrastructure();
+			services.AddRulesetsInfrastructure();
 			services.AddBeatmapsInfrastructure();
 			services.AddContentInfrastructure();
 			services.AddSharedMigration();
@@ -84,6 +90,7 @@ public static class DependencyInjection
 		{
 			services.AddEvents();
 			services.AddUsersApplication();
+			services.AddRulesetsApplication();
 			services.AddBeatmapsApplication();
 			services.AddScoresApplication();
 			services.AddMultiplayerApplication();
@@ -123,6 +130,7 @@ public static class DependencyInjection
 			AddCategory<AnticheatEvent>(services);
 			AddCategory<ScoreEvent>(services);
 			AddCategory<BeatmapsetEvent>(services);
+			AddCategory<RulesetEvent>(services);
 			return services;
 		}
 	}

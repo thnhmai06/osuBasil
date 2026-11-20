@@ -72,6 +72,18 @@ internal sealed class EfBeatmapRepository(DatabaseSession database) : IBeatmapRe
 		return new Page<BeatmapRecord>([.. rows.Select(row => ToBeatmap(row, row.Set.ToRecord()))], hasNext);
 	}
 
+	public async Task<IReadOnlyList<BeatmapRecord>> ListUncalculatedAsync(int afterId, int limit,
+		CancellationToken ct = default)
+	{
+		var rows = await database.ReadAsync((BeatmapsDbContext context) => context.Beatmaps
+			.Include(b => b.Set)
+			.Where(b => b.Id > afterId && b.Star == null)
+			.OrderBy(b => b.Id)
+			.Take(limit)
+			.ToListAsync(ct), ct);
+		return [.. rows.Select(row => ToBeatmap(row, row.Set.ToRecord()))];
+	}
+
 	public Task RetainAsync(BeatmapsetRecord set, IReadOnlyCollection<BeatmapRecord> keep)
 	{
 		var setId = set.Id;
@@ -160,8 +172,10 @@ internal sealed class EfBeatmapRepository(DatabaseSession database) : IBeatmapRe
 			Metadata = new BeatmapMetadata
 			{
 				VersionName = row.Version,
-				Difficulty = new BeatmapDifficulty((GameMode)row.Mode, row.Bpm, TimeSpan.FromMilliseconds(row.Length),
-					row.Cs, row.Ar, row.Od, row.Hp, row.Star),
+				Mode = (GameMode)row.Mode,
+				Difficulty = row is { Star: { } star, Length: { } length, Bpm: { } bpm, Cs: { } cs, Ar: { } ar, Od: { } od, Hp: { } hp }
+					? new BeatmapDifficulty(bpm, TimeSpan.FromMilliseconds(length), cs, ar, od, hp, star)
+					: null,
 				ObjectCount = objects
 			},
 			Assets = new BeatmapAssets
@@ -188,14 +202,14 @@ internal sealed class EfBeatmapRepository(DatabaseSession database) : IBeatmapRe
 			BeatmapsetId = beatmap.Beatmapset.Id,
 			Hash = beatmap.Hash.HashValue,
 			Version = beatmap.Metadata.VersionName,
-			Mode = (int)difficulty.Mode,
-			Star = difficulty.Star,
-			Length = (int)difficulty.Length.TotalMilliseconds,
-			Bpm = difficulty.Bpm,
-			Cs = difficulty.Cs,
-			Ar = difficulty.Ar,
-			Od = difficulty.Od,
-			Hp = difficulty.Hp,
+			Mode = (int)beatmap.Metadata.Mode,
+			Star = difficulty?.Star,
+			Length = (int?)difficulty?.Length.TotalMilliseconds,
+			Bpm = difficulty?.Bpm,
+			Cs = difficulty?.Cs,
+			Ar = difficulty?.Ar,
+			Od = difficulty?.Od,
+			Hp = difficulty?.Hp,
 			ObjectCount = JsonSerializer.SerializeToElement(beatmap.Metadata.ObjectCount, StoredJson),
 			Circles = (beatmap.Metadata.ObjectCount as OsuObjectCount)?.Circles,
 			Sliders = (beatmap.Metadata.ObjectCount as OsuObjectCount)?.Sliders,

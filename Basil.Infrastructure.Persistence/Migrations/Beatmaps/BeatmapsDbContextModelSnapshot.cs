@@ -24,7 +24,7 @@ namespace Basil.Infrastructure.Persistence.Migrations.Beatmaps
                     b.Property<int>("Id")
                         .HasColumnName("id");
 
-                    b.Property<double>("Ar")
+                    b.Property<double?>("Ar")
                         .HasColumnName("ar");
 
                     b.Property<string>("Audio")
@@ -36,7 +36,7 @@ namespace Basil.Infrastructure.Persistence.Migrations.Beatmaps
                     b.Property<int>("BeatmapsetId")
                         .HasColumnName("beatmapset_id");
 
-                    b.Property<double>("Bpm")
+                    b.Property<double?>("Bpm")
                         .HasColumnName("bpm");
 
                     b.Property<int?>("Circles")
@@ -45,7 +45,7 @@ namespace Basil.Infrastructure.Persistence.Migrations.Beatmaps
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnName("created_at");
 
-                    b.Property<double>("Cs")
+                    b.Property<double?>("Cs")
                         .HasColumnName("cs");
 
                     b.Property<string>("Hash")
@@ -53,10 +53,10 @@ namespace Basil.Infrastructure.Persistence.Migrations.Beatmaps
                         .HasMaxLength(128)
                         .HasColumnName("hash");
 
-                    b.Property<double>("Hp")
+                    b.Property<double?>("Hp")
                         .HasColumnName("hp");
 
-                    b.Property<int>("Length")
+                    b.Property<int?>("Length")
                         .HasColumnName("length");
 
                     b.Property<bool>("Locked")
@@ -69,7 +69,7 @@ namespace Basil.Infrastructure.Persistence.Migrations.Beatmaps
                         .IsRequired()
                         .HasColumnName("object_count");
 
-                    b.Property<double>("Od")
+                    b.Property<double?>("Od")
                         .HasColumnName("od");
 
                     b.Property<int?>("PreviewTime")
@@ -78,7 +78,7 @@ namespace Basil.Infrastructure.Persistence.Migrations.Beatmaps
                     b.Property<int?>("Sliders")
                         .HasColumnName("sliders");
 
-                    b.Property<double>("Star")
+                    b.Property<double?>("Star")
                         .HasColumnName("star");
 
                     b.Property<bool>("Storyboard")
@@ -172,14 +172,14 @@ namespace Basil.Infrastructure.Persistence.Migrations.Beatmaps
 
             modelBuilder.Entity(typeof(Basil.Infrastructure.Shared.Persistence.IdCounterRow).FullName!, b =>
                 {
-                    b.Property<string>("FullName")
+                    b.Property<string>("Name")
                         .HasMaxLength(64)
                         .HasColumnName("name");
 
                     b.Property<long>("Next")
                         .HasColumnName("next");
 
-                    b.HasKey("FullName")
+                    b.HasKey("Name")
                         .HasName("pk_beatmap_id_counters");
 
                     b.ToTable("beatmap_id_counters", (string)null);

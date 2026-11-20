@@ -51,6 +51,13 @@ Multiplayer/   match, round, event and report repositories             (Persiste
                Lobby, LobbyContext                                      (Registry)
                ScopedLobby and the room's scopes                        (Capabilities)
                the match recorders, ScoreHandler, the lobby handlers    (Infrastructure Handlers)
+Rulesets/      RulesetLibrary, RulesetUpdateResult, RulesetEvents      (Objects)
+               ScopedRulesets                                          (Capabilities)
+               IBeatmapAnalyser, IBeatmapCalculator (internal),
+               IBeatmapFiles (public, implemented by Beatmaps)         (Ports)
+               IRulesetUpdater                                         (Services)
+               the calculation worker and queue, RulesetStore,
+               attribute storage                                       (Infrastructure Workers/Storage)
 Beatmaps/      beatmap and beatmapset repositories, import and scan
                data                                                     (Persistence)
                IBeatmapsetStorage                                       (Storage)

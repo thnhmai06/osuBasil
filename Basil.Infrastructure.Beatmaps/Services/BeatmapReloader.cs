@@ -1,10 +1,9 @@
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Beatmaps.Services;
-using Basil.Application.Beatmaps.Storage;
+using Basil.Application.Rulesets.Messages;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Game;
+using Mediator;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Beatmaps.Services;
@@ -12,8 +11,7 @@ namespace Basil.Infrastructure.Beatmaps.Services;
 internal sealed class BeatmapReloader(
 	IBeatmapsetRepository sets,
 	IBeatmapRepository beatmaps,
-	IBeatmapsetStorage storage,
-	IBeatmapAnalyser analyser,
+	ISender sender,
 	ILogger<BeatmapReloader> logger) : IBeatmapReloader, IDisposable
 {
 	private const int PageSize = 100;
@@ -24,11 +22,11 @@ internal sealed class BeatmapReloader(
 
 	public bool Running => Volatile.Read(ref _running) == 1;
 
-	public bool TryStart()
+	public bool TryStart(bool onlyMissing)
 	{
 		if (Interlocked.Exchange(ref _running, 1) == 1) return false;
 
-		_ = Task.Run(() => RunAsync(_stop.Token));
+		_ = Task.Run(() => RunAsync(onlyMissing, _stop.Token));
 		return true;
 	}
 
@@ -38,20 +36,21 @@ internal sealed class BeatmapReloader(
 		_stop.Dispose();
 	}
 
-	internal async Task RunAsync(CancellationToken ct)
+	internal async Task RunAsync(bool onlyMissing, CancellationToken ct)
 	{
 		try
 		{
-			var (done, failed) = await ReloadAllAsync(ct);
-			logger.LogInformation("Reloaded {Done} beatmaps ({Failed} could not be reloaded)", done, failed);
+			var (done, failed) = onlyMissing ? await RequestMissingAsync(ct) : await RequestAllAsync(ct);
+			logger.LogInformation("Asked for the difficulty of {Done} beatmaps ({Failed} could not be asked for)", done,
+				failed);
 		}
 		catch (OperationCanceledException)
 		{
-			logger.LogInformation("Reloading beatmaps was stopped");
+			logger.LogInformation("Asking for the difficulty of beatmaps was stopped");
 		}
 		catch (Exception exception)
 		{
-			logger.LogError(exception, "Reloading beatmaps failed:");
+			logger.LogError(exception, "Asking for the difficulty of beatmaps failed:");
 		}
 		finally
 		{
@@ -59,7 +58,7 @@ internal sealed class BeatmapReloader(
 		}
 	}
 
-	internal async Task<(int Done, int Failed)> ReloadAllAsync(CancellationToken ct)
+	internal async Task<(int Done, int Failed)> RequestAllAsync(CancellationToken ct)
 	{
 		int done = 0, failed = 0, offset = 0;
 		while (true)
@@ -71,40 +70,42 @@ internal sealed class BeatmapReloader(
 			foreach (var set in page.Items)
 			foreach (var beatmap in await beatmaps.ListAsync(set, ct))
 			{
-				if (await ReloadAsync(beatmap, ct)) done++;
+				if (await RequestAsync(beatmap, ct)) done++;
 				else failed++;
 
 				if ((done + failed) % ProgressEvery == 0)
-					logger.LogInformation("Reloading beatmaps: {Count} done", done + failed);
+					logger.LogInformation("Asking for the difficulty of beatmaps: {Count} done", done + failed);
 			}
 		}
 	}
 
-	private async Task<bool> ReloadAsync(BeatmapRecord beatmap, CancellationToken ct)
+	internal async Task<(int Done, int Failed)> RequestMissingAsync(CancellationToken ct)
+	{
+		int done = 0, failed = 0, afterId = 0;
+		while (true)
+		{
+			var batch = await beatmaps.ListUncalculatedAsync(afterId, PageSize, ct);
+			if (batch.Count == 0) return (done, failed);
+
+			foreach (var beatmap in batch)
+				if (await RequestAsync(beatmap, ct)) done++;
+				else failed++;
+
+			afterId = batch[^1].Id;
+		}
+	}
+
+	// The answer comes as an event; the stored values stay until it does.
+	private async Task<bool> RequestAsync(BeatmapRecord beatmap, CancellationToken ct)
 	{
 		try
 		{
-			var stream = await storage.OpenAsync(beatmap.Beatmapset, BeatmapsetFileType.Version, $"{beatmap.Hash}.osu",
-				ct);
-			if (stream is null) return false;
-
-			BeatmapAnalysis analysis;
-			await using (stream)
-			{
-				analysis = analyser.Analyze(stream, beatmap.Metadata.Difficulty.Mode, GameMods.NoMod);
-			}
-
-			beatmap.Metadata = new BeatmapMetadata
-			{
-				VersionName = beatmap.Metadata.VersionName, Difficulty = analysis.Difficulty,
-				ObjectCount = analysis.ObjectCount
-			};
-			await beatmaps.UpdateAsync(beatmap);
+			await sender.Send(new CalculateBeatmap(beatmap.Id, beatmap.Hash, beatmap.Metadata.Mode), ct);
 			return true;
 		}
 		catch (Exception e) when (e is not OperationCanceledException)
 		{
-			logger.LogWarning(e, "Beatmap {Id} could not be reloaded and keeps its stored values:", beatmap.Id);
+			logger.LogWarning(e, "The difficulty of beatmap {Id} could not be asked for:", beatmap.Id);
 			return false;
 		}
 	}

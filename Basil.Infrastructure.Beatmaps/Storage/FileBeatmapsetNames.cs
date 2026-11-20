@@ -18,8 +18,6 @@ internal static class FileBeatmapsetNames
 	internal const string AudioFolder = "audio";
 	internal const string VideoFolder = "video";
 
-	internal const string AttributesFolder = "attributes";
-
 	internal const string ArchiveName = "archive.osz";
 
 	internal const string ArchiveWithoutVideoName = "archive-novideo.osz";
@@ -74,13 +72,6 @@ internal static class FileBeatmapsetNames
 			builder.Append(character);
 
 		return FileNames.Fitted(builder.ToString().TrimEnd('.', ' '), MaxFolderNameBytes);
-	}
-
-	internal static string AttributesPath(string setFolder, Md5Hash hash, GameMode mode, GameMods mask)
-	{
-		return Path.Combine(setFolder, AttributesFolder, hash.HashValue,
-			((int)mode).ToString(CultureInfo.InvariantCulture),
-			$"{(int)mask}.json");
 	}
 
 	internal static string PathOf(string setFolder, BeatmapsetFileType type, string name)

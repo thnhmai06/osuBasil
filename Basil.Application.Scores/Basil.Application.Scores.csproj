@@ -11,6 +11,7 @@
 		<ProjectReference Include="..\Basil.Domain\Basil.Domain.csproj"/>
 		<ProjectReference Include="..\Basil.Application.Users\Basil.Application.Users.csproj"/>
 		<ProjectReference Include="..\Basil.Application.Beatmaps\Basil.Application.Beatmaps.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Rulesets\Basil.Application.Rulesets.csproj"/>
 	</ItemGroup>
 
 	<ItemGroup>

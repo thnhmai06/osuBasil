@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<RootNamespace>Basil.Infrastructure.Rulesets</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Basil"/>
+		<InternalsVisibleTo Include="Basil.Infrastructure.Rulesets.Tests"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Basil.Application.Shared\Basil.Application.Shared.csproj"/>
+		<ProjectReference Include="..\Basil.Infrastructure.Shared\Basil.Infrastructure.Shared.csproj"/>
+		<ProjectReference Include="..\Basil.Domain\Basil.Domain.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Rulesets\Basil.Application.Rulesets.csproj"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Mediator.Abstractions"/>
+		<PackageReference Include="ppy.osu.Game.Rulesets.Osu"/>
+		<PackageReference Include="ppy.osu.Game.Rulesets.Taiko"/>
+		<PackageReference Include="ppy.osu.Game.Rulesets.Catch"/>
+		<PackageReference Include="ppy.osu.Game.Rulesets.Mania"/>
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
+	</ItemGroup>
+</Project>

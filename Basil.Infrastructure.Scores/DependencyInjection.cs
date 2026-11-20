@@ -22,7 +22,6 @@ public static class DependencyInjection
 			services.AddSingleton<IScoreRepository, EfScoreRepository>();
 			services.AddSingleton<IUserStatsRepository, EfUserStatsRepository>();
 			services.AddSingleton<IReplayStorage, FileReplayStorage>();
-			services.AddSingleton<ScorePerformanceCalculator>();
 			services.AddSingleton<IScorePerformanceRecalculator, ScorePerformanceRecalculator>();
 			services.AddScoresLogic();
 			return services;
@@ -31,13 +30,12 @@ public static class DependencyInjection
 		public IServiceCollection AddScoresLogic()
 		{
 			services.AddSingleton<IScoreRecorder, ScoreRecorder>();
-			services.AddSingleton<ScorePerformanceQueue>();
 			return services;
 		}
 
 		public IServiceCollection AddScoresBackgroundWork()
 		{
-			services.AddHostedService<ScorePerformanceWorker>();
+			services.AddHostedService<ScorePerformanceBackfill>();
 			return services;
 		}
 	}

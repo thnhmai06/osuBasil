@@ -16,6 +16,7 @@
     <PackageVersion Include="Mediator.Abstractions" Version="3.0.2" />
     <PackageVersion Include="Mediator.SourceGenerator" Version="3.0.2" />
     <PackageVersion Include="FFMpegCore" Version="5.5.0" />
+    <PackageVersion Include="ppy.osu.Game" Version="2026.1026.0" />
     <PackageVersion Include="ppy.osu.Game.Rulesets.Osu" Version="2026.1026.0" />
     <PackageVersion Include="ppy.osu.Game.Rulesets.Taiko" Version="2026.1026.0" />
     <PackageVersion Include="ppy.osu.Game.Rulesets.Catch" Version="2026.1026.0" />

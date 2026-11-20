@@ -83,7 +83,11 @@ public static class SettingsDescriptions
 		["uploads.avatarMaxSide"] =
 			"The largest side of an avatar. Pixels, at least 1. Default: 4096.",
 		["beatmaps.performanceTimeout"] =
-			"How long the server spends calculating the performance of one score before giving up on it. Duration as [d.]hh:mm:ss, more than zero. Default: 00:00:30 (30 seconds).",
+			"How long the server spends on one calculation, a score's performance or a beatmap's difficulty, before giving up on it. Duration as [d.]hh:mm:ss, more than zero. Default: 00:00:30 (30 seconds).",
+		["beatmaps.scoreWait"] =
+			"How long a score submission waits for the performance of the score before it is answered without it; the performance is then added once calculated. Duration as [d.]hh:mm:ss, more than zero. Default: 00:00:05 (5 seconds).",
+		["beatmaps.beatmapWait"] =
+			"How long a beatmapset import waits for the difficulty of all its beatmaps before it finishes without the missing ones; they are filled in once calculated. Duration as [d.]hh:mm:ss, more than zero. Default: 00:00:10 (10 seconds).",
 		["multiplayer.rounds.scoreWait"] =
 			"How long the scores of a finished round are waited for. Duration as [d.]hh:mm:ss. Default: 00:00:10 (10 seconds).",
 		["bot.commandPrefix"] =

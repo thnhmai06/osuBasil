@@ -152,7 +152,6 @@ internal sealed class FileBeatmapsetStorage(
 			DeleteDirectoryIfExists(Path.Combine(folder, BackgroundFolder));
 			DeleteDirectoryIfExists(Path.Combine(folder, AudioFolder));
 			DeleteDirectoryIfExists(Path.Combine(folder, VideoFolder));
-			DeleteDirectoryIfExists(Path.Combine(folder, AttributesFolder));
 		}
 		finally
 		{
@@ -307,53 +306,6 @@ internal sealed class FileBeatmapsetStorage(
 		{
 			foreach (var folder in FoldersOf(set.Id).Where(IsSetFolder))
 				Directory.Delete(folder, true);
-		}
-		finally
-		{
-			gate.Release();
-		}
-	}
-
-	internal async Task<string?> ReadAttributesAsync(BeatmapsetRecord set, Md5Hash hash, GameMode mode, GameMods mask,
-		CancellationToken ct = default)
-	{
-		var folder = FindFolder(set.Id, FolderName(set));
-		if (folder is null) return null;
-
-		try
-		{
-			return await File.ReadAllTextAsync(AttributesPath(folder, hash, mode, mask), ct);
-		}
-		catch (Exception exception) when (exception is FileNotFoundException or DirectoryNotFoundException)
-		{
-			return null;
-		}
-	}
-
-	internal async Task<bool> WriteAttributesAsync(BeatmapsetRecord set, Md5Hash hash, GameMode mode, GameMods mask,
-		string content)
-	{
-		var gate = await LockAsync(set.Id);
-		try
-		{
-			var folder = FindFolder(set.Id, FolderName(set));
-			if (folder is null || !IsSetFolder(folder)) return false;
-
-			var path = AttributesPath(folder, hash, mode, mask);
-			Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-
-			var temporary = Incoming(".tmp");
-			try
-			{
-				await File.WriteAllTextAsync(temporary, content);
-				File.Move(temporary, path, true);
-			}
-			finally
-			{
-				DeleteFileIfExists(temporary);
-			}
-
-			return true;
 		}
 		finally
 		{

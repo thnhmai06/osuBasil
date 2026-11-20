@@ -15,6 +15,7 @@
 		<Project Path="Basil.Application.Content/Basil.Application.Content.csproj" />
 		<Project Path="Basil.Application.Diagnostics/Basil.Application.Diagnostics.csproj" />
 		<Project Path="Basil.Application.Multiplayer/Basil.Application.Multiplayer.csproj" />
+		<Project Path="Basil.Application.Rulesets/Basil.Application.Rulesets.csproj" />
 		<Project Path="Basil.Application.Scores/Basil.Application.Scores.csproj" />
 		<Project Path="Basil.Application.Servers/Basil.Application.Servers.csproj" />
 		<Project Path="Basil.Application.Users/Basil.Application.Users.csproj" />
@@ -30,6 +31,7 @@
 		<Project Path="Basil.Infrastructure.Diagnostics/Basil.Infrastructure.Diagnostics.csproj" />
 		<Project Path="Basil.Infrastructure.Multiplayer/Basil.Infrastructure.Multiplayer.csproj" />
 		<Project Path="Basil.Infrastructure.Persistence/Basil.Infrastructure.Persistence.csproj" />
+		<Project Path="Basil.Infrastructure.Rulesets/Basil.Infrastructure.Rulesets.csproj" />
 		<Project Path="Basil.Infrastructure.Scores/Basil.Infrastructure.Scores.csproj" />
 		<Project Path="Basil.Infrastructure.Servers/Basil.Infrastructure.Servers.csproj" />
 		<Project Path="Basil.Infrastructure.Users/Basil.Infrastructure.Users.csproj" />

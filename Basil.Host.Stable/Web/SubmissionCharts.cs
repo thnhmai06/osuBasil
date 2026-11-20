@@ -29,7 +29,7 @@ internal static class SubmissionCharts
 			Entry("totalScore", Whole(previous?.LastState.TotalScore), Whole(score.LastState.TotalScore)),
 			Entry("maxCombo", Whole(previous?.LastState.MaxCombo), Whole(score.LastState.MaxCombo)),
 			Entry("accuracy", Fixed(previous?.Accuracy), Fixed(score.Accuracy)),
-			Entry("pp", Fixed(previous?.PerformancePoints), ""),
+			Entry("pp", Fixed(previous?.PerformancePoints), Fixed(score.PerformancePoints)),
 			$"onlineScoreId:{receipt.Score.Id}",
 			"\n",
 			$"chartId:{OsuWebReplies.OverallChartId}",

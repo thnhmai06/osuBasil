@@ -7,7 +7,9 @@ namespace Basil.Application.Scores.Ports;
 
 internal interface IScoreRecorder
 {
-	Task<ScoreOutcome> ValidateAndRecordAsync(UserRecord player, OsuClient loginClient, Submission submission,
-		BeatmapChecksums checkedBeatmap, SubmittedClient client, Stream? replay,
-		CancellationToken ct = default);
+	SubmissionRejectionReason? Validate(UserRecord player, OsuClient loginClient, Submission submission,
+		BeatmapChecksums checkedBeatmap, SubmittedClient client);
+
+	Task<ScoreOutcome> RecordAsync(UserRecord player, OsuClient loginClient, Submission submission, double? pp,
+		Stream? replay, CancellationToken ct = default);
 }

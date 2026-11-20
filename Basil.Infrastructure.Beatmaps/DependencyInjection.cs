@@ -1,5 +1,6 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Ports;
+using Basil.Application.Rulesets.Ports;
 using Basil.Application.Beatmaps.Services;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Infrastructure.Beatmaps.Adapters;
@@ -30,13 +31,8 @@ public static class DependencyInjection
 			services.AddSingleton<FileBeatmapsetStorage>();
 			services.AddSingleton<IBeatmapsetStorage>(provider => provider.GetRequiredService<FileBeatmapsetStorage>());
 			services.AddSingleton<IBeatmapsetReader, OsuBeatmapsetReader>();
-			services.AddSingleton<IBeatmapAnalyser, OsuBeatmapAnalyser>();
-			services.AddSingleton<IBeatmapCalculator, OsuBeatmapCalculator>();
+			services.AddSingleton<IBeatmapFiles, BeatmapFiles>();
 			services.AddSingleton<IBeatmapAssets, BeatmapPreviewMaker>();
-			services.AddSingleton<RulesetStore>();
-			services.AddSingleton<IRulesetUpdater>(provider => new RulesetUpdater(
-				provider.GetRequiredService<RulesetStore>(), new HttpClient { Timeout = TimeSpan.FromMinutes(5) },
-				provider.GetRequiredService<ILogger<RulesetUpdater>>()));
 			services.AddSingleton<IBeatmapReloader, BeatmapReloader>();
 			services.AddOptions<AssetOptions>().PostConfigure<DataPaths>((options, paths) =>
 			{
@@ -55,7 +51,6 @@ public static class DependencyInjection
 
 		public IServiceCollection AddBeatmapsLogic()
 		{
-			services.AddSingleton<DifficultyAnalyser>();
 			services.AddSingleton<BeatmapsetMatcher>();
 			services.AddSingleton<BeatmapsetPlanner>();
 			services.AddSingleton<BeatmapsetFileWriter>();

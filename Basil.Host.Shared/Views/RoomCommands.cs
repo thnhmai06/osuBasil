@@ -160,7 +160,7 @@ public static class RoomCommands
 
 		var reference = beatmap.Reference;
 		return await room.Ask(new ConfigureRoom(room.Actor, room.Room,
-			new RoomSettingsChange(Beatmap: reference, Mode: body.Mode ?? beatmap.Metadata.Difficulty.Mode)), ct);
+			new RoomSettingsChange(Beatmap: reference, Mode: body.Mode ?? beatmap.Metadata.Mode)), ct);
 	}
 
 	private static User? OnlineUser(IServiceProvider services, int id)

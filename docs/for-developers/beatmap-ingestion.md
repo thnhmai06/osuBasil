@@ -45,7 +45,6 @@ Beatmapsets/
     ├── backgrounds/           files of the archive, under their sanitized names
     ├── audio/                 likewise, plus generated previews
     ├── video/                 likewise
-    └── attributes/            calculated difficulty attributes (see "Difficulty calculation")
 ```
 
 Files under `backgrounds/`, `audio/` and `video/` keep the name they have in the archive, made safe for the file
@@ -132,22 +131,24 @@ BeatmapsetScanner
 
 ## Difficulty calculation
 
-Basil calculates beatmap difficulty with osu!'s ruleset calculation libraries. Ingestion computes the star rating and
-the other metadata needed for presentation and indexing and persists them with the beatmap.
+Basil calculates beatmap difficulty with osu!'s ruleset calculation libraries, in the Rulesets module. A beatmap is
+stored first, with no difficulty (`null`, "not calculated yet"); the import then asks the rulesets for every beatmap
+that has none and waits, for one deadline of `beatmaps.beatmapWait` for the whole set, for the answers. What arrived is
+stored, and the rest stays `null` until its late answer is stored. The osu! client gets zeros for a difficulty that is
+`null`. At start-up, and when a new ruleset version becomes active or the `reload` command runs, the beatmaps without
+a difficulty (or all of them) are asked for again.
 
-The difficulty attributes of a beatmap under a mode and a set of difficulty-affecting mods are kept as files in the
-set's `attributes/` folder, one per combination: the first request for a combination calculates and writes it, later
-requests read it. They are deleted with the set, and a file written by another ruleset version or damaged is
-calculated again. Concurrent requests for the same combination share one calculation, and calculations of different
+The difficulty attributes of a beatmap file under a mode and a set of difficulty-affecting mods are kept as files in
+`<Data>/Rulesets/Attributes`, one per combination: the first request for a combination calculates and writes it, later
+requests read it. A file written by another ruleset version or damaged is calculated again; the files are a cache and
+outlive the set. Concurrent requests for the same combination share one calculation, and calculations of different
 combinations are limited to the number of processor cores.
 
-A file is `attributes/{md5}/{mode}/{mask}.json`. `mode` is the mode played, and `mask` is the play's mods reduced to the
+A file is `Attributes/{md5}/{mode}/{mask}.json`. `mode` is the mode played, and `mask` is the play's mods reduced to the
 ones that change the difficulty (`GameModsGroups.Difficulty`, `ReduceToDifficulty`): Nightcore counts as DoubleTime, and
 HD, NF, SD and the like share the NoMod file where they do not change the difficulty. The content is the version of the
-ruleset's calculator and the `(id, value)` pairs the calculator gives for storage; the object counts the standard
-ruleset needs on reading come from the stored beatmap. A set deleted while an entry is being written does not get its
-folder back; the entry is lost and calculated again later. `IBeatmapCalculator` is the port to this: it answers stars and
-pp as plain numbers. The NoMod entry is not written at ingestion; the first request writes it.
+ruleset package and calculator, the `(id, value)` pairs the calculator gives for storage and the beatmap values the
+calculation needs on reading. `IBeatmapCalculator` is the port to this: it answers stars and pp as plain numbers.
 
 The server also calculates pp for scores from these attributes; see the pp rule in `AGENTS.md`. Star rating and pp are display-only: they have no effect on
 

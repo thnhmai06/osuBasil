@@ -40,15 +40,24 @@ internal static class BeatmapQueryFilter
 
 	private static IQueryable<BeatmapRow> ByRanges(IQueryable<BeatmapRow> beatmaps, BeatmapQuery query)
 	{
-		beatmaps = Within(beatmaps, row => row.Star, query.Stars);
-		beatmaps = Within(beatmaps, row => row.Ar, query.Ar);
-		beatmaps = Within(beatmaps, row => row.Cs, query.Cs);
-		beatmaps = Within(beatmaps, row => row.Od, query.Od);
-		beatmaps = Within(beatmaps, row => row.Hp, query.Hp);
-		beatmaps = Within(beatmaps, row => row.Bpm, query.Bpm);
+		// A beatmap whose difficulty is not calculated yet matches none of these.
+		if (query.Stars is not null)
+			beatmaps = Within(beatmaps.Where(row => row.Star != null), row => row.Star!.Value, query.Stars);
+		if (query.Ar is not null)
+			beatmaps = Within(beatmaps.Where(row => row.Ar != null), row => row.Ar!.Value, query.Ar);
+		if (query.Cs is not null)
+			beatmaps = Within(beatmaps.Where(row => row.Cs != null), row => row.Cs!.Value, query.Cs);
+		if (query.Od is not null)
+			beatmaps = Within(beatmaps.Where(row => row.Od != null), row => row.Od!.Value, query.Od);
+		if (query.Hp is not null)
+			beatmaps = Within(beatmaps.Where(row => row.Hp != null), row => row.Hp!.Value, query.Hp);
+		if (query.Bpm is not null)
+			beatmaps = Within(beatmaps.Where(row => row.Bpm != null), row => row.Bpm!.Value, query.Bpm);
 
 		// Length: the query is in seconds, the column stores milliseconds.
-		beatmaps = Within(beatmaps, row => row.Length / 1000.0, query.Length);
+		if (query.Length is not null)
+			beatmaps = Within(beatmaps.Where(row => row.Length != null), row => row.Length!.Value / 1000.0,
+				query.Length);
 		// Only standard beatmaps count circles and sliders.
 		if (query.Circles is not null)
 			beatmaps = Within(beatmaps.Where(row => row.Circles != null), row => row.Circles!.Value, query.Circles);

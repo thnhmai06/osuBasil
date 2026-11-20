@@ -304,7 +304,7 @@ internal sealed partial class MpCommands
 		var outcome =
 			await sender.Send(
 				new ConfigureRoom(context.Actor, room,
-					new RoomSettingsChange(Beatmap: reference, Mode: ModeFor(beatmap.Metadata.Difficulty.Mode, mode))),
+					new RoomSettingsChange(Beatmap: reference, Mode: ModeFor(beatmap.Metadata.Mode, mode))),
 				ct);
 		if (outcome != RoomActionResult.Ok)
 		{

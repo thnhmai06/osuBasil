@@ -9,6 +9,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\Basil.Application.Shared\Basil.Application.Shared.csproj"/>
 		<ProjectReference Include="..\Basil.Domain\Basil.Domain.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Rulesets\Basil.Application.Rulesets.csproj"/>
 	</ItemGroup>
 
 	<ItemGroup>

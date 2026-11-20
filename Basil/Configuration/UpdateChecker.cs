@@ -1,4 +1,4 @@
-using Basil.Application.Beatmaps.Services;
+using Basil.Application.Rulesets.Services;
 using Basil.Host.Shared.Info;
 using Microsoft.Extensions.Options;
 using Velopack;

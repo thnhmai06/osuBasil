@@ -1,5 +1,6 @@
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Persistence;
+using Basil.Application.Beatmaps.Services;
 using Basil.Application.Beatmaps.Storage;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -9,6 +10,7 @@ namespace Basil.Infrastructure.Beatmaps.Workers;
 internal sealed class BeatmapsetStorageWatcher(
 	Beatmapsets beatmapsets,
 	IBeatmapsetStorage storage,
+	IBeatmapReloader reloader,
 	TimeProvider time,
 	ILogger<BeatmapsetStorageWatcher> logger) : BackgroundService
 {
@@ -34,6 +36,8 @@ internal sealed class BeatmapsetStorageWatcher(
 			logger.LogError(exception, "Could not scan the beatmapset storage");
 		}
 
+		// What the scan could not wait for, and what an earlier run left without a difficulty.
+		reloader.TryStart(true);
 		await base.StartAsync(ct);
 	}
 

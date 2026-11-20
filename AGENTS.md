@@ -394,11 +394,12 @@ References only point down:
 
 ```text
 Sessions    -> Shared
-Beatmaps    -> Shared
+Rulesets    -> Shared
+Beatmaps    -> Shared, Rulesets
 Content     -> Shared
 Users       -> Shared, Sessions, Content
 Anticheat   -> Users
-Scores      -> Users, Beatmaps
+Scores      -> Users, Beatmaps, Rulesets
 Multiplayer -> Users, Beatmaps, Content, Scores
 Chat        -> Users, Multiplayer
 Diagnostics -> Users
@@ -586,9 +587,10 @@ Data reaches its consumer directly.
 
 #### pp is display-only
 
-The server calculates performance points, and a score carries its pp. `null` means "not calculated yet": a score is
-recorded first and its pp is filled in afterwards, and a score that cannot be calculated (a failed play, a beatmap the
-server does not have) keeps `null`.
+The server calculates performance points, and a score carries its pp. `null` means "not calculated yet": a submission
+waits up to `beatmaps.scoreWait` for the pp and stores the score with them; when they are late the score is stored without
+and they are written once calculated. A score that cannot be calculated (a failed play, a beatmap the server does not
+have) keeps `null`. Waiting happens only in the Application object that submits, never in a notification handler.
 
 pp is display-only. It never decides a ranking, a leaderboard order, a player's standing or a match win condition,
 unless the project owner says otherwise.

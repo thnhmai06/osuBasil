@@ -16,19 +16,19 @@ internal sealed class BeatmapRow
 
 	public int Mode { get; set; }
 
-	public double Star { get; set; }
+	public double? Star { get; set; }
 
-	public int Length { get; set; }
+	public int? Length { get; set; }
 
-	public double Bpm { get; set; }
+	public double? Bpm { get; set; }
 
-	public double Cs { get; set; }
+	public double? Cs { get; set; }
 
-	public double Ar { get; set; }
+	public double? Ar { get; set; }
 
-	public double Od { get; set; }
+	public double? Od { get; set; }
 
-	public double Hp { get; set; }
+	public double? Hp { get; set; }
 
 	public JsonElement ObjectCount { get; set; }
 
