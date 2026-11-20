@@ -130,7 +130,7 @@ internal sealed class EfBeatmapsetRepository(DatabaseSession database, TimeProvi
 		return new BeatmapsetRecord
 		{
 			Id = id,
-			Content = data.Fingerprint,
+			ContentId = data.Fingerprint,
 			Metadata = data.Metadata,
 			Assets = data.Assets,
 			CreatedAt = existing?.CreatedAt ?? now,
@@ -151,9 +151,9 @@ internal sealed class EfBeatmapsetRepository(DatabaseSession database, TimeProvi
 			Creator = set.Metadata.Creator,
 			CreatedAt = set.CreatedAt.ToUniversalTime(),
 			UpdatedAt = set.UpdatedAt.ToUniversalTime(),
-			ArchiveHash = set.Content.Hash.HashValue,
-			ArchiveSize = set.Content.Metadata.Size,
-			ArchiveModifiedAt = set.Content.Metadata.ModifiedAt.ToUniversalTime(),
+			ArchiveHash = set.ContentId.Hash.HashValue,
+			ArchiveSize = set.ContentId.Metadata.Size,
+			ArchiveModifiedAt = set.ContentId.Metadata.ModifiedAt.ToUniversalTime(),
 			Storyboard = set.Assets.HasStoryboard,
 			Locked = set.Locked,
 			Visible = set.Visible,

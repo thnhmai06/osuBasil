@@ -91,7 +91,7 @@ internal sealed class BeatmapsetScanner(
 					if (folder.Id is { } id)
 						stored = await beatmapsets.GetAsync(id, ct);
 
-					if (stored is not null && stored.Content.Metadata == archive.Metadata)
+					if (stored is not null && stored.ContentId.Metadata == archive.Metadata)
 					{
 						seen.Add(stored.Id);
 						unchanged.Add(stored);
@@ -99,7 +99,7 @@ internal sealed class BeatmapsetScanner(
 					}
 
 					var fingerprint = await archive.FingerprintAsync(ct);
-					if (stored is not null && stored.Content.Hash == fingerprint.Hash)
+					if (stored is not null && stored.ContentId.Hash == fingerprint.Hash)
 					{
 						seen.Add(stored.Id);
 						var change = await planner.ChangeOfAsync(stored, fingerprint, ct);
@@ -244,7 +244,7 @@ internal sealed class BeatmapsetScanner(
 
 		// Unchanged. Missing files are not looked for here: the server's own writes into a set's folder come back as
 		// changes while an index may still be writing; the full scan makes missing files again.
-		if (stored is not null && stored.Content.Hash == fingerprint.Hash) return BeatmapsetScanOutcome.NoChange;
+		if (stored is not null && stored.ContentId.Hash == fingerprint.Hash) return BeatmapsetScanOutcome.NoChange;
 
 		var (content, stream) = await planner.ReadAsync(archive, ct);
 		if (content is null)

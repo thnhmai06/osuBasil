@@ -17,7 +17,7 @@ public sealed class BeatmapsetRecord : IEquatable<BeatmapsetRecord>
 
 	public bool IsLocallyIngested => Id >= LocalIdFloor;
 
-	public required ContentIdentifier Content { get; set; }
+	public required ContentIdentifier ContentId { get; set; }
 
 	public required BeatmapsetMetadata Metadata { get; set; }
 

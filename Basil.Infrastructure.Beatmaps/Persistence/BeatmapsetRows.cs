@@ -13,7 +13,7 @@ internal static class BeatmapsetRows
 			return new BeatmapsetRecord
 			{
 				Id = row.Id,
-				Content = new ContentIdentifier(new ContentMetadata(row.ArchiveSize, row.ArchiveModifiedAt),
+				ContentId = new ContentIdentifier(new ContentMetadata(row.ArchiveSize, row.ArchiveModifiedAt),
 					new Md5Hash(row.ArchiveHash)),
 				Metadata = new BeatmapsetMetadata { Artist = row.Artist, Title = row.Title, Creator = row.Creator },
 				Assets = new BeatmapsetAssets { HasStoryboard = row.Storyboard },
