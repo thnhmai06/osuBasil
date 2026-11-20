@@ -51,21 +51,32 @@ public sealed class UserRegistry
 		_sessionContext = sessionContext;
 	}
 
-	public IReadOnlyDictionary<UserRecord, User> Online => _online;
+	/// <summary>The users who are online; a session silent past its expiry is closed on the way and does not count.</summary>
+	public IReadOnlyDictionary<UserRecord, User> Online
+	{
+		get
+		{
+			CloseExpired(_online.Values.SelectMany(user => user.Connections));
+			return _online;
+		}
+	}
+
+	internal IReadOnlyDictionary<UserRecord, User> OnlineNow => _online;
 
 	public StableSession? OpenStableClient(UserRecord user)
 	{
-		return _online.GetValueOrDefault(user)?.Stable is { IsOpen: true } client ? client : null;
+		return Live(user)?.Stable is { IsOpen: true } client ? client : null;
 	}
 
 	public IEnumerable<StableSession> OpenStableClients()
 	{
-		return _online.Select(pair => OpenStableClient(pair.Key)).OfType<StableSession>();
+		return Online.Select(pair => OpenStableClient(pair.Key)).OfType<StableSession>();
 	}
 
 	public Session? Find(string token)
 	{
-		return _tokens.GetValueOrDefault(token);
+		var session = _tokens.GetValueOrDefault(token);
+		return session is not null && CloseExpired([session]) == 0 ? session : null;
 	}
 
 	public StableSession? FindSpectating(Session connection)
@@ -78,7 +89,13 @@ public sealed class UserRegistry
 
 	public User Of(UserRecord record)
 	{
-		return _online.GetValueOrDefault(record) ?? new User(record, _context);
+		return Live(record) ?? new User(record, _context);
+	}
+
+	private User? Live(UserRecord record)
+	{
+		if (_online.GetValueOrDefault(record) is { } online) CloseExpired(online.Connections);
+		return _online.GetValueOrDefault(record);
 	}
 
 	public ScopedUserRegistry ScopeTo(Session actor)
@@ -148,19 +165,7 @@ public sealed class UserRegistry
 	private static SessionState NewLoginState(UserRecord record, SessionType type, IPAddress ip, OsuClient? client,
 		DateTimeOffset now, string token)
 	{
-		return new SessionState(new SessionRecord
-		{
-			Id = NewSessionId(),
-			Value = new SessionData
-			{
-				User = record,
-				Type = type,
-				StartedAt = now,
-				Fingerprint = new SessionFingerprint(ip, client),
-				TokenHash = HashToken(token),
-				LastActiveAt = now
-			}
-		});
+		return SessionState.Start(NewSessionId(), record, type, new SessionFingerprint(ip, client), HashToken(token), now);
 	}
 
 	public async Task<LoginResult> ResumeAsync(string token, Func<UserRecord, bool>? accepts = null,
@@ -178,15 +183,16 @@ public sealed class UserRegistry
 
 		var now = _context.Clock.GetUtcNow();
 		var refusal = Ineligible(record, type);
-		if (refusal is not null || stored.StatusAt(now) is SessionStatus.Expired)
+		if (refusal is not null) stored.End(now, SessionEndReason.Revoked);
+		// Heard from now: a password login racing this resume must not judge it silent by its stored activity.
+		else if (stored.Heartbeat(now) is SessionActionResult.Expired) refusal = LoginFailure.InvalidToken;
+
+		if (refusal is not null)
 		{
-			stored.End(now, refusal is null ? SessionEndReason.TimedOut : SessionEndReason.Revoked);
 			await _context.Sessions.EndAsync(stored.Record.Id, stored.Record.Value.Ended!.Value);
-			return LoginResult.Fail(refusal ?? LoginFailure.InvalidToken);
+			return LoginResult.Fail(refusal.Value);
 		}
 
-		// Heard from now: a password login racing this resume must not judge it silent by its stored activity.
-		stored.Heartbeat(now);
 		var session = NewSession(stored, token, 0);
 		using (Enter(record))
 		{
@@ -313,23 +319,21 @@ public sealed class UserRegistry
 	{
 		if (!session.IsOpen) return;
 
-		var now = _context.Clock.GetUtcNow();
 		// A session silent past its expiry is over: a late heartbeat closes it instead of reviving it.
-		if (session.StatusAt(now) is SessionStatus.Expired)
+		if (session.Heartbeat(_context.Clock.GetUtcNow()) is SessionActionResult.Expired)
 		{
 			Close(session, SessionEndReason.TimedOut);
 			return;
 		}
 
-		session.Heartbeat(now);
 		if (!session.IsServerOwned) _activity[session.State.Record.Id] = session;
 	}
 
-	public int CloseSilent()
+	// Expiry is decided when a session is looked at, not by a timer: a silent one is closed here and counts as offline.
+	private int CloseExpired(IEnumerable<Session> sessions)
 	{
 		var now = _context.Clock.GetUtcNow();
-		var expired = _online
-			.SelectMany(pair => pair.Value.Connections)
+		var expired = sessions
 			.Where(session => session is { IsOpen: true, IsServerOwned: false } &&
 			                  session.StatusAt(now) is SessionStatus.Expired)
 			.ToList();
@@ -439,34 +443,15 @@ public sealed class UserRegistry
 		var now = _context.Clock.GetUtcNow();
 		if (open is not null)
 		{
-			switch (open.StatusAt(now))
-			{
-				case SessionStatus.Active:
-					return LoginFailure.AlreadyOnline;
-				case SessionStatus.Replaceable:
-					CloseCore(open, SessionEndReason.Replaced);
-					break;
-				default:
-					CloseCore(open, SessionEndReason.TimedOut);
-					break;
-			}
+			if (open.GiveWay(now) is SessionActionResult.Active) return LoginFailure.AlreadyOnline;
 
+			CloseCore(open, open.State.Record.Value.Ended!.Value.Reason);
 			return null;
 		}
 
 		if (stored is null || stored.Equals(session.State)) return null;
 
-		switch (stored.StatusAt(now))
-		{
-			case SessionStatus.Active:
-				return LoginFailure.AlreadyOnline;
-			case SessionStatus.Replaceable:
-				stored.End(now, SessionEndReason.Replaced);
-				break;
-			case SessionStatus.Expired:
-				stored.End(now, SessionEndReason.TimedOut);
-				break;
-		}
+		if (stored.GiveWay(now) is SessionActionResult.Active) return LoginFailure.AlreadyOnline;
 
 		if (stored.Record.Value.Ended is not null) _ended[stored.Record.Id] = 0;
 		return null;
@@ -477,19 +462,8 @@ public sealed class UserRegistry
 		var now = _context.Clock.GetUtcNow();
 		// A game client session must report a client, and none stands behind the bot's.
 		var client = type is SessionType.Stable ? ServerClient : null;
-		return new SessionState(new SessionRecord
-		{
-			Id = NewSessionId(),
-			Value = new SessionData
-			{
-				User = bot,
-				Type = type,
-				StartedAt = now,
-				Fingerprint = new SessionFingerprint(IPAddress.Loopback, client),
-				TokenHash = HashToken(token),
-				LastActiveAt = now
-			}
-		});
+		return SessionState.Start(NewSessionId(), bot, type, new SessionFingerprint(IPAddress.Loopback, client),
+			HashToken(token), now);
 	}
 
 	internal static string NewToken()

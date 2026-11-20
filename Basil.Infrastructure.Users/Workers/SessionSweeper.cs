@@ -15,8 +15,6 @@ internal sealed class SessionSweeper(
 		while (await timer.WaitForNextTickAsync(stoppingToken))
 			try
 			{
-				var closed = registry.CloseSilent();
-				if (closed > 0) logger.LogDebug("Closed {SessionCount} expired sessions", closed);
 				await registry.FlushActivityAsync();
 				var ended = await registry.EndSilentAsync();
 				if (ended > 0) logger.LogDebug("Ended {SessionCount} expired stored sessions", ended);

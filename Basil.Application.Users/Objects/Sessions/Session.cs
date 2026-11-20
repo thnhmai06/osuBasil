@@ -18,7 +18,7 @@ public abstract class Session(Domain.Authentication.Session state, string token)
 
 	public string Token { get; } = token;
 
-	public abstract SessionType Type { get; }
+	public SessionType Type => State.Record.Value.Type;
 
 	public bool IsOpen { get; internal set; }
 
@@ -46,19 +46,39 @@ public abstract class Session(Domain.Authentication.Session state, string token)
 		}
 	}
 
-	internal void Heartbeat(DateTimeOffset at)
+	internal SessionActionResult Heartbeat(DateTimeOffset at)
 	{
 		using (_stateLock.EnterScope())
 		{
-			State.Heartbeat(at);
+			return State.Heartbeat(at);
 		}
 	}
 
-	internal bool End(DateTimeOffset at, SessionEndReason reason)
+	internal SessionActionResult End(DateTimeOffset at, SessionEndReason reason)
 	{
 		using (_stateLock.EnterScope())
 		{
 			return State.End(at, reason);
+		}
+	}
+
+	internal SessionActionResult GiveWay(DateTimeOffset now)
+	{
+		using (_stateLock.EnterScope())
+		{
+			return State.GiveWay(now);
+		}
+	}
+
+	/// <summary>The moment the connection expires if it stays silent.</summary>
+	public DateTimeOffset ExpiresAt
+	{
+		get
+		{
+			using (_stateLock.EnterScope())
+			{
+				return State.ExpiresAt;
+			}
 		}
 	}
 
@@ -86,8 +106,6 @@ public sealed class StableSession : Session
 	}
 
 	internal SessionContext Context { get; }
-
-	public override SessionType Type => SessionType.Stable;
 
 	public int UtcOffset { get; }
 
@@ -183,8 +201,6 @@ public sealed class TourneySession : Session
 	internal TourneySession(Domain.Authentication.Session state, string token) : base(state, token)
 	{
 	}
-
-	public override SessionType Type => SessionType.StableTourney;
 }
 
 public sealed class IrcSession : Session
@@ -192,8 +208,6 @@ public sealed class IrcSession : Session
 	internal IrcSession(Domain.Authentication.Session state, string token) : base(state, token)
 	{
 	}
-
-	public override SessionType Type => SessionType.Irc;
 }
 
 public sealed class ApiSession : Session
@@ -201,8 +215,6 @@ public sealed class ApiSession : Session
 	internal ApiSession(Domain.Authentication.Session state, string token) : base(state, token)
 	{
 	}
-
-	public override SessionType Type => SessionType.Api;
 }
 
 public sealed class OperatorSession : Session
@@ -210,8 +222,6 @@ public sealed class OperatorSession : Session
 	internal OperatorSession(Domain.Authentication.Session state, string token) : base(state, token)
 	{
 	}
-
-	public override SessionType Type => SessionType.Api;
 
 	public override UserPrivileges EffectivePrivileges(DateTimeOffset now)
 	{

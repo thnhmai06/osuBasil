@@ -29,8 +29,9 @@ internal static class AuthRoutes
 			.WithSummary("Delete the current session.");
 		auth.MapGet("/session", (HttpContext context) =>
 			{
-				var session = context.Session().State;
-				return Api.Ok(new SessionView(session.Record.Id, session.Record.Value.User.Id, session.Record.Value.StartedAt, ExpiresAt(session)));
+				var connection = context.Session();
+				var session = connection.State;
+				return Api.Ok(new SessionView(session.Record.Id, session.Record.Value.User.Id, session.Record.Value.StartedAt, connection.ExpiresAt));
 			}).RequireToken()
 			.WithSummary("Get the current session.")
 			.WithDescription("Names the signed-in user.");
@@ -69,14 +70,8 @@ internal static class AuthRoutes
 		}
 
 		var session = connection.State;
-		return Api.Created(new LoginResponse(connection.Token, session.Record.Value.User.Id, session.Record.Id, ExpiresAt(session)),
+		return Api.Created(new LoginResponse(connection.Token, session.Record.Value.User.Id, session.Record.Id, connection.ExpiresAt),
 			"Signed in");
-	}
-
-	// The session expires once it has been silent this long; every use moves the moment on.
-	private static DateTimeOffset ExpiresAt(Session session)
-	{
-		return session.Record.Value.LastActiveAt + session.Record.Value.Type.ExpiresAfter;
 	}
 
 	private static async Task<IResult> LogoutAsync(HttpContext context, CancellationToken ct)

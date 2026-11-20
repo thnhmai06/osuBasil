@@ -31,7 +31,7 @@ public sealed class User
 	public bool PmPrivate => State.PmPrivate;
 
 	public bool IsOnline =>
-		Context.Registry.Online.TryGetValue(Record, out var online) && ReferenceEquals(online, this);
+		Context.Registry.OnlineNow.TryGetValue(Record, out var online) && ReferenceEquals(online, this);
 
 	public UserSilence Silence { get; }
 
@@ -70,7 +70,7 @@ public sealed class User
 	internal void Apply(Action<UserData> rule)
 	{
 		rule(Record.Value);
-		var online = Context.Registry.Online.GetValueOrDefault(Record);
+		var online = Context.Registry.OnlineNow.GetValueOrDefault(Record);
 		if (online is not null && !ReferenceEquals(online.Record, Record))
 			rule(online.Record.Value);
 	}
@@ -114,7 +114,7 @@ public sealed class User
 	{
 		await StoreChangeAsync(data => data.Privileges = privileges);
 		Apply(data => data.Privileges = privileges);
-		if (Context.Registry.Online.GetValueOrDefault(Record) is { } online)
+		if (Context.Registry.OnlineNow.GetValueOrDefault(Record) is { } online)
 			Context.Registry.CloseDisallowed(online);
 
 		Context.Events.Publish(new UserPrivilegesChanged(Record, privileges));
