@@ -56,14 +56,20 @@ public static class GameWinConditionExtensions
 		}
 
 		/// <summary>Combines the values of several plays into one value for a team.</summary>
-		/// <param name="scores">The plays to combine; must not be empty when the win condition is accuracy.</param>
-		/// <returns>The average of the plays' accuracies for <see cref="GameWinCondition.Accuracy"/>, and the sum of their values for every other condition.</returns>
-		/// <exception cref="InvalidOperationException">The win condition is accuracy and <paramref name="scores"/> is empty.</exception>
+		/// <param name="scores">The plays to combine.</param>
+		/// <returns>The sum of the plays' values, for accuracy as for every other condition.</returns>
 		public double CalculateMetricScores(IEnumerable<ScoreData> scores)
 		{
-			return condition == GameWinCondition.Accuracy
-				? scores.Average(score => condition.GetMetricScore(score))
-				: scores.Sum(score => condition.GetMetricScore(score));
+			return scores.Sum(score => condition.GetMetricScore(score));
+		}
+
+		/// <summary>Tells whether two plays that tie on the win condition's value are separated by their total score.</summary>
+		/// <param name="score">One of the tied plays.</param>
+		/// <returns><see langword="true"/> for combo, and for accuracy when the tied accuracy is 100%; <see langword="false"/> otherwise, where a tie stays a tie.</returns>
+		public bool BreaksTieByScore(ScoreData score)
+		{
+			return condition == GameWinCondition.Combo ||
+			       (condition == GameWinCondition.Accuracy && score.Accuracy.NearlyEqual(100.0, 1e-9));
 		}
 	}
 

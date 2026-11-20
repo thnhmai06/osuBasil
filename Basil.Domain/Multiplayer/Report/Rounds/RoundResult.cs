@@ -96,13 +96,13 @@ public sealed class HeadToHeadResult : RoundResult
 		WinnerId = winnerId;
 	}
 
-	/// <summary>Gets the scores of the round, the winning team's first and the other teams after it.</summary>
+	/// <summary>Gets the scores of the round, the best play first by the win condition.</summary>
 	public override IEnumerable<RoundScore> Scores { get; }
 
 	/// <summary>Gets the id of the winning user, or <see langword="null"/> for a draw.</summary>
 	public int? WinnerId { get; }
 
-	/// <summary>Decides a head-to-head round: passed plays rank ahead of failed ones, and the best play wins unless it ties the runner-up.</summary>
+	/// <summary>Decides a head-to-head round: passed plays rank ahead of failed ones, and the best play wins unless it ties the runner-up; a tie in combo, or in accuracy at 100%, goes to the higher total score.</summary>
 	/// <param name="round">The round.</param>
 	/// <param name="scores">The scores received.</param>
 	internal new static HeadToHeadResult Decide(Round round, IReadOnlyCollection<RoundScore> scores)
@@ -119,7 +119,10 @@ public sealed class HeadToHeadResult : RoundResult
 			1 => condition.GetMetricScore(ordered[0].Score.Value),
 			_ => MarginOf(ordered[0], ordered[1], condition)
 		};
-		var winnerId = rankedCount != 0 && (rankedCount == 1 || !margin.NearlyEqual(0))
+		// Equal combo, or equal accuracy at 100%, goes to the higher total score.
+		var tieBroken = rankedCount > 1 && margin.NearlyEqual(0) && condition.BreaksTieByScore(ordered[0].Score.Value) &&
+		                ordered[0].Score.Value.LastState.TotalScore != ordered[1].Score.Value.LastState.TotalScore;
+		var winnerId = rankedCount != 0 && (rankedCount == 1 || tieBroken || !margin.NearlyEqual(0))
 			? ordered[0].Score.Value.UserId
 			: null;
 
@@ -169,7 +172,7 @@ public sealed class TeamVersusResult : RoundResult
 	/// <summary>Gets the winning team, or <see langword="null"/> for a draw.</summary>
 	public GameTeam? Winner { get; }
 
-	/// <summary>Decides a team round: the team ahead in passed score wins, the total score breaks a tie, and a team that is alone with scores wins.</summary>
+	/// <summary>Decides a team round: a team's value counts only its players who passed, the team ahead wins, equal values are a draw, and a team that is alone with scores wins.</summary>
 	/// <param name="round">The round.</param>
 	/// <param name="scores">The scores received.</param>
 	internal new static TeamVersusResult Decide(Round round, IReadOnlyCollection<RoundScore> scores)
@@ -187,17 +190,14 @@ public sealed class TeamVersusResult : RoundResult
 		{
 			case 1:
 				winner = rankedTeams[0];
-				margin = teamScores[winner.Value].Any(score => score.Value.IsPassed)
-					? teamScores[winner.Value].PassedScore
-					: teamScores[winner.Value].TotalScore;
+				margin = teamScores[winner.Value].PassedScore;
 				break;
 			case > 1:
 			{
 				var first = teamScores[rankedTeams[0]];
 				var second = teamScores[rankedTeams[1]];
-				// A difference in passed score decides; the total score only breaks a tie.
+				// Only players who passed count towards their team.
 				var difference = first.PassedScore - second.PassedScore;
-				if (difference.NearlyEqual(0)) difference = first.TotalScore - second.TotalScore;
 				if (!difference.NearlyEqual(0))
 				{
 					winner = difference > 0 ? rankedTeams[0] : rankedTeams[1];
