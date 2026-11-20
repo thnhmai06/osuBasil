@@ -4,4 +4,4 @@ using Mediator;
 
 namespace Basil.Application.Users.Messages;
 
-public sealed record SetUserAway(Session Actor, UserReference Target, string? Message) : IRequest<UserActionResult>;
+public sealed record SetUserAway(Session Actor, int TargetId, string? Message) : IRequest<UserActionResult>;

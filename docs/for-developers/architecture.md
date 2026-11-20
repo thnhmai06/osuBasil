@@ -164,7 +164,7 @@ ask the service provider for one. Every read a host needs is a query message ans
 depends on the caller's privileges carries the caller's `Session`; a public read (images, beatmap downloads, the menu, the
 FAQ, scores, an account's public profile) carries no actor. The checks that admit a request (upload limits, rate limits, the
 allowed origins, the message of the day) have no exception: they send the public `ReadSettings` message, which the
-cache-aside settings repository answers from memory. A message names an account by a `UserReference` and a stored thing by
+cache-aside settings repository answers from memory. A message names an account by `int TargetId` and a stored thing by
 its id (`int SetId`, `int MatchId`), so the answer to "does it exist" comes only after the module has checked the caller's
 privileges. `tests/Architecture/HostGraphTests.cs` enforces the rule by reflection over the host assemblies and by a scan of
 `src/Hosts` for service lookups of a repository or a storage, each with a positive control.

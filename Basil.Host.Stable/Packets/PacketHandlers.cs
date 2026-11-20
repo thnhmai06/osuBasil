@@ -169,7 +169,7 @@ internal sealed partial class PacketHandlers(
 
 	private async Task FriendAsync(StableSession osu, int id, bool add, CancellationToken ct)
 	{
-		var target = UserReference.ById(id);
+		var target = id;
 		if (add) await sender.Send(new AddFriend(osu, target), ct);
 		else await sender.Send(new RemoveFriend(osu, target), ct);
 	}

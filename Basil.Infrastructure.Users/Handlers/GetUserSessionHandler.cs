@@ -12,7 +12,7 @@ internal sealed class GetUserSessionHandler(UserRegistry registry)
 	public async ValueTask<(UserActionResult Result, SessionRecord? Session)> Handle(GetUserSession request,
 		CancellationToken ct)
 	{
-		return await registry.ScopeTo(request.Actor, request.Target).Sessions
+		return await registry.ScopeTo(request.Actor, request.TargetId).Sessions
 			.GetAsync(request.SessionId, ct);
 	}
 }

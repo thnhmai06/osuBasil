@@ -34,9 +34,9 @@ internal sealed partial class ScoresSource(IServiceProvider services) : IListSou
 	public async Task<IReadOnlyList<SectionData<ScoreItem>>> LoadAsync(string query, int limit,
 		CancellationToken ct)
 	{
-		var (user, beatmapId, beatmaps) = Parse(query);
+		var (userId, userName, beatmapId, beatmaps) = Parse(query);
 		var sender = services.GetRequiredService<ISender>();
-		var listing = await sender.Send(new SearchScores(user, beatmapId, beatmaps, new PageRequest(0, limit)), ct);
+		var listing = await sender.Send(new SearchScores(userId, userName, beatmapId, beatmaps, new PageRequest(0, limit)), ct);
 		if (listing.Scores is not { } page) return [new SectionData<ScoreItem>("Scores", [], false)];
 
 		var players = new Dictionary<int, (string Name, ulong Mask)>();
@@ -48,7 +48,7 @@ internal sealed partial class ScoresSource(IServiceProvider services) : IListSou
 			var player = ("-", 0UL);
 			if (data.UserId is { } id && !players.TryGetValue(id, out player))
 			{
-				var found = await sender.Send(new GetUser(UserReference.ById(id)), ct);
+				var found = await sender.Send(new GetUser(id), ct);
 				players[id] = player = (found?.Value.Name ?? id.ToString(CultureInfo.InvariantCulture),
 					found is null ? 0UL : (ulong)found.Value.Privileges);
 			}
@@ -68,9 +68,10 @@ internal sealed partial class ScoresSource(IServiceProvider services) : IListSou
 		return [new SectionData<ScoreItem>("Scores", items, page.HasNext)];
 	}
 
-	private static (UserReference? User, int? BeatmapId, BeatmapQuery? Beatmaps) Parse(string text)
+	private static (int? UserId, string? UserName, int? BeatmapId, BeatmapQuery? Beatmaps) Parse(string text)
 	{
-		UserReference? user = null;
+		int? userId = null;
+		string? userName = null;
 		int? beatmapId = null;
 		BeatmapQuery? beatmaps = null;
 		foreach (Match match in Token().Matches(text))
@@ -79,16 +80,17 @@ internal sealed partial class ScoresSource(IServiceProvider services) : IListSou
 			if (value.Length == 0) continue;
 
 			if (match.Groups[1].Value.Equals("user", StringComparison.OrdinalIgnoreCase))
-				user = int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var id)
-					? UserReference.ById(id)
-					: UserReference.ByName(value);
+			{
+				if (int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var id)) userId = id;
+				else userName = value;
+			}
 			else if (int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var map))
 				beatmapId = map;
 			else
 				beatmaps = BeatmapQuery.Parse(value);
 		}
 
-		return (user, beatmapId, beatmaps);
+		return (userId, userName, beatmapId, beatmaps);
 	}
 
 	[GeneratedRegex("""\b(user|beatmap):("[^"]*"|\S+)""", RegexOptions.IgnoreCase)]
@@ -161,7 +163,7 @@ internal sealed class ScoresTab : ITabView, ISearchable
 			{
 				Link = users is null
 					? null
-					: s => s.UserId is { } id ? (s.Player, () => users.OfAsync(UserReference.ById(id))) : null
+					: s => s.UserId is { } id ? (s.Player, () => users.OfAsync(id)) : null
 			},
 			new Column<ScoreItem>("Beatmap", 0, s => s.Beatmap) { Weight = 3 },
 			new Column<ScoreItem>("Mods", 12, s => s.Mods, _ => Ink.Info),
@@ -206,7 +208,7 @@ internal sealed class ScoresTab : ITabView, ISearchable
 		};
 		var actions = new List<DetailAction>();
 		if (score.UserId is { } user)
-			actions.Add(DetailAction.OpenAsync("User", () => users.OfAsync(UserReference.ById(user))));
+			actions.Add(DetailAction.OpenAsync("User", () => users.OfAsync(user)));
 		if (score.BeatmapId is { } map) actions.Add(DetailAction.OpenAsync("Beatmap", () => beatmaps.OfAsync(map)));
 		return new DetailView($"{score.Player} on {score.Beatmap}", fields, actions);
 	}

@@ -9,6 +9,6 @@ internal sealed class SetUserAwayHandler(UserRegistry registry) : IRequestHandle
 {
 	public async ValueTask<UserActionResult> Handle(SetUserAway request, CancellationToken ct)
 	{
-		return await registry.ScopeTo(request.Actor, request.Target).Profile.SetAwayAsync(request.Message);
+		return await registry.ScopeTo(request.Actor, request.TargetId).Profile.SetAwayAsync(request.Message);
 	}
 }

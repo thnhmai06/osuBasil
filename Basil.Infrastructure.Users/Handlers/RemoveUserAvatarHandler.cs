@@ -10,6 +10,6 @@ internal sealed class RemoveUserAvatarHandler(UserRegistry registry)
 {
 	public async ValueTask<UserActionResult> Handle(RemoveUserAvatar request, CancellationToken ct)
 	{
-		return await registry.ScopeTo(request.Actor, request.Target).Profile.RemoveAvatarAsync();
+		return await registry.ScopeTo(request.Actor, request.TargetId).Profile.RemoveAvatarAsync();
 	}
 }

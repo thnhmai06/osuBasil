@@ -7,7 +7,7 @@ namespace Basil.Application.Users.Messages;
 
 public sealed record ChangeUserPassword(
 	Session Actor,
-	UserReference Target,
+	int TargetId,
 	Md5Hash NewPasswordHash,
 	Md5Hash? CurrentPasswordHash,
 	bool IncludeCurrent) : IRequest<UserActionResult>;

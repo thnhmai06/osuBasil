@@ -4,5 +4,5 @@ using Mediator;
 
 namespace Basil.Application.Users.Messages;
 
-public sealed record CloseUserSessions(Session Actor, UserReference Target, bool KeepCurrent)
+public sealed record CloseUserSessions(Session Actor, int TargetId, bool KeepCurrent)
 	: IRequest<UserActionResult>;

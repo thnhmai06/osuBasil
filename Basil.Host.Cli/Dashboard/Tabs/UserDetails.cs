@@ -25,15 +25,23 @@ internal sealed class UserDetails(
 {
 	private const int RowsShown = 20;
 
-	public async Task<DetailView> OfAsync(UserReference reference)
+	public async Task<DetailView> OfAsync(int id)
 	{
-		var record = await services.GetRequiredService<ISender>().Send(new GetUser(reference));
-		if (record is null)
-			return new DetailView(
-				reference.Name ?? reference.Id?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
-				[("User", "does not exist", Ink.Warning)], []);
+		var record = await services.GetRequiredService<ISender>().Send(new GetUser(id));
+		return Show(record, id.ToString(CultureInfo.InvariantCulture));
+	}
 
-		return Of(ItemOf(record));
+	public async Task<DetailView> OfNameAsync(string name)
+	{
+		var record = await services.GetRequiredService<ISender>().Send(new FindUserByName(name));
+		return Show(record, name);
+	}
+
+	private DetailView Show(UserRecord? record, string title)
+	{
+		return record is null
+			? new DetailView(title, [("User", "does not exist", Ink.Warning)], [])
+			: Of(ItemOf(record));
 	}
 
 	public DetailView Of(UserItem user)
@@ -50,7 +58,7 @@ internal sealed class UserDetails(
 			("Activity", user.Activity.Length == 0 ? "-" : user.Activity, Ink.Text)
 		};
 		if (user.Silenced) fields.Add(("Silenced", "yes", Ink.Warning));
-		var reload = () => OfAsync(UserReference.ById(user.Id));
+		var reload = () => OfAsync(user.Id);
 		var list = new List<DetailAction>
 		{
 			DetailAction.OpenAsync("Sessions", () => SessionsAsync(user)),
@@ -99,7 +107,7 @@ internal sealed class UserDetails(
 		if (session.EndReason.Length > 0) fields.Add(("Ended", session.EndReason, Ink.Text));
 		var actionList = new List<DetailAction>
 		{
-			DetailAction.OpenAsync("User", () => OfAsync(UserReference.ById(session.UserId)))
+			DetailAction.OpenAsync("User", () => OfAsync(session.UserId))
 		};
 		if (session.Live)
 			actionList.Add(new DetailAction("Close session", () => dialogs.Confirm("Close session",
@@ -124,7 +132,7 @@ internal sealed class UserDetails(
 	{
 		var actor = await services.GetRequiredService<UserRegistry>().OperateAsync();
 		var (outcome, record) = await services.GetRequiredService<ISender>()
-			.Send(new GetUserSession(actor, UserReference.ById(userId), id));
+			.Send(new GetUserSession(actor, userId, id));
 		return outcome == UserActionResult.Ok && record is not null
 			? Of(SessionItem.Of(record, clock.GetUtcNow()))
 			: new DetailView(id.ToString(CultureInfo.InvariantCulture), [("Session", "does not exist", Ink.Warning)],
@@ -136,7 +144,7 @@ internal sealed class UserDetails(
 	{
 		var actor = await services.GetRequiredService<UserRegistry>().OperateAsync();
 		var (outcome, page) = await services.GetRequiredService<ISender>().Send(new ListUserSessions(actor,
-			UserReference.ById(user.Id), new PageRequest(0, RowsShown), SessionFilter.Any, null));
+			user.Id, new PageRequest(0, RowsShown), SessionFilter.Any, null));
 		if (outcome != UserActionResult.Ok || page is null)
 			return new DetailView("Sessions", [("Sessions", "not available", Ink.Warning)], []);
 
@@ -166,7 +174,7 @@ internal sealed class UserDetails(
 		var title = friends ? "Friends" : "Blocks";
 		var actor = await services.GetRequiredService<UserRegistry>().OperateAsync();
 		var sender = services.GetRequiredService<ISender>();
-		var target = UserReference.ById(user.Id);
+		var target = user.Id;
 		var (outcome, records) = friends
 			? await sender.Send(new ListFriends(actor, target))
 			: await sender.Send(new ListBlocks(actor, target));

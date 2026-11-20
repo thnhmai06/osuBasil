@@ -356,7 +356,7 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 	// A click on a member shows that user's detail; its Send message button opens the conversation.
 	private void ShowUser(MemberItem member)
 	{
-		_detail.ShowAsync(member.Name, () => _users.OfAsync(UserReference.ByName(member.Name)));
+		_detail.ShowAsync(member.Name, () => _users.OfNameAsync(member.Name));
 	}
 
 	private bool ListKey(KeyEventArgs e, TextBox search, string? selected, string first)

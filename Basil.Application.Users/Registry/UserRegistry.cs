@@ -104,9 +104,9 @@ public sealed class UserRegistry
 		return new ScopedUserRegistry(this, actor);
 	}
 
-	public ScopedUser ScopeTo(Session actor, UserReference target)
+	public ScopedUser ScopeTo(Session actor, int targetId)
 	{
-		return new ScopedUser(this, target, actor);
+		return new ScopedUser(this, targetId, actor);
 	}
 
 	public async Task<LoginResult> LoginAsync(LoginAttempt attempt, SessionType type, IPAddress ip,

@@ -6,4 +6,4 @@ using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 
 namespace Basil.Application.Multiplayer.Messages;
 
-public sealed record AddReferee(Session Actor, Room Room, UserReference User) : IRequest<RoomTargetResult>;
+public sealed record AddReferee(Session Actor, Room Room, int UserId) : IRequest<RoomTargetResult>;

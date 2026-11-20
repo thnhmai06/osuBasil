@@ -30,7 +30,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var outcome = await sender.Send(new MovePlayer(actor, room, UserReference.ById(target.Id), slot), ct);
+		var outcome = await sender.Send(new MovePlayer(actor, room, target.Id, slot), ct);
 		if (outcome != RoomTargetResult.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
@@ -147,7 +147,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var outcome = await sender.Send(new KickPlayer(actor, room, UserReference.ById(target.Id)), ct);
+		var outcome = await sender.Send(new KickPlayer(actor, room, target.Id), ct);
 		if (outcome != RoomTargetResult.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
@@ -176,7 +176,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var outcome = await sender.Send(new BanPlayer(actor, room, UserReference.ById(target.Id)), ct);
+		var outcome = await sender.Send(new BanPlayer(actor, room, target.Id), ct);
 		if (outcome != RoomTargetResult.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
@@ -205,7 +205,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var outcome = await sender.Send(new UnbanPlayer(actor, room, UserReference.ById(target.Id)), ct);
+		var outcome = await sender.Send(new UnbanPlayer(actor, room, target.Id), ct);
 		if (outcome != RoomTargetResult.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
@@ -244,7 +244,7 @@ internal sealed partial class MpCommands
 		}
 
 		var team = teamArg == "red" ? GameTeam.Red : GameTeam.Blue;
-		var outcome = await sender.Send(new SetPlayerTeam(actor, room, UserReference.ById(target.Id), team), ct);
+		var outcome = await sender.Send(new SetPlayerTeam(actor, room, target.Id, team), ct);
 		if (outcome != RoomTargetResult.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);

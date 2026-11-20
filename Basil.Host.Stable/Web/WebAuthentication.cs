@@ -38,9 +38,9 @@ internal sealed class WebAuthentication(
 		CancellationToken ct)
 	{
 		if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(passwordMd5)) return null;
-		var normalized = UserReference.Normalize(username);
+		var normalized = UserData.TryNormalize(username);
 		if (normalized is null) return null;
-		if (await sender.Send(new GetUser(UserReference.ByName(username)), ct) is not { } record) return null;
+		if (await sender.Send(new FindUserByName(username), ct) is not { } record) return null;
 		var online = registry.Of(record);
 		if (online.Stable is not { IsOpen: true } client) return null;
 		var rules = (await sender.Send(new ReadSettings(), ct)).RateLimits.Login;

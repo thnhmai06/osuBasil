@@ -34,9 +34,9 @@ internal static class CommandHelpers
 				$"shown: {page.Items.Count} (offset {request.Offset}, limit {request.Limit}){(page.HasNext ? ", more follow" : "")}");
 		}
 
-		public UserReference UserOf(string name = "id")
+		public int UserOf(string name = "id")
 		{
-			return UserReference.ById(call.Id(name));
+			return call.Id(name);
 		}
 	}
 

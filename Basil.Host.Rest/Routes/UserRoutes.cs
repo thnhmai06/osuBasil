@@ -100,7 +100,7 @@ internal static class UserRoutes
 	private static async Task<IResult> GetAsync(int id, ISender sender, UserRegistry registry,
 		TimeProvider clock, CancellationToken ct)
 	{
-		var record = await sender.Send(new GetUser(UserReference.ById(id)), ct);
+		var record = await sender.Send(new GetUser(id), ct);
 		return record is null
 			? Api.NotFound("No such user.")
 			: Api.Ok(UserView.Of(registry, record, clock));
@@ -137,7 +137,7 @@ internal static class UserRoutes
 	private static async Task<IResult> PatchAsync(HttpContext context, int id, PatchUserRequest request,
 		ISender sender, UserRegistry registry, TimeProvider clock)
 	{
-		var target = UserReference.ById(id);
+		var target = id;
 
 		var ct = context.RequestAborted;
 		if (await PatchNameAndCountryAsync(context, target, request, ct) is { } refusal) return refusal;
@@ -149,7 +149,7 @@ internal static class UserRoutes
 			: Api.Ok(UserView.Of(registry, registry.Of(record).Record, clock), "Updated successfully");
 	}
 
-	private static async Task<IResult?> PatchNameAndCountryAsync(HttpContext context, UserReference target,
+	private static async Task<IResult?> PatchNameAndCountryAsync(HttpContext context, int target,
 		PatchUserRequest request, CancellationToken ct)
 	{
 		if (request.Name is not null &&
@@ -166,7 +166,7 @@ internal static class UserRoutes
 			: null;
 	}
 
-	private static async Task<IResult?> PatchSelfAndPrivilegesAsync(HttpContext context, UserReference target,
+	private static async Task<IResult?> PatchSelfAndPrivilegesAsync(HttpContext context, int target,
 		PatchUserRequest request, CancellationToken ct)
 	{
 		if (request.Away is not null && await context.Sender().Send(
@@ -196,7 +196,7 @@ internal static class UserRoutes
 	private static async Task<IResult> PasswordAsync(HttpContext context, int id, PasswordRequest request)
 	{
 		if (string.IsNullOrEmpty(request.New)) return Api.Invalid("new is required.");
-		var target = UserReference.ById(id);
+		var target = id;
 
 		var current = request.Current is null ? (Md5Hash?)null : new Md5Hash(Encoding.UTF8.GetBytes(request.Current));
 		return (await context.Sender().Send(new ChangeUserPassword(context.Session(), target,
@@ -206,7 +206,7 @@ internal static class UserRoutes
 
 	private static async Task<IResult> DeleteAsync(HttpContext context, int id)
 	{
-		return (await context.Sender().Send(new DeleteUser(context.Session(), UserReference.ById(id)),
+		return (await context.Sender().Send(new DeleteUser(context.Session(), id),
 			context.RequestAborted)).Answer();
 	}
 
@@ -219,7 +219,7 @@ internal static class UserRoutes
 		if (form.Files.GetFile("file") is not { } file) return Api.Invalid("The file field is missing.");
 		if (file.Length > (await sender.Send(new ReadSettings(), context.RequestAborted)).Uploads.AvatarMaxSize)
 			return Api.Invalid("The avatar is too large.", "tooLarge");
-		var target = UserReference.ById(id);
+		var target = id;
 
 		await using var stream = file.OpenReadStream();
 		return (await context.Sender()
@@ -228,7 +228,7 @@ internal static class UserRoutes
 
 	private static async Task<IResult> DeleteAvatarAsync(HttpContext context, int id)
 	{
-		return (await context.Sender().Send(new RemoveUserAvatar(context.Session(), UserReference.ById(id)),
+		return (await context.Sender().Send(new RemoveUserAvatar(context.Session(), id),
 			context.RequestAborted)).Answer();
 	}
 
@@ -250,7 +250,7 @@ internal static class UserRoutes
 		var kinds = types is null
 			? null
 			: Enum.GetValues<SessionType>().Where(t => (types.Value & (int)t) != 0).ToList();
-		var target = UserReference.ById(id);
+		var target = id;
 
 		var (result, sessions) =
 			await context.Sender().Send(
@@ -263,7 +263,7 @@ internal static class UserRoutes
 
 	private static async Task<IResult> GetSessionAsync(HttpContext context, int id, long sid)
 	{
-		var target = UserReference.ById(id);
+		var target = id;
 
 		var (result, session) = await context.Sender()
 			.Send(new GetUserSession(context.Session(), target, sid), context.RequestAborted);
@@ -272,7 +272,7 @@ internal static class UserRoutes
 
 	private static async Task<IResult> CloseSessionAsync(HttpContext context, int id, long sid)
 	{
-		return (await context.Sender().Send(new CloseUserSession(context.Session(), UserReference.ById(id), sid),
+		return (await context.Sender().Send(new CloseUserSession(context.Session(), id, sid),
 			context.RequestAborted)).Answer();
 	}
 
@@ -282,13 +282,13 @@ internal static class UserRoutes
 		if (refusal is not null) return refusal;
 
 		return (await context.Sender().Send(
-			new CloseUserSessions(context.Session(), UserReference.ById(id), request?.KeepCurrent ?? true),
+			new CloseUserSessions(context.Session(), id, request?.KeepCurrent ?? true),
 			context.RequestAborted)).Answer();
 	}
 
 	private static async Task<IResult> FriendsAsync(HttpContext context, int id)
 	{
-		var target = UserReference.ById(id);
+		var target = id;
 
 		var (result, list) =
 			await context.Sender().Send(new ListFriends(context.Session(), target), context.RequestAborted);
@@ -297,7 +297,7 @@ internal static class UserRoutes
 
 	private static async Task<IResult> BlocksAsync(HttpContext context, int id)
 	{
-		var target = UserReference.ById(id);
+		var target = id;
 
 		var (result, list) =
 			await context.Sender().Send(new ListBlocks(context.Session(), target), context.RequestAborted);
@@ -305,18 +305,18 @@ internal static class UserRoutes
 	}
 
 	private static async Task<IResult> RelationAsync(HttpContext context, int id, int otherId,
-		Func<Session, UserReference, IRequest<UserActionResult>> ask)
+		Func<Session, int, IRequest<UserActionResult>> ask)
 	{
 		if (id != context.Session().Record.Id)
 			return Api.Error(StatusCodes.Status403Forbidden, "notSelf", "Only the account itself can do this.");
 
-		return (await context.Sender().Send(ask(context.Session(), UserReference.ById(otherId)),
+		return (await context.Sender().Send(ask(context.Session(), otherId),
 			context.RequestAborted)).Answer();
 	}
 
 	private static async Task<IResult> SilenceAsync(HttpContext context, int id, SilenceRequest request)
 	{
-		var target = UserReference.ById(id);
+		var target = id;
 
 		return (await context.Sender().Send(new SilenceUser(context.Session(), target, request.EndsAt,
 			request.Reason), context.RequestAborted)).Answer();
@@ -324,7 +324,7 @@ internal static class UserRoutes
 
 	private static async Task<IResult> UnsilenceAsync(HttpContext context, int id)
 	{
-		var target = UserReference.ById(id);
+		var target = id;
 
 		return (await context.Sender().Send(new UnsilenceUser(context.Session(), target, null),
 			context.RequestAborted)).Answer();

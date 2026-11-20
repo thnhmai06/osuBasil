@@ -9,6 +9,6 @@ internal sealed class BanPlayerHandler : IRequestHandler<BanPlayer, RoomTargetRe
 	public ValueTask<RoomTargetResult> Handle(BanPlayer request, CancellationToken ct)
 	{
 		return new ValueTask<RoomTargetResult>(
-			request.Room.ScopeTo(request.Actor).Members.BanAsync(request.Player));
+			request.Room.ScopeTo(request.Actor).Members.BanAsync(request.PlayerId));
 	}
 }

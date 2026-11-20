@@ -9,6 +9,6 @@ internal sealed class UnbanPlayerHandler : IRequestHandler<UnbanPlayer, RoomTarg
 	public ValueTask<RoomTargetResult> Handle(UnbanPlayer request, CancellationToken ct)
 	{
 		return new ValueTask<RoomTargetResult>(
-			request.Room.ScopeTo(request.Actor).Members.UnbanAsync(request.Player));
+			request.Room.ScopeTo(request.Actor).Members.UnbanAsync(request.PlayerId));
 	}
 }

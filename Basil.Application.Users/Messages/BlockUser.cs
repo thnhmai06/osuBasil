@@ -4,4 +4,4 @@ using Mediator;
 
 namespace Basil.Application.Users.Messages;
 
-public sealed record BlockUser(Session Actor, UserReference Target) : IRequest<UserActionResult>;
+public sealed record BlockUser(Session Actor, int TargetId) : IRequest<UserActionResult>;

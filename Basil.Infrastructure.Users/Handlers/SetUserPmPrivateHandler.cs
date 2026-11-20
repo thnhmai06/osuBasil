@@ -9,6 +9,6 @@ internal sealed class SetUserPmPrivateHandler(UserRegistry registry) : IRequestH
 {
 	public async ValueTask<UserActionResult> Handle(SetUserPmPrivate request, CancellationToken ct)
 	{
-		return await registry.ScopeTo(request.Actor, request.Target).Profile.SetPmPrivateAsync(request.PmPrivate);
+		return await registry.ScopeTo(request.Actor, request.TargetId).Profile.SetPmPrivateAsync(request.PmPrivate);
 	}
 }

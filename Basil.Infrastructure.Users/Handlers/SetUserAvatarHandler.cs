@@ -9,7 +9,7 @@ internal sealed class SetUserAvatarHandler(UserRegistry registry) : IRequestHand
 {
 	public async ValueTask<UserActionResult> Handle(SetUserAvatar request, CancellationToken ct)
 	{
-		return await registry.ScopeTo(request.Actor, request.Target).Profile
+		return await registry.ScopeTo(request.Actor, request.TargetId).Profile
 			.SetAvatarAsync(request.Image, ct);
 	}
 }

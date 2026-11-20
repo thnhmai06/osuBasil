@@ -10,7 +10,7 @@ internal sealed class ChangeUserPasswordHandler(UserRegistry registry)
 {
 	public async ValueTask<UserActionResult> Handle(ChangeUserPassword request, CancellationToken ct)
 	{
-		return await registry.ScopeTo(request.Actor, request.Target).Credentials
+		return await registry.ScopeTo(request.Actor, request.TargetId).Credentials
 			.ChangePasswordAsync(request.NewPasswordHash, request.CurrentPasswordHash, request.IncludeCurrent);
 	}
 }

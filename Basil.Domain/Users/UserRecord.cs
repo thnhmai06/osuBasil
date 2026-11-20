@@ -43,6 +43,19 @@ public sealed partial class UserData
 	/// <summary>The name in the form used to compare names: lower case, with spaces read as underscores.</summary>
 	public string NormalizedName => Name.ToLowerInvariant().Replace(' ', '_');
 
+	/// <summary>Gives the form in which user names are compared, or <see langword="null" /> when the text is not a valid user name.</summary>
+	public static string? TryNormalize(string name)
+	{
+		try
+		{
+			return new UserData { Name = name }.NormalizedName;
+		}
+		catch (InvalidUserNameException)
+		{
+			return null;
+		}
+	}
+
 	/// <summary>The name of the account, 3 to 15 characters long, made of letters, digits, spaces and the characters _ - [ ], not starting or ending with a space, without consecutive spaces and not made only of digits.</summary>
 	/// <exception cref="InvalidUserNameException">The value breaks one of those rules.</exception>
 	public required string Name

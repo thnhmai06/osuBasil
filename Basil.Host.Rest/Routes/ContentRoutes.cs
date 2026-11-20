@@ -89,7 +89,7 @@ internal static class ContentRoutes
 		var recipients = new List<int>();
 		foreach (var id in ids.Distinct())
 		{
-			if (await sender.Send(new GetUser(UserReference.ById(id)), context.RequestAborted) is not { } user)
+			if (await sender.Send(new GetUser(id), context.RequestAborted) is not { } user)
 				return Api.NotFound($"No such user: {id}.");
 			recipients.Add(user.Id);
 		}

@@ -421,7 +421,7 @@ internal static class ContentCommands
 				         ? parsed
 				         : throw CommandException.Invalid("--to must be user ids.")).Distinct())
 		{
-			if (await call.Get<ISender>().Send(new GetUser(UserReference.ById(id)), call.CancellationToken) is not
+			if (await call.Get<ISender>().Send(new GetUser(id), call.CancellationToken) is not
 			    { } user)
 				throw CommandException.NotFound($"No such user: {id}.");
 			recipients.Add(user.Id);

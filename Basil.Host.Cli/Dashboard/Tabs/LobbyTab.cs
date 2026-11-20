@@ -132,11 +132,11 @@ internal sealed class LobbyTab : ITabView, ISearchable
 				new Column<RoomItem>("State", 9, r => r.State, State),
 				new Column<RoomItem>("Host", 0, r => r.Host, r => UserInk.Of((UserPrivileges)r.HostMask))
 				{
-					Link = r => r.Host.Length == 0 ? null : (r.Host, () => users.OfAsync(UserReference.ByName(r.Host)))
+					Link = r => r.Host.Length == 0 ? null : (r.Host, () => users.OfNameAsync(r.Host))
 				},
 				new Column<RoomItem>("Creator", 0, r => r.Creator, r => UserInk.Of((UserPrivileges)r.CreatorMask))
 				{
-					Link = r => (r.Creator, () => users.OfAsync(UserReference.ByName(r.Creator)))
+					Link = r => (r.Creator, () => users.OfNameAsync(r.Creator))
 				}
 			], r => r.Id.ToString(), new LobbySource(services), details.Of,
 			glyphs, kit, options.NoColor, clock, post, logger);

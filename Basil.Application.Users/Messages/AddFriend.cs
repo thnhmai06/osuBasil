@@ -4,4 +4,4 @@ using Mediator;
 
 namespace Basil.Application.Users.Messages;
 
-public sealed record AddFriend(Session Actor, UserReference Target) : IRequest<UserActionResult>;
+public sealed record AddFriend(Session Actor, int TargetId) : IRequest<UserActionResult>;

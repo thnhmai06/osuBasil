@@ -108,7 +108,7 @@ internal sealed class EfUserRepository(DatabaseSession database) : IUserReposito
 
 	public async ValueTask<UserRecord?> GetByNameAsync(string name, CancellationToken ct = default)
 	{
-		var normalized = UserReference.Normalize(name);
+		var normalized = UserData.TryNormalize(name);
 		if (normalized is null) return null;
 		var row = await database.ReadAsync((UsersDbContext context) => context.Users
 			.Where(candidate => candidate.NormalizedName == normalized && candidate.DeletedAt == null)

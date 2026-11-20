@@ -29,7 +29,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var outcome = await sender.Send(new AddReferee(actor, room, UserReference.ById(target.Id)), ct);
+		var outcome = await sender.Send(new AddReferee(actor, room, target.Id), ct);
 		if (outcome != RoomTargetResult.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
@@ -58,7 +58,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var outcome = await sender.Send(new RemoveReferee(actor, room, UserReference.ById(target.Id)), ct);
+		var outcome = await sender.Send(new RemoveReferee(actor, room, target.Id), ct);
 		if (outcome != RoomTargetResult.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);

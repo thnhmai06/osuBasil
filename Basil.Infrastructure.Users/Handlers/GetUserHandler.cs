@@ -9,11 +9,7 @@ internal sealed class GetUserHandler(IUserRepository users) : IRequestHandler<Ge
 {
 	public async ValueTask<UserRecord?> Handle(GetUser request, CancellationToken ct)
 	{
-		var record = request.Target.Id is { } id
-			? await users.GetAsync(id, ct)
-			: request.Target.Name is { } name
-				? await users.GetByNameAsync(name, ct)
-				: null;
+		var record = await users.GetAsync(request.Id, ct);
 		return record != null && record.Value.DeletedAt is null ? record : null;
 	}
 }

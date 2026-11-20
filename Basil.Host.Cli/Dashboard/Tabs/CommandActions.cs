@@ -56,7 +56,7 @@ internal sealed class CommandActions(
 		{
 			var record = text.Length == 0
 				? null
-				: await services.GetRequiredService<ISender>().Send(new GetUser(UserReference.ByName(text)));
+				: await services.GetRequiredService<ISender>().Send(new FindUserByName(text));
 			post(() =>
 			{
 				if (record is null) toasts.Show($"No such user: {text}.", ToastKind.Error);

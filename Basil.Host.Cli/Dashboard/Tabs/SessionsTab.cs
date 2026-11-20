@@ -21,7 +21,7 @@ internal sealed class SessionsTab : ITabView, ISearchable
 		TimeProvider clock, Action<Action> post, ILogger logger)
 	{
 		_page = new ListPage<SessionItem>("Sessions", Help,
-			SessionColumns.Of(s => (s.UserName, () => users.OfAsync(UserReference.ById(s.UserId)))),
+			SessionColumns.Of(s => (s.UserName, () => users.OfAsync(s.UserId))),
 			s => s.Id.ToString(CultureInfo.InvariantCulture), new SessionsSource(services, clock), users.Of, glyphs,
 			kit,
 			options.NoColor, clock, post, logger);

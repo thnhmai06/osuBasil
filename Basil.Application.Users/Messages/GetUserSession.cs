@@ -5,5 +5,5 @@ using Session = Basil.Application.Users.Objects.Sessions.Session;
 
 namespace Basil.Application.Users.Messages;
 
-public sealed record GetUserSession(Session Actor, UserReference Target, long SessionId)
+public sealed record GetUserSession(Session Actor, int TargetId, long SessionId)
 	: IRequest<(UserActionResult Result, SessionRecord? Session)>;

@@ -91,9 +91,9 @@ public static class RoomCommands
 				ct);
 		}),
 		Command<MoveRequest>("move", "Move a player to a slot.",
-			(r, b, _, ct) => r.Ask(new MovePlayer(r.Actor, r.Room, UserReference.ById(b.User), b.Slot), ct)),
+			(r, b, _, ct) => r.Ask(new MovePlayer(r.Actor, r.Room, b.User, b.Slot), ct)),
 		Command<TeamRequest>("team", "Update the team of a player.",
-			(r, b, _, ct) => r.Ask(new SetPlayerTeam(r.Actor, r.Room, UserReference.ById(b.User), b.Team), ct)),
+			(r, b, _, ct) => r.Ask(new SetPlayerTeam(r.Actor, r.Room, b.User, b.Team), ct)),
 		Command<UserRequest>("host", "Update the host of the room to a player.", (r, b, s, ct) =>
 		{
 			var host = OnlineUser(s, b.User)?.Stable;
@@ -104,19 +104,19 @@ public static class RoomCommands
 		Command<object?>("clearhost", "Remove the host of the room.",
 			(r, _, _, ct) => r.Ask(new SetRoomHost(r.Actor, r.Room, null), ct)),
 		Command<UserRequest>("kick", "Remove a player from the room.",
-			(r, b, _, ct) => r.Ask(new KickPlayer(r.Actor, r.Room, UserReference.ById(b.User)), ct)),
+			(r, b, _, ct) => r.Ask(new KickPlayer(r.Actor, r.Room, b.User), ct)),
 		Command<UserRequest>("ban", "Ban a player from the room.",
-			(r, b, _, ct) => r.Ask(new BanPlayer(r.Actor, r.Room, UserReference.ById(b.User)), ct)),
+			(r, b, _, ct) => r.Ask(new BanPlayer(r.Actor, r.Room, b.User), ct)),
 		Command<UserRequest>("unban", "Remove the ban of a player.",
-			(r, b, _, ct) => r.Ask(new UnbanPlayer(r.Actor, r.Room, UserReference.ById(b.User)), ct)),
+			(r, b, _, ct) => r.Ask(new UnbanPlayer(r.Actor, r.Room, b.User), ct)),
 		Command<UserRequest>("invite", "Invite an online player to the room.", (r, b, s, ct) =>
 			OnlineUser(s, b.User) is { } target
 				? r.Ask(new InvitePlayer(r.Actor, r.Room, target), ct)
 				: Refuse(RoomInviteResult.TargetOffline)),
 		Command<UserRequest>("addref", "Add a player as a referee.",
-			(r, b, _, ct) => r.Ask(new AddReferee(r.Actor, r.Room, UserReference.ById(b.User)), ct)),
+			(r, b, _, ct) => r.Ask(new AddReferee(r.Actor, r.Room, b.User), ct)),
 		Command<UserRequest>("removeref", "Remove a referee of the room.",
-			(r, b, _, ct) => r.Ask(new RemoveReferee(r.Actor, r.Room, UserReference.ById(b.User)), ct)),
+			(r, b, _, ct) => r.Ask(new RemoveReferee(r.Actor, r.Room, b.User), ct)),
 		Command<CountdownRequest>("start", "Start the round, or start it after a countdown.", (r, b, _, ct) =>
 			b.Seconds is { } seconds and > 0
 				? Countdown(r, seconds, true, ct)

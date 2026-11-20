@@ -9,6 +9,6 @@ internal sealed class AddFriendHandler(UserRegistry registry) : IRequestHandler<
 {
 	public async ValueTask<UserActionResult> Handle(AddFriend request, CancellationToken ct)
 	{
-		return await registry.ScopeTo(request.Actor, request.Target).Relationships.AddFriendAsync();
+		return await registry.ScopeTo(request.Actor, request.TargetId).Relationships.AddFriendAsync();
 	}
 }

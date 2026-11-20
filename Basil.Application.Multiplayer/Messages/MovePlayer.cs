@@ -6,5 +6,5 @@ using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 
 namespace Basil.Application.Multiplayer.Messages;
 
-public sealed record MovePlayer(Session Actor, Room Room, UserReference Player, int Index)
+public sealed record MovePlayer(Session Actor, Room Room, int PlayerId, int Index)
 	: IRequest<RoomTargetResult>;

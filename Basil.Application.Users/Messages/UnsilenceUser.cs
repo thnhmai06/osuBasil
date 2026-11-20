@@ -4,5 +4,5 @@ using Mediator;
 
 namespace Basil.Application.Users.Messages;
 
-public sealed record UnsilenceUser(Session Actor, UserReference Target, string? Reason)
+public sealed record UnsilenceUser(Session Actor, int TargetId, string? Reason)
 	: IRequest<UserActionResult>;

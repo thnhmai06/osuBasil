@@ -78,7 +78,7 @@ internal static class AuthRoutes
 	{
 		var connection = context.Session();
 		var result = await context.Sender().Send(
-			new CloseUserSession(connection, UserReference.ById(connection.Record.Id), connection.State.Record.Id), ct);
+			new CloseUserSession(connection, connection.Record.Id, connection.State.Record.Id), ct);
 		return result.Answer();
 	}
 

@@ -36,8 +36,8 @@ internal sealed class RoomDetails(UserDetails users, CommandActions actions, Act
 				Ink.Text)));
 		var list = new List<DetailAction>();
 		if (room.Host.Length > 0)
-			list.Add(DetailAction.OpenAsync("Host", () => users.OfAsync(UserReference.ByName(room.Host))));
-		list.Add(DetailAction.OpenAsync("Creator", () => users.OfAsync(UserReference.ByName(room.Creator))));
+			list.Add(DetailAction.OpenAsync("Host", () => users.OfNameAsync(room.Host)));
+		list.Add(DetailAction.OpenAsync("Creator", () => users.OfNameAsync(room.Creator)));
 		if (room.Slots.Count > 0) list.Add(DetailAction.Open("Players", () => Players(room)));
 		if (!room.Open) return new DetailView(room.Name, fields, list);
 
@@ -139,7 +139,7 @@ internal sealed class RoomDetails(UserDetails users, CommandActions actions, Act
 					Ink.Text))
 			.ToList();
 		var list = room.Slots.Select(slot => DetailAction.OpenAsync(slot.Player,
-			() => users.OfAsync(UserReference.ByName(slot.Player)))).ToList();
+			() => users.OfNameAsync(slot.Player))).ToList();
 		return new DetailView("Players", fields, list);
 	}
 

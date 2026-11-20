@@ -3,6 +3,7 @@ using Basil.Application.Shared.Settings;
 using Basil.Application.Users;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Chat;
+using Basil.Domain.Users;
 using Basil.Host.Stable.Support;
 using Basil.Protocol.Game.Stable.Models.Chat;
 using Basil.Application.Chat.Objects;
@@ -60,7 +61,7 @@ internal sealed partial class PacketHandlers
 	private async Task PrivateMessageAsync(StableSession osu, StableMessage message,
 		CancellationToken ct)
 	{
-		var name = UserReference.Normalize(message.Recipient);
+		var name = UserData.TryNormalize(message.Recipient);
 		if (name is null ||
 		    registry.Online.Keys.FirstOrDefault(user => user.Value.NormalizedName == name) is not { } record)
 			return;

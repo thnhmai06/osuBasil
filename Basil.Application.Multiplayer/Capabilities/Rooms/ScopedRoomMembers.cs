@@ -31,26 +31,26 @@ public readonly struct ScopedRoomMembers
 			: RoomActionResult.NotInRoom);
 	}
 
-	public async Task<RoomTargetResult> KickAsync(UserReference player)
+	public async Task<RoomTargetResult> KickAsync(int playerId)
 	{
 		if (_scoped.Require(RoomPrivileges.Staff) is not null) return RoomTargetResult.Denied;
-		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
+		return await _scoped.Room.Context.Users.FindAsync(playerId) is { } record
 			? RoomTargetResults.Of(_scoped.Room.Kick(_scoped.Actor.Record, record))
 			: RoomTargetResult.NotFound;
 	}
 
-	public async Task<RoomTargetResult> BanAsync(UserReference player)
+	public async Task<RoomTargetResult> BanAsync(int playerId)
 	{
 		if (_scoped.Require(RoomPrivileges.Moderators) is not null) return RoomTargetResult.Denied;
-		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
+		return await _scoped.Room.Context.Users.FindAsync(playerId) is { } record
 			? RoomTargetResults.Of(_scoped.Room.Ban(_scoped.Actor.Record, record))
 			: RoomTargetResult.NotFound;
 	}
 
-	public async Task<RoomTargetResult> UnbanAsync(UserReference player)
+	public async Task<RoomTargetResult> UnbanAsync(int playerId)
 	{
 		if (_scoped.Require(RoomPrivileges.Moderators) is not null) return RoomTargetResult.Denied;
-		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
+		return await _scoped.Room.Context.Users.FindAsync(playerId) is { } record
 			? RoomTargetResults.Of(_scoped.Room.Unban(record))
 			: RoomTargetResult.NotFound;
 	}

@@ -9,6 +9,6 @@ internal sealed class MovePlayerHandler : IRequestHandler<MovePlayer, RoomTarget
 	public ValueTask<RoomTargetResult> Handle(MovePlayer request, CancellationToken ct)
 	{
 		return new ValueTask<RoomTargetResult>(
-			request.Room.ScopeTo(request.Actor).Slots.MoveAsync(request.Player, request.Index));
+			request.Room.ScopeTo(request.Actor).Slots.MoveAsync(request.PlayerId, request.Index));
 	}
 }

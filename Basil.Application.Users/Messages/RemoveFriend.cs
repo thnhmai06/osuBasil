@@ -4,4 +4,4 @@ using Mediator;
 
 namespace Basil.Application.Users.Messages;
 
-public sealed record RemoveFriend(Session Actor, UserReference Target) : IRequest<UserActionResult>;
+public sealed record RemoveFriend(Session Actor, int TargetId) : IRequest<UserActionResult>;

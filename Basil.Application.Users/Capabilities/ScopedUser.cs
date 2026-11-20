@@ -10,7 +10,7 @@ namespace Basil.Application.Users.Capabilities;
 public readonly struct ScopedUser
 {
 	private readonly UserRegistry? _registry;
-	private readonly UserReference _target;
+	private readonly int _targetId;
 	private readonly User? _user;
 
 	public Session Actor { get; }
@@ -30,13 +30,13 @@ public readonly struct ScopedUser
 		_user = user;
 	}
 
-	internal ScopedUser(UserRegistry registry, UserReference target, Session actor)
+	internal ScopedUser(UserRegistry registry, int targetId, Session actor)
 	{
 		Actor = actor;
 		Effective = actor.EffectivePrivileges(actor.User.Context.Clock.GetUtcNow());
 		Granted = actor.User.Record.Value.Privileges;
 		_registry = registry;
-		_target = target;
+		_targetId = targetId;
 	}
 
 	public ScopedUserProfile Profile => new(this);
@@ -53,18 +53,14 @@ public readonly struct ScopedUser
 
 	public ScopedUserRelationships Relationships => new(this);
 
-	internal bool IsSelf => _user is { } user ? Actor.Record.Equals(user.Record) : _target.Names(Actor.Record);
+	internal bool IsSelf => _user is { } user ? Actor.Record.Equals(user.Record) : _targetId == Actor.Record.Id;
 
 	internal async Task<User?> ResolveAsync(CancellationToken ct = default)
 	{
 		if (_user is { } resolved) return resolved;
 
 		var users = Actor.User.Context.Users;
-		var record = _target.Id is { } id
-			? await users.GetAsync(id, ct)
-			: _target.Name is { } name
-				? await users.GetByNameAsync(name, ct)
-				: null;
+		var record = await users.GetAsync(_targetId, ct);
 		return record != null && record.Value.DeletedAt is null ? _registry!.Of(record) : null;
 	}
 

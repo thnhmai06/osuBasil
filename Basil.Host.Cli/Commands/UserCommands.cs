@@ -190,7 +190,7 @@ internal static class UserCommands
 		return ExitCodes.Success;
 	}
 
-	private static async Task<int?> SetProfileAsync(CommandCall call, UserReference target)
+	private static async Task<int?> SetProfileAsync(CommandCall call, int target)
 	{
 		var ct = call.CancellationToken;
 		var sender = call.Get<ISender>();
@@ -219,7 +219,7 @@ internal static class UserCommands
 		return null;
 	}
 
-	private static async Task<int?> SetCredentialsAsync(CommandCall call, UserReference target)
+	private static async Task<int?> SetCredentialsAsync(CommandCall call, int target)
 	{
 		var ct = call.CancellationToken;
 		var sender = call.Get<ISender>();

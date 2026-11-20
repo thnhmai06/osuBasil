@@ -14,18 +14,18 @@ public readonly struct ScopedRoomAuthority
 		_scoped = scoped;
 	}
 
-	public async Task<RoomTargetResult> AddRefereeAsync(UserReference user)
+	public async Task<RoomTargetResult> AddRefereeAsync(int userId)
 	{
 		if (_scoped.Require(RoomPrivileges.Creator) is not null) return RoomTargetResult.Denied;
-		return await _scoped.Room.Context.Users.FindAsync(user) is { } record
+		return await _scoped.Room.Context.Users.FindAsync(userId) is { } record
 			? RoomTargetResults.Of(_scoped.Room.AddReferee(_scoped.Actor.Record, record))
 			: RoomTargetResult.NotFound;
 	}
 
-	public async Task<RoomTargetResult> RemoveRefereeAsync(UserReference user)
+	public async Task<RoomTargetResult> RemoveRefereeAsync(int userId)
 	{
 		if (_scoped.Require(RoomPrivileges.Creator) is not null) return RoomTargetResult.Denied;
-		return await _scoped.Room.Context.Users.FindAsync(user) is { } record
+		return await _scoped.Room.Context.Users.FindAsync(userId) is { } record
 			? RoomTargetResults.Of(_scoped.Room.RemoveReferee(_scoped.Actor.Record, record))
 			: RoomTargetResult.NotFound;
 	}

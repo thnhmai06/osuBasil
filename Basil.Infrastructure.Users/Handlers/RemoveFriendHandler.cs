@@ -9,7 +9,7 @@ internal sealed class RemoveFriendHandler(UserRegistry registry) : IRequestHandl
 {
 	public async ValueTask<UserActionResult> Handle(RemoveFriend request, CancellationToken ct)
 	{
-		return await registry.ScopeTo(request.Actor, request.Target).Relationships
+		return await registry.ScopeTo(request.Actor, request.TargetId).Relationships
 			.RemoveFriendAsync();
 	}
 }

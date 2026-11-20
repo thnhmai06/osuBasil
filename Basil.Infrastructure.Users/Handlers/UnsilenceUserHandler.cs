@@ -10,7 +10,7 @@ internal sealed class UnsilenceUserHandler(UserRegistry registry)
 {
 	public async ValueTask<UserActionResult> Handle(UnsilenceUser request, CancellationToken ct)
 	{
-		return await registry.ScopeTo(request.Actor, request.Target).Silence
+		return await registry.ScopeTo(request.Actor, request.TargetId).Silence
 			.LiftAsync(request.Reason);
 	}
 }

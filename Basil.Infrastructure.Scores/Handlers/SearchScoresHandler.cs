@@ -29,11 +29,11 @@ internal sealed class SearchScoresHandler(IScoreRepository scores, IBeatmapRepos
 		}
 
 		HashSet<int>? userIds = null;
-		if (request.User is { } reference)
+		if (request.UserId is not null || request.UserName is not null)
 		{
-			var user = reference.Id is { } id
+			var user = request.UserId is { } id
 				? await users.GetAsync(id, ct)
-				: await users.GetByNameAsync(reference.Name!, ct);
+				: await users.GetByNameAsync(request.UserName!, ct);
 			if (user is null) return new ScoreListing(ScoreListResult.NoUser, null);
 			userIds = [user.Id];
 		}

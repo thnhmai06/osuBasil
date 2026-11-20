@@ -3,4 +3,4 @@ using Mediator;
 
 namespace Basil.Application.Users.Messages;
 
-public sealed record GetUser(UserReference Target) : IRequest<UserRecord?>;
+public sealed record GetUser(int Id) : IRequest<UserRecord?>;

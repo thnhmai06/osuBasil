@@ -22,10 +22,10 @@ public readonly struct ScopedRoomSlots
 			: RoomActionResult.NotInRoom);
 	}
 
-	public async Task<RoomTargetResult> MoveAsync(UserReference player, int index)
+	public async Task<RoomTargetResult> MoveAsync(int playerId, int index)
 	{
 		if (_scoped.Require(RoomPrivileges.Moderators) is not null) return RoomTargetResult.Denied;
-		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
+		return await _scoped.Room.Context.Users.FindAsync(playerId) is { } record
 			? RoomTargetResults.Of(_scoped.Room.MovePlayer(record, index))
 			: RoomTargetResult.NotFound;
 	}
@@ -57,10 +57,10 @@ public readonly struct ScopedRoomSlots
 			: RoomActionResult.NotInRoom);
 	}
 
-	public async Task<RoomTargetResult> SetTeamAsync(UserReference player, GameTeam team)
+	public async Task<RoomTargetResult> SetTeamAsync(int playerId, GameTeam team)
 	{
 		if (_scoped.Require(RoomPrivileges.Moderators) is not null) return RoomTargetResult.Denied;
-		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
+		return await _scoped.Room.Context.Users.FindAsync(playerId) is { } record
 			? RoomTargetResults.Of(_scoped.Room.SetTeam(record, team))
 			: RoomTargetResult.NotFound;
 	}

@@ -4,5 +4,5 @@ using Mediator;
 
 namespace Basil.Application.Users.Messages;
 
-public sealed record SetUserCountry(Session Actor, UserReference Target, Country Country)
+public sealed record SetUserCountry(Session Actor, int TargetId, Country Country)
 	: IRequest<UserActionResult>;

@@ -4,4 +4,4 @@ using Mediator;
 
 namespace Basil.Application.Users.Messages;
 
-public sealed record RenameUser(Session Actor, UserReference Target, string Name) : IRequest<UserActionResult>;
+public sealed record RenameUser(Session Actor, int TargetId, string Name) : IRequest<UserActionResult>;

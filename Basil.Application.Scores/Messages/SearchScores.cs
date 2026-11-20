@@ -1,9 +1,8 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Shared.Paging;
-using Basil.Application.Users;
 using Mediator;
 
 namespace Basil.Application.Scores.Messages;
 
-public sealed record SearchScores(UserReference? User, int? BeatmapId, BeatmapQuery? Beatmaps, PageRequest Page)
+public sealed record SearchScores(int? UserId, string? UserName, int? BeatmapId, BeatmapQuery? Beatmaps, PageRequest Page)
 	: IRequest<ScoreListing>;

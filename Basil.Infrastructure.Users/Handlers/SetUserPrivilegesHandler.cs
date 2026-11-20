@@ -10,7 +10,7 @@ internal sealed class SetUserPrivilegesHandler(UserRegistry registry)
 {
 	public async ValueTask<UserActionResult> Handle(SetUserPrivileges request, CancellationToken ct)
 	{
-		return await registry.ScopeTo(request.Actor, request.Target).Privileges
+		return await registry.ScopeTo(request.Actor, request.TargetId).Privileges
 			.SetAsync(request.Privileges);
 	}
 }

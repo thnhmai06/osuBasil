@@ -9,7 +9,7 @@ namespace Basil.Application.Users.Messages;
 
 public sealed record ListUserSessions(
 	Session Actor,
-	UserReference Target,
+	int TargetId,
 	PageRequest Page,
 	SessionFilter State,
 	IReadOnlyList<SessionType>? Types)
