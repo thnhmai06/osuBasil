@@ -12,7 +12,8 @@ public sealed partial class Room
 	{
 		using (Enter())
 		{
-			if (Seated(stable) is not { } player) return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotInRoom;
+			if (Seated(stable) is not { } player)
+				return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotInRoom;
 
 			var (outcome, move) = State.Slots.ChangeSlot(player, index);
 			if (move is { } moved) Emit(new RoomPlayerMoved(this, stable, moved.From, moved.To));
@@ -44,7 +45,8 @@ public sealed partial class Room
 	{
 		using (Enter())
 		{
-			if (Seated(stable) is not { } player) return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotInRoom;
+			if (Seated(stable) is not { } player)
+				return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotInRoom;
 
 			var (outcome, changed) = State.Slots.SetReady(player, ready);
 			if (changed is { } slot)
@@ -57,7 +59,8 @@ public sealed partial class Room
 	{
 		using (Enter())
 		{
-			if (Seated(stable) is not { } player) return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotInRoom;
+			if (Seated(stable) is not { } player)
+				return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotInRoom;
 
 			var (outcome, changed) = State.Slots.SetHasMap(player, has);
 			if (changed is { } slot)
@@ -70,7 +73,8 @@ public sealed partial class Room
 	{
 		using (Enter())
 		{
-			if (Seated(stable) is not { } player) return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotInRoom;
+			if (Seated(stable) is not { } player)
+				return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotInRoom;
 
 			var (outcome, slot, team) = State.Slots.ToggleTeam(player);
 			if (outcome is RoomActionResult.Ok) Emit(new RoomSlotTeamChanged(this, slot, team));
@@ -92,7 +96,8 @@ public sealed partial class Room
 	{
 		using (Enter())
 		{
-			if (Seated(stable) is not { } player) return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotInRoom;
+			if (Seated(stable) is not { } player)
+				return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotInRoom;
 
 			var (outcome, changed) = State.Slots.SetMods(player, mods);
 			if (changed is { } slot) Emit(new RoomSlotModsChanged(this, slot, mods));

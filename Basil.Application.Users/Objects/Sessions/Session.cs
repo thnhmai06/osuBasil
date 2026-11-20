@@ -24,8 +24,6 @@ public abstract class Session(Domain.Authentication.Session state, string token)
 
 	public bool IsServerOwned => Record.Id == BasilBot.Id;
 
-	public UserRecord Record => State.Record.Value.User;
-
 	/// <summary>When the connection was last heard from.</summary>
 	public DateTimeOffset LastActiveAt
 	{
@@ -36,6 +34,25 @@ public abstract class Session(Domain.Authentication.Session state, string token)
 				return State.Record.Value.LastActiveAt;
 			}
 		}
+	}
+
+	/// <summary>The moment the connection expires if it stays silent.</summary>
+	public DateTimeOffset ExpiresAt
+	{
+		get
+		{
+			using (_stateLock.EnterScope())
+			{
+				return State.ExpiresAt;
+			}
+		}
+	}
+
+	public UserRecord Record => State.Record.Value.User;
+
+	public virtual UserPrivileges EffectivePrivileges(DateTimeOffset now)
+	{
+		return User.EffectivePrivileges(now);
 	}
 
 	internal SessionStatus StatusAt(DateTimeOffset now)
@@ -68,23 +85,6 @@ public abstract class Session(Domain.Authentication.Session state, string token)
 		{
 			return State.GiveWay(now);
 		}
-	}
-
-	/// <summary>The moment the connection expires if it stays silent.</summary>
-	public DateTimeOffset ExpiresAt
-	{
-		get
-		{
-			using (_stateLock.EnterScope())
-			{
-				return State.ExpiresAt;
-			}
-		}
-	}
-
-	public virtual UserPrivileges EffectivePrivileges(DateTimeOffset now)
-	{
-		return User.EffectivePrivileges(now);
 	}
 
 	internal virtual bool Outranks(UserPrivileges granted, UserPrivileges target)

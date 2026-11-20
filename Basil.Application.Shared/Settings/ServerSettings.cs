@@ -37,6 +37,34 @@ public sealed record ServerSettings
 		init => field = value ?? throw new ArgumentNullException(nameof(value));
 	} = new();
 
+	private static TimeSpan Positive(TimeSpan value)
+	{
+		return value > TimeSpan.Zero
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), value, "The duration must be positive.");
+	}
+
+	private static int Positive(int value)
+	{
+		return value > 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), value, "The number must be positive.");
+	}
+
+	private static double Fraction(double value)
+	{
+		return value is > 0 and <= 1
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), value, "The load must be above 0 and at most 1.");
+	}
+
+	private static long Positive(long value)
+	{
+		return value > 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), value, "The number must be positive.");
+	}
+
 	public sealed record GeneralSettings
 	{
 		public string? Motd
@@ -290,33 +318,5 @@ public sealed record ServerSettings
 		}
 
 		public ContentReference? Image { get; init; }
-	}
-
-	private static TimeSpan Positive(TimeSpan value)
-	{
-		return value > TimeSpan.Zero
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), value, "The duration must be positive.");
-	}
-
-	private static int Positive(int value)
-	{
-		return value > 0
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), value, "The number must be positive.");
-	}
-
-	private static double Fraction(double value)
-	{
-		return value is > 0 and <= 1
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), value, "The load must be above 0 and at most 1.");
-	}
-
-	private static long Positive(long value)
-	{
-		return value > 0
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), value, "The number must be positive.");
 	}
 }

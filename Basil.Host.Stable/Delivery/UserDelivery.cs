@@ -1,4 +1,5 @@
 using Basil.Application.Scores.Messages;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;

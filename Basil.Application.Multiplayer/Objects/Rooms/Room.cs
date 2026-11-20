@@ -42,11 +42,6 @@ public sealed partial class Room : IEquatable<Room>
 
 	public IReadOnlyCollection<UserRecord> Referees => [.. State.Members.Referees.Select(referee => referee.Record)];
 
-	public bool IsManagedBy(UserRecord user)
-	{
-		return State.Members.Find(user)?.Has(RoomPrivileges.Moderators) is true;
-	}
-
 	public RoomMembers Members { get; }
 
 	public RoomRounds Rounds => State.Rounds;
@@ -70,6 +65,11 @@ public sealed partial class Room : IEquatable<Room>
 	public bool Equals(Room? other)
 	{
 		return other is not null && Match.Equals(other.Match);
+	}
+
+	public bool IsManagedBy(UserRecord user)
+	{
+		return State.Members.Find(user)?.Has(RoomPrivileges.Moderators) is true;
 	}
 
 	public StableSession? SessionOf(UserRecord user)

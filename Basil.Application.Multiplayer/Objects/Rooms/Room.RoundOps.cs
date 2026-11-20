@@ -38,7 +38,8 @@ public sealed partial class Room
 	{
 		using (Enter())
 		{
-			if (PlayerOf(actor) is not { } player) return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotPlaying;
+			if (PlayerOf(actor) is not { } player)
+				return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotPlaying;
 
 			var (outcome, signal) = State.Rounds.MarkLoaded(player);
 			if (signal is { } s)
@@ -57,7 +58,8 @@ public sealed partial class Room
 	{
 		using (Enter())
 		{
-			if (PlayerOf(actor) is not { } player) return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotPlaying;
+			if (PlayerOf(actor) is not { } player)
+				return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotPlaying;
 
 			var (outcome, signal) = State.Rounds.SkipIntro(player);
 			if (signal is { } s)
@@ -76,7 +78,8 @@ public sealed partial class Room
 	{
 		using (Enter())
 		{
-			if (PlayerOf(actor) is not { } player) return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotPlaying;
+			if (PlayerOf(actor) is not { } player)
+				return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotPlaying;
 
 			var (outcome, signal) = State.Rounds.ReportFailed(player);
 			if (signal is { } s) Emit(new RoomRoundPlayerFailed(this, s.Round, s.Slot));
@@ -88,7 +91,8 @@ public sealed partial class Room
 	{
 		using (Enter())
 		{
-			if (PlayerOf(actor) is not { } player) return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotPlaying;
+			if (PlayerOf(actor) is not { } player)
+				return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotPlaying;
 
 			var (outcome, signal) = State.Rounds.ReportCompleted(player, Now);
 			if (signal is { } s)
@@ -99,7 +103,9 @@ public sealed partial class Room
 					SettleRound();
 				}
 				else
+				{
 					Emit(new RoomRoundPlayerCompleted(this, s.Round, s.Slot));
+				}
 			}
 
 			return outcome;

@@ -30,12 +30,7 @@ public sealed class Beatmapsets
 		return new Beatmapset(set, _context);
 	}
 
-	public Task<BeatmapsetImportResult> ImportAsync(Stream archive, CancellationToken ct = default)
-	{
-		return ImportAsync(archive, true, ct);
-	}
-
-	public async Task<BeatmapsetImportResult> ImportAsync(Stream archive, bool replaceExisting,
+	public async Task<BeatmapsetImportResult> ImportAsync(Stream archive, bool replaceExisting = true,
 		CancellationToken ct = default)
 	{
 		var (result, imported) = await _importer.ImportAsync(archive, replaceExisting, ct);
@@ -51,8 +46,7 @@ public sealed class Beatmapsets
 		return outcome.Result;
 	}
 
-	public async Task<BeatmapsetScanResult> ScanAsync(BeatmapsetSource entry,
-		CancellationToken ct = default)
+	public async Task<BeatmapsetScanResult> ScanAsync(BeatmapsetSource entry, CancellationToken ct = default)
 	{
 		var outcome = await _scanner.ScanAsync(entry, ct);
 		Publish(outcome);

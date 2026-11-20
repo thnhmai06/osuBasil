@@ -27,7 +27,7 @@ public sealed class PmChannels
 			return new PmChannel(owner, _context);
 		}
 
-		var channel = _channels.GetOrAdd(owner, current => new PmChannel(current, _context));
+		var channel = _channels.GetOrAdd(owner, static (current, context) => new PmChannel(current, context), _context);
 		if (!owner.IsOnline)
 		{
 			_channels.TryRemove(new KeyValuePair<User, PmChannel>(owner, channel));

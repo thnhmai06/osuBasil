@@ -1,7 +1,6 @@
 using System.Collections.Frozen;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Bot.Commands;
-using Basil.Application.Bot.Commands.Mp;
 using Basil.Application.Bot.Registry;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Multiplayer.Registry;

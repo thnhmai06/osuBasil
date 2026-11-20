@@ -1,5 +1,4 @@
 using Basil.Domain.Multiplayer.Report.Rounds;
-using Basil.Domain.Multiplayer.Room;
 
 namespace Basil.Application.Multiplayer.Objects.Rooms;
 

@@ -1,6 +1,5 @@
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Bot.Commands;
-using Basil.Application.Bot.Commands.Mp;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Users;
 using Basil.Domain.Game;

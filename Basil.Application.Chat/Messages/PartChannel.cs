@@ -1,7 +1,6 @@
-using Basil.Application.Users.Objects.Sessions;
-using Basil.Domain.Chat;
-using Mediator;
 using Basil.Application.Chat.Objects;
+using Basil.Application.Users.Objects.Sessions;
+using Mediator;
 
 namespace Basil.Application.Chat.Messages;
 

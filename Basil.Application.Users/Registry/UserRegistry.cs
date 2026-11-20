@@ -24,6 +24,7 @@ namespace Basil.Application.Users.Registry;
 
 public sealed class UserRegistry
 {
+	private const string BotName = "BasilBot";
 	internal static readonly TimeSpan IgnoreLogoutWithin = TimeSpan.FromSeconds(1);
 
 	private static readonly OsuClient ServerClient =
@@ -165,7 +166,8 @@ public sealed class UserRegistry
 	private static SessionState NewLoginState(UserRecord record, SessionType type, IPAddress ip, OsuClient? client,
 		DateTimeOffset now, string token)
 	{
-		return SessionState.Start(NewSessionId(), record, type, new SessionFingerprint(ip, client), HashToken(token), now);
+		return SessionState.Start(NewSessionId(), record, type, new SessionFingerprint(ip, client), HashToken(token),
+			now);
 	}
 
 	public async Task<LoginResult> ResumeAsync(string token, Func<UserRecord, bool>? accepts = null,
@@ -175,7 +177,8 @@ public sealed class UserRegistry
 		if (_tokens.GetValueOrDefault(token) is { IsOpen: true } open && open.Type == type)
 			return ResumeOpen(open, accepts);
 
-		var stored = Wrap(await _context.Sessions.FindOpenByTokenAsync(type, HashToken(token), _context.Users.GetAsync, ct));
+		var stored =
+			Wrap(await _context.Sessions.FindOpenByTokenAsync(type, HashToken(token), _context.Users.GetAsync, ct));
 		if (stored is null || IsEnding(stored)) return LoginResult.Fail(LoginFailure.InvalidToken);
 
 		var record = stored.Record.Value.User;
@@ -348,8 +351,6 @@ public sealed class UserRegistry
 	{
 		return _context.Sessions.EndSilentAsync(_context.Clock.GetUtcNow());
 	}
-
-	private const string BotName = "BasilBot";
 
 	public async Task<UserRecord> EnsureBotAsync(CancellationToken ct = default)
 	{

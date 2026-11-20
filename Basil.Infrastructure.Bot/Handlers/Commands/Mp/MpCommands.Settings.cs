@@ -1,5 +1,4 @@
 using Basil.Application.Bot.Commands;
-using Basil.Application.Bot.Commands.Mp;
 using Basil.Application.Bot.Replies;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Domain.Beatmaps;

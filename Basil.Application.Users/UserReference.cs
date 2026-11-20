@@ -25,7 +25,10 @@ public readonly record struct UserReference
 		return new UserReference(null, name);
 	}
 
-	/// <summary>Gives the form in which user names are compared, or <see langword="null"/> when the text is not a valid user name.</summary>
+	/// <summary>
+	///     Gives the form in which user names are compared, or <see langword="null" /> when the text is not a valid user
+	///     name.
+	/// </summary>
 	public static string? Normalize(string name)
 	{
 		try

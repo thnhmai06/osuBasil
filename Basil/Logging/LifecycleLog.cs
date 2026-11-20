@@ -1,4 +1,5 @@
 using Basil.Application.Multiplayer.Objects.Events;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Events;
 using Mediator;
 

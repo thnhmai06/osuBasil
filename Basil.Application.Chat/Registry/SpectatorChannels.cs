@@ -16,7 +16,7 @@ public sealed class SpectatorChannels
 
 	public SpectatorChannel Of(StableSession host)
 	{
-		return _channels.GetOrAdd(host, client => new SpectatorChannel(client, _context));
+		return _channels.GetOrAdd(host, static (client, context) => new SpectatorChannel(client, context), _context);
 	}
 
 	internal SpectatorChannel? Find(StableSession host)

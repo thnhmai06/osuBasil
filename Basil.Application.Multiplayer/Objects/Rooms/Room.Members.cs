@@ -35,7 +35,8 @@ public sealed partial class Room
 			if (IsClosed) return RoomJoinResult.RoomClosed;
 
 			var stale = SessionOf(actor.Record);
-			if (stale is not null && (ReferenceEquals(stale, actor) || stale.IsOpen)) return RoomJoinResult.AlreadySeated;
+			if (stale is not null && (ReferenceEquals(stale, actor) || stale.IsOpen))
+				return RoomJoinResult.AlreadySeated;
 
 			if (JoinRefusal(actor, password, managesAnyRoom) is { } refusal) return refusal;
 

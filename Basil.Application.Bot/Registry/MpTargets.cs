@@ -19,6 +19,6 @@ internal sealed class MpTargets
 
 	public Room? Get(int userId)
 	{
-		return _userIdToRoom.TryGetValue(userId, out var room) ? room : null;
+		return _userIdToRoom.GetValueOrDefault(userId);
 	}
 }

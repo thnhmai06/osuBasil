@@ -1,3 +1,4 @@
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Events;
 using Basil.Host.Irc.Clients;
 using Basil.Host.Irc.Support;

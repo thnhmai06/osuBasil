@@ -1,4 +1,5 @@
 using Basil.Application.Shared.Events;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Registry;
 using Mediator;

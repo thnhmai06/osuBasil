@@ -1,5 +1,6 @@
 using Basil.Application.Users;
 using Basil.Application.Users.Messages;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;

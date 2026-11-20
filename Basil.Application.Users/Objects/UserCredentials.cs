@@ -27,7 +27,8 @@ public sealed class UserCredentials
 		return _user.Context.Credentials.CreateOrUpdateAsync(new Credentials(_user.Record, passwordHash));
 	}
 
-	internal async Task<UserActionResult> ChangeAsync(Md5Hash newPasswordHash, Md5Hash? currentPasswordHash, Session actor,
+	internal async Task<UserActionResult> ChangeAsync(Md5Hash newPasswordHash, Md5Hash? currentPasswordHash,
+		Session actor,
 		bool includeCurrent)
 	{
 		var isSelf = actor.Record.Equals(_user.Record);

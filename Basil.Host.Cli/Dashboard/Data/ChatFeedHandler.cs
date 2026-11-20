@@ -1,3 +1,4 @@
+using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Objects.Events;
 using Mediator;
 

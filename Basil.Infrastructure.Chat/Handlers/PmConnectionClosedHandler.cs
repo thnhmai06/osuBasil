@@ -1,4 +1,5 @@
 using Basil.Application.Chat.Registry;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Events;
 using Mediator;
 
