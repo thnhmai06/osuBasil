@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using Basil.Application.Diagnostics.Services;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Authentication;
+using Basil.Domain.Sessions;
 using Basil.Gateway.Admission;
 using Basil.Gateway.RateLimiting;
 using Basil.Host.Stable.Delivery;

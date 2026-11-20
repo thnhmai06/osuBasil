@@ -96,7 +96,7 @@ Repository contracts, byte storages and the Registry / Repository / Storage mode
   key and index strings, a nullable unique column instead of a filtered index, and `EF.Functions.Like` over lowered text with the
   `!` escape character. Tests run on PostgreSQL.
 * **Module schemas.** Each module has its own `DbContext`, row configuration set and migration history
-  (`__ef_migrations_<module>`). `DatabaseMigrator` applies Users, Authentication, Beatmaps, Content, Shared (the settings), Scores,
+  (`__ef_migrations_<module>`). `DatabaseMigrator` applies Users, Sessions, Beatmaps, Content, Shared (the settings), Scores,
   Multiplayer and Chat in that order; referencing contexts preserve foreign keys by mapping principal rows as excluded from
   their migrations. The system is not in production, so a module's migrations may be regenerated while the schema settles; see
   [`database.md`](../for-developers/database.md#migrations).
@@ -115,7 +115,7 @@ Repository contracts, byte storages and the Registry / Repository / Storage mode
 
 ## How a repository is written now
 
-The Authentication module is the pilot; copy its shape (`EfCredentialRepository`, `EfSessionRepository`).
+The Sessions module is the pilot; copy its shape (`EfCredentialRepository`, `EfSessionRepository`).
 
 * **One helper, `DatabaseSession`** (`Infrastructure.Shared/Persistence`), injected into the repository. It has no queue
   and no retry of a change. `ReadAsync<TContext, T>(query, ct)` runs a bounded query on a context of its own. `WriteAsync<TContext>(change)` and `WriteAsync<TContext, T>(change)` create a context whose

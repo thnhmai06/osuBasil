@@ -1,4 +1,4 @@
-namespace Basil.Domain.Authentication;
+namespace Basil.Domain.Sessions;
 
 /// <summary>How and when a session ended.</summary>
 /// <param name="At">The moment the session ended.</param>

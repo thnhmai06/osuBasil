@@ -4,7 +4,7 @@ using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Scores.Objects;
 using Basil.Application.Servers.Objects;
-using Basil.Domain.Authentication;
+using Basil.Domain.Sessions;
 using Basil.Domain.Chat;
 using Basil.Domain.Content;
 using Basil.Domain.Multiplayer.Room;

@@ -1,4 +1,4 @@
-using Basil.Application.Authentication.Persistence;
+using Basil.Application.Sessions.Persistence;
 using Basil.Application.Content.Ports;
 using Basil.Application.Shared.Events;
 using Basil.Application.Shared.Settings;

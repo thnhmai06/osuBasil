@@ -1,20 +1,20 @@
 using Basil.Application.Shared.Actors;
 using Basil.Application.Users.Capabilities;
 using Basil.Application.Users.Objects.Events;
-using Basil.Domain.Authentication;
+using Basil.Domain.Sessions;
 using Basil.Domain.Spectating;
 using Basil.Domain.Users;
 using Basil.Shared.Structures.Data;
 
 namespace Basil.Application.Users.Objects.Sessions;
 
-public abstract class Session(Domain.Authentication.Session state, string token) : IActor
+public abstract class Session(Domain.Sessions.Session state, string token) : IActor
 {
 	private readonly Lock _stateLock = new();
 
 	public User User { get; internal set; } = null!;
 
-	public Domain.Authentication.Session State { get; } = state;
+	public Domain.Sessions.Session State { get; } = state;
 
 	public string Token { get; } = token;
 
@@ -98,7 +98,7 @@ public sealed class StableSession : Session
 	private readonly Lock _spectating = new();
 	private readonly ConcurrentSet<Session> _spectators = [];
 
-	internal StableSession(Domain.Authentication.Session state, string token, int utcOffset,
+	internal StableSession(Domain.Sessions.Session state, string token, int utcOffset,
 		SessionContext context) : base(state, token)
 	{
 		UtcOffset = utcOffset;
@@ -198,28 +198,28 @@ public sealed class StableSession : Session
 
 public sealed class TourneySession : Session
 {
-	internal TourneySession(Domain.Authentication.Session state, string token) : base(state, token)
+	internal TourneySession(Domain.Sessions.Session state, string token) : base(state, token)
 	{
 	}
 }
 
 public sealed class IrcSession : Session
 {
-	internal IrcSession(Domain.Authentication.Session state, string token) : base(state, token)
+	internal IrcSession(Domain.Sessions.Session state, string token) : base(state, token)
 	{
 	}
 }
 
 public sealed class ApiSession : Session
 {
-	internal ApiSession(Domain.Authentication.Session state, string token) : base(state, token)
+	internal ApiSession(Domain.Sessions.Session state, string token) : base(state, token)
 	{
 	}
 }
 
 public sealed class OperatorSession : Session
 {
-	internal OperatorSession(Domain.Authentication.Session state, string token) : base(state, token)
+	internal OperatorSession(Domain.Sessions.Session state, string token) : base(state, token)
 	{
 	}
 

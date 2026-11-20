@@ -1,21 +1,21 @@
 using System.Globalization;
-using Basil.Application.Authentication.Persistence;
+using Basil.Application.Sessions.Persistence;
 using Basil.Application.Shared.Paging;
-using Basil.Domain.Authentication;
+using Basil.Domain.Sessions;
 using Basil.Domain.Client;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Persistence;
 using Basil.Shared.Structures.Cryptography;
 using Microsoft.EntityFrameworkCore;
 
-namespace Basil.Infrastructure.Authentication.Persistence;
+namespace Basil.Infrastructure.Sessions.Persistence;
 
 internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRepository
 {
 	public Task CreateAsync(SessionRecord session)
 	{
 		var row = ToRow(session);
-		return database.WriteAsync((AuthenticationDbContext context) =>
+		return database.WriteAsync((SessionsDbContext context) =>
 		{
 			context.Sessions.Add(row);
 			return Task.CompletedTask;
@@ -27,7 +27,7 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 	{
 		var user = query.User;
 		var types = query.Types;
-		var fetched = await database.ReadAsync(async (AuthenticationDbContext context) =>
+		var fetched = await database.ReadAsync(async (SessionsDbContext context) =>
 		{
 			var sessions = context.Sessions.Where(row => row.UserId == user.Id);
 			if (types is not null) sessions = sessions.Where(row => types.Contains(row.Type));
@@ -51,7 +51,7 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 
 	public async Task<SessionRecord?> GetAsync(UserRecord user, long id, CancellationToken ct = default)
 	{
-		var row = await database.ReadAsync((AuthenticationDbContext context) => context.Sessions
+		var row = await database.ReadAsync((SessionsDbContext context) => context.Sessions
 				.FirstOrDefaultAsync(item => item.Id == id && item.UserId == user.Id, ct),
 			ct);
 		return row is null ? null : ToRecord(row, user);
@@ -61,7 +61,7 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 		Func<int, CancellationToken, ValueTask<UserRecord?>> owner, CancellationToken ct = default)
 	{
 		var hash = Convert.FromHexString(tokenHash.HashValue);
-		var row = await database.ReadAsync((AuthenticationDbContext context) => context.Sessions
+		var row = await database.ReadAsync((SessionsDbContext context) => context.Sessions
 				.FirstOrDefaultAsync(item => item.TokenHash == hash && item.Type == type && item.EndedAt == null, ct),
 			ct);
 		if (row is null) return null;
@@ -72,7 +72,7 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 
 	public async Task<SessionRecord?> FindOpenAsync(UserRecord user, SessionType type, CancellationToken ct = default)
 	{
-		var row = await database.ReadAsync((AuthenticationDbContext context) => context.Sessions
+		var row = await database.ReadAsync((SessionsDbContext context) => context.Sessions
 				.Where(item => item.UserId == user.Id && item.Type == type && item.EndedAt == null)
 				.OrderByDescending(item => item.LastActiveAt)
 				.FirstOrDefaultAsync(ct),
@@ -83,7 +83,7 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 	public Task EndAsync(long id, SessionEnded ended)
 	{
 		var end = ended.At.ToUniversalTime();
-		return database.WriteAsync((AuthenticationDbContext context) => context.Sessions
+		return database.WriteAsync((SessionsDbContext context) => context.Sessions
 			.Where(row => row.Id == id && row.EndedAt == null)
 			.ExecuteUpdateAsync(setters => setters
 				.SetProperty(row => row.EndedAt, end)
@@ -93,7 +93,7 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 	public Task EndAsync(UserRecord user, long? only, long? except, SessionEndReason reason, DateTimeOffset at)
 	{
 		var end = at.ToUniversalTime();
-		return database.WriteAsync(async (AuthenticationDbContext context) =>
+		return database.WriteAsync(async (SessionsDbContext context) =>
 		{
 			var query = context.Sessions.Where(row => row.UserId == user.Id);
 			if (only is { } one) query = query.Where(row => row.Id == one);
@@ -108,7 +108,7 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 	public Task<int> EndOpenAsync(SessionType type, SessionEndReason reason, DateTimeOffset at)
 	{
 		var end = at.ToUniversalTime();
-		return database.WriteAsync((AuthenticationDbContext context) => context.Sessions
+		return database.WriteAsync((SessionsDbContext context) => context.Sessions
 			.Where(row => row.EndedAt == null && row.Type == type)
 			.ExecuteUpdateAsync(setters => setters
 				.SetProperty(row => row.EndedAt, end)
@@ -118,7 +118,7 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 	public Task<int> EndSilentAsync(DateTimeOffset now)
 	{
 		var end = now.ToUniversalTime();
-		return database.WriteAsync(async (AuthenticationDbContext context) =>
+		return database.WriteAsync(async (SessionsDbContext context) =>
 		{
 			var ended = 0;
 			foreach (var type in Enum.GetValues<SessionType>())
@@ -139,7 +139,7 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 	{
 		if (activity.Count == 0) return Task.CompletedTask;
 
-		return database.TransactAsync(async (AuthenticationDbContext context) =>
+		return database.TransactAsync(async (SessionsDbContext context) =>
 		{
 			foreach (var item in activity)
 			{
@@ -156,7 +156,7 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 	public Task<int> DeleteEndedBeforeAsync(DateTimeOffset cutoff)
 	{
 		var before = cutoff.ToUniversalTime();
-		return database.WriteAsync(async (AuthenticationDbContext context) =>
+		return database.WriteAsync(async (SessionsDbContext context) =>
 			await context.Sessions.Where(row => row.EndedAt != null && row.EndedAt < before)
 				.ExecuteDeleteAsync());
 	}

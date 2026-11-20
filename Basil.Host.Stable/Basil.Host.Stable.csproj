@@ -13,7 +13,7 @@
 		<ProjectReference Include="..\Basil.Gateway\Basil.Gateway.csproj"/>
 		<ProjectReference Include="..\Basil.Protocol.Game.Stable\Basil.Protocol.Game.Stable.csproj"/>
 		<ProjectReference Include="..\Basil.Application.Anticheat\Basil.Application.Anticheat.csproj"/>
-		<ProjectReference Include="..\Basil.Application.Authentication\Basil.Application.Authentication.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Sessions\Basil.Application.Sessions.csproj"/>
 		<ProjectReference Include="..\Basil.Application.Beatmaps\Basil.Application.Beatmaps.csproj"/>
 		<ProjectReference Include="..\Basil.Application.Chat\Basil.Application.Chat.csproj"/>
 		<ProjectReference Include="..\Basil.Application.Content\Basil.Application.Content.csproj"/>

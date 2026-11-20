@@ -1,4 +1,4 @@
-using Basil.Infrastructure.Authentication.Persistence;
+using Basil.Infrastructure.Sessions.Persistence;
 using Basil.Infrastructure.Beatmaps.Persistence;
 using Basil.Infrastructure.Chat.Persistence;
 using Basil.Infrastructure.Content.Persistence;
@@ -29,11 +29,11 @@ internal sealed class UsersDbContextFactory : IDesignTimeDbContextFactory<UsersD
 	}
 }
 
-internal sealed class AuthenticationDbContextFactory : IDesignTimeDbContextFactory<AuthenticationDbContext>
+internal sealed class SessionsDbContextFactory : IDesignTimeDbContextFactory<SessionsDbContext>
 {
-	public AuthenticationDbContext CreateDbContext(string[] args)
+	public SessionsDbContext CreateDbContext(string[] args)
 	{
-		return PostgresDatabaseProvider.CreateDesignTime<AuthenticationDbContext>();
+		return PostgresDatabaseProvider.CreateDesignTime<SessionsDbContext>();
 	}
 }
 

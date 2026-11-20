@@ -1,7 +1,7 @@
 using Basil.Application.Users.Capabilities;
 using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Objects.Sessions;
-using Basil.Domain.Authentication;
+using Basil.Domain.Sessions;
 using Basil.Domain.Game;
 using Basil.Domain.Users;
 using Session = Basil.Application.Users.Objects.Sessions.Session;

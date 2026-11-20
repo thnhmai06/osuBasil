@@ -1,7 +1,7 @@
 using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;
 
-namespace Basil.Domain.Authentication;
+namespace Basil.Domain.Sessions;
 
 /// <summary>The rules of one sign-in: its heartbeat, status and end.</summary>
 /// <param name="record">The stored data of the session.</param>

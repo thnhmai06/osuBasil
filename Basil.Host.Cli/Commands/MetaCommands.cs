@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Reflection;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Authentication;
+using Basil.Domain.Sessions;
 
 namespace Basil.Host.Cli.Commands;
 

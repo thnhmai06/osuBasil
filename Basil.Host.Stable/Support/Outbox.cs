@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Authentication;
+using Basil.Domain.Sessions;
 using Basil.Protocol.Game.Stable.Wire.Packets;
 using Session = Basil.Application.Users.Objects.Sessions.Session;
 

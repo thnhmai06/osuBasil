@@ -1,7 +1,7 @@
 ﻿using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;
 
-namespace Basil.Domain.Authentication;
+namespace Basil.Domain.Sessions;
 
 /// <summary>The account a sign-in names together with the password hash it presented.</summary>
 /// <param name="User">The account the sign-in names.</param>

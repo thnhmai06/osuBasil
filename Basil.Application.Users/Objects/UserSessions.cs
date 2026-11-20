@@ -1,9 +1,9 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
-using Basil.Application.Authentication.Persistence;
+using Basil.Application.Sessions.Persistence;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Objects.Sessions;
-using Basil.Domain.Authentication;
+using Basil.Domain.Sessions;
 using Basil.Domain.Moderation;
 using Basil.Domain.Users;
 using Basil.Shared.Structures.Data;

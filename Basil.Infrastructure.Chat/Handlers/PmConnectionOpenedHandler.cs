@@ -1,7 +1,7 @@
 using Basil.Application.Chat.Registry;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Events;
-using Basil.Domain.Authentication;
+using Basil.Domain.Sessions;
 using Mediator;
 
 namespace Basil.Infrastructure.Chat.Handlers;

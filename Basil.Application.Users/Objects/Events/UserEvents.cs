@@ -1,6 +1,6 @@
 using Basil.Application.Shared.Events;
 using Basil.Application.Users.Objects.Sessions;
-using Basil.Domain.Authentication;
+using Basil.Domain.Sessions;
 using Basil.Domain.Spectating;
 using Basil.Domain.Users;
 using Session = Basil.Application.Users.Objects.Sessions.Session;

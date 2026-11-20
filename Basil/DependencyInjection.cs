@@ -26,7 +26,7 @@ using Basil.Host.Irc.Transport;
 using Basil.Host.Rest;
 using Basil.Host.Stable.Routes;
 using Basil.Infrastructure.Anticheat;
-using Basil.Infrastructure.Authentication;
+using Basil.Infrastructure.Sessions;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Bot;
 using Basil.Infrastructure.Chat;
@@ -67,7 +67,7 @@ public static class DependencyInjection
 
 			// The foreign keys decide the order of the migrations, not the project references.
 			services.AddUsersInfrastructure();
-			services.AddAuthInfrastructure();
+			services.AddSessionsInfrastructure();
 			services.AddBeatmapsInfrastructure();
 			services.AddContentInfrastructure();
 			services.AddSharedMigration();

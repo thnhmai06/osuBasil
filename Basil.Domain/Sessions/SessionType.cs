@@ -1,4 +1,4 @@
-namespace Basil.Domain.Authentication;
+namespace Basil.Domain.Sessions;
 
 /// <summary>The kind of connection a session belongs to.</summary>
 public enum SessionType : byte

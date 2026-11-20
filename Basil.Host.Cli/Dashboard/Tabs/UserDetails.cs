@@ -1,11 +1,11 @@
 using Basil.Application.Users;
 using System.Globalization;
-using Basil.Application.Authentication.Persistence;
+using Basil.Application.Sessions.Persistence;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Authentication;
+using Basil.Domain.Sessions;
 using Basil.Domain.Users;
 using Basil.Host.Cli.Dashboard.Shell;
 using Mediator;

@@ -1,6 +1,6 @@
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Persistence;
-using Basil.Domain.Authentication;
+using Basil.Domain.Sessions;
 using Basil.Domain.Moderation;
 using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;

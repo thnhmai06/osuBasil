@@ -8,7 +8,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\Basil.Infrastructure.Shared\Basil.Infrastructure.Shared.csproj"/>
-		<ProjectReference Include="..\Basil.Infrastructure.Authentication\Basil.Infrastructure.Authentication.csproj"/>
+		<ProjectReference Include="..\Basil.Infrastructure.Sessions\Basil.Infrastructure.Sessions.csproj"/>
 		<ProjectReference Include="..\Basil.Infrastructure.Beatmaps\Basil.Infrastructure.Beatmaps.csproj"/>
 		<ProjectReference Include="..\Basil.Infrastructure.Chat\Basil.Infrastructure.Chat.csproj"/>
 		<ProjectReference Include="..\Basil.Infrastructure.Content\Basil.Infrastructure.Content.csproj"/>

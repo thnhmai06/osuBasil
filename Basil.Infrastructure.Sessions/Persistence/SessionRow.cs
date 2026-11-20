@@ -1,10 +1,10 @@
 using System.Net;
-using Basil.Domain.Authentication;
+using Basil.Domain.Sessions;
 using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace Basil.Infrastructure.Authentication.Persistence;
+namespace Basil.Infrastructure.Sessions.Persistence;
 
 internal sealed class SessionRow
 {

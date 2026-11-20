@@ -3,19 +3,19 @@
 		<TargetFramework>net10.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
-		<RootNamespace>Basil.Infrastructure.Authentication</RootNamespace>
+		<RootNamespace>Basil.Infrastructure.Sessions</RootNamespace>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<InternalsVisibleTo Include="Basil.Infrastructure.Persistence"/>
-		<InternalsVisibleTo Include="Basil.Infrastructure.Authentication.Tests"/>
+		<InternalsVisibleTo Include="Basil.Infrastructure.Sessions.Tests"/>
 	</ItemGroup>
 
 	<ItemGroup>
 		<ProjectReference Include="..\Basil.Application.Shared\Basil.Application.Shared.csproj"/>
 		<ProjectReference Include="..\Basil.Infrastructure.Shared\Basil.Infrastructure.Shared.csproj"/>
 		<ProjectReference Include="..\Basil.Domain\Basil.Domain.csproj"/>
-		<ProjectReference Include="..\Basil.Application.Authentication\Basil.Application.Authentication.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Sessions\Basil.Application.Sessions.csproj"/>
 	</ItemGroup>
 
 	<ItemGroup>

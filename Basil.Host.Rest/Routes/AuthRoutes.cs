@@ -4,7 +4,7 @@ using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Authentication;
+using Basil.Domain.Sessions;
 using Basil.Gateway.RateLimiting;
 using Basil.Host.Rest.Http;
 using Basil.Shared.Structures.Cryptography;

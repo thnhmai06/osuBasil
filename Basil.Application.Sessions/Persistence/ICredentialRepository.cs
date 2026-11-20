@@ -1,7 +1,7 @@
-using Basil.Domain.Authentication;
+using Basil.Domain.Sessions;
 using Basil.Domain.Users;
 
-namespace Basil.Application.Authentication.Persistence;
+namespace Basil.Application.Sessions.Persistence;
 
 public interface ICredentialRepository
 {

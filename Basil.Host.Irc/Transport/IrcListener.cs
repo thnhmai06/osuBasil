@@ -7,7 +7,7 @@ using System.Text;
 using Basil.Application.Diagnostics.Services;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Authentication;
+using Basil.Domain.Sessions;
 using Basil.Gateway.Admission;
 using Basil.Gateway.Limits;
 using Basil.Host.Irc.Clients;

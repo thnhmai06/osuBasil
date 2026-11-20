@@ -2,7 +2,7 @@
 
 using Microsoft.EntityFrameworkCore.Migrations;
 
-namespace Basil.Infrastructure.Persistence.Migrations.Authentication;
+namespace Basil.Infrastructure.Persistence.Migrations.Sessions;
 
 /// <inheritdoc />
 public partial class MergeConnectionsIntoSessions : Migration

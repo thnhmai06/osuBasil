@@ -1,7 +1,7 @@
 using Basil.Application.Shared.Diagnostics;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Authentication;
+using Basil.Domain.Sessions;
 using Mediator;
 
 namespace Basil.Infrastructure.Users.Handlers;

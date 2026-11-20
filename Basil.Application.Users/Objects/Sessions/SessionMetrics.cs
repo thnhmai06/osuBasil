@@ -1,5 +1,5 @@
 using System.Diagnostics.Metrics;
-using Basil.Domain.Authentication;
+using Basil.Domain.Sessions;
 
 namespace Basil.Application.Users.Objects.Sessions;
 

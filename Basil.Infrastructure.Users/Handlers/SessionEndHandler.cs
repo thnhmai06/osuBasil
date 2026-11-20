@@ -1,5 +1,5 @@
 using System.Diagnostics.Metrics;
-using Basil.Application.Authentication.Persistence;
+using Basil.Application.Sessions.Persistence;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Registry;

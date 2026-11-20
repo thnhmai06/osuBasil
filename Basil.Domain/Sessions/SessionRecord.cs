@@ -2,7 +2,7 @@ using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;
 using Basil.Shared.Utilities;
 
-namespace Basil.Domain.Authentication;
+namespace Basil.Domain.Sessions;
 
 /// <summary>A stored session: its identifier and its data.</summary>
 /// <remarks>Two records are equal when their identifiers are equal.</remarks>

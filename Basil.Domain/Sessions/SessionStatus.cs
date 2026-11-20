@@ -1,4 +1,4 @@
-namespace Basil.Domain.Authentication;
+namespace Basil.Domain.Sessions;
 
 /// <summary>Where a session stands at a moment, from how long it has been silent.</summary>
 public enum SessionStatus : byte

@@ -1,5 +1,5 @@
 using System.Globalization;
-using Basil.Domain.Authentication;
+using Basil.Domain.Sessions;
 
 namespace Basil.Host.Cli.Dashboard.Tabs;
 

@@ -1,6 +1,6 @@
 using Basil.Application.Chat.Capabilities;
 using Basil.Application.Chat.Objects.Events;
-using Basil.Domain.Authentication;
+using Basil.Domain.Sessions;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using Basil.Shared.Structures.Data;

@@ -1,4 +1,4 @@
-namespace Basil.Domain.Authentication;
+namespace Basil.Domain.Sessions;
 
 /// <summary>The time limits and type rules that decide how a session ages.</summary>
 public static class SessionRules

@@ -50,8 +50,8 @@ that references another host.
 A module owns one slice of the business. The compiler enforces which module may use which:
 
 ```text
-Authentication, Beatmaps, Content -> Shared
-Users        -> Authentication, Content
+Sessions, Beatmaps, Content -> Shared
+Users        -> Sessions, Content
 Anticheat    -> Users
 Scores       -> Users, Beatmaps
 Multiplayer  -> Users, Beatmaps, Content, Scores

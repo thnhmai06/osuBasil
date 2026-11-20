@@ -393,10 +393,10 @@ the code is split by module, one project per module and layer (`Basil.Applicatio
 References only point down:
 
 ```text
-Auth        -> Shared
+Sessions    -> Shared
 Beatmaps    -> Shared
 Content     -> Shared
-Users       -> Shared, Authentication, Content
+Users       -> Shared, Sessions, Content
 Anticheat   -> Users
 Scores      -> Users, Beatmaps
 Multiplayer -> Users, Beatmaps, Content, Scores
@@ -407,7 +407,7 @@ Bot         -> Anticheat, Beatmaps, Chat, Multiplayer, Scores, Servers, Users
 ```
 
 A module Infrastructure project never references another module; the foreign keys between the module databases
-decide the order in which `AddBasil()` registers the migrations (Users, Authentication, Beatmaps, Content, Shared, Scores,
+decide the order in which `AddBasil()` registers the migrations (Users, Sessions, Beatmaps, Content, Shared, Scores,
 Multiplayer, Chat), not these references. `tests/Architecture/ModuleGraphTests.cs` reads the project references and fails on
 an edge outside this graph or on a cycle; `HostGraphTests.cs` does the same for the hosts.
 

@@ -1,7 +1,7 @@
 using System.Net;
 using Basil.Domain.Client;
 
-namespace Basil.Domain.Authentication;
+namespace Basil.Domain.Sessions;
 
 /// <summary>What a session reports about where it comes from.</summary>
 /// <param name="Ip">The network address the session connected from.</param>

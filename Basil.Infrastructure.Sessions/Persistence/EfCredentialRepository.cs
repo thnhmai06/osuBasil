@@ -1,12 +1,12 @@
-using Basil.Application.Authentication.Persistence;
-using Basil.Domain.Authentication;
+using Basil.Application.Sessions.Persistence;
+using Basil.Domain.Sessions;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Persistence;
 using Basil.Infrastructure.Shared.Registry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 
-namespace Basil.Infrastructure.Authentication.Persistence;
+namespace Basil.Infrastructure.Sessions.Persistence;
 
 internal sealed class EfCredentialRepository(DatabaseSession database, IMemoryCache memory) : ICredentialRepository
 {
@@ -20,7 +20,7 @@ internal sealed class EfCredentialRepository(DatabaseSession database, IMemoryCa
 	public async Task<bool> VerifyAsync(Credentials credentials, CancellationToken ct = default)
 	{
 		var userId = credentials.User.Id;
-		var stored = await _hashes.GetAsync(userId, () => database.ReadAsync((AuthenticationDbContext context) =>
+		var stored = await _hashes.GetAsync(userId, () => database.ReadAsync((SessionsDbContext context) =>
 			context.Credentials.Where(c => c.UserId == userId).Select(c => c.PasswordHash).FirstOrDefaultAsync(
 				ct), ct));
 		if (stored is null)
@@ -39,14 +39,14 @@ internal sealed class EfCredentialRepository(DatabaseSession database, IMemoryCa
 			UserId = credentials.User.Id,
 			PasswordHash = BCrypt.Net.BCrypt.HashPassword(credentials.PasswordHash.HashValue)
 		};
-		await database.WriteAsync((AuthenticationDbContext context) =>
+		await database.WriteAsync((SessionsDbContext context) =>
 			context.UpsertAsync(row, stored => stored.UserId == row.UserId));
 		_hashes.Remove(row.UserId);
 	}
 
 	public async Task DeleteAsync(UserRecord user)
 	{
-		await database.WriteAsync((AuthenticationDbContext context) => context.Credentials
+		await database.WriteAsync((SessionsDbContext context) => context.Credentials
 			.Where(c => c.UserId == user.Id)
 			.ExecuteDeleteAsync());
 		_hashes.Remove(user.Id);

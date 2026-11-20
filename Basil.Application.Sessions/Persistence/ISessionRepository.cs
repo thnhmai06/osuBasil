@@ -1,9 +1,9 @@
 using Basil.Application.Shared.Paging;
-using Basil.Domain.Authentication;
+using Basil.Domain.Sessions;
 using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;
 
-namespace Basil.Application.Authentication.Persistence;
+namespace Basil.Application.Sessions.Persistence;
 
 public enum SessionFilter : byte
 {

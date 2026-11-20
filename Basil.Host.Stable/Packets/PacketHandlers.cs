@@ -6,7 +6,7 @@ using Basil.Application.Users;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Authentication;
+using Basil.Domain.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Game;
 using Basil.Domain.Users;

@@ -1,5 +1,5 @@
 using Basil.Application.Users.Messages;
-using Basil.Domain.Authentication;
+using Basil.Domain.Sessions;
 using Mediator;
 using Basil.Application.Users.Objects.Sessions;
 

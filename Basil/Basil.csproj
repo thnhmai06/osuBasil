@@ -23,7 +23,7 @@
 		<ProjectReference Include="..\Basil.Domain\Basil.Domain.csproj"/>
 		<ProjectReference Include="..\Basil.Application.Shared\Basil.Application.Shared.csproj"/>
 		<ProjectReference Include="..\Basil.Infrastructure.Shared\Basil.Infrastructure.Shared.csproj"/>
-		<ProjectReference Include="..\Basil.Application.Authentication\Basil.Application.Authentication.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Sessions\Basil.Application.Sessions.csproj"/>
 		<ProjectReference Include="..\Basil.Application.Beatmaps\Basil.Application.Beatmaps.csproj"/>
 		<ProjectReference Include="..\Basil.Application.Content\Basil.Application.Content.csproj"/>
 		<ProjectReference Include="..\Basil.Application.Users\Basil.Application.Users.csproj"/>
@@ -40,7 +40,7 @@
 		<ProjectReference Include="..\Basil.Application.Bot\Basil.Application.Bot.csproj"/>
 		<ProjectReference Include="..\Basil.Infrastructure.Bot\Basil.Infrastructure.Bot.csproj"/>
 		<ProjectReference Include="..\Basil.Infrastructure.Anticheat\Basil.Infrastructure.Anticheat.csproj"/>
-		<ProjectReference Include="..\Basil.Infrastructure.Authentication\Basil.Infrastructure.Authentication.csproj"/>
+		<ProjectReference Include="..\Basil.Infrastructure.Sessions\Basil.Infrastructure.Sessions.csproj"/>
 		<ProjectReference Include="..\Basil.Infrastructure.Beatmaps\Basil.Infrastructure.Beatmaps.csproj"/>
 		<ProjectReference Include="..\Basil.Infrastructure.Content\Basil.Infrastructure.Content.csproj"/>
 		<ProjectReference Include="..\Basil.Infrastructure.Users\Basil.Infrastructure.Users.csproj"/>

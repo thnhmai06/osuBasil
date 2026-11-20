@@ -7,7 +7,7 @@
 	</Folder>
 	<Folder Name="/Sources/Application/">
 		<Project Path="Basil.Application.Anticheat/Basil.Application.Anticheat.csproj" />
-		<Project Path="Basil.Application.Authentication/Basil.Application.Authentication.csproj" />
+		<Project Path="Basil.Application.Sessions/Basil.Application.Sessions.csproj" />
 		<Project Path="Basil.Application.Beatmaps/Basil.Application.Beatmaps.csproj" />
 		<Project Path="Basil.Application.Bot/Basil.Application.Bot.csproj" />
 		<Project Path="Basil.Application.Chat/Basil.Application.Chat.csproj" />
@@ -21,7 +21,7 @@
 	</Folder>
 	<Folder Name="/Sources/Infrastructure/">
 		<Project Path="Basil.Infrastructure.Anticheat/Basil.Infrastructure.Anticheat.csproj" />
-		<Project Path="Basil.Infrastructure.Authentication/Basil.Infrastructure.Authentication.csproj" />
+		<Project Path="Basil.Infrastructure.Sessions/Basil.Infrastructure.Sessions.csproj" />
 		<Project Path="Basil.Infrastructure.Beatmaps/Basil.Infrastructure.Beatmaps.csproj" />
 		<Project Path="Basil.Infrastructure.Bot/Basil.Infrastructure.Bot.csproj" />
 		<Project Path="Basil.Infrastructure.Chat/Basil.Infrastructure.Chat.csproj" />

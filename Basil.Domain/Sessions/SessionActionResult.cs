@@ -1,4 +1,4 @@
-namespace Basil.Domain.Authentication;
+namespace Basil.Domain.Sessions;
 
 /// <summary>The outcome of an action on a session.</summary>
 public enum SessionActionResult : byte
