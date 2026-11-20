@@ -331,6 +331,9 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   never a combination member of the enum itself; a per-mode factory is a static member of its type
   (`BeatmapObjectCount.NewFrom(mode)`);
   services use them instead of keeping their own copies.
+  A flag enum's named groups are used whenever they cover the set: room logic writes `RoomPrivileges.Moderators`
+  and `RoomPrivileges.Staff`, never `Referee | Creator` or `Host | Referee | Creator`; only a set no group names is
+  written as an OR (`Player | Moderators`), and no group is added just to avoid one.
 * **One concept, one name.** Use the same name for the same concept in every model, parameter,
   event and API: the moment something happened is `Timestamp`, a span is `StartedAt`/`EndedAt`, a
   future window is `StartsAt`/`EndsAt`, a stored record's lifecycle is
