@@ -6,20 +6,20 @@ namespace Basil.Infrastructure.Shared.Persistence;
 
 public sealed class Database : IAsyncDisposable
 {
-	private readonly DatabaseProviders _providers;
+	private readonly IDatabaseProvider _provider;
 	private readonly ConcurrentDictionary<Type, object> _readOptions = new();
 	private readonly IDatabaseSource _readSource;
 	private readonly ConcurrentDictionary<Type, object> _synchronousOptions = new();
 	private readonly IDatabaseSource _synchronousSource;
 
-	public Database(DatabaseProviders providers, IOptions<DatabaseOptions> options)
+	public Database(IDatabaseProvider provider, IOptions<DatabaseOptions> options)
 	{
-		_providers = providers;
+		_provider = provider;
 		var settings = options.Value;
 		var write = settings.WriteConnectionString;
 		var read = string.IsNullOrEmpty(settings.ReadConnectionString) ? write : settings.ReadConnectionString;
-		_readSource = providers.Read.CreateSource(read, settings.ReadPoolSize);
-		_synchronousSource = providers.Write.CreateSource(write, settings.WritePoolSize);
+		_readSource = provider.CreateSource(read, settings.ReadPoolSize);
+		_synchronousSource = provider.CreateSource(write, settings.WritePoolSize);
 	}
 
 	public DatabaseMetrics Metrics { get; } = new();
@@ -41,24 +41,24 @@ public sealed class Database : IAsyncDisposable
 
 	internal bool IsUniqueViolation(Exception exception)
 	{
-		return _providers.Write.IsUniqueViolation(exception);
+		return _provider.IsUniqueViolation(exception);
 	}
 
 	internal bool IsConnectionFailure(Exception exception)
 	{
-		return _providers.Read.IsConnectionFailure(exception) || _providers.Write.IsConnectionFailure(exception);
+		return _provider.IsConnectionFailure(exception);
 	}
 
 	public TContext CreateReadContext<TContext>()
 		where TContext : DbContext, IDatabaseContext<TContext>
 	{
-		return TContext.Create(OptionsFor<TContext>(_readOptions, _providers.Read, _readSource));
+		return TContext.Create(OptionsFor<TContext>(_readOptions, _provider, _readSource));
 	}
 
 	public TContext CreateConfirmedContext<TContext>()
 		where TContext : DbContext, IDatabaseContext<TContext>
 	{
-		return TContext.Create(OptionsFor<TContext>(_synchronousOptions, _providers.Write, _synchronousSource));
+		return TContext.Create(OptionsFor<TContext>(_synchronousOptions, _provider, _synchronousSource));
 	}
 
 	private DbContextOptions<TContext> OptionsFor<TContext>(ConcurrentDictionary<Type, object> cache,

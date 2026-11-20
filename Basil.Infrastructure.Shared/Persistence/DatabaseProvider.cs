@@ -9,8 +9,6 @@ public interface IDatabaseSource : IAsyncDisposable
 
 public readonly record struct ConnectionStats(int InUse, int Idle);
 
-public sealed record DatabaseProviders(IDatabaseProvider Read, IDatabaseProvider Write);
-
 public interface IDatabaseProvider
 {
 	IDatabaseSource CreateSource(string connectionString, int poolSize);

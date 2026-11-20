@@ -6,10 +6,6 @@ public sealed class DatabaseOptions
 
 	public string? ReadConnectionString { get; set; }
 
-	public string? WriteProvider { get; set; }
-
-	public string? ReadProvider { get; set; }
-
 	public int ReadPoolSize { get; set; }
 
 	public int WritePoolSize { get; set; } = 8;

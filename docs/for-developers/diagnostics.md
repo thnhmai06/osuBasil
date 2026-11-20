@@ -42,9 +42,9 @@ The categories are:
 | `database` | `commandsTotal`, `commandsFailedTotal`, `recentCommandP50Microseconds` and `recentCommandP95Microseconds` (the last 256 commands), and the pool: `connectionsInUse`, `connectionsIdle` |
 | `events` | `publishedTotal` events since start, `pending` (queued or being delivered) and `handlerFailuresTotal` |
 
-Every number is a count or a duration since start or over a recent window; rates are for the reader to derive. An engine
-that cannot tell its pool (MySQL) reports `connectionsMeasured` as 0 and leaves the two connection numbers out instead of
-reporting zeros; `connectionsMeasured` is 1 when they are there.
+Every number is a count or a duration since start or over a recent window; rates are for the reader to derive. When the pool cannot
+be measured, `connectionsMeasured` is 0 and the two connection numbers are left out instead of reported as zeros;
+`connectionsMeasured` is 1 when they are there.
 
 ## Why a shared sample
 

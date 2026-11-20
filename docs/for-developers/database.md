@@ -2,7 +2,7 @@
 
 ## Overview
 
-Basil keeps its records in PostgreSQL or MySQL, chosen per endpoint. Live objects (users online, rooms, channels) are held by their registries and are
+Basil keeps its records in PostgreSQL, the only database Basil supports. Live objects (users online, rooms, channels) are held by their registries and are
 the truth of the running server; the database keeps what must survive a restart. Repositories await their reads and
 writes, and a write that fails reaches the caller. Small, hot records may be cached aside (`CacheAside`), and the cache
 entry is dropped only after the awaited write succeeded. The storage rules are in
@@ -116,9 +116,9 @@ Npgsql and snake_case names, owns the design-time factories and holds the migrat
 project and calls `AddPersistenceInfrastructure()`; module Infrastructure projects see their `DbContext` types through
 `InternalsVisibleTo`.
 
-Each endpoint names its engine: `Basil:Database:Read:Provider` and `Basil:Database:Write:Provider` (`PostgreSQL` or `MySql`;
-the read engine defaults to the write engine, an unknown name stops the server at start naming the allowed values), so reads
-and writes can run on different engines. Migrations run against the write endpoint with the write engine.
+PostgreSQL is the only database, so there is no provider setting. The read and write endpoints differ only by connection string
+and pool size. Prefer EF Core's general API when it gives the same contract; use PostgreSQL/Npgsql-specific API when the
+contract needs it. Migrations run against the write endpoint.
 
 ### Provider neutral migrations
 
@@ -128,7 +128,7 @@ converters, key and index strings have a `HasMaxLength`, and a unique name among
 `active_name` column instead of a filtered index. `dotnet ef` still runs on the Npgsql design-time factory, so a generated
 migration carries `type: "..."` arguments, store-type lines in the snapshot and Npgsql annotations. `tools/normalize-migrations.sh`
 removes them and turns entity-name strings into `typeof(Row).FullName!`; `PersistenceBoundaryTests` fails when a migration
-file still contains `Npgsql`, `MySql`, `type:` or `.HasColumnType(`. Add a migration with:
+file still contains `Npgsql`, `type:` or `.HasColumnType(`. Add a migration with:
 
 ```bash
 tools/add-migration.sh <Module> <Name>     # runs dotnet ef, moves the snapshot, normalizes the files

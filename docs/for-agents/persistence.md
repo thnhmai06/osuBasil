@@ -87,13 +87,14 @@ Repository contracts, byte storages and the Registry / Repository / Storage mode
   kept, or the banner is left out, so the server still starts.
 * **No SQL text in Persistence.** Everything is Entity Framework Core with LINQ and row objects (`XxxRow` entities, never
   the Domain types); no Dapper, no `FromSql`/`ExecuteSql`/`SqlQuery`, no `NpgsqlCommand`. The generic EF API is what a
-  module's Infrastructure project uses; what is specific to an engine (the Npgsql and MySQL providers behind `IDatabaseProvider`,
+  module's Infrastructure project uses (PostgreSQL is the only database: prefer EF Core's general API when it gives the same
+  contract, and use PostgreSQL/Npgsql-specific API when the contract needs it); what is specific to an engine (the Npgsql provider behind `IDatabaseProvider`,
   error recognition, the design-time factories and the neutral migrations) belongs to `Basil.Infrastructure.Persistence`, which
   only the composition root references; no other `src` project has a database provider package (`PersistenceBoundaryTests`).
   Rows therefore use only portable mappings: `ValueGeneratedNever` with ids taken from `IdCounters` (no sequences, no identity
   columns, no `HasDefaultValueSql`), no `HasColumnType`, JSON and addresses as text through value converters, `HasMaxLength` on
   key and index strings, a nullable unique column instead of a filtered index, and `EF.Functions.Like` over lowered text with the
-  `!` escape character. Tests run on PostgreSQL or MySQL (`BASIL_TEST_PROVIDER`).
+  `!` escape character. Tests run on PostgreSQL.
 * **Module schemas.** Each module has its own `DbContext`, row configuration set and migration history
   (`__ef_migrations_<module>`). `DatabaseMigrator` applies Users, Authentication, Beatmaps, Content, Shared (the settings), Scores,
   Multiplayer and Chat in that order; referencing contexts preserve foreign keys by mapping principal rows as excluded from
