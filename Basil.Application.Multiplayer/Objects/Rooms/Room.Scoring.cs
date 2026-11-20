@@ -16,7 +16,7 @@ public sealed partial class Room
 			if (outcome is not RoomActionResult.Ok) return outcome;
 
 			Context.Events.Publish(new RoomRoundScoreSubmitted(this, settlement!.Round, player, roundScore!.Value));
-			if (settlement.Round.EndedAt is not null && settlement.Missing().Count == 0) Decide(settlement);
+			if (settlement.Round.EndedAt is not null && !settlement.Missing.Any()) Decide(settlement);
 			return RoomActionResult.Ok;
 		}
 	}
@@ -37,7 +37,7 @@ public sealed partial class Room
 		if (settlement.HasCompletions)
 			Context.Events.Publish(new RoomRoundEnded(this, settlement.Round, wait));
 
-		if (settlement.Missing().Count == 0)
+		if (!settlement.Missing.Any())
 		{
 			Decide(settlement);
 			return;

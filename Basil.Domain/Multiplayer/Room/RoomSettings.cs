@@ -34,11 +34,8 @@ public sealed class RoomSettings
 	public (RoomActionResult Outcome, bool Changed) Configure(UserRecord? caller, RoomSettingsChange change)
 	{
 		if (_room.IsClosed) return (RoomActionResult.RoomClosed, false);
-
 		if (_room.Rounds.InProgress) return (RoomActionResult.InProgress, false);
-
 		if (!AreValid(change)) throw new InvalidRoomSettingsException();
-
 		if (change == new RoomSettingsChange()) return (RoomActionResult.Ok, false);
 
 		var mode = change.Mode ?? Editable.Mode;

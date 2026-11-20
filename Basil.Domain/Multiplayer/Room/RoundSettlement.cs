@@ -43,10 +43,7 @@ public sealed class RoundSettlement
 		       Scores.All(s => s.Score.Value.UserId != player.Id);
 	}
 
-	public IReadOnlyList<UserRecord> Missing()
-	{
-		return [.. _participants.Keys.Where(player => Awaits(player, out _))];
-	}
+	public IEnumerable<UserRecord> Missing => _participants.Keys.Where(player => Awaits(player, out _));
 
 	public void Close()
 	{

@@ -255,9 +255,6 @@ internal static class MpReplies
 
 	public static readonly Reply CannotInvite = new("mp.cannotInvite", "That player cannot be invited by you.");
 
-	public static readonly Reply RefereeLimitReached = new("mp.refereeLimitReached",
-		"This match already has the most referees it can have.");
-
 	public static readonly Reply TargetAlreadyReferee = new("mp.targetAlreadyReferee",
 		"That user is already a referee of this match.");
 
@@ -345,7 +342,6 @@ internal static class MpReplies
 			RoomActionResult.NotInRoom => TargetNotInMatch,
 			RoomActionResult.IsManager => TargetIsManager,
 			RoomActionResult.NotBanned => TargetNotBanned,
-			RoomActionResult.TooManyReferees => RefereeLimitReached,
 			RoomActionResult.AlreadyReferee => TargetAlreadyReferee,
 			RoomActionResult.NotReferee => TargetNotReferee,
 			RoomActionResult.IsCreator => TargetIsCreator,

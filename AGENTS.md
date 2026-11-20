@@ -508,8 +508,8 @@ same folders under `tests/`.
 
 **Every business operation lives in Domain** (decided 2026-11-20): an object's state, invariants and every transition
 of it, including the consequences inside the same object (a kick that vacates the slot, hands the host on and ends the
-round; a mode change that strips invalid mods from every slot). Domain is synchronous and holds no lock, no
-`Volatile`, no concurrent collection, no timer, no repository, no event publishing and no live object of another module
+round; a mode change that strips invalid mods from every slot). Domain is synchronous and holds no lock and no
+`Volatile` (a collection that is read without the lock may be a concurrent one, such as `ConcurrentSet`), no timer, no repository, no event publishing and no live object of another module
 (a seat holds a `UserRecord`, never a `Session`). Application only offers the contracts to the outside (messages,
 `Scoped*`, views, events) and does what needs several objects or the runtime: the object's lock, the map to live
 sessions, the lobby, timers, publishing. An operation reports what happened (the outcome enum and the data its event

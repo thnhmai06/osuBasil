@@ -27,8 +27,6 @@ public enum RoomActionResult : byte
 
 	NotReferee,
 
-	TooManyReferees,
-
 	SlotNotOpen,
 
 	RoomLocked,

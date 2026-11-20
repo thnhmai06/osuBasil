@@ -210,7 +210,7 @@ public sealed class RoomRounds
 
 	public static RoundDecision? Decide(RoundSettlement settlement)
 	{
-		var missing = settlement.Missing();
+		var missing = settlement.Missing.ToList();
 		settlement.Close();
 		if (!settlement.HasParticipants) return null;
 

@@ -1,13 +1,14 @@
 using System.Collections;
 using Basil.Domain.Users;
+using Basil.Shared.Structures.Data;
 
 namespace Basil.Domain.Multiplayer.Room;
 
 /// <summary>Everyone taking part in a room, with their roles, and the users banned from it.</summary>
 public sealed class RoomMembers : IReadOnlyCollection<RoomUser>
 {
-	private readonly HashSet<UserRecord> _banned = [];
-	private readonly HashSet<RoomUser> _members = [];
+	private readonly ConcurrentSet<UserRecord> _banned = [];
+	private readonly ConcurrentSet<RoomUser> _members = [];
 	private readonly Room _room;
 
 	internal RoomMembers(Room room)
@@ -54,7 +55,6 @@ public sealed class RoomMembers : IReadOnlyCollection<RoomUser>
 		if (_room.IsClosed) return RoomActionResult.RoomClosed;
 		if (Creator.Equals(user)) return RoomActionResult.IsCreator;
 		if (Find(user.Record)?.Has(RoomPrivileges.Referee) is true) return RoomActionResult.AlreadyReferee;
-		if (Referees.Count() >= RoomRules.MaxReferees) return RoomActionResult.TooManyReferees;
 
 		Grant(user, RoomPrivileges.Referee);
 		return RoomActionResult.Ok;

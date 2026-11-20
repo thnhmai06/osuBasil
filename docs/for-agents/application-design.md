@@ -63,8 +63,10 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   "manager of any room skips the password" decision (Application); `UserData.IsSilenced` (Domain) against
   `UserSilence.ImposeAsync` (Application); `CountdownMarks`, `GeneralChannelChange.ApplyTo` (Domain).
   Players are `UserRecord` in Domain; the Application object keeps the map to the live sessions.
-* **Domain holds no synchronization.** No `Lock`, `Volatile`, `Interlocked` or concurrent collection in Domain; the
-  Application object that shares the state owns the lock. A Domain state that can be derived is derived (a room is
+* **Domain holds no lock.** No `Lock`, `Volatile` or `Interlocked` in Domain; the Application object that shares the
+  state owns the lock around each multi-step operation. A collection that is also read outside that lock (views,
+  queries) is a concurrent one (`ConcurrentSet`), so a reader never sees it throw; a concurrent collection never
+  replaces the lock where a check and a change must happen together. A Domain state that can be derived is derived (a room is
   closed when its match has `EndedAt`). A Domain outcome enum holds only the reasons of that one object; reasons that
   need another object, a connection or the lobby are an Application enum (`LobbyResult`, `SessionAuthResult`,
   `ChannelJoinResult`).

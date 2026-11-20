@@ -30,8 +30,6 @@ public enum LobbyResult : byte
 
 	NotReferee = (byte)RoomActionResult.NotReferee,
 
-	TooManyReferees = (byte)RoomActionResult.TooManyReferees,
-
 	SlotNotOpen = (byte)RoomActionResult.SlotNotOpen,
 
 	RoomLocked = (byte)RoomActionResult.RoomLocked,
