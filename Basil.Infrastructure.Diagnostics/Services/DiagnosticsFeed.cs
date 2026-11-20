@@ -1,24 +1,15 @@
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using Basil.Application.Diagnostics.Services;
+using Basil.Shared.Structures.Data;
 
 namespace Basil.Infrastructure.Diagnostics.Services;
 
 internal sealed class DiagnosticsFeed : IDiagnosticsFeed
 {
-	private readonly Lock _sync = new();
-	private readonly List<Watcher> _watchers = [];
+	private readonly ConcurrentSet<Watcher> _watchers = [];
 
-	internal int Watchers
-	{
-		get
-		{
-			lock (_sync)
-			{
-				return _watchers.Count;
-			}
-		}
-	}
+	internal int Watchers => _watchers.Count;
 
 	public IAsyncEnumerable<DiagnosticsSample> Watch(string? category = null,
 		CancellationToken ct = default)
@@ -29,23 +20,14 @@ internal sealed class DiagnosticsFeed : IDiagnosticsFeed
 
 		// The watcher joins now, not when the first sample is read, so no sample taken in between is missed.
 		var watcher = new Watcher(category);
-		lock (_sync)
-		{
-			_watchers.Add(watcher);
-		}
+		_watchers.Add(watcher);
 
 		return Read(watcher, ct);
 	}
 
 	internal void Publish(DiagnosticsSample sample)
 	{
-		Watcher[] watchers;
-		lock (_sync)
-		{
-			watchers = [.. _watchers];
-		}
-
-		foreach (var watcher in watchers)
+		foreach (var watcher in _watchers)
 			watcher.Queue.Writer.TryWrite(watcher.Category is null ? sample : sample.Only(watcher.Category));
 	}
 
@@ -58,10 +40,7 @@ internal sealed class DiagnosticsFeed : IDiagnosticsFeed
 		}
 		finally
 		{
-			lock (_sync)
-			{
-				_watchers.Remove(watcher);
-			}
+			_watchers.Remove(watcher);
 		}
 	}
 
