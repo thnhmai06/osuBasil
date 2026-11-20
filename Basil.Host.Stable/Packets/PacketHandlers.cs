@@ -8,7 +8,7 @@ using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game;
 using Basil.Domain.Users;
 using Basil.Gateway.Admission;
 using Basil.Gateway.RateLimiting;

@@ -1,4 +1,4 @@
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game;
 
 // ReSharper disable InconsistentNaming
 

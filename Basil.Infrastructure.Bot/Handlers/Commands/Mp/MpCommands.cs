@@ -1,4 +1,3 @@
-using Basil.Domain.Mechanics;
 using System.Collections.Frozen;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Bot.Commands;
@@ -9,6 +8,7 @@ using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Chat;
+using Basil.Domain.Game;
 using Basil.Domain.Users;
 using Mediator;
 

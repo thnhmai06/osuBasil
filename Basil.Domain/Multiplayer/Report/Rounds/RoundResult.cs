@@ -1,6 +1,6 @@
 using System.Collections.Frozen;
 using System.Diagnostics.CodeAnalysis;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game;
 using Basil.Shared.Utilities;
 
 namespace Basil.Domain.Multiplayer.Report.Rounds;

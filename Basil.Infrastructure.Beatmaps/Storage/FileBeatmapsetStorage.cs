@@ -3,7 +3,7 @@ using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game;
 using Basil.Infrastructure.Shared.Storage;
 using Basil.Shared.Structures.Cryptography;
 using Microsoft.Extensions.Logging;

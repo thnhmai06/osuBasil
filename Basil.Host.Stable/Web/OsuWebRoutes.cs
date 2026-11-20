@@ -21,7 +21,7 @@ using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Client;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game;
 using Basil.Domain.Scores;
 using Basil.Gateway.Admission;
 using Basil.Gateway.Limits;

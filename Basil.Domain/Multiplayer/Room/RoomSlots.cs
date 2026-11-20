@@ -1,6 +1,6 @@
 using System.Collections;
 using System.Collections.Immutable;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game;
 using Basil.Domain.Users;
 
 namespace Basil.Domain.Multiplayer.Room;

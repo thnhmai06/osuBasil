@@ -1,5 +1,5 @@
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game;
 
 namespace Basil.Application.Beatmaps.Ports;
 

@@ -1,4 +1,4 @@
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game;
 
 namespace Basil.Domain.Multiplayer.Report.Matches;
 

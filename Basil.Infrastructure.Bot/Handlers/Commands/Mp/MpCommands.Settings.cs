@@ -3,7 +3,7 @@ using Basil.Application.Bot.Commands.Mp;
 using Basil.Application.Bot.Replies;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game;
 using Basil.Domain.Multiplayer.Room;
 using Basil.Domain.Users;
 using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;

@@ -1,4 +1,4 @@
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game;
 using Basil.Domain.Multiplayer.Room;
 using Basil.Protocol.Game.Stable.Models.Multiplayer;
 

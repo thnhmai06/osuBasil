@@ -10,7 +10,7 @@ using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Domain.Client;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game;
 using Basil.Domain.Users;
 using Basil.Gateway.RateLimiting;
 using Basil.Host.Stable.Support;

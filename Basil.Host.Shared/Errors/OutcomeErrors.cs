@@ -7,11 +7,11 @@ using Basil.Application.Servers.Objects;
 using Basil.Domain.Authentication;
 using Basil.Domain.Chat;
 using Basil.Domain.Content;
-using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer.Room;
 using Basil.Domain.Users;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Chat.Objects;
+using Basil.Domain.Game;
 
 namespace Basil.Host.Shared.Errors;
 

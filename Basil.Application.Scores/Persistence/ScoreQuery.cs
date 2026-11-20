@@ -1,4 +1,4 @@
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game;
 using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;
 

@@ -1,7 +1,7 @@
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Users;
 using Basil.Application.Users.Objects.Sessions;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game;
 using Basil.Domain.Multiplayer.Room;
 
 namespace Basil.Application.Multiplayer.Capabilities.Rooms;

@@ -4,7 +4,7 @@ using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game;
 using Basil.Domain.Spectating;
 using Basil.Domain.Users;
 using Basil.Host.Rest.Http;

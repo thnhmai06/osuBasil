@@ -1,6 +1,6 @@
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Users.Objects.Sessions;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game;
 using Basil.Domain.Multiplayer.Room;
 using Basil.Domain.Users;
 

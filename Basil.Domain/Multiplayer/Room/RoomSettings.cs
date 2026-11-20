@@ -1,5 +1,5 @@
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game;
 using Basil.Domain.Multiplayer.Report.Matches;
 using Basil.Domain.Users;
 

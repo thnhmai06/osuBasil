@@ -5,7 +5,7 @@ using Basil.Application.Users;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game;
 using Basil.Domain.Multiplayer.Room;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;

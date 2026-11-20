@@ -5,7 +5,7 @@ using Basil.Application.Scores.Storage;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Client;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Storage;

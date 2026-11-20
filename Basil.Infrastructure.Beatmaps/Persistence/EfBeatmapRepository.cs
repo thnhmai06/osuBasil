@@ -4,7 +4,7 @@ using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Shared.Exceptions;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game;
 using Basil.Infrastructure.Shared.Persistence;
 using Basil.Shared.Structures.Cryptography;
 using Microsoft.EntityFrameworkCore;

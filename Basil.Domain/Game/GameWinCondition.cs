@@ -1,7 +1,7 @@
 ﻿using Basil.Domain.Scores;
 using Basil.Shared.Utilities;
 
-namespace Basil.Domain.Mechanics;
+namespace Basil.Domain.Game;
 
 public enum GameWinCondition : byte
 {

@@ -1,5 +1,4 @@
 using Basil.Domain.Content;
-using Basil.Domain.Mechanics;
 using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Domain.Beatmaps;

@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using Basil.Domain.Client;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game;
 using Basil.Domain.Scores;
 
 namespace Basil.Infrastructure.Scores.Storage;
