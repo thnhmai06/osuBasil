@@ -68,7 +68,10 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   queries) is a concurrent one (`ConcurrentSet`), so a reader never sees it throw; a concurrent collection never
   replaces the lock where a check and a change must happen together. A Domain state that can be derived is derived (a room is
   closed when its match has `EndedAt`). A Domain outcome enum holds only the reasons of that one object; reasons that
-  need another object, a connection or the lobby are an Application enum (`LobbyResult`, `SessionAuthResult`,
+  need another object, a connection or the lobby are an Application enum, one per category of operation (operations
+  that share their reasons share the enum; a different category gets its own), never a flattened copy of the Domain
+  enum; a Domain result is converted with an explicit `switch` (`LobbyResult`, `RoomJoinResult`, `RoomInviteResult`,
+  `RoomTargetResult`, `SessionAuthResult`,
   `ChannelJoinResult`).
 
 * **Domain** is the system at rest: the durable models (`Match`, `Round`, `MatchSettings`,

@@ -4,11 +4,11 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-internal sealed class MovePlayerHandler : IRequestHandler<MovePlayer, LobbyResult>
+internal sealed class MovePlayerHandler : IRequestHandler<MovePlayer, RoomTargetResult>
 {
-	public ValueTask<LobbyResult> Handle(MovePlayer request, CancellationToken ct)
+	public ValueTask<RoomTargetResult> Handle(MovePlayer request, CancellationToken ct)
 	{
-		return new ValueTask<LobbyResult>(
+		return new ValueTask<RoomTargetResult>(
 			request.Room.ScopeTo(request.Actor).Slots.MoveAsync(request.Player, request.Index));
 	}
 }

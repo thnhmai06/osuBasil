@@ -81,7 +81,7 @@ internal sealed partial class PacketHandlers
 		var result = lobby.Find(request.MatchId) is { IsClosed: false } room
 			? await sender.Send(new JoinRoom(osu, room, request.Password), ct)
 			: default;
-		if (result != LobbyResult.Ok) outbox.Send(osu, writer => writer.MatchJoinFail());
+		if (result != RoomJoinResult.Ok) outbox.Send(osu, writer => writer.MatchJoinFail());
 	}
 
 	private static MatchSettings SettingsOf(RoomStatePacket match)

@@ -4,11 +4,11 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-internal sealed class BanPlayerHandler : IRequestHandler<BanPlayer, LobbyResult>
+internal sealed class BanPlayerHandler : IRequestHandler<BanPlayer, RoomTargetResult>
 {
-	public ValueTask<LobbyResult> Handle(BanPlayer request, CancellationToken ct)
+	public ValueTask<RoomTargetResult> Handle(BanPlayer request, CancellationToken ct)
 	{
-		return new ValueTask<LobbyResult>(
+		return new ValueTask<RoomTargetResult>(
 			request.Room.ScopeTo(request.Actor).Members.BanAsync(request.Player));
 	}
 }

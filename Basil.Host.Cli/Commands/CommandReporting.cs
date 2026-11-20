@@ -7,9 +7,7 @@ public static class CommandReporting
 {
 	extension(CommandCall call)
 	{
-		public int Report<TOutcome>(TOutcome result, string confirmation,
-			string? missing = null)
-			where TOutcome : struct, Enum
+		public int Report(Enum result, string confirmation, string? missing = null)
 		{
 			if (OutcomeErrors.IsOk(result))
 			{
@@ -22,7 +20,7 @@ public static class CommandReporting
 				: call.Refuse(result);
 		}
 
-		public int Refuse<TOutcome>(TOutcome result) where TOutcome : struct, Enum
+		public int Refuse(Enum result)
 		{
 			var info = OutcomeErrors.Describe(result);
 			call.Output.Error(info.Code, Humanize(info.Code));

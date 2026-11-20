@@ -15,16 +15,16 @@ public sealed partial class Room
 		return seat;
 	}
 
-	internal LobbyResult TakeSeat(StableSession player, StableSession? stale)
+	internal RoomJoinResult TakeSeat(StableSession player, StableSession? stale)
 	{
 		if (stale is not null) return ReplaceSeat(player, stale);
 
 		var (outcome, slot) = Seat(player);
-		if (slot is null) return outcome.ToLobby();
+		if (slot is null) return RoomJoinResults.Of(outcome);
 
 		MarkOccupied();
 		Emit(new RoomPlayerJoined(this, player, slot.Index, null, null));
-		return LobbyResult.Ok;
+		return RoomJoinResult.Ok;
 	}
 
 	public bool IsPresent(Session connection)
@@ -78,15 +78,15 @@ public sealed partial class Room
 		if (!Slots.Any(slot => slot.Player is not null)) Context.Lobby.Emptied(this);
 	}
 
-	private LobbyResult ReplaceSeat(StableSession player, StableSession stale)
+	private RoomJoinResult ReplaceSeat(StableSession player, StableSession stale)
 	{
 		var (outcome, slot, progress) = State.Slots.Reseat(player.Record, Now);
-		if (outcome is not RoomActionResult.Ok) return outcome.ToLobby();
+		if (outcome is not RoomActionResult.Ok) return RoomJoinResults.Of(outcome);
 
 		_seats[player.Record] = player;
 		MarkOccupied();
 		Emit(new RoomPlayerJoined(this, player, slot, stale, progress));
 		if (progress is { Completed: true }) SettleRound();
-		return LobbyResult.Ok;
+		return RoomJoinResult.Ok;
 	}
 }

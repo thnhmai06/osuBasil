@@ -16,7 +16,7 @@ public static class OutcomeResults
 		};
 	}
 
-	extension<TOutcome>(TOutcome result) where TOutcome : struct, Enum
+	extension(Enum result)
 	{
 		public IResult Refusal()
 		{

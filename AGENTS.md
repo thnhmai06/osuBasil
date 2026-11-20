@@ -516,7 +516,8 @@ sessions, the lobby, timers, publishing. An operation reports what happened (the
 needs, such as the round progress it caused), so Application never re-derives a rule. The live type and its rule type
 share a name and are told apart by namespace (`Basil.Application.Multiplayer.Objects.Rooms.Room` holds `State`, a
 `Basil.Domain.Multiplayer.Room.Room`). A Domain outcome enum holds only the reasons of that one object; a reason that
-needs another object, a connection or the lobby belongs to an Application enum (`LobbyResult`, `SessionAuthResult`,
+needs another object, a connection or the lobby belongs to an Application enum, one per category of operation and never a
+flattened catch-all that copies the Domain enum (`LobbyResult`, `RoomJoinResult`, `RoomInviteResult`, `RoomTargetResult`, `SessionAuthResult`,
 `ChannelJoinResult`). Test: if the member needs another object, a connection, a lock or the clock's timers, it is
 Application; anything else is Domain.
 

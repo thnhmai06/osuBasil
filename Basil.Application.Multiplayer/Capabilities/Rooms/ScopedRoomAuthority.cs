@@ -14,20 +14,20 @@ public readonly struct ScopedRoomAuthority
 		_scoped = scoped;
 	}
 
-	public async Task<LobbyResult> AddRefereeAsync(UserReference user)
+	public async Task<RoomTargetResult> AddRefereeAsync(UserReference user)
 	{
-		if (_scoped.Require(RoomPrivileges.Creator) is { } denied) return denied.ToLobby();
+		if (_scoped.Require(RoomPrivileges.Creator) is not null) return RoomTargetResult.Denied;
 		return await _scoped.Room.Context.Users.FindAsync(user) is { } record
-			? _scoped.Room.AddReferee(_scoped.Actor.Record, record).ToLobby()
-			: LobbyResult.NotFound;
+			? RoomTargetResults.Of(_scoped.Room.AddReferee(_scoped.Actor.Record, record))
+			: RoomTargetResult.NotFound;
 	}
 
-	public async Task<LobbyResult> RemoveRefereeAsync(UserReference user)
+	public async Task<RoomTargetResult> RemoveRefereeAsync(UserReference user)
 	{
-		if (_scoped.Require(RoomPrivileges.Creator) is { } denied) return denied.ToLobby();
+		if (_scoped.Require(RoomPrivileges.Creator) is not null) return RoomTargetResult.Denied;
 		return await _scoped.Room.Context.Users.FindAsync(user) is { } record
-			? _scoped.Room.RemoveReferee(_scoped.Actor.Record, record).ToLobby()
-			: LobbyResult.NotFound;
+			? RoomTargetResults.Of(_scoped.Room.RemoveReferee(_scoped.Actor.Record, record))
+			: RoomTargetResult.NotFound;
 	}
 
 	public Task<RoomActionResult> SetHostAsync(StableSession? host)

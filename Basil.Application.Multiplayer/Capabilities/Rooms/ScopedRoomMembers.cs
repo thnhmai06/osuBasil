@@ -15,11 +15,13 @@ public readonly struct ScopedRoomMembers
 		_scoped = scoped;
 	}
 
-	public Task<LobbyResult> JoinAsync(string password)
+	public Task<RoomJoinResult> JoinAsync(string password)
 	{
 		return Task.FromResult(_scoped.Actor is StableSession actor
-			? _scoped.RequireJoin()?.ToLobby() ?? _scoped.Room.JoinClaiming(actor, password, _scoped.ManagesAnyRoom)
-			: LobbyResult.NotInRoom);
+			? _scoped.RequireJoin() is null
+				? _scoped.Room.JoinClaiming(actor, password, _scoped.ManagesAnyRoom)
+				: RoomJoinResult.Denied
+			: RoomJoinResult.NotInRoom);
 	}
 
 	public Task<RoomActionResult> LeaveAsync()
@@ -29,52 +31,53 @@ public readonly struct ScopedRoomMembers
 			: RoomActionResult.NotInRoom);
 	}
 
-	public async Task<LobbyResult> KickAsync(UserReference player)
+	public async Task<RoomTargetResult> KickAsync(UserReference player)
 	{
-		if (_scoped.Require(RoomPrivileges.Staff) is { } denied) return denied.ToLobby();
+		if (_scoped.Require(RoomPrivileges.Staff) is not null) return RoomTargetResult.Denied;
 		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
-			? _scoped.Room.Kick(_scoped.Actor.Record, record).ToLobby()
-			: LobbyResult.NotFound;
+			? RoomTargetResults.Of(_scoped.Room.Kick(_scoped.Actor.Record, record))
+			: RoomTargetResult.NotFound;
 	}
 
-	public async Task<LobbyResult> BanAsync(UserReference player)
+	public async Task<RoomTargetResult> BanAsync(UserReference player)
 	{
-		if (_scoped.Require(RoomPrivileges.Moderators) is { } denied) return denied.ToLobby();
+		if (_scoped.Require(RoomPrivileges.Moderators) is not null) return RoomTargetResult.Denied;
 		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
-			? _scoped.Room.Ban(_scoped.Actor.Record, record).ToLobby()
-			: LobbyResult.NotFound;
+			? RoomTargetResults.Of(_scoped.Room.Ban(_scoped.Actor.Record, record))
+			: RoomTargetResult.NotFound;
 	}
 
-	public async Task<LobbyResult> UnbanAsync(UserReference player)
+	public async Task<RoomTargetResult> UnbanAsync(UserReference player)
 	{
-		if (_scoped.Require(RoomPrivileges.Moderators) is { } denied) return denied.ToLobby();
+		if (_scoped.Require(RoomPrivileges.Moderators) is not null) return RoomTargetResult.Denied;
 		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
-			? _scoped.Room.Unban(record).ToLobby()
-			: LobbyResult.NotFound;
+			? RoomTargetResults.Of(_scoped.Room.Unban(record))
+			: RoomTargetResult.NotFound;
 	}
 
-	public async Task<LobbyResult> InviteAsync(User target)
+	public async Task<RoomInviteResult> InviteAsync(User target)
 	{
-		if (_scoped.Require(RoomPrivileges.Player | RoomPrivileges.Moderators) is { } denied) return denied.ToLobby();
-		if (!target.IsOnline) return LobbyResult.TargetOffline;
+		if (_scoped.Require(RoomPrivileges.Player | RoomPrivileges.Moderators) is not null)
+			return RoomInviteResult.Denied;
+		if (!target.IsOnline) return RoomInviteResult.TargetOffline;
 		if (!_scoped.ManagesAnyRoom &&
 		    await _scoped.Room.Context.Users.BlocksAsync(target.Record, _scoped.Actor.Record))
-			return LobbyResult.Blocked;
+			return RoomInviteResult.Blocked;
 
 		return _scoped.Room.Invite(_scoped.Actor.Record, target);
 	}
 
-	public Task<LobbyResult> ObserverJoinAsync()
+	public Task<RoomJoinResult> ObserverJoinAsync()
 	{
 		return Task.FromResult(_scoped.Actor is TourneySession actor
 			? _scoped.Room.ObserverJoin(actor)
-			: LobbyResult.NotObserver);
+			: RoomJoinResult.NotObserver);
 	}
 
-	public Task<LobbyResult> ObserverLeaveAsync()
+	public Task<RoomJoinResult> ObserverLeaveAsync()
 	{
 		return Task.FromResult(_scoped.Actor is TourneySession actor
 			? _scoped.Room.ObserverLeave(actor)
-			: LobbyResult.NotObserver);
+			: RoomJoinResult.NotObserver);
 	}
 }

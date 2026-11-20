@@ -56,7 +56,7 @@ internal sealed partial class MpCommands
 
 		var password = args.Count > 1 ? string.Join(' ', args.Skip(1)) : string.Empty;
 		var outcome = await sender.Send(new JoinRoom(actor, room, password), ct);
-		if (outcome != LobbyResult.Ok)
+		if (outcome != RoomJoinResult.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;

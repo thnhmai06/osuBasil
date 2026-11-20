@@ -6,4 +6,4 @@ using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 
 namespace Basil.Application.Multiplayer.Messages;
 
-public sealed record UnbanPlayer(Session Actor, Room Room, UserReference Player) : IRequest<LobbyResult>;
+public sealed record UnbanPlayer(Session Actor, Room Room, UserReference Player) : IRequest<RoomTargetResult>;

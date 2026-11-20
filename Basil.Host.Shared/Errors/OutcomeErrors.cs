@@ -73,14 +73,14 @@ public static class OutcomeErrors
 
 	private const int OkValue = 1;
 
-	public static bool IsOk<TOutcome>(TOutcome outcome) where TOutcome : struct, Enum
+	public static bool IsOk(Enum outcome)
 	{
 		return Convert.ToInt32(outcome, CultureInfo.InvariantCulture) == OkValue;
 	}
 
-	public static ErrorInfo Describe<TOutcome>(TOutcome outcome) where TOutcome : struct, Enum
+	public static ErrorInfo Describe(Enum outcome)
 	{
-		if (EqualityComparer<TOutcome>.Default.Equals(outcome, default))
+		if (Convert.ToInt32(outcome, CultureInfo.InvariantCulture) == 0)
 			return new ErrorInfo(PrivilegeDeniedCode, ErrorKind.PrivilegeDenied);
 
 		var name = outcome.ToString();
@@ -105,13 +105,26 @@ public static class OutcomeErrors
 					ErrorKind.Invalid,
 				_ => ErrorKind.Conflict
 			},
-			LobbyResult lobby => lobby switch
+			LobbyResult lobby => lobby == LobbyResult.Locked ? ErrorKind.Locked : ErrorKind.Conflict,
+			RoomJoinResult join => join switch
 			{
-				LobbyResult.Blocked => ErrorKind.Forbidden,
-				LobbyResult.WrongPassword => ErrorKind.WrongPassword,
-				LobbyResult.NotFound => ErrorKind.NotFound,
-				LobbyResult.Locked => ErrorKind.Locked,
-				_ => lobby.ToRoom() is { } room ? Describe(room).Kind : ErrorKind.Conflict
+				RoomJoinResult.WrongPassword => ErrorKind.WrongPassword,
+				RoomJoinResult.RoomClosed => ErrorKind.Gone,
+				_ => ErrorKind.Conflict
+			},
+			RoomInviteResult invite => invite switch
+			{
+				RoomInviteResult.Blocked => ErrorKind.Forbidden,
+				RoomInviteResult.RoomClosed => ErrorKind.Gone,
+				_ => ErrorKind.Conflict
+			},
+			RoomTargetResult target => target switch
+			{
+				RoomTargetResult.NotFound => ErrorKind.NotFound,
+				RoomTargetResult.IsManager => ErrorKind.Forbidden,
+				RoomTargetResult.RoomClosed => ErrorKind.Gone,
+				RoomTargetResult.NoTeams => ErrorKind.Invalid,
+				_ => ErrorKind.Conflict
 			},
 			ChannelJoinResult channel => channel switch
 			{
@@ -134,7 +147,7 @@ public static class OutcomeErrors
 			SessionAuthResult connection => connection == SessionAuthResult.Rejected
 				? ErrorKind.Invalid
 				: ErrorKind.Conflict,
-			_ => throw new ArgumentException($"No error table for {typeof(TOutcome).Name}.", nameof(outcome))
+			_ => throw new ArgumentException($"No error table for {outcome.GetType().Name}.", nameof(outcome))
 		};
 		return new ErrorInfo(code, kind);
 	}

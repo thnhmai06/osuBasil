@@ -32,7 +32,7 @@ internal sealed partial class MpCommands
 		}
 
 		var outcome = await sender.Send(new MovePlayer(actor, room, UserReference.ById(target.Id), slot), ct);
-		if (outcome != LobbyResult.Ok)
+		if (outcome != RoomTargetResult.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
@@ -63,10 +63,14 @@ internal sealed partial class MpCommands
 		}
 
 		var host = registry.Online.GetValueOrDefault(target)?.Stable;
-		var outcome = host is not { IsOpen: true }
-			? LobbyResult.TargetOffline
-			: (await sender.Send(new SetRoomHost(actor, room, host), ct)).ToLobby();
-		if (outcome != LobbyResult.Ok)
+		if (host is not { IsOpen: true })
+		{
+			await context.Say(MpReplies.Describe(context.Replies, RoomTargetResult.TargetOffline), ct);
+			return false;
+		}
+
+		var outcome = await sender.Send(new SetRoomHost(actor, room, host), ct);
+		if (outcome != RoomActionResult.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
@@ -112,9 +116,9 @@ internal sealed partial class MpCommands
 
 		var targetUser = registry.Online.GetValueOrDefault(target);
 		var outcome = targetUser is null
-			? LobbyResult.TargetOffline
+			? RoomInviteResult.TargetOffline
 			: await sender.Send(new InvitePlayer(actor, room, targetUser), ct);
-		if (outcome != LobbyResult.Ok)
+		if (outcome != RoomInviteResult.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
@@ -145,7 +149,7 @@ internal sealed partial class MpCommands
 		}
 
 		var outcome = await sender.Send(new KickPlayer(actor, room, UserReference.ById(target.Id)), ct);
-		if (outcome != LobbyResult.Ok)
+		if (outcome != RoomTargetResult.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
@@ -174,7 +178,7 @@ internal sealed partial class MpCommands
 		}
 
 		var outcome = await sender.Send(new BanPlayer(actor, room, UserReference.ById(target.Id)), ct);
-		if (outcome != LobbyResult.Ok)
+		if (outcome != RoomTargetResult.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
@@ -203,7 +207,7 @@ internal sealed partial class MpCommands
 		}
 
 		var outcome = await sender.Send(new UnbanPlayer(actor, room, UserReference.ById(target.Id)), ct);
-		if (outcome != LobbyResult.Ok)
+		if (outcome != RoomTargetResult.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
@@ -242,7 +246,7 @@ internal sealed partial class MpCommands
 
 		var team = teamArg == "red" ? GameTeam.Red : GameTeam.Blue;
 		var outcome = await sender.Send(new SetPlayerTeam(actor, room, UserReference.ById(target.Id), team), ct);
-		if (outcome != LobbyResult.Ok)
+		if (outcome != RoomTargetResult.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;

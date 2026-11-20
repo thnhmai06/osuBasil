@@ -4,11 +4,11 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-internal sealed class StopObservingRoomHandler : IRequestHandler<StopObservingRoom, LobbyResult>
+internal sealed class StopObservingRoomHandler : IRequestHandler<StopObservingRoom, RoomJoinResult>
 {
-	public ValueTask<LobbyResult> Handle(StopObservingRoom request, CancellationToken ct)
+	public ValueTask<RoomJoinResult> Handle(StopObservingRoom request, CancellationToken ct)
 	{
-		return new ValueTask<LobbyResult>(
+		return new ValueTask<RoomJoinResult>(
 			request.Room.ScopeTo(request.Actor).Members.ObserverLeaveAsync());
 	}
 }

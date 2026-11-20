@@ -315,20 +315,83 @@ internal static class MpReplies
 	{
 		return outcome switch
 		{
-			LobbyResult.AlreadySeated => AlreadyInThisMatch,
-			LobbyResult.InAnotherRoom => TargetInAnotherMatch,
-			LobbyResult.WrongPassword => IncorrectPassword,
-			LobbyResult.IsObserver => TargetIsObserver,
-			LobbyResult.TargetOffline => TargetNotOnline,
-			LobbyResult.Blocked => CannotInvite,
-			LobbyResult.NotFound => UserNotFound,
 			LobbyResult.AlreadyInRoom => UserAlreadyInRoom,
-			LobbyResult.IsPlayer => TargetIsPlayer,
-			LobbyResult.NotObserver => TargetNotObserver,
 			LobbyResult.TooManyRooms => RoomLimitReached,
 			LobbyResult.NoRoomId => NoMatchesAvailable,
 			LobbyResult.Locked => RoomsLocked,
-			_ => outcome.ToRoom() is { } room ? Of(room) : GenericFailed
+			_ => GenericFailed
+		};
+	}
+
+	public static string Describe(IReplies replies, RoomJoinResult result)
+	{
+		return result == RoomJoinResult.Denied
+			? replies.Text(MissingPrivileges)
+			: replies.Text(Of(result), new { outcome = result.ToString() });
+	}
+
+	public static Reply Of(RoomJoinResult outcome)
+	{
+		return outcome switch
+		{
+			RoomJoinResult.RoomClosed => MatchClosed,
+			RoomJoinResult.NotInRoom => TargetNotInMatch,
+			RoomJoinResult.Banned => BannedFromMatch,
+			RoomJoinResult.Full => MatchIsFull,
+			RoomJoinResult.AlreadySeated => AlreadyInThisMatch,
+			RoomJoinResult.InAnotherRoom => TargetInAnotherMatch,
+			RoomJoinResult.IsObserver => TargetIsObserver,
+			RoomJoinResult.IsPlayer => TargetIsPlayer,
+			RoomJoinResult.NotObserver => TargetNotObserver,
+			RoomJoinResult.WrongPassword => IncorrectPassword,
+			_ => GenericFailed
+		};
+	}
+
+	public static string Describe(IReplies replies, RoomInviteResult result)
+	{
+		return result == RoomInviteResult.Denied
+			? replies.Text(MissingPrivileges)
+			: replies.Text(Of(result), new { outcome = result.ToString() });
+	}
+
+	public static Reply Of(RoomInviteResult outcome)
+	{
+		return outcome switch
+		{
+			RoomInviteResult.RoomClosed => MatchClosed,
+			RoomInviteResult.TargetOffline => TargetNotOnline,
+			RoomInviteResult.AlreadyInRoom => UserAlreadyInRoom,
+			RoomInviteResult.Blocked => CannotInvite,
+			_ => GenericFailed
+		};
+	}
+
+	public static string Describe(IReplies replies, RoomTargetResult result)
+	{
+		return result == RoomTargetResult.Denied
+			? replies.Text(MissingPrivileges)
+			: replies.Text(Of(result), new { outcome = result.ToString() });
+	}
+
+	public static Reply Of(RoomTargetResult outcome)
+	{
+		return outcome switch
+		{
+			RoomTargetResult.NotFound => UserNotFound,
+			RoomTargetResult.RoomClosed => MatchClosed,
+			RoomTargetResult.InProgress => MatchAlreadyInProgress,
+			RoomTargetResult.NotInRoom => TargetNotInMatch,
+			RoomTargetResult.NotBanned => TargetNotBanned,
+			RoomTargetResult.IsManager => TargetIsManager,
+			RoomTargetResult.IsCreator => TargetIsCreator,
+			RoomTargetResult.AlreadyReferee => TargetAlreadyReferee,
+			RoomTargetResult.NotReferee => TargetNotReferee,
+			RoomTargetResult.SlotNotOpen => DestinationSlotNotOpen,
+			RoomTargetResult.RoomLocked => MatchIsLocked,
+			RoomTargetResult.NoTeams => MatchHasNoTeams,
+			RoomTargetResult.TargetOffline => TargetNotOnline,
+			_ => GenericFailed
 		};
 	}
 

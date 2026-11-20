@@ -22,12 +22,12 @@ public readonly struct ScopedRoomSlots
 			: RoomActionResult.NotInRoom);
 	}
 
-	public async Task<LobbyResult> MoveAsync(UserReference player, int index)
+	public async Task<RoomTargetResult> MoveAsync(UserReference player, int index)
 	{
-		if (_scoped.Require(RoomPrivileges.Moderators) is { } denied) return denied.ToLobby();
+		if (_scoped.Require(RoomPrivileges.Moderators) is not null) return RoomTargetResult.Denied;
 		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
-			? _scoped.Room.MovePlayer(record, index).ToLobby()
-			: LobbyResult.NotFound;
+			? RoomTargetResults.Of(_scoped.Room.MovePlayer(record, index))
+			: RoomTargetResult.NotFound;
 	}
 
 	public Task<RoomActionResult> ArrangeAsync(IReadOnlyList<SlotArrangement> arrangement)
@@ -57,12 +57,12 @@ public readonly struct ScopedRoomSlots
 			: RoomActionResult.NotInRoom);
 	}
 
-	public async Task<LobbyResult> SetTeamAsync(UserReference player, GameTeam team)
+	public async Task<RoomTargetResult> SetTeamAsync(UserReference player, GameTeam team)
 	{
-		if (_scoped.Require(RoomPrivileges.Moderators) is { } denied) return denied.ToLobby();
+		if (_scoped.Require(RoomPrivileges.Moderators) is not null) return RoomTargetResult.Denied;
 		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
-			? _scoped.Room.SetTeam(record, team).ToLobby()
-			: LobbyResult.NotFound;
+			? RoomTargetResults.Of(_scoped.Room.SetTeam(record, team))
+			: RoomTargetResult.NotFound;
 	}
 
 	public Task<RoomActionResult> SetModsAsync(GameMods mods)

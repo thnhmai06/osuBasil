@@ -4,11 +4,11 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-internal sealed class JoinRoomHandler : IRequestHandler<JoinRoom, LobbyResult>
+internal sealed class JoinRoomHandler : IRequestHandler<JoinRoom, RoomJoinResult>
 {
-	public ValueTask<LobbyResult> Handle(JoinRoom request, CancellationToken ct)
+	public ValueTask<RoomJoinResult> Handle(JoinRoom request, CancellationToken ct)
 	{
-		return new ValueTask<LobbyResult>(
+		return new ValueTask<RoomJoinResult>(
 			request.Room.ScopeTo(request.Actor).Members.JoinAsync(request.Password));
 	}
 }
