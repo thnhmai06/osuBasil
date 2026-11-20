@@ -103,11 +103,6 @@ At startup `DatabaseMigrator` applies the module migrations in foreign-key order
 the shared tables (Shared), Scores, Multiplayer, then Chat. Each records its migrations in `__ef_migrations_<module>`. The id counters belong to the module that owns the table (the beatmap counters to Beatmaps, the user counter, where accounts start at 2 because id 1 is BasilBot, to Users), and the seeded channels to Chat. Persistence holds no SQL
 text: schema changes are Entity Framework migrations and reads and writes use LINQ and row objects.
 
-The Sessions module was called Authentication until the rename. By owner decision its history table was renamed once, from
-`__ef_migrations_auth` to `__ef_migrations_sessions`, and the Sessions migration step renames an existing old table before it
-migrates, so an upgraded database does not replay `InitialCreate`. The change is forward-only: an older binary on an upgraded
-database finds no history and replays `InitialCreate`.
-
 The `settings` table belongs to the shared context (`SharedDbContext`, history `__ef_migrations_shared`) and is created only by
 the `InitialCreate` of Shared; no other module's migration mentions it.
 

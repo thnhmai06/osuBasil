@@ -9,7 +9,7 @@ public static class DependencyInjection
 {
 	public static IServiceCollection AddSessionsInfrastructure(this IServiceCollection services)
 	{
-		services.AddSingleton<IModuleMigration, SessionsMigration>();
+		services.AddSingleton<IModuleMigration, ModuleMigration<SessionsDbContext>>();
 		services.AddSingleton<ICredentialRepository, EfCredentialRepository>();
 		services.AddSingleton<ISessionRepository, EfSessionRepository>();
 		return services;
