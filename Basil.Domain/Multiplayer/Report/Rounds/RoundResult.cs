@@ -14,8 +14,8 @@ public abstract class RoundResult : IEquatable<RoundResult>
 	/// <summary>Gets the difference in the win condition's metric between the winner and the runner-up; 0 for a draw.</summary>
 	public double WinMargin { get; protected init; }
 
-	/// <summary>Gets whether no side won.</summary>
-	public bool IsDraw { get; protected init; }
+	/// <summary>Gets whether no side won: the win margin is nearly 0.</summary>
+	public bool IsDraw => WinMargin.NearlyEqual(0);
 
 	/// <summary>Gets the scores of the round in ranking order.</summary>
 	public abstract IEnumerable<RoundScore> Scores { get; }
@@ -74,13 +74,12 @@ public sealed class HeadToHeadResult : RoundResult
 	/// <summary>Creates a head-to-head result.</summary>
 	/// <param name="round">The round.</param>
 	/// <param name="scores">The scores of the round.</param>
-	/// <param name="winMargin">How far the winner is ahead.</param>
-	/// <param name="isDraw">Whether no player won.</param>
+	/// <param name="winMargin">How far the winner is ahead; nearly 0 for a draw.</param>
 	/// <param name="winnerId">The id of the winning user, or <see langword="null"/> for a draw.</param>
 	/// <exception cref="ArgumentException">The round is in a team mode, or a score belongs to another round.</exception>
 	[SetsRequiredMembers]
 	public HeadToHeadResult(
-		Round round, IReadOnlyCollection<RoundScore> scores, double winMargin, bool isDraw, int? winnerId)
+		Round round, IReadOnlyCollection<RoundScore> scores, double winMargin, int? winnerId)
 	{
 		Round = round;
 
@@ -92,7 +91,6 @@ public sealed class HeadToHeadResult : RoundResult
 
 		Scores = SortedScoresOf(scores, round.Settings.WinCondition);
 		WinMargin = winMargin;
-		IsDraw = isDraw;
 		WinnerId = winnerId;
 	}
 
@@ -102,7 +100,7 @@ public sealed class HeadToHeadResult : RoundResult
 	/// <summary>Gets the id of the winning user, or <see langword="null"/> for a draw.</summary>
 	public int? WinnerId { get; }
 
-	/// <summary>Decides a head-to-head round: passed plays rank ahead of failed ones, and the best play wins unless it ties the runner-up; a tie in combo, or in accuracy at 100%, goes to the higher total score.</summary>
+	/// <summary>Decides a head-to-head round: passed plays rank ahead of failed ones, and the best play wins unless it ties the runner-up; a tie in combo, or in accuracy at 100%, goes to the higher total score and its margin is the total-score difference.</summary>
 	/// <param name="round">The round.</param>
 	/// <param name="scores">The scores received.</param>
 	internal new static HeadToHeadResult Decide(Round round, IReadOnlyCollection<RoundScore> scores)
@@ -122,11 +120,14 @@ public sealed class HeadToHeadResult : RoundResult
 		// Equal combo, or equal accuracy at 100%, goes to the higher total score.
 		var tieBroken = rankedCount > 1 && margin.NearlyEqual(0) && condition.BreaksTieByScore(ordered[0].Score.Value) &&
 		                ordered[0].Score.Value.LastState.TotalScore != ordered[1].Score.Value.LastState.TotalScore;
+		if (tieBroken)
+			margin = Math.Abs(
+				(double)ordered[0].Score.Value.LastState.TotalScore - ordered[1].Score.Value.LastState.TotalScore);
 		var winnerId = rankedCount != 0 && (rankedCount == 1 || tieBroken || !margin.NearlyEqual(0))
 			? ordered[0].Score.Value.UserId
 			: null;
 
-		return new HeadToHeadResult(round, scores, margin, winnerId is null, winnerId);
+		return new HeadToHeadResult(round, scores, margin, winnerId);
 	}
 }
 
@@ -137,13 +138,12 @@ public sealed class TeamVersusResult : RoundResult
 
 	/// <summary>Creates a team result.</summary>
 	/// <param name="round">The round.</param>
-	/// <param name="winMargin">How far the winning team is ahead.</param>
-	/// <param name="isDraw">Whether no team won.</param>
+	/// <param name="winMargin">How far the winning team is ahead; nearly 0 for a draw.</param>
 	/// <param name="winner">The winning team, or <see langword="null"/> for a draw.</param>
 	/// <param name="teamScores">The score of every team.</param>
 	/// <exception cref="ArgumentException">The round is not in a team mode, or a team has no score entry.</exception>
 	[SetsRequiredMembers]
-	public TeamVersusResult(Round round, double winMargin, bool isDraw, GameTeam? winner,
+	public TeamVersusResult(Round round, double winMargin, GameTeam? winner,
 		IReadOnlyDictionary<GameTeam, RoundTeamScore> teamScores)
 	{
 		Round = round;
@@ -157,7 +157,6 @@ public sealed class TeamVersusResult : RoundResult
 		TeamScores = teamScores.ToFrozenDictionary();
 		Winner = winner;
 		WinMargin = winMargin;
-		IsDraw = isDraw;
 	}
 
 	/// <summary>Gets the score of every team.</summary>
@@ -172,7 +171,7 @@ public sealed class TeamVersusResult : RoundResult
 	/// <summary>Gets the winning team, or <see langword="null"/> for a draw.</summary>
 	public GameTeam? Winner { get; }
 
-	/// <summary>Decides a team round: a team's value counts only its players who passed, the team ahead wins, equal values are a draw, and a team that is alone with scores wins.</summary>
+	/// <summary>Decides a team round: teams are compared by the value of their players who passed, and only when no one passed on either side by their total value; equal values are a draw, and a team that is alone with scores wins by its passed value (its total value when no one passed).</summary>
 	/// <param name="round">The round.</param>
 	/// <param name="scores">The scores received.</param>
 	internal new static TeamVersusResult Decide(Round round, IReadOnlyCollection<RoundScore> scores)
@@ -190,14 +189,17 @@ public sealed class TeamVersusResult : RoundResult
 		{
 			case 1:
 				winner = rankedTeams[0];
-				margin = teamScores[winner.Value].PassedScore;
+				var alone = teamScores[winner.Value];
+				margin = alone.PassedScore.NearlyEqual(0) ? alone.TotalScore : alone.PassedScore;
 				break;
 			case > 1:
 			{
 				var first = teamScores[rankedTeams[0]];
 				var second = teamScores[rankedTeams[1]];
-				// Only players who passed count towards their team.
-				var difference = first.PassedScore - second.PassedScore;
+				// Only players who passed count towards their team; the total decides only when nobody passed on either side.
+				var difference = first.PassedScore.NearlyEqual(0) && second.PassedScore.NearlyEqual(0)
+					? first.TotalScore - second.TotalScore
+					: first.PassedScore - second.PassedScore;
 				if (!difference.NearlyEqual(0))
 				{
 					winner = difference > 0 ? rankedTeams[0] : rankedTeams[1];
@@ -208,6 +210,6 @@ public sealed class TeamVersusResult : RoundResult
 			}
 		}
 
-		return new TeamVersusResult(round, margin, winner is null, winner, teamScores);
+		return new TeamVersusResult(round, margin, winner, teamScores);
 	}
 }

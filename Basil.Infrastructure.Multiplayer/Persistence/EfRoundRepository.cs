@@ -36,7 +36,7 @@ internal sealed class EfRoundRepository(DatabaseSession database, IRoundScoreRep
 			{
 				var scores = await roundScores.ListAsync(round, ct);
 				round.Result = round.Settings.TeamType.IsTeamMode()
-					? new TeamVersusResult(round, stored.Margin, stored.IsDraw, stored.Winner,
+					? new TeamVersusResult(round, stored.Margin, stored.Winner,
 						new Dictionary<GameTeam, RoundTeamScore>
 						{
 							[GameTeam.Red] = TeamScoreOf(round, scores, GameTeam.Red, stored.RedPassedScore,
@@ -44,7 +44,7 @@ internal sealed class EfRoundRepository(DatabaseSession database, IRoundScoreRep
 							[GameTeam.Blue] = TeamScoreOf(round, scores, GameTeam.Blue, stored.BluePassedScore,
 								stored.BlueScore)
 						})
-					: new HeadToHeadResult(round, scores, stored.Margin, stored.IsDraw, stored.WinnerId);
+					: new HeadToHeadResult(round, scores, stored.Margin, stored.WinnerId);
 			}
 
 			listed.Add(round);
