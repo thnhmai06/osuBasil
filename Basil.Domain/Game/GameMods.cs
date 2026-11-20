@@ -184,6 +184,7 @@ public static class ModsExtensions
 		/// <returns>The mods that remain valid.</returns>
 		/// <remarks>
 		/// <see cref="GameMods.Nightcore"/> wins over <see cref="GameMods.DoubleTime"/>, and speed-up mods win over <see cref="GameMods.HalfTime"/>. <see cref="GameMods.Easy"/> wins over <see cref="GameMods.HardRock"/>. <see cref="GameMods.NoFail"/>, <see cref="GameMods.Relax"/> and <see cref="GameMods.Autopilot"/> remove <see cref="GameMods.SuddenDeath"/> and <see cref="GameMods.Perfect"/>, and Relax or Autopilot also remove NoFail. <see cref="GameMods.Autoplay"/> and <see cref="GameMods.Cinema"/> win over <see cref="GameMods.SuddenDeath"/>, <see cref="GameMods.Perfect"/>, <see cref="GameMods.Relax"/>, <see cref="GameMods.Autopilot"/> and <see cref="GameMods.SpunOut"/>. <see cref="GameMods.Perfect"/> wins over <see cref="GameMods.SuddenDeath"/>.
+		/// <see cref="GameMods.Target"/> wins over every other mod, so it stays alone (in standard only, where it exists).
 		/// Mods that belong to another mode are dropped (<see cref="GameModsGroups.OsuSpecific"/> outside standard, <see cref="GameModsGroups.ManiaSpecific"/> outside mania). In standard, <see cref="GameMods.Autopilot"/> is also dropped next to <see cref="GameMods.SpunOut"/> or <see cref="GameMods.Relax"/>; in mania, <see cref="GameMods.Relax"/> is dropped, <see cref="GameMods.FadeIn"/> next to <see cref="GameMods.Hidden"/>, and <see cref="GameMods.Hidden"/> and <see cref="GameMods.FadeIn"/> next to <see cref="GameMods.Flashlight"/>. When several key count mods are set, only one stays, taken in the order 4K to 9K, then 1K, 3K, 2K.
 		/// </remarks>
 		public GameMods RemoveInvalidMods(GameMode mode)
@@ -193,6 +194,7 @@ public static class ModsExtensions
 			result = ResolveSpeedConflicts(result);
 			result = ResolveFailConflicts(result);
 			result = RemoveModeSpecific(result, mode);
+			if ((result & GameMods.Target) != GameMods.NoMod) result = GameMods.Target; // every mod cancels out TP
 			result = KeepFirstKeymod(result);
 
 			return result;
