@@ -1,0 +1,77 @@
+namespace Basil.Domain.Beatmaps;
+
+/// <summary>How far a beatmapset got in the ranking process; the values carry the game numbering.</summary>
+public enum BeatmapsetStatus : sbyte
+{
+	// NotSubmitted = -1, // not used
+
+	/// <summary>Not ranked: still being worked on, awaiting review, or abandoned.</summary>
+	Pending = 0, // graveyard too
+
+	// UpdateAvailable = 1, // not used
+
+	/// <summary>Ranked: scores on it count for the ranking and give performance points.</summary>
+	Ranked = 2,
+
+	/// <summary>Approved: ranked under the older approval process.</summary>
+	Approved = 3,
+
+	/// <summary>Qualified: accepted and waiting to become ranked.</summary>
+	Qualified = 4,
+
+	/// <summary>Loved: kept as a community favourite, without performance points.</summary>
+	Loved = 5
+}
+
+/// <summary>Converts between status numberings.</summary>
+public static class BeatmapsetStatusExtensions
+{
+	/// <summary>Converts the status number of the osu!direct listing into a status.</summary>
+	/// <param name="osuDirectStatus">The status number of the listing.</param>
+	/// <returns>The matching status; graveyard and numbers that are not known give <see cref="BeatmapsetStatus.Pending"/>.</returns>
+	public static BeatmapsetStatus FromOsuDirect(int osuDirectStatus) // TODO: Move to Protocol
+	{
+		return osuDirectStatus switch
+		{
+			0 => BeatmapsetStatus.Ranked,
+			2 => BeatmapsetStatus.Pending,
+			3 => BeatmapsetStatus.Qualified,
+			5 => BeatmapsetStatus.Pending, // graveyard
+			7 => BeatmapsetStatus.Ranked, // ranked + played before
+			8 => BeatmapsetStatus.Loved,
+			_ => BeatmapsetStatus.Pending
+			// _ => BeatmapsetStatus.UpdateAvailable
+		};
+	}
+
+	// not used
+
+	// public static int ToOsuApi(this BeatmapsetStatus status)
+	// {
+	// 	return status switch
+	// 	{
+	// 		BeatmapsetStatus.Pending => 0,
+	// 		BeatmapsetStatus.Ranked => 1,
+	// 		BeatmapsetStatus.Approved => 2,
+	// 		BeatmapsetStatus.Qualified => 3,
+	// 		BeatmapsetStatus.Loved => 4,
+	// 		_ => throw new ArgumentOutOfRangeException(nameof(status), status, "No osu!api mapping for this status.")
+	// 	};
+	// }
+	//
+	// public static BeatmapsetStatus FromOsuApi(int osuApiStatus)
+	// {
+	// 	return osuApiStatus switch
+	// 	{
+	// 		-2 => BeatmapsetStatus.Pending, // graveyard
+	// 		-1 => BeatmapsetStatus.Pending, // wip
+	// 		0 => BeatmapsetStatus.Pending,
+	// 		1 => BeatmapsetStatus.Ranked,
+	// 		2 => BeatmapsetStatus.Approved,
+	// 		3 => BeatmapsetStatus.Qualified,
+	// 		4 => BeatmapsetStatus.Loved,
+	// 		_ => BeatmapsetStatus.Pending
+	// 		// _ => BeatmapsetStatus.UpdateAvailable
+	// 	};
+	// }
+}

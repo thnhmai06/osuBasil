@@ -1,0 +1,156 @@
+using Basil.Host.Cli.Dashboard.Data;
+using Basil.Host.Cli.Dashboard.Graphs;
+using XenoAtom.Terminal.UI;
+using XenoAtom.Terminal.UI.Controls;
+using XenoAtom.Terminal.UI.Geometry;
+using XenoAtom.Terminal.UI.Styling;
+
+namespace Basil.Host.Cli.Dashboard.Shell;
+
+internal sealed class GraphPanel
+{
+	public const int InfoLines = 3;
+
+	private static readonly int[,] DotBits = { { 0x01, 0x02, 0x04, 0x40 }, { 0x08, 0x10, 0x20, 0x80 } };
+
+	private readonly Func<double> _ceiling;
+	private readonly Glyphs _glyphs;
+	private readonly bool _noColor;
+	private readonly Series _primary;
+	private readonly Series? _secondary;
+	private readonly Func<Theme> _theme;
+	private readonly State<int> _version = new(0);
+
+	public GraphPanel(string title, Series primary, Series? secondary, Func<double> ceiling,
+		IReadOnlyList<Func<string>> info, string legend, Func<Theme> theme, Glyphs glyphs, bool noColor)
+	{
+		_primary = primary;
+		_secondary = secondary;
+		_ceiling = ceiling;
+		_theme = theme;
+		_glyphs = glyphs;
+		_noColor = noColor;
+		var canvas = new Canvas().Painter(() =>
+		{
+			_ = _version.Value;
+			return new Delegator<Action<CanvasContext>>(Paint);
+		}).Stretch();
+		var grid = new Grid().Columns(new ColumnDefinition { Width = GridLength.Star() });
+		var rows = new List<RowDefinition>();
+		for (var i = 0; i < InfoLines; i++)
+		{
+			var read = i < info.Count ? info[i] : () => string.Empty;
+			grid.Cell(new Markup(() =>
+			{
+				_ = _version.Value;
+				return read();
+			}).MaxHeight(1), i, 0);
+			rows.Add(new RowDefinition { Height = GridLength.Fixed(1) });
+		}
+
+		grid.Cell(canvas, InfoLines, 0).Cell(new Markup(legend).MaxHeight(1), InfoLines + 1, 0);
+		rows.Add(new RowDefinition { Height = GridLength.Star() });
+		rows.Add(new RowDefinition { Height = GridLength.Fixed(1) });
+		View = new Group(title).Style(glyphs.Ascii ? GroupStyle.Ascii : GroupStyle.Rounded)
+			.Padding(new Thickness(1, 0, 1, 0)).Content(grid.Rows([.. rows])).Stretch();
+	}
+
+	public Visual View { get; }
+
+	public static string PrimaryMark(Glyphs glyphs)
+	{
+		return glyphs.Ascii ? "|" : "━";
+	}
+
+	public static string SecondaryMark(Glyphs glyphs)
+	{
+		return glyphs.Ascii ? "." : "┄";
+	}
+
+	public void Refresh()
+	{
+		_version.Value++;
+	}
+
+	private void Paint(CanvasContext context)
+	{
+		IPaintSurface surface = new CanvasSurface(context, _theme());
+		if (_noColor) surface = new PlainSurface(surface);
+
+		var area = new Area(0, 0, context.Size.Width, context.Size.Height);
+		var top = Math.Max(_ceiling(), 1e-9);
+		var secondary = _secondary?.Values();
+		if (_glyphs.Ascii)
+		{
+			AsciiBars(surface, area, _primary.Values(), top);
+			if (secondary is not null) AsciiLine(surface, area, secondary, top);
+		}
+		else
+		{
+			BrailleGraph.Draw(surface, area, _primary.Values(), top);
+			if (secondary is not null) BrailleLine(surface, area, secondary, top);
+		}
+	}
+
+	private static void AsciiBars(IPaintSurface surface, Area area, double[] values, double top)
+	{
+		var shown = Tail(values, area.Width);
+		for (var i = 0; i < shown.Length; i++)
+		{
+			var x = area.X + area.Width - shown.Length + i;
+			var level = Math.Clamp(shown[i] / top, 0, 1);
+			var height = Math.Max(1, (int)Math.Round(level * area.Height));
+			for (var row = 0; row < height; row++)
+				surface.Put(x, area.Y + area.Height - 1 - row, row == height - 1 ? ':' : '|', Tone.Heat, level);
+		}
+	}
+
+	private static void AsciiLine(IPaintSurface surface, Area area, double[] values, double top)
+	{
+		var shown = Tail(values, area.Width);
+		for (var i = 0; i < shown.Length; i++)
+		{
+			var level = Math.Clamp(shown[i] / top, 0, 1);
+			var row = area.Height - 1 - (int)Math.Round(level * (area.Height - 1));
+			surface.Put(area.X + area.Width - shown.Length + i, area.Y + row, '.', Tone.Accent);
+		}
+	}
+
+	private static void BrailleLine(IPaintSurface surface, Area area, double[] values, double top)
+	{
+		if (area.Width <= 0 || area.Height <= 0) return;
+
+		var shown = Tail(values, area.Width * 2);
+		var rows = area.Height * 4;
+		var cells = new int[area.Width, area.Height];
+		var offset = area.Width * 2 - shown.Length;
+		for (var i = 0; i < shown.Length; i++)
+		{
+			var dotX = offset + i;
+			var y = rows - 1 - (int)Math.Round(Math.Clamp(shown[i] / top, 0, 1) * (rows - 1));
+			cells[dotX / 2, y / 4] |= DotBits[dotX % 2, y % 4];
+		}
+
+		for (var x = 0; x < area.Width; x++)
+		for (var y = 0; y < area.Height; y++)
+			if (cells[x, y] != 0)
+				surface.Put(area.X + x, area.Y + y, (char)(0x2800 + cells[x, y]), Tone.Accent);
+	}
+
+	private static double[] Tail(double[] values, int count)
+	{
+		return values.Length > count ? values[^count..] : values;
+	}
+
+	private sealed class PlainSurface(IPaintSurface inner) : IPaintSurface
+	{
+		public int Width => inner.Width;
+
+		public int Height => inner.Height;
+
+		public void Put(int x, int y, char character, Tone tone, double heat = 0)
+		{
+			inner.Put(x, y, character, Tone.Text, heat);
+		}
+	}
+}

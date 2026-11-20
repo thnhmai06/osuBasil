@@ -1,0 +1,34 @@
+using Basil.Application.Chat.Objects;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Basil.Infrastructure.Chat.Persistence;
+
+internal sealed class ChannelRow
+{
+	public string Name { get; set; } = "";
+
+	public string Topic { get; set; } = "";
+
+	public int ReadPrivileges { get; set; }
+
+	public int WritePrivileges { get; set; }
+
+	public bool AutoJoin { get; set; }
+
+	public bool Visible { get; set; }
+}
+
+internal sealed class ChannelRowConfiguration : IEntityTypeConfiguration<ChannelRow>
+{
+	public void Configure(EntityTypeBuilder<ChannelRow> builder)
+	{
+		builder.ToTable("channels");
+		builder.HasKey(row => row.Name);
+		builder.Property(row => row.Name).HasMaxLength(255);
+		builder.HasData(
+			new ChannelRow { Name = "#osu", Topic = "General discussion.", AutoJoin = true, Visible = true },
+			new ChannelRow
+				{ Name = GeneralChannel.LobbyName, Topic = "Multiplayer lobby discussion.", Visible = true });
+	}
+}

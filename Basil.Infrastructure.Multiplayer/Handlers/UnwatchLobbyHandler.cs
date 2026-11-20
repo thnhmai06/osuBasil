@@ -1,0 +1,14 @@
+using Basil.Application.Multiplayer.Messages;
+using Basil.Application.Multiplayer.Registry;
+using Mediator;
+
+namespace Basil.Infrastructure.Multiplayer.Handlers;
+
+internal sealed class UnwatchLobbyHandler(Lobby lobby) : IRequestHandler<UnwatchLobby>
+{
+	public ValueTask<Unit> Handle(UnwatchLobby request, CancellationToken ct)
+	{
+		lobby.ScopeTo(request.Actor).Unwatch();
+		return ValueTask.FromResult(Unit.Value);
+	}
+}

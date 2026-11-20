@@ -1,0 +1,67 @@
+using Basil.Infrastructure.Shared.Persistence;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Basil.Infrastructure.Scores.Persistence;
+
+internal sealed class ScoreRow
+{
+	public int Id { get; set; }
+
+	public int? UserId { get; set; }
+
+	public string? BeatmapHash { get; set; }
+
+	public int Mode { get; set; }
+
+	public int Mods { get; set; }
+
+	public int Num300 { get; set; }
+
+	public int Num100 { get; set; }
+
+	public int Num50 { get; set; }
+
+	public int NumGeki { get; set; }
+
+	public int NumKatu { get; set; }
+
+	public int NumMiss { get; set; }
+
+	public int TotalScore { get; set; }
+
+	public int MaxCombo { get; set; }
+
+	public int CurrentCombo { get; set; }
+
+	public int Grade { get; set; }
+
+	public bool IsPassed { get; set; }
+
+	public bool IsFullCombo { get; set; }
+
+	public DateTimeOffset Timestamp { get; set; }
+
+	public string? Checksum { get; set; }
+
+	public double? Pp { get; set; }
+}
+
+internal sealed class ScoreRowConfiguration : IEntityTypeConfiguration<ScoreRow>
+{
+	public void Configure(EntityTypeBuilder<ScoreRow> builder)
+	{
+		builder.ToTable("scores", table => table.HasCheckConstraint("scores_id_check", "id >= 1"));
+		builder.HasKey(row => row.Id);
+		builder.Property(row => row.Id).ValueGeneratedNever();
+		builder.HasOne(ContextModel.UsersTable, null).WithMany().HasForeignKey("UserId")
+			.OnDelete(DeleteBehavior.NoAction);
+		builder.Property(row => row.BeatmapHash).HasMaxLength(128);
+		builder.Property(row => row.Checksum).HasMaxLength(128);
+		builder.HasIndex(row => row.UserId);
+		// The leaderboard of a beatmap: best score first, then the earlier play and the lower id (also serves a lookup by beatmap).
+		builder.HasIndex(row => new { row.BeatmapHash, row.TotalScore, row.Timestamp, row.Id })
+			.IsDescending(false, true, false, false);
+		builder.HasIndex(row => row.Checksum).IsUnique();
+	}
+}

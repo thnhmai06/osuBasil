@@ -1,0 +1,33 @@
+using Basil.Infrastructure.Shared.Persistence;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Basil.Infrastructure.Multiplayer.Persistence;
+
+internal sealed class MatchRow
+{
+	public int Id { get; set; }
+
+	public string Name { get; set; } = "";
+
+	public int CreatorId { get; set; }
+
+	public DateTimeOffset StartedAt { get; set; }
+
+	public DateTimeOffset? EndedAt { get; set; }
+
+	public bool IsPrivate { get; set; }
+}
+
+internal sealed class MatchRowConfiguration : IEntityTypeConfiguration<MatchRow>
+{
+	public void Configure(EntityTypeBuilder<MatchRow> builder)
+	{
+		builder.ToTable("matches", table => table.HasCheckConstraint("matches_id_check", "id >= 1"));
+		builder.HasKey(row => row.Id);
+		builder.Property(row => row.Id).ValueGeneratedNever();
+		builder.HasOne(ContextModel.UsersTable, null).WithMany().HasForeignKey("CreatorId")
+			.IsRequired().OnDelete(DeleteBehavior.NoAction);
+		builder.HasIndex(row => row.EndedAt);
+	}
+}

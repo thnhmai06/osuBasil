@@ -2,116 +2,21 @@
 
 ## Overview
 
-Basil supports two beatmap serving modes, controlled by `Basil:Mirror`:
+Basil serves beatmaps only from the local `Data/Beatmapsets/` directory. There is no mirror, no osu! API source and no
+redirect to ppy: what the server does not hold answers 404 (media, `.osu` files, archives).
 
-* **Offline mode**: both `DownloadEndpoint` and `SearchEndpoint` are `null`. Beatmaps are served exclusively from the local `Mapsets/` directory.
-* **Online mode**: one or both mirror endpoints are configured. Basil can use an external beatmap mirror for downloads and/or osu!direct search.
-
-Local beatmap ingestion is independent of the mirror configuration. Beatmaps placed in `Mapsets/` are always ingested, analyzed, and indexed by Basil regardless of whether the server is running in offline or online mode.
-
-This distinction is important:
-
-> **The mirror controls where Basil can obtain and discover beatmaps. It does not control whether locally stored beatmaps are ingested.**
-
-A locally ingested beatmap can therefore exist in the database even when the server is using an external mirror.
-
-## Mirror modes
-
-The mirror configuration is under:
-
-```text
-Basil:Mirror:DownloadEndpoint
-Basil:Mirror:SearchEndpoint
-```
-
-### Offline mode
-
-Offline mode is enabled when both endpoints are `null`:
-
-```json
-{
-  "Basil": {
-    "Mirror": {
-      "DownloadEndpoint": null,
-      "SearchEndpoint": null
-    }
-  }
-}
-```
-
-In this mode:
-
-* beatmaps are obtained from the local `Mapsets/` directory;
-* locally ingested beatmaps can be served and downloaded;
-* osu!direct search/browse does not use an external mirror;
-* Basil has no dependency on an external beatmap service.
-
-This is the mode intended for completely isolated networks such as tournament LANs.
-
-### Online mode
-
-Online mode is enabled by configuring one or both mirror endpoints.
-
-The endpoints have separate responsibilities:
-
-* `DownloadEndpoint` provides beatmapset downloads from the external mirror.
-* `SearchEndpoint` provides beatmap search/discovery for osu!direct.
-
-They are independent settings, so Basil can support configurations where only one capability is provided.
-
-### Locally ingested beatmaps in online mode
-
-Local ingestion continues to work in online mode.
-
-A beatmapset imported into `Mapsets/` is processed normally:
-
-```text
-.osz
-  │
-  ▼
-local ingestion
-  │
-  ├── extract
-  ├── analyze
-  └── index in database
-```
-
-The resulting beatmap can still be downloaded through osu!direct when the online download path is available.
-
-However, **locally ingested beatmaps are not included in osu!direct search/browse results**.
-
-This is intentional. The mirror search index determines what appears in osu!direct discovery; local ingestion does not automatically publish a beatmap into that external index.
-
-The two concepts are therefore separate:
-
-```text
-                    Basil
-                      │
-          ┌───────────┴───────────┐
-          │                       │
-    Local ingestion          Mirror integration
-          │                       │
-          ▼                       ▼
-     Mapsets/                 SearchEndpoint
-          │                       │
-          ▼                       ▼
-   local database          osu!direct discovery
-          │
-          └──────► download
-```
-
-A map can therefore be **available locally and downloadable without being discoverable through osu!direct search**.
+A beatmapset placed in `Beatmapsets/` is ingested, analyzed and indexed, and what is indexed is what osu!direct search,
+downloads and the beatmap routes serve.
 
 ## Ingestion contract
 
 The ingestion pipeline accepts **beatmapsets**, not individual difficulty files.
 
-* A `.osz` placed in `Mapsets/` is automatically detected, extracted into its own directory, analyzed, and synchronized with the database. No restart or manual action is required.
-* A standalone `.osu` file placed directly in `Mapsets/` is ignored. Without the containing beatmapset, Basil cannot reliably determine its ownership and does not attempt to infer one.
-* `POST /beatmapsets` on the admin API accepts `.osz` files only and uses the same ingestion pipeline as filesystem ingestion.
+* A `.osz` placed in `Beatmapsets/` is automatically detected, moved into a folder of its own as the beatmapset's permanent storage, analyzed, and synchronized with the database. No restart or manual action is required.
+* A standalone `.osu` file placed directly in `Beatmapsets/` is ignored. Without the containing beatmapset, Basil cannot reliably determine its ownership and does not attempt to infer one.
+* `POST /v1/beatmapsets` accepts `.osz` files only and uses the same ingestion pipeline as filesystem ingestion.
 * Star rating, BPM, length, and object counts are calculated once during ingestion and persisted with the beatmap metadata.
 * Reading a beatmap never triggers difficulty recalculation.
-* Ingestion happens regardless of whether Basil is in offline or online mirror mode.
 
 ### `ffmpeg` is optional
 
@@ -127,19 +32,26 @@ No other part of Basil depends on `ffmpeg`.
 
 ## Source of truth
 
-Each locally ingested beatmapset is represented on disk by its own directory:
+Each locally ingested beatmapset has one folder of its own, holding its archive exactly as uploaded and the files
+made from it:
 
 ```text
-Mapsets/
+Beatmapsets/
 └── {id} Artist - Title/
-    ├── audio.mp3
-    ├── background.jpg
-    ├── video.mp4
-    ├── *.osu
-    └── *.osb
+    ├── archive.osz            the archive as it was given
+    ├── archive-novideo.osz    the same archive without its video entries (the `n` download)
+    ├── storyboard.osb         the set's storyboard
+    ├── versions/{md5}.osu     one file per difficulty
+    ├── backgrounds/           files of the archive, under their sanitized names
+    ├── audio/                 likewise, plus generated previews
+    ├── video/                 likewise
 ```
 
-The directory contains the original contents of the `.osz` archive.
+Files under `backgrounds/`, `audio/` and `video/` keep the name they have in the archive, made safe for the file
+system; nested files with the same name get a numeric suffix (`-2`, `-3`, ...). Local ids start at 1 000 000 000.
+
+A loose `.osz` placed at the top of `Beatmapsets/` is moved into such a folder when it is taken in. A folder that
+holds neither an archive nor files made from one is not a beatmapset and is ignored.
 
 The database mirrors this filesystem state:
 
@@ -155,41 +67,40 @@ This distinction is important when modifying the ingestion pipeline:
 
 > **For locally ingested beatmaps, the filesystem is authoritative and the database is its indexed representation.**
 
-Mirror-hosted beatmaps are a separate concern. They do not need to exist in `Mapsets/` merely to be discoverable or downloadable through the configured mirror.
-
 ## Ingestion triggers
 
-Basil has two mechanisms for keeping the local beatmap database synchronized with `Mapsets/`.
+Basil has two mechanisms (the upload route is the third entry into the same pipeline) for keeping the local beatmap database synchronized with `Beatmapsets/`.
 
 ### Filesystem watcher
 
-`[BeatmapWatcherService](../../src/Basil.Infrastructure/Beatmaps/BeatmapWatcherService.cs)` monitors the directory for changes.
+[`BeatmapsetStorageWatcher`](../../Basil.Infrastructure.Beatmaps/Workers/BeatmapsetStorageWatcher.cs) monitors the directory for a `.osz` archive appearing, changing, or disappearing.
 
 When a new `.osz` appears, the watcher schedules it for ingestion. Under normal conditions, the change becomes visible within a few seconds.
+
 
 ### Startup reconciliation
 
 The watcher cannot account for changes that happen while Basil is offline.
 
-Therefore, Basil performs a full reconciliation during startup. This discovers beatmapsets that were added, removed, or otherwise changed while the server was not running.
+Therefore, Basil performs a full scan during startup, which finishes before the server serves clients. This discovers beatmapsets that were added, removed, or otherwise changed while the server was not running.
 
-Both mechanisms eventually invoke the same ingestion service. There is no separate implementation for startup discovery, filesystem changes, or admin uploads.
+Every mechanism ends in the same importer and scanner of `Basil.Application.Beatmaps`. There is no separate implementation for startup discovery, filesystem changes, or uploads.
 
 ## Ingestion lifecycle
 
 ```text
 .osz
  │
- ├── Mapsets/ filesystem
+ ├── Beatmapsets/ filesystem
  │       │
- │       └── BeatmapWatcherService
+ │       └── BeatmapsetStorageWatcher
  │
  └── POST /beatmapsets
          │
          ▼
-BeatmapIngestionService
+BeatmapsetImporter / BeatmapsetScanner
          │
-         ├── extract archive
+         ├── keep archive in place as canonical storage
          │
          ├── analyze beatmaps
          │      ├── star rating
@@ -215,25 +126,35 @@ server startup
 filesystem reconciliation
       │
       ▼
-BeatmapIngestionService
+BeatmapsetScanner
 ```
-
-Mirror search/download does **not** replace this pipeline. It is an independent source of remote beatmap discovery and acquisition.
 
 ## Difficulty calculation
 
-Basil calculates beatmap difficulty metadata during ingestion using osu!'s ruleset calculation libraries.
+Basil calculates beatmap difficulty with osu!'s ruleset calculation libraries, in the Rulesets module. A beatmap is
+stored first, with no difficulty (`null`, "not calculated yet"); the import then asks the rulesets for every beatmap
+that has none and waits, for one deadline of `beatmaps.beatmapWait` for the whole set, for the answers. What arrived is
+stored, and the rest stays `null` until its late answer is stored. The osu! client gets zeros for a difficulty that is
+`null`. At start-up, and when a new ruleset version becomes active or the `reload` command runs, the beatmaps without
+a difficulty (or all of them) are asked for again.
 
-The calculation is intentionally limited to information needed for presentation and indexing, such as star rating.
+The difficulty attributes of a beatmap file under a mode and a set of difficulty-affecting mods are kept as files in
+`<Data>/Rulesets/Attributes`, one per combination: the first request for a combination calculates and writes it, later
+requests read it. A file written by another ruleset version or damaged is calculated again; the files are a cache and
+outlive the set. Concurrent requests for the same combination share one calculation, and calculations of different
+combinations are limited to the number of processor cores.
 
-Basil does **not** calculate pp.
+A file is `Attributes/{md5}/{mode}/{mask}.json`. `mode` is the mode played, and `mask` is the play's mods reduced to the
+ones that change the difficulty (`GameModsGroups.Difficulty`, `ReduceToDifficulty`): Nightcore counts as DoubleTime, and
+HD, NF, SD and the like share the NoMod file where they do not change the difficulty. The content is the version of the
+ruleset package and calculator, the `(id, value)` pairs the calculator gives for storage and the beatmap values the
+calculation needs on reading. `IBeatmapCalculator` is the port to this: it answers stars and pp as plain numbers.
 
-These values have no effect on:
+The server also calculates pp for scores from these attributes; see the pp rule in `AGENTS.md`. Star rating and pp are display-only: they have no effect on
 
 * score validation;
-* leaderboards;
-* multiplayer results;
-* match outcomes;
+* leaderboards and rankings;
+* multiplayer results and match outcomes;
 * gameplay rules.
 
 This is an explicit architectural boundary. Difficulty metadata is descriptive data, not part of Basil's scoring or competition logic.
@@ -291,13 +212,17 @@ Derived media must therefore be treated as disposable cache data, not as another
 
 ## Related code
 
-* [`Basil.Infrastructure/Beatmaps/BeatmapIngestionService.cs`](../../src/Basil.Infrastructure/Beatmaps/BeatmapIngestionService.cs): shared local ingestion pipeline
-* [`Basil.Infrastructure/Beatmaps/BeatmapWatcherService.cs`](../../src/Basil.Infrastructure/Beatmaps/BeatmapWatcherService.cs): filesystem change detection
-* [`Basil.Infrastructure/Performance/PpyOsuCalculator.cs`](../../src/Basil.Infrastructure/Performance/PpyOsuCalculator.cs): osu! ruleset difficulty calculations
-* [`Basil.Web/Routing/Bancho/BeatmapAssetRoutes.cs`](../../src/Basil.Web/Routing/Bancho/BeatmapAssetRoutes.cs): beatmap asset and preview routes
+* [`BeatmapsetImporter.cs`](../../Basil.Infrastructure.Beatmaps/Logic/BeatmapsetImporter.cs): imports one uploaded `.osz`
+* [`BeatmapsetScanner.cs`](../../Basil.Infrastructure.Beatmaps/Logic/BeatmapsetScanner.cs): scans the storage and reconciles it with the database
+* [`BeatmapsetPlanner.cs`](../../Basil.Infrastructure.Beatmaps/Logic/BeatmapsetPlanner.cs): decides what a changed archive means for the stored records
+* [`BeatmapsetStorageWatcher.cs`](../../Basil.Infrastructure.Beatmaps/Workers/BeatmapsetStorageWatcher.cs): startup scan and filesystem change detection
+* [`FileBeatmapsetStorage.cs`](../../Basil.Infrastructure.Beatmaps/Storage/FileBeatmapsetStorage.cs): the `Beatmapsets/` directory as storage
+* [`OsuBeatmapAnalyser.cs`](../../Basil.Infrastructure.Beatmaps/Adapters/OsuBeatmapAnalyser.cs): osu! ruleset difficulty calculations
+* [`BeatmapPreviewMaker.cs`](../../Basil.Infrastructure.Beatmaps/Adapters/BeatmapPreviewMaker.cs): audio previews with `ffmpeg`
+* [`BeatmapRoutes.cs`](../../Basil.Host.Rest/Routes/BeatmapRoutes.cs): beatmapset routes of the API host
 
 ## See also
 
 * [`database.md`](database.md): the `Beatmapsets`/`Beatmaps` schema synchronized by local ingestion
 * [`response-envelope.md`](response-envelope.md): how beatmap data is exposed through API responses
-* [`configuration.md`](../for-technicians/configuration.md): `Basil:Mirror` configuration and other server settings
+* [`configuration.md`](../for-technicians/configuration.md): server settings

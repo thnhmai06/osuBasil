@@ -1,0 +1,99 @@
+using Basil.Application.Chat.Registry;
+using Basil.Application.Servers.Messages.Channels;
+using Basil.Application.Servers.Objects;
+using Basil.Domain.Chat;
+using Basil.Domain.Users;
+using Basil.Gateway.Limits;
+using Basil.Host.Rest.Http;
+using Basil.Host.Shared.Views;
+using Mediator;
+using Basil.Application.Chat.Objects;
+
+namespace Basil.Host.Rest.Routes;
+
+internal static class ChannelRoutes
+{
+	public static void MapChannels(this RouteGroupBuilder v1)
+	{
+		var channels = v1.MapGroup("/channels").WithTags("Channels").RequireToken();
+		channels.MapGet("/", List).Admitted(WorkClass.Listing)
+			.WithSummary("List general channels.")
+			.WithDescription(
+				"Channels the caller cannot read are not listed. Hidden channels are listed for those who manage channels.");
+		channels.MapPost("/", CreateAsync).WithSummary("Create a general channel.")
+			.WithDescription(
+				"For those who manage channels. A channel whose name is already in use is refused with 409.");
+		channels.MapPatch("/{name}", PatchAsync).WithSummary("Update a general channel.")
+			.WithDescription(
+				"A caller who may not manage channels is refused with 403 whether or not the channel exists; 404 means no channel has the name.");
+		channels.MapDelete("/{name}", DeleteAsync).WithSummary("Delete a general channel.")
+			.WithDescription(
+				"A caller who may not manage channels is refused with 403 whether or not the channel exists; 404 means no channel has the name.");
+	}
+
+	private static IResult List(HttpContext context, GeneralChannelRegistry registry)
+	{
+		return Api.Ok(registry.VisibleTo(context.Session()).OrderBy(c => c.Name)
+			.Select(c => ChannelView.Of(c.Record)).ToList());
+	}
+
+	private static async Task<IResult> CreateAsync(HttpContext context, CreateChannelRequest request, ISender sender)
+	{
+		if (string.IsNullOrWhiteSpace(request.Name)) return Api.Invalid("name is required.");
+
+		var read = (UserPrivileges)(request.ReadPrivileges ?? 0);
+		var write = (UserPrivileges)(request.WritePrivileges ?? 0);
+
+		var record = new GeneralChannelRecord
+		{
+			Name = request.Name,
+			Value = new GeneralChannelData
+			{
+				Topic = request.Topic ?? string.Empty,
+				ReadPrivileges = read,
+				WritePrivileges = write,
+				AutoJoin = request.AutoJoin ?? false,
+				Visible = request.Visible ?? true
+			}
+		};
+
+		var result = await sender.Send(new CreateGeneralChannel(context.Session(), record), context.RequestAborted);
+		return result == ServerActionResult.Ok ? Api.Created(ChannelView.Of(record)) : result.Refusal();
+	}
+
+	private static async Task<IResult> PatchAsync(HttpContext context, string name, PatchChannelRequest request,
+		ISender sender)
+	{
+		var change = new GeneralChannelChange(request.Topic,
+			(UserPrivileges?)request.ReadPrivileges, (UserPrivileges?)request.WritePrivileges, request.AutoJoin,
+			request.Visible);
+
+		var (result, channel) = await sender.Send(new ConfigureGeneralChannel(context.Session(), name, change),
+			context.RequestAborted);
+		return result == ChannelJoinResult.Ok
+			? Api.Ok(ChannelView.Of(channel!.Record), "Updated successfully")
+			: result.Refusal();
+	}
+
+	private static async Task<IResult> DeleteAsync(HttpContext context, string name, ISender sender)
+	{
+		var (result, _) = await sender.Send(new DeleteGeneralChannel(context.Session(), name),
+			context.RequestAborted);
+		return result.Answer();
+	}
+
+	public sealed record CreateChannelRequest(
+		string? Name,
+		string? Topic,
+		byte? ReadPrivileges,
+		byte? WritePrivileges,
+		bool? AutoJoin,
+		bool? Visible);
+
+	public sealed record PatchChannelRequest(
+		string? Topic,
+		byte? ReadPrivileges,
+		byte? WritePrivileges,
+		bool? AutoJoin,
+		bool? Visible);
+}

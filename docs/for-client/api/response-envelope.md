@@ -99,6 +99,17 @@ For example:
 }
 ```
 
+A failed answer also names the failure in `errors`, which is the stable, machine-readable part:
+
+```json
+{ "success": false, "code": 403, "message": "privilegeDenied", "data": null, "meta": null,
+  "errors": { "code": "privilegeDenied" }, "timestamp": "2026-08-03T12:00:00Z" }
+```
+
+`errors.code` is a camelCase code such as `notFound`, `locked`, `systemAccount`, `wrongPassword`, `rateLimited` or `invalid`. The table that maps outcomes to codes and HTTP statuses is in [ADR-009](../../adr/ADR-009-rest-v1.md).
+
+A parameter or JSON body that cannot be read (a query value that is not a number, a number out of range, malformed JSON) is answered with 400 and `invalid`; a request body above the size limit is 413 and `tooLarge`. A number in the path that does not fit an integer is 422 and `invalid`.
+
 Clients should use the HTTP status code or `code` field to determine whether the request succeeded.
 
 The `message` field is intended for human-readable information and should not normally be used as a stable machine-readable error identifier.
@@ -127,10 +138,9 @@ For example:
     }
   ],
   "meta": {
-    "page": 1,
-    "pageSize": 20,
-    "totalRecords": 42,
-    "totalPages": 3
+    "offset": 0,
+    "limit": 20,
+    "hasNext": true
   },
   "errors": null,
   "timestamp": "2026-08-03T12:00:00Z"
@@ -139,12 +149,7 @@ For example:
 
 `data` contains the result items directly.
 
-The pagination fields are:
-
-* `page`
-* `pageSize`
-* `totalRecords`
-* `totalPages`
+The pagination fields are `offset`, `limit` and `hasNext`, which tells whether items follow this page; the total number of items is not reported. Lists take `offset` (default 0) and `limit` (default 25, at most 100; a larger value is answered with 422).
 
 ---
 
@@ -170,25 +175,9 @@ Beatmap references can similarly contain information about both the difficulty a
 
 ## Enum values
 
-Enum fields are normally serialized as numeric values.
+Enum fields are serialized as camelCase strings, for example `"status": "loved"`. Sets of privileges and privileges are bitmasks and are serialized as numbers, for example `"privileges": 19`.
 
-For example:
-
-```json
-{
-  "privilege": 19
-}
-```
-
-`Country` is the documented exception. It is serialized as a lowercase two-letter country code:
-
-```json
-{
-  "country": "vn"
-}
-```
-
-Do not treat `Country` as a numeric enum when parsing API responses.
+`Country` is a lowercase two-letter country code, for example `"country": "vn"`.
 
 ---
 
@@ -237,6 +226,6 @@ See [`sse.md`](sse.md) for the SSE protocol.
 
 * [`overview.md`](overview.md): the `api.` host HTTP surface
 * [`sse.md`](sse.md): live Server-Sent Events
-* [`authentication.md`](../bancho/authentication.md): Bancho authentication
-* [`protocol.md`](../bancho/protocol.md): Bancho binary protocol
+* [`authentication.md`](../osu-stable/authentication.md): osu! (stable) authentication
+* [`protocol.md`](../osu-stable/protocol.md): osu! (stable) binary protocol
 * [`response-envelope.md`](../../for-developers/response-envelope.md): server-side envelope implementation

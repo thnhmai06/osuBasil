@@ -1,0 +1,91 @@
+using Basil.Application.Diagnostics.Messages;
+using Basil.Application.Diagnostics.Objects;
+using Basil.Application.Diagnostics.Services;
+using Basil.Gateway.RateLimiting;
+using Basil.Host.Rest.Http;
+using Mediator;
+
+namespace Basil.Host.Rest.Sse;
+
+internal static class DiagnosticsRoutes
+{
+	private static readonly string[] Categories = [.. DiagnosticsSample.Categories];
+
+	private static readonly TimeSpan CollectInterval = TimeSpan.FromSeconds(30);
+
+	private static readonly string[] Actions = ["gc/collect", "caches/clear", "exceptions/reset"];
+
+	public static void MapDiagnostics(this RouteGroupBuilder v1)
+	{
+		var diagnostics = v1.MapGroup("/diagnostics").WithTags("Diagnostics").RequireToken();
+		diagnostics.MapGet("/",
+				(HttpContext c, ISender sender, IDiagnosticsIntake intake) => StreamAsync(c, sender, intake, null))
+			.Sse()
+			.WithSummary("Stream the diagnostics.")
+			.WithDescription("""
+			                 The response is streamed using Server-Sent Events. The first event is a full sample; after that a bundle arrives every second with the newest sample.
+			                 """);
+		diagnostics.MapGet("/{category}",
+				(HttpContext c, string category, ISender sender, IDiagnosticsIntake intake) =>
+					StreamAsync(c, sender, intake, category)).Sse()
+			.WithSummary("Stream a diagnostics category.")
+			.WithDescription("""
+			                 The categories are process, gc, threadpool, runtime, exceptions, http, application, database, stable, irc, events, sessions and connections. Streamed like the full diagnostics.
+			                 """);
+		diagnostics.MapPost("/{category}/{**action}", ActionAsync)
+			.WithSummary("Create a maintenance run.")
+			.WithDescription(
+				"The actions are `gc/collect`, `caches/clear` and `exceptions/reset`; any other is answered with 404. `gc/collect` can run once every 30 seconds, and a request sooner is answered with 429.");
+	}
+
+	private static async Task<object> SampleAsync(IDiagnosticsIntake intake, string? category,
+		CancellationToken ct)
+	{
+		var sample = await intake.TakeSampleAsync(ct);
+		return category is null ? sample.All : sample[category];
+	}
+
+	private static async Task<IResult> StreamAsync(HttpContext context, ISender sender, IDiagnosticsIntake intake,
+		string? category)
+	{
+		var access = await sender.Send(new CheckDiagnosticsAccess(context.Session()), context.RequestAborted);
+		if (access != DiagnosticsCommandResult.Ok) return access.Refusal();
+		if (category is not null && !Categories.Contains(category, StringComparer.OrdinalIgnoreCase))
+			return Api.NotFound("No such diagnostics category.");
+
+		category = category?.ToLowerInvariant();
+		return await context.StreamAsync($"diagnostics:{category ?? "all"}",
+			async ct => (await SampleAsync(intake, category, ct), null), null,
+			async ct => new SsePoll([new SseEvent(await SampleAsync(intake, category, ct))]));
+	}
+
+	private static async Task<IResult> ActionAsync(HttpContext context, string category, string action, ISender sender,
+		RateLimiter limiter)
+	{
+		var access = await sender.Send(new CheckDiagnosticsAccess(context.Session()), context.RequestAborted);
+		if (access != DiagnosticsCommandResult.Ok) return access.Refusal();
+
+		var actor = context.Session();
+		switch ($"{category}/{action}".ToLowerInvariant())
+		{
+			case "gc/collect":
+				if (!limiter.TryAcquire("diagnostics:gc-collect", 1, CollectInterval))
+				{
+					context.Response.Headers.RetryAfter = ((int)CollectInterval.TotalSeconds).ToString();
+					return Api.Error(StatusCodes.Status429TooManyRequests, "rateLimited",
+						"Garbage can be collected once every 30 seconds.");
+				}
+
+				var collected = await sender.Send(new CollectGarbage(actor), context.RequestAborted);
+				return collected == DiagnosticsCommandResult.Ok ? Api.Done("Garbage collected") : collected.Refusal();
+			case "caches/clear":
+				var (cleared, deleted) = await sender.Send(new ClearCaches(actor), context.RequestAborted);
+				return cleared == DiagnosticsCommandResult.Ok ? Api.Ok(new { deleted }, "Cache cleared") : cleared.Refusal();
+			case "exceptions/reset":
+				var reset = await sender.Send(new ResetExceptions(actor), context.RequestAborted);
+				return reset == DiagnosticsCommandResult.Ok ? Api.Done("Exceptions reset") : reset.Refusal();
+			default:
+				return Api.NotFound("No such action.");
+		}
+	}
+}

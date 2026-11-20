@@ -1,0 +1,44 @@
+using Basil.Application.Beatmaps.Persistence;
+using Basil.Application.Scores.Messages;
+using Basil.Application.Scores.Persistence;
+using Basil.Application.Shared.Paging;
+using Basil.Application.Users.Persistence;
+using Basil.Shared.Structures.Cryptography;
+using Mediator;
+
+namespace Basil.Infrastructure.Scores.Handlers;
+
+internal sealed class SearchScoresHandler(IScoreRepository scores, IBeatmapRepository beatmaps, IUserRepository users)
+	: IRequestHandler<SearchScores, ScoreListing>
+{
+	public async ValueTask<ScoreListing> Handle(SearchScores request, CancellationToken ct)
+	{
+		HashSet<Md5Hash>? hashes = null;
+		if (request.BeatmapId is { } beatmapId)
+		{
+			if (await beatmaps.GetAsync(beatmapId, ct) is not { } map)
+				return new ScoreListing(ScoreListResult.NoBeatmap, null);
+			hashes = [map.Hash];
+		}
+
+		if (request.Beatmaps is { } query)
+		{
+			var found = (await beatmaps.ListAsync(query, new PageRequest(0, ListLimits.Ceiling), ct)).Items
+				.Select(beatmap => beatmap.Hash).ToHashSet();
+			hashes = hashes is null ? found : [.. hashes.Where(found.Contains)];
+		}
+
+		HashSet<int>? userIds = null;
+		if (request.UserId is not null || request.UserName is not null)
+		{
+			var user = request.UserId is { } id
+				? await users.GetAsync(id, ct)
+				: await users.GetByNameAsync(request.UserName!, ct);
+			if (user is null) return new ScoreListing(ScoreListResult.NoUser, null);
+			userIds = [user.Id];
+		}
+
+		return new ScoreListing(ScoreListResult.Ok,
+			await scores.ListAsync(new ScoreQuery(UserIds: userIds, BeatmapHashes: hashes), request.Page, ct));
+	}
+}

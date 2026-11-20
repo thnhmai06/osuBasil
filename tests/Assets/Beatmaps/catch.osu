@@ -1,0 +1,94 @@
+osu file format v14
+
+[General]
+AudioFilename: audio.mp3
+AudioLeadIn: 0
+PreviewTime: 20381
+Countdown: 0
+SampleSet: Soft
+StackLeniency: 0.7
+Mode: 2
+LetterboxInBreaks: 0
+WidescreenStoryboard: 0
+
+[Editor]
+DistanceSpacing: 1.5
+BeatDivisor: 4
+GridSize: 32
+TimelineZoom: 1
+
+[Metadata]
+Title:Hopes and Dreams
+TitleUnicode:Hopes and Dreams
+Artist:Garoad
+ArtistUnicode:Garoad
+Creator:bighzonda
+Version:Calm
+Source:VA-11 HALL-A: Cyberpunk Bartender Action
+Tags:video game va11halla vallhalla valhalla valhala vallhala vall halla vgm electronic instrumental original soundtrack ost sound track synth synthwave vaporwave visual novel vn waifu dystopia post-dystopia technology michael kelly second round bsr017 black screen records cup salad bigh 050 big h zonda kit big_h_zonda_kit
+BeatmapID:5766649
+BeatmapSetID:2585524
+
+[Difficulty]
+HPDrainRate:3.3
+CircleSize:1.1
+OverallDifficulty:1.1
+ApproachRate:1.1
+SliderMultiplier:1.11
+SliderTickRate:1
+
+[Events]
+//Background and Video events
+0,0,"bg.jpg",0,0
+//Break Periods
+//Storyboard Layer 0 (Background)
+//Storyboard Layer 1 (Fail)
+//Storyboard Layer 2 (Pass)
+//Storyboard Layer 3 (Foreground)
+//Storyboard Layer 4 (Overlay)
+//Storyboard Sound Samples
+
+[TimingPoints]
+269,638.297872340426,4,2,1,40,1,0
+269,-45.045045045045,4,2,1,40,0,0
+15907,-45.045045045045,4,2,1,20,0,0
+20694,-45.045045045045,4,2,1,65,0,0
+36332,-45.045045045045,4,2,1,20,0,0
+41120,-45.045045045045,4,2,1,5,0,0
+
+
+[Colours]
+Combo1 : 85,155,170
+Combo2 : 74,72,98
+Combo3 : 68,102,74
+
+[HitObjects]
+32,192,269,5,6,0:0:0:0:
+256,192,1545,1,2,0:0:0:0:
+480,192,2822,5,2,0:0:0:0:
+256,192,4098,1,2,0:0:0:0:
+71,192,4577,1,2,0:0:0:0:
+256,192,5056,1,2,0:0:0:0:
+384,192,5375,6,0,L|128:192,1,246.420006016113,2|2,0:0|0:0,0:0:0:0:
+137,54,6332,2,0,L|137:303,1,246.420006016113,2|0,0:0|0:0,0:0:0:0:
+448,192,9205,6,0,L|448:0,1,184.815004512085,2|2,0:0|0:0,0:0:0:0:
+184,294,10481,6,0,P|49:287|21:192,1,246.420006016113,2|2,0:0|0:0,0:0:0:0:
+144,192,11439,1,2,0:0:0:0:
+480,192,13034,5,2,0:0:0:0:
+244,192,14311,1,2,0:0:0:0:
+0,192,15588,5,2,0:0:0:0:
+256,192,15907,12,0,20056,0:0:0:0:
+480,192,20694,5,6,0:0:0:0:
+256,192,21970,1,2,0:0:0:0:
+32,192,23247,5,2,0:0:0:0:
+256,192,24524,2,0,L|448:192,2,184.815004512085,2|2|2,0:0|0:0|0:0,0:0:0:0:
+128,192,25800,6,0,L|384:192,1,246.420006016113,2|2,0:0|0:0,0:0:0:0:
+498,192,26758,2,0,B|242:192,1,246.420006016113,2|0,0:0|0:0,0:0:0:0:
+32,192,29630,5,2,0:0:0:0:
+224,192,30109,1,2,0:0:0:0:
+497,316,30907,6,0,P|502:262|330:177,1,246.420006016113,2|2,0:0|0:0,0:0:0:0:
+237,183,31864,1,2,0:0:0:0:
+32,192,33459,5,2,0:0:0:0:
+384,192,34736,1,2,0:0:0:0:
+32,192,36013,5,2,0:0:0:0:
+256,192,36332,12,0,43673,0:0:0:0:
