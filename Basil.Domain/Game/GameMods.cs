@@ -12,7 +12,7 @@ public enum GameMods
 	/// <summary>The play cannot be failed: running out of health does not end it.</summary>
 	NoFail = 1 << 0,
 
-	/// <summary>Lowers the difficulty values and gives extra lives, for a reduced score multiplier.</summary>
+	/// <summary>Lowers the difficulty values and, in every mode except taiko, gives extra lives, for a reduced score multiplier.</summary>
 	Easy = 1 << 1,
 
 	/// <summary>Marks a play made on a touch screen.</summary>
@@ -183,8 +183,8 @@ public static class ModsExtensions
 		/// <param name="mode">The mode the mods are used in.</param>
 		/// <returns>The mods that remain valid.</returns>
 		/// <remarks>
-		/// <see cref="GameMods.Nightcore"/> wins over <see cref="GameMods.DoubleTime"/>, and speed-up mods win over <see cref="GameMods.HalfTime"/>. <see cref="GameMods.Easy"/> wins over <see cref="GameMods.HardRock"/>. <see cref="GameMods.NoFail"/>, <see cref="GameMods.Relax"/> and <see cref="GameMods.Autopilot"/> remove <see cref="GameMods.SuddenDeath"/> and <see cref="GameMods.Perfect"/>, and Relax or Autopilot also remove NoFail. <see cref="GameMods.Perfect"/> wins over <see cref="GameMods.SuddenDeath"/>.
-		/// Mods that belong to another mode are dropped (<see cref="GameModsGroups.OsuSpecific"/> outside standard, <see cref="GameModsGroups.ManiaSpecific"/> outside mania). In standard, <see cref="GameMods.Autopilot"/> is also dropped next to <see cref="GameMods.SpunOut"/> or <see cref="GameMods.Relax"/>; in mania, <see cref="GameMods.Relax"/> is dropped, and <see cref="GameMods.FadeIn"/> next to <see cref="GameMods.Hidden"/>. When several key count mods are set, only the lowest key count stays.
+		/// <see cref="GameMods.Nightcore"/> wins over <see cref="GameMods.DoubleTime"/>, and speed-up mods win over <see cref="GameMods.HalfTime"/>. <see cref="GameMods.Easy"/> wins over <see cref="GameMods.HardRock"/>. <see cref="GameMods.NoFail"/>, <see cref="GameMods.Relax"/> and <see cref="GameMods.Autopilot"/> remove <see cref="GameMods.SuddenDeath"/> and <see cref="GameMods.Perfect"/>, and Relax or Autopilot also remove NoFail. <see cref="GameMods.Autoplay"/> and <see cref="GameMods.Cinema"/> win over <see cref="GameMods.SuddenDeath"/>, <see cref="GameMods.Perfect"/>, <see cref="GameMods.Relax"/>, <see cref="GameMods.Autopilot"/> and <see cref="GameMods.SpunOut"/>. <see cref="GameMods.Perfect"/> wins over <see cref="GameMods.SuddenDeath"/>.
+		/// Mods that belong to another mode are dropped (<see cref="GameModsGroups.OsuSpecific"/> outside standard, <see cref="GameModsGroups.ManiaSpecific"/> outside mania). In standard, <see cref="GameMods.Autopilot"/> is also dropped next to <see cref="GameMods.SpunOut"/> or <see cref="GameMods.Relax"/>; in mania, <see cref="GameMods.Relax"/> is dropped, <see cref="GameMods.FadeIn"/> next to <see cref="GameMods.Hidden"/>, and <see cref="GameMods.Hidden"/> and <see cref="GameMods.FadeIn"/> next to <see cref="GameMods.Flashlight"/>. When several key count mods are set, only one stays, taken in the order 4K to 9K, then 1K, 3K, 2K.
 		/// </remarks>
 		public GameMods RemoveInvalidMods(GameMode mode)
 		{
@@ -259,6 +259,7 @@ public static class ModsExtensions
 		return mods.RemoveInvalidMods(mode);
 	}
 
+	// The osu! client always sends Nightcore with DoubleTime and Perfect with SuddenDeath, so these pairs are read as NC / PF, not as a conflict (bancho.py mods.py:65-67, 84-85).
 	private static GameMods Canonical(GameMods mods)
 	{
 		if ((mods & (GameMods.DoubleTime | GameMods.Nightcore)) == (GameMods.DoubleTime | GameMods.Nightcore))
@@ -286,6 +287,10 @@ public static class ModsExtensions
 
 	private static GameMods ResolveFailConflicts(GameMods result)
 	{
+		if ((result & (GameMods.Autoplay | GameMods.Cinema)) != GameMods.NoMod)
+			result &= ~(GameMods.SuddenDeath | GameMods.Perfect | GameMods.Relax | GameMods.Autopilot |
+			            GameMods.SpunOut); // (AU|CN)(SD|PF|RX|AP|SO)
+
 		if ((result & (GameMods.NoFail | GameMods.Relax | GameMods.Autopilot)) != GameMods.NoMod)
 		{
 			if ((result & GameMods.SuddenDeath) != GameMods.NoMod) result &= ~GameMods.SuddenDeath; // (NF|RX|AP)SD
@@ -322,6 +327,8 @@ public static class ModsExtensions
 			case GameMode.Mania:
 			{
 				result &= ~GameMods.Relax; // rx is std/taiko/ctb common
+				if ((result & GameMods.Flashlight) != GameMods.NoMod)
+					result &= ~(GameMods.Hidden | GameMods.FadeIn); // (HD|FI)FL
 				if ((result & GameMods.Hidden) != GameMods.NoMod &&
 				    (result & GameMods.FadeIn) != GameMods.NoMod) result &= ~GameMods.FadeIn; // HDFI
 				break;
@@ -340,8 +347,8 @@ public static class ModsExtensions
 			var firstKeymod =
 				new[]
 				{
-					GameMods.Key1, GameMods.Key2, GameMods.Key3, GameMods.Key4, GameMods.Key5, GameMods.Key6,
-					GameMods.Key7, GameMods.Key8, GameMods.Key9
+					GameMods.Key4, GameMods.Key5, GameMods.Key6, GameMods.Key7, GameMods.Key8, GameMods.Key9,
+					GameMods.Key1, GameMods.Key3, GameMods.Key2
 				}.FirstOrDefault(candidate => (keymodsUsed & candidate) != GameMods.NoMod);
 
 			result &= ~(keymodsUsed & ~firstKeymod);
