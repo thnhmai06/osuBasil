@@ -12,7 +12,7 @@ public enum OsuFlags : uint
 	/// <summary>The client detected a speed hack.</summary>
 	SpeedHackDetected = 1 << 1,
 
-	/// <summary>The mod value of a play does not match the mods the client had; servers ignore it, so it is not a cheat sign.</summary>
+	/// <summary>The mod value of a play does not match the mods the client had; not a sign of cheating.</summary>
 	IncorrectModValue = 1 << 2,
 
 	/// <summary>More than one osu! client was running.</summary>
