@@ -25,13 +25,13 @@ internal static class AnnouncementReplies
 	public static readonly Reply CountdownCancelled = new("announce.countdownCancelled", "Countdown aborted.");
 
 	public static readonly Reply CountdownReplaced = new("announce.countdownReplaced",
-		"Countdown cancelled with {seconds} seconds remaining — a new countdown is starting.", "seconds");
+		"Countdown cancelled with {seconds} seconds remaining. A new countdown is starting.", "seconds");
 
 	public static readonly Reply CountdownCancelledByRoundStart = new("announce.countdownCancelledByRoundStart",
-		"Countdown cancelled — the round was started.");
+		"Countdown cancelled because the round was started.");
 
 	public static readonly Reply CountdownCancelledByRoundAbort = new("announce.countdownCancelledByRoundAbort",
-		"Countdown cancelled — the round was aborted.");
+		"Countdown cancelled because the round was aborted.");
 
 	// ── Room round ─────────────────────────────────────────────────────────────────────────
 	public static readonly Reply RoundStartedByCountdown =
@@ -54,19 +54,19 @@ internal static class AnnouncementReplies
 
 	// ── Room settings ──────────────────────────────────────────────────────────────────────
 	public static readonly Reply SettingsChangedCountdownCancelled = new("announce.settingsChangedCountdownCancelled",
-		"Match start cancelled — room settings changed.");
+		"Match start cancelled because the room settings changed.");
 
 	// ── Room closing ───────────────────────────────────────────────────────────────────────
 	public static readonly Reply RoomClosingAnnounced = new("announce.roomClosingAnnounced",
 		"This room is empty and will close in {minutes} minutes unless a player joins.", "minutes");
 
 	public static readonly Reply RoomPlayerJoinedClosing = new("announce.roomPlayerJoinedClosing",
-		"A player joined — the room will no longer close.");
+		"A player joined. The room will no longer close.");
 
 	// ── Anticheat ──────────────────────────────────────────────────────────────────────────
 	public static readonly Reply AnticheatFlagRoom = new("announce.anticheatFlagRoom",
 		"Anti-cheat flag for {player}: {reason}", "player", "reason");
 
 	public static readonly Reply AnticheatFlagPm = new("announce.anticheatFlagPm",
-		"Anti-cheat flag in match #{room} {name}: {player} — {reason}", "room", "name", "player", "reason");
+		"Anti-cheat flag in match #{room} {name} for {player}: {reason}", "room", "name", "player", "reason");
 }
