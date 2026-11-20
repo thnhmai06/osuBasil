@@ -125,7 +125,7 @@ public sealed partial class Room
 			if (Slots.Find(actor.Record) is not null) return RoomJoinResult.IsPlayer;
 			if (!Members.MutableObservers.Add(actor)) return RoomJoinResult.Ok;
 
-			State.Members.Add(State.Members.Of(actor.Record));
+			State.Members.Add(actor.Record);
 			Emit(new RoomObserverJoined(this, actor));
 			return RoomJoinResult.Ok;
 		}
@@ -139,7 +139,7 @@ public sealed partial class Room
 			if (!Members.MutableObservers.Remove(actor)) return RoomJoinResult.NotObserver;
 
 			if (!Members.Observers.Any(observer => observer.Record.Equals(actor.Record)))
-				State.Members.Remove(State.Members.Of(actor.Record));
+				State.Members.Remove(actor.Record);
 			Emit(new RoomObserverLeft(this, actor));
 			return RoomJoinResult.Ok;
 		}

@@ -54,13 +54,12 @@ public sealed partial class Room
 		return RoomActionResult.Ok;
 	}
 
-	internal RoomSlot? Vacate(StableSession player)
+	internal void Vacate(StableSession player)
 	{
-		if (Seated(player) is not { } record) return null;
+		if (Seated(player) is not { } record) return;
 
-		var slot = State.Slots.Vacate(record);
+		State.Slots.Leave(record, Now);
 		Unseat(record);
-		return slot;
 	}
 
 	internal Room? RoomOf(StableSession player)

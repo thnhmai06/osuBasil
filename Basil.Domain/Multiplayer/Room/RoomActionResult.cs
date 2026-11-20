@@ -45,5 +45,9 @@ public enum RoomActionResult : byte
 
 	NotInProgress,
 
-	RoundMismatch
+	RoundMismatch,
+
+	AlreadyMember,
+
+	IsPlayer
 }

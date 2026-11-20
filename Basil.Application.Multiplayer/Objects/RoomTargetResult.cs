@@ -34,7 +34,9 @@ public enum RoomTargetResult : byte
 
 	NoTeams,
 
-	TargetOffline
+	TargetOffline,
+
+	Banned
 }
 
 internal static class RoomTargetResults
@@ -48,6 +50,7 @@ internal static class RoomTargetResults
 			RoomActionResult.RoomClosed => RoomTargetResult.RoomClosed,
 			RoomActionResult.InProgress => RoomTargetResult.InProgress,
 			RoomActionResult.NotInRoom => RoomTargetResult.NotInRoom,
+			RoomActionResult.Banned => RoomTargetResult.Banned,
 			RoomActionResult.NotBanned => RoomTargetResult.NotBanned,
 			RoomActionResult.IsManager => RoomTargetResult.IsManager,
 			RoomActionResult.IsCreator => RoomTargetResult.IsCreator,

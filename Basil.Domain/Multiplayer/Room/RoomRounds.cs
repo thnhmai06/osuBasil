@@ -157,7 +157,7 @@ public sealed class RoomRounds
 			players.Add(slot.Player!);
 		}
 
-		var previous = DecideForClosing();
+		var previous = Settle().Decision;
 		Settlement?.Close();
 		Settlement = new RoundSettlement(round, players.Select(player => (player, _room.Slots.Find(player)?.Team)));
 		if (players.Count == 0) EndCurrentRound(false, now);
@@ -193,7 +193,7 @@ public sealed class RoomRounds
 			return (RoomActionResult.RoundMismatch, null, null);
 
 		var roundScore = new RoundScore(score, settlement.Round, team);
-		settlement.Scores.Add(roundScore);
+		settlement.AddScore(roundScore);
 		return (RoomActionResult.Ok, settlement, roundScore);
 	}
 
@@ -203,12 +203,17 @@ public sealed class RoomRounds
 		       settlement.Awaits(player, out _);
 	}
 
-	public RoundDecision? DecideForClosing()
+	/// <summary>Closes the settlement of the last round and gives its decision; refused when there is no settlement, its round is still running or it is already closed.</summary>
+	public (RoomActionResult Outcome, RoundDecision? Decision) Settle()
 	{
-		return Settlement is { Closed: false, Round.EndedAt: not null } settlement ? Decide(settlement) : null;
+		if (Settlement is not { } settlement) return (RoomActionResult.NotInProgress, null);
+		if (settlement.Round.EndedAt is null) return (RoomActionResult.InProgress, null);
+		if (settlement.Closed) return (RoomActionResult.RoundMismatch, null);
+
+		return (RoomActionResult.Ok, Decide(settlement));
 	}
 
-	public static RoundDecision? Decide(RoundSettlement settlement)
+	private static RoundDecision? Decide(RoundSettlement settlement)
 	{
 		var missing = settlement.Missing.ToList();
 		settlement.Close();

@@ -5,9 +5,9 @@ namespace Basil.Domain.Multiplayer.Room;
 
 public sealed class RoomSlot
 {
-	public readonly int Index;
+	public int Index { get; }
 
-	public readonly RoomSlots Slots;
+	internal readonly RoomSlots Slots;
 
 	internal RoomSlot(RoomSlots slots, int index)
 	{

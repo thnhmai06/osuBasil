@@ -16,7 +16,7 @@ public sealed partial class Room
 			if (outcome is not RoomActionResult.Ok) return outcome;
 
 			Context.Events.Publish(new RoomRoundScoreSubmitted(this, settlement!.Round, player, roundScore!.Value));
-			if (settlement.Round.EndedAt is not null && !settlement.Missing.Any()) Decide(settlement);
+			if (settlement.Round.EndedAt is not null && !settlement.Missing.Any()) Decide();
 			return RoomActionResult.Ok;
 		}
 	}
@@ -39,7 +39,7 @@ public sealed partial class Room
 
 		if (!settlement.Missing.Any())
 		{
-			Decide(settlement);
+			Decide();
 			return;
 		}
 
@@ -50,7 +50,7 @@ public sealed partial class Room
 
 	internal void DecideForClosing()
 	{
-		Publish(State.Rounds.DecideForClosing());
+		Publish(State.Rounds.Settle().Decision);
 		SyncTimer();
 	}
 
@@ -60,13 +60,13 @@ public sealed partial class Room
 		{
 			if (IsClosed || settlement.Closed) return;
 
-			Decide(settlement);
+			Decide();
 		}
 	}
 
-	private void Decide(RoundSettlement settlement)
+	private void Decide()
 	{
-		var decision = Domain.Multiplayer.Room.RoomRounds.Decide(settlement);
+		var decision = State.Rounds.Settle().Decision;
 		SyncTimer();
 		Publish(decision);
 	}

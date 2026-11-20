@@ -251,6 +251,9 @@ internal static class MpReplies
 	public static readonly Reply TargetNotBanned =
 		new("mp.targetNotBanned", "That player is not banned from this match.");
 
+	public static readonly Reply TargetIsBanned =
+		new("mp.targetIsBanned", "That player is banned from this match. Unban them first.");
+
 	public static readonly Reply TargetNotOnline = new("mp.targetNotOnline", "That player is not online.");
 
 	public static readonly Reply CannotInvite = new("mp.cannotInvite", "That player cannot be invited by you.");
@@ -390,6 +393,7 @@ internal static class MpReplies
 			RoomTargetResult.SlotNotOpen => DestinationSlotNotOpen,
 			RoomTargetResult.RoomLocked => MatchIsLocked,
 			RoomTargetResult.NoTeams => MatchHasNoTeams,
+			RoomTargetResult.Banned => TargetIsBanned,
 			RoomTargetResult.TargetOffline => TargetNotOnline,
 			_ => GenericFailed
 		};

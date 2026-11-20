@@ -18,7 +18,9 @@ public sealed class RoundSettlement
 
 	public Round Round { get; }
 
-	public List<RoundScore> Scores { get; } = [];
+	private readonly List<RoundScore> _scores = [];
+
+	public IReadOnlyList<RoundScore> Scores => _scores;
 
 	public bool Closed { get; private set; }
 
@@ -26,14 +28,19 @@ public sealed class RoundSettlement
 
 	public bool HasCompletions => _completed.Count > 0;
 
-	public void Complete(UserRecord player)
+	internal void Complete(UserRecord player)
 	{
 		if (_participants.ContainsKey(player)) _completed.Add(player);
 	}
 
-	public void Leave(UserRecord player)
+	internal void Leave(UserRecord player)
 	{
 		if (_participants.ContainsKey(player) && !_completed.Contains(player)) _struckOff.Add(player);
+	}
+
+	internal void AddScore(RoundScore score)
+	{
+		_scores.Add(score);
 	}
 
 	public bool Awaits(UserRecord player, out GameTeam? team)
@@ -45,7 +52,7 @@ public sealed class RoundSettlement
 
 	public IEnumerable<UserRecord> Missing => _participants.Keys.Where(player => Awaits(player, out _));
 
-	public void Close()
+	internal void Close()
 	{
 		Closed = true;
 	}

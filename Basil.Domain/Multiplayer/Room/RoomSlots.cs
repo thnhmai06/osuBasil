@@ -247,7 +247,7 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		return (RoomActionResult.Ok, slot.Index, _room.Rounds.Advance(now));
 	}
 
-	public RoomSlot? Vacate(UserRecord player)
+	internal RoomSlot? Vacate(UserRecord player)
 	{
 		var slot = Find(player);
 		if (slot is null) return null;

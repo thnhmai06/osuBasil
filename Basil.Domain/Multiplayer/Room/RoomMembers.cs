@@ -37,22 +37,31 @@ public sealed class RoomMembers : IReadOnlyCollection<RoomUser>
 		return Find(user) ?? new RoomUser(user);
 	}
 
-	/// <summary>Admits a user with the given roles; refused when the room is closed, the user is banned or already takes part.</summary>
-	public bool Add(RoomUser user)
+	/// <summary>Admits a user without roles; refused when the room is closed, the user is banned or already takes part.</summary>
+	public RoomActionResult Add(UserRecord user)
 	{
-		return !_room.IsClosed && !_banned.Contains(user.Record) && _members.Add(user);
+		if (_room.IsClosed) return RoomActionResult.RoomClosed;
+		if (_banned.Contains(user)) return RoomActionResult.Banned;
+		return _members.Add(new RoomUser(user)) ? RoomActionResult.Ok : RoomActionResult.AlreadyMember;
 	}
 
-	/// <summary>Removes a user from the room; refused when the room is closed or the user manages it.</summary>
-	public bool Remove(RoomUser user)
+	/// <summary>Removes a user from the room; refused when the room is closed, the user does not take part, manages the room or holds a slot.</summary>
+	public RoomActionResult Remove(UserRecord user)
 	{
-		return !_room.IsClosed && Find(user.Record) is { } member &&
-		       !member.Has(RoomPrivileges.Moderators) && _members.Remove(member);
+		if (_room.IsClosed) return RoomActionResult.RoomClosed;
+		if (Find(user) is not { } member) return RoomActionResult.NotInRoom;
+		if (member.Has(RoomPrivileges.Moderators)) return RoomActionResult.IsManager;
+		if (_room.Slots.Find(user) is not null) return RoomActionResult.IsPlayer;
+
+		_members.Remove(member);
+		return RoomActionResult.Ok;
 	}
 
+	/// <summary>Makes a user a referee; refused when the room is closed, the user is banned, the creator or already a referee.</summary>
 	public RoomActionResult AddReferee(RoomUser user)
 	{
 		if (_room.IsClosed) return RoomActionResult.RoomClosed;
+		if (_banned.Contains(user.Record)) return RoomActionResult.Banned;
 		if (Creator.Equals(user)) return RoomActionResult.IsCreator;
 		if (Find(user.Record)?.Has(RoomPrivileges.Referee) is true) return RoomActionResult.AlreadyReferee;
 
@@ -163,12 +172,17 @@ public sealed class RoomMembers : IReadOnlyCollection<RoomUser>
 }
 
 /// <summary>A user taking part in one room, with the roles the user holds there; two values are equal when they name the same user.</summary>
-public sealed class RoomUser(UserRecord record, RoomPrivileges privileges = RoomPrivileges.Viewer)
-	: IEquatable<RoomUser>
+public sealed class RoomUser : IEquatable<RoomUser>
 {
-	public UserRecord Record { get; } = record;
+	internal RoomUser(UserRecord record, RoomPrivileges privileges = RoomPrivileges.Viewer)
+	{
+		Record = record;
+		Privileges = privileges;
+	}
 
-	public RoomPrivileges Privileges { get; internal set; } = privileges;
+	public UserRecord Record { get; }
+
+	public RoomPrivileges Privileges { get; internal set; }
 
 	public bool Has(RoomPrivileges roles)
 	{
