@@ -19,7 +19,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   roles and the global privileges; a role refusal is the outcome `RoleDenied`, or `Denied` when the caller
   may not join rooms at all. An implementation never compares privileges itself.
 * **Every behaviour that can be refused returns the outcome enum of its object** (`RoomActionResult`, `ChannelJoinResult`,
-  `UserActionResult`, `BeatmapsetEditResult`, …), with a tuple such as `(UserActionResult Outcome, T? Data)` when it also returns data.
+  `UserActionResult`, `SessionActionResult`, `BeatmapsetEditResult`, …), with a tuple such as `(UserActionResult Outcome, T? Data)` when it also returns data.
   Each enum has `Denied = 0` (the refusal for lack of privileges, which does not say which privileges are lacking, and
   which a default value can never confuse with success) and `Ok = 1`; the other members are `NotFound` and the object's
   own reasons. An operation on something that does not exist (an account, a session already closed, a silence nobody

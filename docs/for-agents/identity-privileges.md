@@ -80,8 +80,11 @@ touching users, connections, privileges, silences or the bot.
   `PING` and `PONG`, every API request and every open SSE stream. The status comes from how long the session has been
   silent, with thresholds fixed in Domain (`SessionRules`, not settings): under 30 s it is `Active`; from 30 s it is
   `Replaceable`; from its `ExpiresAfter` (300 s for Stable, StableTourney and Irc; 8 h for Api) it is `Expired`; once
-  closed it is `Ended`. A sweeper ends every `Expired` session, in memory and in the store, with `TimedOut`; a heartbeat
-  never revives an expired one.
+  closed it is `Ended`. Expiry is lazy: no timer closes a session. It is decided when something looks at it: a
+  heartbeat on an `Expired` session ends it `TimedOut` instead of reviving it, a lookup of an online user or a token
+  closes it on the spot, and a new login applies the rule below. A background pass only flushes activity to the store
+  and ends stored sessions that nobody resumed. The Domain `Session` owns these transitions and answers with a
+  `SessionActionResult` (`Heartbeat`, `End`, `GiveWay`).
 
   Only an API session survives a restart: it resumes by its token while it is not `Expired`
   (`UserRegistry.ResumeAsync`, one read of the store for a token the server does not hold). A closed or revoked session
