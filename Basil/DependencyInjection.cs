@@ -14,6 +14,7 @@ using Basil.Application.Scores.Objects.Events;
 using Basil.Application.Servers;
 using Basil.Application.Shared;
 using Basil.Application.Shared.Events;
+using Basil.Infrastructure.Shared.Events;
 using Basil.Application.Users;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Events;

@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace Basil.Application.Shared.Events;
+namespace Basil.Infrastructure.Shared.Events;
 
 public static class HandlerStep
 {

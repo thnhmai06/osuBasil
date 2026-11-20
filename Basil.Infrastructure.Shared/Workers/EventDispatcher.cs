@@ -1,4 +1,4 @@
-using Basil.Application.Shared.Events;
+using Basil.Infrastructure.Shared.Events;
 using Microsoft.Extensions.Hosting;
 
 namespace Basil.Infrastructure.Shared.Workers;

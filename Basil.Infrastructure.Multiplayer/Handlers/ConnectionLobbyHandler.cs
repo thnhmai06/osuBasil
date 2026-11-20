@@ -1,5 +1,5 @@
 using Basil.Application.Multiplayer.Registry;
-using Basil.Application.Shared.Events;
+using Basil.Infrastructure.Shared.Events;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Objects.Sessions;

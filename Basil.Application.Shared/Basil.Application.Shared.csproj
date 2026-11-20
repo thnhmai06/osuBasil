@@ -7,12 +7,15 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<InternalsVisibleTo Include="Basil.Infrastructure.Shared"/>
+	</ItemGroup>
+
+	<ItemGroup>
 		<ProjectReference Include="..\Basil.Domain\Basil.Domain.csproj"/>
 	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Mediator.Abstractions"/>
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
-		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
 	</ItemGroup>
 </Project>

@@ -1,5 +1,5 @@
 using Basil.Application.Shared.Diagnostics;
-using Basil.Application.Shared.Events;
+using Basil.Infrastructure.Shared.Events;
 using Basil.Infrastructure.Shared.Persistence;
 using Mediator;
 

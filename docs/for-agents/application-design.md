@@ -258,7 +258,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   must not wait for a handler.
 * **Application publishes events and handles the ones that concern its own module; Infrastructure only ships them**
   (the handlers are in `Infrastructure.<Module>/Handlers`; contracts and event records stay in Application). The base event,
-  `IEventPublisher<T>` and `EventQueue` live in Application.Shared; the feature event records live in the Objects
+  `IEventPublisher<T>` lives in Application.Shared and `EventQueue` in Infrastructure.Shared; the feature event records live in the Objects
   folder of their module (`Objects/Events/`) and its handlers in the Handlers folder of its Infrastructure project. An object or the
   bot's voice publishes an event through `IEventPublisher<T>` (`Publish`): it stamps `Timestamp`, queues the delivery
   and returns at once. **A notification is never awaited under a lock**: the object enqueues and the dispatcher publishes outside it. A handler is a class implementing `Mediator.INotificationHandler<TEvent>` for one concrete

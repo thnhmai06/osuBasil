@@ -1,7 +1,7 @@
 using Mediator;
 using Microsoft.Extensions.Logging;
 
-namespace Basil.Application.Shared.Events;
+namespace Basil.Infrastructure.Shared.Events;
 
 public sealed class QueuedNotificationPublisher(EventQueue queue, ILogger<QueuedNotificationPublisher> logger)
 	: INotificationPublisher

@@ -1,6 +1,7 @@
 using Basil.Application.Shared;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Shared.Storage;
+using Basil.Infrastructure.Shared.Events;
 using Basil.Infrastructure.Shared.Persistence;
 using Basil.Infrastructure.Shared.Registry;
 using Basil.Infrastructure.Shared.Storage;
@@ -8,6 +9,7 @@ using Basil.Infrastructure.Shared.Workers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Mediator;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Shared;
@@ -24,6 +26,10 @@ public static class DependencyInjection
 			services.AddSingleton<SharedInfrastructureRegistration>();
 			services.AddSharedApplication();
 			services.TryAddSingleton(TimeProvider.System);
+			services.TryAddSingleton<EventQueue>();
+			services.TryAddSingleton(sp => new EventPublisher(
+				new Lazy<IPublisher>(sp.GetRequiredService<IPublisher>),
+				sp.GetRequiredService<TimeProvider>()));
 			services.AddMemoryCache();
 			services.AddSingleton<DataPaths>();
 			services.AddSingleton<IUploadSpool, FileUploadSpool>();

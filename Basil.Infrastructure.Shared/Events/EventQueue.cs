@@ -1,7 +1,7 @@
 using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 
-namespace Basil.Application.Shared.Events;
+namespace Basil.Infrastructure.Shared.Events;
 
 public sealed class EventQueue(ILogger<EventQueue> logger)
 {

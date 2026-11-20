@@ -114,7 +114,7 @@ A message is a Mediator **request**: a `record` in the owning module's Applicati
 
 An object publishes an event while it holds its own lock (a `Room` changes state and announces it in one transition).
 Notifications are therefore **never awaited under a lock**: the object enqueues the event on the shared event queue
-(`EventQueue`, Application.Shared) and returns at once, and a dispatcher in Infrastructure.Shared (`EventDispatcher`)
+(`EventQueue`, Infrastructure.Shared) and returns at once, and a dispatcher in Infrastructure.Shared (`EventDispatcher`)
 calls the Mediator handlers outside the lock, in order. No code calls `await mediator.Publish(...)` at the place where it
 emits. The queue is unbounded; rate limiting and the `Outstanding` count in diagnostics watch its size.
 

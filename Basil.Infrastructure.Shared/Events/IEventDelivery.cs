@@ -1,4 +1,4 @@
-namespace Basil.Application.Shared.Events;
+namespace Basil.Infrastructure.Shared.Events;
 
 public interface IEventDelivery
 {
