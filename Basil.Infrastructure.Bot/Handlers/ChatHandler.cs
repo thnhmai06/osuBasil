@@ -22,8 +22,6 @@ internal sealed class ChatHandler(
 	ILogger<ChatHandler> logger)
 	: INotificationHandler<ChannelMessagePosted>
 {
-	private const int MaxMessageLength = 2000;
-
 	public ValueTask Handle(ChannelMessagePosted posted, CancellationToken ct)
 	{
 		// A message the server said has no actor, so BasilBot's own replies are never read as commands.
@@ -98,7 +96,7 @@ internal sealed class ChatHandler(
 			if (string.IsNullOrEmpty(line))
 				continue;
 
-			if (line.Length <= MaxMessageLength)
+			if (line.Length <= Message.MaxLength)
 			{
 				yield return line;
 				continue;
@@ -106,13 +104,13 @@ internal sealed class ChatHandler(
 
 			// Split long lines at the last space before the limit
 			var remaining = line;
-			while (remaining.Length > MaxMessageLength)
+			while (remaining.Length > Message.MaxLength)
 			{
-				var splitAt = remaining.LastIndexOf(' ', MaxMessageLength);
+				var splitAt = remaining.LastIndexOf(' ', Message.MaxLength);
 				if (splitAt <= 0)
 				{
 					// No space found, hard split
-					splitAt = MaxMessageLength;
+					splitAt = Message.MaxLength;
 					yield return remaining[..splitAt];
 					remaining = remaining[splitAt..];
 				}

@@ -10,8 +10,6 @@ namespace Basil.Application.Chat.Objects;
 
 public abstract class Channel
 {
-	public const int MaxMessageLength = 2000;
-
 	private readonly ConcurrentSet<Session> _members = [];
 	private readonly Lock _sync = new();
 	private volatile bool _closed;
@@ -73,11 +71,8 @@ public abstract class Channel
 	public void PostMessage(UserRecord author, string text, bool notice, DateTimeOffset now, Session? actor,
 		bool bypassesBlocks = false)
 	{
-		var truncated = text.Length > MaxMessageLength;
-		var message = new Message
-		{
-			Author = author, Content = truncated ? text[..MaxMessageLength] : text, Timestamp = now, IsNotice = notice
-		};
+		var (content, truncated) = Message.Truncate(text);
+		var message = new Message { Author = author, Content = content, Timestamp = now, IsNotice = notice };
 
 		Message? awayReply = null;
 		if (actor is not null

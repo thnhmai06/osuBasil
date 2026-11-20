@@ -71,7 +71,7 @@ Every operation returns a `ChannelJoinResult` rather than throwing for ordinary 
 
 A sender without the `Player` privilege is refused with a denial that names it; a silenced sender is refused with `Silenced`. A closed same-kind connection may be replaced during a join; an open one cannot. osu!tourney and API connections may have multiple concurrent memberships of their kind.
 
-Text over the channel's maximum length is truncated. The message event reports whether truncation occurred.
+Text over `Message.MaxLength` (2000 characters) is truncated by the message rules in Domain. The message event reports whether truncation occurred.
 
 ## Private messages
 
