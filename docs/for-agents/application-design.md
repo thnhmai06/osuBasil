@@ -63,6 +63,12 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   "manager of any room skips the password" decision (Application); `UserData.IsSilenced` (Domain) against
   `UserSilence.ImposeAsync` (Application); `CountdownMarks`, `GeneralChannelChange.ApplyTo` (Domain).
   Players are `UserRecord` in Domain; the Application object keeps the map to the live sessions.
+* **Time-based state is lazy.** A rule that depends on the passage of time (a session silent past its expiry, one
+  that may be replaced, a silence that has run out) is derived from the stored moment when something looks at it
+  (`Session.StatusAt(now)`), and its consequence is applied by the operation that finds it (a heartbeat on an expired
+  session ends it `TimedOut`; a login applies `GiveWay`). No timer decides it. A background pass is allowed only to
+  batch writes to the store or clear old data, never to change what the rule says. The Domain object owns the
+  transition and answers with its outcome enum; Application only does the runtime cleanup (unindex, spectators, events).
 * **Domain holds no lock.** No `Lock`, `Volatile` or `Interlocked` in Domain; the Application object that shares the
   state owns the lock around each multi-step operation. A collection that is also read outside that lock (views,
   queries) is a concurrent one (`ConcurrentSet`), so a reader never sees it throw; a concurrent collection never
