@@ -1,14 +1,14 @@
 namespace Basil.Domain.Users;
 
-/// <summary>Who may see that a user is online and what the user is doing.</summary>
+/// <summary>Which users' presence a user chooses to receive: online status and activity of nobody, everybody or only friends.</summary>
 public enum PresenceVisibility : byte
 {
-	/// <summary>Nobody.</summary>
+	/// <summary>No users.</summary>
 	Nil = 0,
 
-	/// <summary>Every user.</summary>
+	/// <summary>All users.</summary>
 	All = 1,
 
-	/// <summary>Only the user's friends.</summary>
+	/// <summary>Only the friends of the user.</summary>
 	Friends = 2
 }

@@ -1,6 +1,6 @@
 namespace Basil.Domain.Scores;
 
-/// <summary>The letter rating of a play; the values carry the game numbering.</summary>
+/// <summary>The letter rating of a play; the values are Basil's own ordering from worst to best, not the client's numbering.</summary>
 public enum Grade : byte
 {
 	/// <summary>No grade: the play has not been rated.</summary>
@@ -24,12 +24,12 @@ public enum Grade : byte
 	/// <summary>Grade S: nearly all hits are perfect.</summary>
 	S = 6,
 
-	/// <summary>Grade S in silver, earned with a mod that hides the playfield (Hidden or Flashlight).</summary>
+	/// <summary>Grade S in silver, earned with a mod that hides the playfield (Hidden, Flashlight or Fade In).</summary>
 	Sh = 7,
 
 	/// <summary>Grade SS: every hit is perfect.</summary>
 	X = 8,
 
-	/// <summary>Grade SS in silver, earned with a mod that hides the playfield (Hidden or Flashlight).</summary>
+	/// <summary>Grade SS in silver, earned with a mod that hides the playfield (Hidden, Flashlight or Fade In).</summary>
 	Xh = 9
 }

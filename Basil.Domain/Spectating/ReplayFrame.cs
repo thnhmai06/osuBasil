@@ -32,7 +32,7 @@ public enum KeyState : byte
 	Smoke = 1 << 4
 }
 
-/// <summary>The parts of the taiko drum hit in a replay frame; the bit values carry the game numbering.</summary>
+/// <summary>The parts of the taiko drum hit in a replay frame; the bits are passed through as the client sends them and their meanings are not verified.</summary>
 [Flags]
 public enum TaikoDrumState : byte
 {

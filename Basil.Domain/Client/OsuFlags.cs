@@ -1,6 +1,6 @@
 namespace Basil.Domain.Client;
 
-/// <summary>The detection flags an osu! client reports with a score or a login; each set bit is one sign the client noticed.</summary>
+/// <summary>The detection flags an osu! client reports with a score or a client check; each set bit is one sign the client noticed.</summary>
 [Flags]
 public enum OsuFlags : uint
 {
@@ -12,7 +12,7 @@ public enum OsuFlags : uint
 	/// <summary>The client detected a speed hack.</summary>
 	SpeedHackDetected = 1 << 1,
 
-	/// <summary>The mod value of a play does not match the mods the client had.</summary>
+	/// <summary>The mod value of a play does not match the mods the client had; servers ignore it, so it is not a cheat sign.</summary>
 	IncorrectModValue = 1 << 2,
 
 	/// <summary>More than one osu! client was running.</summary>
@@ -105,7 +105,7 @@ public static class OsuFlagsExtensions
 public static class OsuFlagsGroups
 {
 	/// <summary>The flags that point to cheating, as opposed to those that only describe the client's environment.</summary>
-	public const OsuFlags CheatSigns = OsuFlags.SpeedHackDetected | OsuFlags.IncorrectModValue |
+	public const OsuFlags CheatSigns = OsuFlags.SpeedHackDetected |
 	                                   OsuFlags.MultipleOsuClients | OsuFlags.ChecksumFailure |
 	                                   OsuFlags.FlashlightChecksumIncorrect | OsuFlags.OsuExecutableChecksum |
 	                                   OsuFlags.MissingProcessesInList | OsuFlags.FlashlightImageHack |

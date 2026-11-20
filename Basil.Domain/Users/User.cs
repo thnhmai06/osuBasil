@@ -26,6 +26,6 @@ public sealed class User(UserRecord record, IReadOnlyDictionary<GameMode, UserSt
 	/// <summary>Whether the user accepts private messages only from friends.</summary>
 	public bool PmPrivate { get; set; } = false;
 
-	/// <summary>Who may see that the user is online and what the user is doing.</summary>
+	/// <summary>Which users' presence the user receives: nobody, everybody or only friends.</summary>
 	public PresenceVisibility PresenceVisibility { get; set; } = PresenceVisibility.All;
 }
