@@ -10,6 +10,8 @@ namespace Basil.Application.Users.Objects.Sessions;
 
 public abstract class Session(Domain.Authentication.Session state, string token) : IActor
 {
+	private readonly Lock _stateLock = new();
+
 	public User User { get; internal set; } = null!;
 
 	public Domain.Authentication.Session State { get; } = state;
@@ -23,6 +25,42 @@ public abstract class Session(Domain.Authentication.Session state, string token)
 	public bool IsServerOwned => Record.Id == BasilBot.Id;
 
 	public UserRecord Record => State.Record.Value.User;
+
+	/// <summary>When the connection was last heard from.</summary>
+	public DateTimeOffset LastActiveAt
+	{
+		get
+		{
+			using (_stateLock.EnterScope())
+			{
+				return State.Record.Value.LastActiveAt;
+			}
+		}
+	}
+
+	internal SessionStatus StatusAt(DateTimeOffset now)
+	{
+		using (_stateLock.EnterScope())
+		{
+			return State.StatusAt(now);
+		}
+	}
+
+	internal void Heartbeat(DateTimeOffset at)
+	{
+		using (_stateLock.EnterScope())
+		{
+			State.Heartbeat(at);
+		}
+	}
+
+	internal bool End(DateTimeOffset at, SessionEndReason reason)
+	{
+		using (_stateLock.EnterScope())
+		{
+			return State.End(at, reason);
+		}
+	}
 
 	public virtual UserPrivileges EffectivePrivileges(DateTimeOffset now)
 	{

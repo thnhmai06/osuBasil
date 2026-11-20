@@ -315,13 +315,13 @@ public sealed class UserRegistry
 
 		var now = _context.Clock.GetUtcNow();
 		// A session silent past its expiry is over: a late heartbeat closes it instead of reviving it.
-		if (session.State.StatusAt(now) is SessionStatus.Expired)
+		if (session.StatusAt(now) is SessionStatus.Expired)
 		{
 			Close(session, SessionEndReason.TimedOut);
 			return;
 		}
 
-		session.State.Heartbeat(now);
+		session.Heartbeat(now);
 		if (!session.IsServerOwned) _activity[session.State.Record.Id] = session;
 	}
 
@@ -331,7 +331,7 @@ public sealed class UserRegistry
 		var expired = _online
 			.SelectMany(pair => pair.Value.Connections)
 			.Where(session => session is { IsOpen: true, IsServerOwned: false } &&
-			                  session.State.StatusAt(now) is SessionStatus.Expired)
+			                  session.StatusAt(now) is SessionStatus.Expired)
 			.ToList();
 
 		foreach (var session in expired)
@@ -439,7 +439,7 @@ public sealed class UserRegistry
 		var now = _context.Clock.GetUtcNow();
 		if (open is not null)
 		{
-			switch (open.State.StatusAt(now))
+			switch (open.StatusAt(now))
 			{
 				case SessionStatus.Active:
 					return LoginFailure.AlreadyOnline;
@@ -515,7 +515,7 @@ public sealed class UserRegistry
 		var sessions = new List<SessionActivity>();
 		foreach (var (id, _) in _activity)
 			if (_activity.TryRemove(id, out var session))
-				sessions.Add(new SessionActivity(id, session.Type, session.State.Record.Value.LastActiveAt));
+				sessions.Add(new SessionActivity(id, session.Type, session.LastActiveAt));
 
 		await _context.Sessions.WriteActivityAsync(sessions);
 	}
@@ -573,7 +573,7 @@ public sealed class UserRegistry
 	{
 		if (!connection.IsOpen) return;
 
-		connection.State.End(_context.Clock.GetUtcNow(), reason);
+		connection.End(_context.Clock.GetUtcNow(), reason);
 		if (!connection.IsServerOwned) _ended[connection.State.Record.Id] = 0;
 		_activity.TryRemove(connection.State.Record.Id, out _);
 		connection.IsOpen = false;
