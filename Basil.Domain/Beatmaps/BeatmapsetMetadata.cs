@@ -2,8 +2,10 @@ using Basil.Shared.Utilities;
 
 namespace Basil.Domain.Beatmaps;
 
+/// <summary>The artist, title and mapper that name a beatmapset.</summary>
 public sealed class BeatmapsetMetadata
 {
+	/// <summary>The artist of the song; neither empty nor containing a NUL character.</summary>
 	public required string Artist
 	{
 		get;
@@ -12,6 +14,7 @@ public sealed class BeatmapsetMetadata
 			: value.ThrowIfHasNul();
 	}
 
+	/// <summary>The title of the song; neither empty nor containing a NUL character.</summary>
 	public required string Title
 	{
 		get;
@@ -20,6 +23,7 @@ public sealed class BeatmapsetMetadata
 			: value.ThrowIfHasNul();
 	}
 
+	/// <summary>The name of the mapper; neither empty nor containing a NUL character.</summary>
 	public required string Creator
 	{
 		get;
@@ -28,5 +32,6 @@ public sealed class BeatmapsetMetadata
 			: value.ThrowIfHasNul();
 	}
 
+	/// <summary>The set's name as "Artist - Title (Creator)".</summary>
 	public string FullName => $"{Artist} - {Title} ({Creator})";
 }

@@ -5,6 +5,7 @@ using Basil.Domain.Scores;
 
 namespace Basil.Domain.Multiplayer.Report.Rounds;
 
+/// <summary>The scores of one team in a round, ordered by the win condition, with the team's passed and total score.</summary>
 public sealed class RoundTeamScore(
 	GameWinCondition condition,
 	IReadOnlyCollection<ScoreRecord> scores,
@@ -14,8 +15,10 @@ public sealed class RoundTeamScore(
 	private readonly ImmutableSortedSet<ScoreRecord> _scores =
 		ImmutableSortedSet.CreateRange(condition.ToComparer(), scores);
 
+	/// <summary>Gets the team's metric over its passed plays; 0 when none passed.</summary>
 	public double PassedScore { get; } = passedScore;
 
+	/// <summary>Gets the team's metric over all its plays; 0 when it has none.</summary>
 	public double TotalScore { get; } = totalScore;
 
 	public IEnumerator<ScoreRecord> GetEnumerator()
@@ -65,6 +68,9 @@ public sealed class RoundTeamScore(
 		return _scores.SetEquals(other);
 	}
 
+	/// <summary>Builds the score of one team from its plays.</summary>
+	/// <param name="condition">The win condition that orders and measures the plays.</param>
+	/// <param name="scores">The plays of the team.</param>
 	public static RoundTeamScore Decide(GameWinCondition condition, IReadOnlyCollection<ScoreRecord> scores)
 	{
 		var all = scores.Select(score => score.Value).ToArray();

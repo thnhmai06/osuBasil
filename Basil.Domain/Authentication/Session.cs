@@ -3,8 +3,12 @@ using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Domain.Authentication;
 
+/// <summary>The rules of one sign-in: its heartbeat, status and end.</summary>
+/// <param name="record">The stored data of the session.</param>
+/// <remarks>Two sessions are equal when their records are equal.</remarks>
 public sealed class Session(SessionRecord record) : IEquatable<Session>
 {
+	/// <summary>The stored data of the session.</summary>
 	public SessionRecord Record { get; } = record;
 
 	/// <summary>The moment the session expires if it stays silent.</summary>
@@ -44,6 +48,9 @@ public sealed class Session(SessionRecord record) : IEquatable<Session>
 		return SessionActionResult.Ok;
 	}
 
+	/// <summary>Gets the status the session has at a moment.</summary>
+	/// <param name="now">The moment to evaluate.</param>
+	/// <returns><see cref="SessionStatus.Ended" /> once ended; otherwise <see cref="SessionStatus.Expired" /> from its expiry, <see cref="SessionStatus.Replaceable" /> after it has been silent for <see cref="SessionRules.ReplaceableAfter" />, else <see cref="SessionStatus.Active" />.</returns>
 	public SessionStatus StatusAt(DateTimeOffset now)
 	{
 		var data = Record.Value;
@@ -52,6 +59,10 @@ public sealed class Session(SessionRecord record) : IEquatable<Session>
 		return now - data.LastActiveAt >= SessionRules.ReplaceableAfter ? SessionStatus.Replaceable : SessionStatus.Active;
 	}
 
+	/// <summary>Ends the session.</summary>
+	/// <param name="at">The moment the session ended.</param>
+	/// <param name="reason">Why the session ended.</param>
+	/// <returns><see cref="SessionActionResult.Ok" /> when the session was ended, <see cref="SessionActionResult.Ended" /> when it had already ended and is left as it was.</returns>
 	public SessionActionResult End(DateTimeOffset at, SessionEndReason reason)
 	{
 		var data = Record.Value;

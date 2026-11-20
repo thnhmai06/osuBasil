@@ -4,38 +4,58 @@ using Basil.Domain.Game;
 
 namespace Basil.Domain.Scores;
 
+/// <summary>How many hits of each judgement a play earned.</summary>
+/// <param name="Num300">The top judgement (300 points): a great in taiko, a fruit in catch.</param>
+/// <param name="Num100">The 100-point judgement: a good in taiko, a large droplet in catch.</param>
+/// <param name="Num50">The 50-point judgement: a tiny droplet caught in catch.</param>
+/// <param name="NumGeki">The perfect 300 (MAX) of mania, and the 300 that completes a section in standard.</param>
+/// <param name="NumKatu">The 200-point judgement of mania, and the 100 that completes a section in standard; the missed tiny droplets in catch.</param>
+/// <param name="NumMiss">The misses.</param>
+/// <exception cref="ArgumentOutOfRangeException">A count is negative.</exception>
 public readonly record struct HitCounts(int Num300, int Num100, int Num50, int NumGeki, int NumKatu, int NumMiss)
 {
+	/// <summary>The count of the top judgement.</summary>
+	/// <exception cref="ArgumentOutOfRangeException">The count is negative.</exception>
 	public int Num300
 	{
 		get;
 		init => field = Check(value, nameof(Num300));
 	} = Check(Num300, nameof(Num300));
 
+	/// <summary>The count of the 100-point judgement.</summary>
+	/// <exception cref="ArgumentOutOfRangeException">The count is negative.</exception>
 	public int Num100
 	{
 		get;
 		init => field = Check(value, nameof(Num100));
 	} = Check(Num100, nameof(Num100));
 
+	/// <summary>The count of the 50-point judgement.</summary>
+	/// <exception cref="ArgumentOutOfRangeException">The count is negative.</exception>
 	public int Num50
 	{
 		get;
 		init => field = Check(value, nameof(Num50));
 	} = Check(Num50, nameof(Num50));
 
+	/// <summary>The count of the geki judgement.</summary>
+	/// <exception cref="ArgumentOutOfRangeException">The count is negative.</exception>
 	public int NumGeki
 	{
 		get;
 		init => field = Check(value, nameof(NumGeki));
 	} = Check(NumGeki, nameof(NumGeki));
 
+	/// <summary>The count of the katu judgement.</summary>
+	/// <exception cref="ArgumentOutOfRangeException">The count is negative.</exception>
 	public int NumKatu
 	{
 		get;
 		init => field = Check(value, nameof(NumKatu));
 	} = Check(NumKatu, nameof(NumKatu));
 
+	/// <summary>The count of misses.</summary>
+	/// <exception cref="ArgumentOutOfRangeException">The count is negative.</exception>
 	public int NumMiss
 	{
 		get;
@@ -49,6 +69,11 @@ public readonly record struct HitCounts(int Num300, int Num100, int Num50, int N
 			: throw new ArgumentOutOfRangeException(name, "Hit count cannot be negative.");
 	}
 
+	/// <summary>Calculates the accuracy of the play under the rules of its mode.</summary>
+	/// <param name="mode">The game mode the play was made in.</param>
+	/// <param name="gameMods">The mods of the play; <see cref="GameMods.ScoreV2"/> changes how mania weighs its judgements.</param>
+	/// <returns>The accuracy as a percentage from 0 to 100; 0 when there are no hits to judge.</returns>
+	/// <exception cref="ArgumentOutOfRangeException"><paramref name="mode"/> is not a defined mode.</exception>
 	public double CalculateAccuracy(GameMode mode, GameMods gameMods)
 	{
 		switch (mode)

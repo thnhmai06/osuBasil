@@ -5,30 +5,40 @@ using Basil.Domain.Users;
 
 namespace Basil.Domain.Multiplayer.Room;
 
+/// <summary>The numbered slots of a room and the rules for seating players in them.</summary>
 public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 {
 	private readonly Room _room;
 	private readonly ImmutableArray<RoomSlot> _slots;
 
+	/// <summary>Creates the slots of a room, all open.</summary>
+	/// <param name="room">The room the slots belong to.</param>
 	internal RoomSlots(Room room)
 	{
 		_room = room;
 		_slots = [.. Enumerable.Range(1, RoomRules.MaxPlayers).Select(index => new RoomSlot(this, index))];
 	}
 
+	/// <summary>Gets whether players are barred from changing slot on their own.</summary>
 	public bool Locked { get; internal set; }
 
+	/// <summary>Gets the slot a user occupies, or <see langword="null"/> when the user holds none.</summary>
+	/// <param name="user">The user.</param>
 	public RoomSlot? Find(UserRecord user)
 	{
 		return _slots.FirstOrDefault(s => user.Equals(s.Player));
 	}
 
+	/// <summary>Returns every playing or finished slot to not ready.</summary>
 	internal void ResetPlayerStatus()
 	{
 		foreach (var slot in this.Where(s => s.Status is RoomSlotStatus.Playing or RoomSlotStatus.Complete))
 			slot.SetStatus(RoomSlotStatus.NotReady);
 	}
 
+	/// <summary>Makes the given number of slots usable, counting seated players, by locking or opening empty slots.</summary>
+	/// <param name="size">The number of usable slots, from 1 to <see cref="RoomRules.MaxPlayers"/>.</param>
+	/// <exception cref="ArgumentOutOfRangeException"><paramref name="size"/> is outside that range.</exception>
 	internal void Resize(int size)
 	{
 		ArgumentOutOfRangeException.ThrowIfLessThan(size, 1);
@@ -41,6 +51,10 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 			slot.Locked = open-- <= 0;
 	}
 
+	/// <summary>Moves a player to an open slot of their choice; refused when the room is closed, the player holds no slot, the slots are locked, a round is in progress, or the target is missing, locked or taken.</summary>
+	/// <param name="player">The player moving.</param>
+	/// <param name="index">The 1-based index of the target slot.</param>
+	/// <returns>The outcome and the move made, or <see langword="null"/> when the player already holds that slot.</returns>
 	public (RoomActionResult Outcome, (int From, int To)? Move) ChangeSlot(UserRecord player, int index)
 	{
 		if (_room.IsClosed) return (RoomActionResult.RoomClosed, null);
@@ -55,6 +69,10 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		return (RoomActionResult.Ok, (from.Index, to.Index));
 	}
 
+	/// <summary>Moves a player to an open slot regardless of the slot lock and of a round in progress; refused when the room is closed, the player holds no slot, or the target is missing, locked or taken.</summary>
+	/// <param name="player">The player to move.</param>
+	/// <param name="index">The 1-based index of the target slot.</param>
+	/// <returns>The outcome and the move made, or <see langword="null"/> when the player already holds that slot.</returns>
 	public (RoomActionResult Outcome, (int From, int To)? Move) MovePlayer(UserRecord player, int index)
 	{
 		if (_room.IsClosed) return (RoomActionResult.RoomClosed, null);
@@ -67,6 +85,10 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		return (RoomActionResult.Ok, (from.Index, to.Index));
 	}
 
+	/// <summary>Rearranges every slot at once; refused when the room is closed or a round is in progress.</summary>
+	/// <remarks>Slots the arrangement does not mention end up empty and open. Each seated player keeps their status, mods and team.</remarks>
+	/// <param name="arrangement">What each named slot holds.</param>
+	/// <exception cref="InvalidRoomSettingsException">A slot index is out of range or repeated, a slot with a player is locked, or the players named are not exactly the seated players.</exception>
 	public RoomActionResult ArrangeSlots(IReadOnlyList<SlotArrangement> arrangement)
 	{
 		if (_room.IsClosed) return RoomActionResult.RoomClosed;
@@ -107,6 +129,10 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		}
 	}
 
+	/// <summary>Sets whether a player is ready; refused when the room is closed, the player holds no slot or a round is in progress.</summary>
+	/// <param name="player">The player.</param>
+	/// <param name="ready">Whether the player is ready.</param>
+	/// <returns>The outcome and the player's slot index, or <see langword="null"/> when the status did not change.</returns>
 	public (RoomActionResult Outcome, int? Changed) SetReady(UserRecord player, bool ready)
 	{
 		if (_room.IsClosed) return (RoomActionResult.RoomClosed, null);
@@ -120,6 +146,11 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		return (RoomActionResult.Ok, slot.Index);
 	}
 
+	/// <summary>Sets whether a player has the beatmap; refused when the room is closed or the player holds no slot.</summary>
+	/// <remarks>A playing player is left alone, and a player who has the map is only changed when marked as lacking it.</remarks>
+	/// <param name="player">The player.</param>
+	/// <param name="has">Whether the player has the beatmap.</param>
+	/// <returns>The outcome and the player's slot index, or <see langword="null"/> when the status did not change.</returns>
 	public (RoomActionResult Outcome, int? Changed) SetHasMap(UserRecord player, bool has)
 	{
 		if (_room.IsClosed) return (RoomActionResult.RoomClosed, null);
@@ -134,6 +165,9 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		return (RoomActionResult.Ok, slot.Index);
 	}
 
+	/// <summary>Switches a player to the other team; refused when the room is closed, the player holds no slot, the room is not in a team mode, the slots are locked or a round is in progress.</summary>
+	/// <param name="player">The player.</param>
+	/// <returns>The outcome, the player's slot index and the new team.</returns>
 	public (RoomActionResult Outcome, int Slot, GameTeam Team) ToggleTeam(UserRecord player)
 	{
 		if (_room.IsClosed) return (RoomActionResult.RoomClosed, 0, default);
@@ -147,6 +181,10 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		return (RoomActionResult.Ok, slot.Index, team);
 	}
 
+	/// <summary>Puts a player on a team; refused when the room is closed, the room is not in a team mode or the player holds no slot.</summary>
+	/// <param name="player">The player.</param>
+	/// <param name="team">The team.</param>
+	/// <returns>The outcome and the player's slot index, or <see langword="null"/> when the team did not change.</returns>
 	public (RoomActionResult Outcome, int? Changed) SetTeam(UserRecord player, GameTeam team)
 	{
 		if (_room.IsClosed) return (RoomActionResult.RoomClosed, null);
@@ -158,6 +196,11 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		return (RoomActionResult.Ok, slot.Index);
 	}
 
+	/// <summary>Sets the mods of a player; refused when the room is closed, the player holds no slot, a round is in progress, the room is not in freemods or the mods include a speed-changing one.</summary>
+	/// <param name="player">The player.</param>
+	/// <param name="mods">The mods the player chose.</param>
+	/// <returns>The outcome and the player's slot index, or <see langword="null"/> when the mods did not change.</returns>
+	/// <exception cref="InvalidModsException">The mods are not valid for the room's mode.</exception>
 	public (RoomActionResult Outcome, int? Changed) SetMods(UserRecord player, GameMods mods)
 	{
 		if (_room.IsClosed) return (RoomActionResult.RoomClosed, null);
@@ -172,6 +215,9 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		return (RoomActionResult.Ok, slot.Index);
 	}
 
+	/// <summary>Locks or unlocks the room's slots against players changing slot; refused when the room is closed.</summary>
+	/// <param name="locked">Whether the slots are locked.</param>
+	/// <returns>The outcome and whether the lock changed.</returns>
 	public (RoomActionResult Outcome, bool Changed) SetLocked(bool locked)
 	{
 		if (_room.IsClosed) return (RoomActionResult.RoomClosed, false);
@@ -181,6 +227,11 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		return (RoomActionResult.Ok, true);
 	}
 
+	/// <summary>Toggles the lock of one slot, evicting its player when it locks; refused when the room is closed, the slot does not exist or the actor holds the slot.</summary>
+	/// <param name="actor">The user acting, who cannot lock their own slot; <see langword="null"/> when no user acts.</param>
+	/// <param name="index">The 1-based index of the slot.</param>
+	/// <param name="now">The time of the change.</param>
+	/// <returns>The outcome, the slot index, whether the slot is now locked, the player evicted if any, and how the round in progress moved on, or <see langword="null"/> when it did not.</returns>
 	public (RoomActionResult Outcome, int Slot, bool Locked, UserRecord? Evicted, RoomRoundProgress? Progress) LockSlot(
 		UserRecord? actor, int index, DateTimeOffset now)
 	{
@@ -203,6 +254,10 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		return (RoomActionResult.Ok, slot.Index, locking, evicted, progress);
 	}
 
+	/// <summary>Seats a player in the first open slot and gives them the player role; refused when the room is closed, the player is banned or no slot is open.</summary>
+	/// <remarks>A player who already holds a slot keeps it. In a team mode the player joins the smaller team, red on a tie.</remarks>
+	/// <param name="player">The player to seat.</param>
+	/// <returns>The outcome and the slot the player holds.</returns>
 	public (RoomActionResult Outcome, RoomSlot? Slot) Seat(UserRecord player)
 	{
 		if (_room.IsClosed) return (RoomActionResult.RoomClosed, null);
@@ -225,7 +280,10 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		return (RoomActionResult.Ok, slot);
 	}
 
-	/// <summary>Seats a player again in the slot they already hold, as when a new connection replaces an old one.</summary>
+	/// <summary>Seats a player again in the slot they already hold, as when a new connection replaces an old one; refused when the room is closed or the player holds no slot.</summary>
+	/// <param name="player">The player.</param>
+	/// <param name="now">The time of the change.</param>
+	/// <returns>The outcome, the slot index, and how the round in progress moved on, or <see langword="null"/> when it did not.</returns>
 	public (RoomActionResult Outcome, int Slot, RoomRoundProgress? Progress) Reseat(UserRecord player, DateTimeOffset now)
 	{
 		if (_room.IsClosed) return (RoomActionResult.RoomClosed, 0, null);
@@ -238,7 +296,10 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		return (RoomActionResult.Ok, slot.Index, _room.Rounds.Advance(now));
 	}
 
-	/// <summary>Takes a player out of their slot of their own will, and reports how the round in progress moved on.</summary>
+	/// <summary>Takes a player out of their slot of their own will; refused when the room is closed or the player holds no slot.</summary>
+	/// <param name="player">The player leaving.</param>
+	/// <param name="now">The time of the change.</param>
+	/// <returns>The outcome, the vacated slot index, and how the round in progress moved on, or <see langword="null"/> when it did not.</returns>
 	public (RoomActionResult Outcome, int Slot, RoomRoundProgress? Progress) Leave(UserRecord player, DateTimeOffset now)
 	{
 		if (_room.IsClosed) return (RoomActionResult.RoomClosed, 0, null);
@@ -247,6 +308,9 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		return (RoomActionResult.Ok, slot.Index, _room.Rounds.Advance(now));
 	}
 
+	/// <summary>Empties the slot of a player, handing the host role on when the player was the host and striking the player from the settlement of the round in progress.</summary>
+	/// <param name="player">The player.</param>
+	/// <returns>The emptied slot, or <see langword="null"/> when the player held none.</returns>
 	internal RoomSlot? Vacate(UserRecord player)
 	{
 		var slot = Find(player);
@@ -276,6 +340,9 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 
 	public int Count => _slots.Length;
 
+	/// <summary>Gets a slot by its 1-based index.</summary>
+	/// <param name="index">The 1-based index of the slot.</param>
+	/// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside 1 to <see cref="RoomRules.MaxPlayers"/>.</exception>
 	public RoomSlot this[int index]
 	{
 		get

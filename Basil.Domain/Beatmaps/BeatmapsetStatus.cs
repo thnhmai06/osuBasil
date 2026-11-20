@@ -1,24 +1,34 @@
 namespace Basil.Domain.Beatmaps;
 
+/// <summary>How far a beatmapset got in the ranking process; the values carry the game numbering.</summary>
 public enum BeatmapsetStatus : sbyte
 {
 	// NotSubmitted = -1, // not used
 
+	/// <summary>Not ranked: still being worked on, awaiting review, or abandoned.</summary>
 	Pending = 0, // graveyard too
 
 	// UpdateAvailable = 1, // not used
 
+	/// <summary>Ranked: scores on it count for the ranking and give performance points.</summary>
 	Ranked = 2,
 
+	/// <summary>Approved: ranked under the older approval process.</summary>
 	Approved = 3,
 
+	/// <summary>Qualified: accepted and waiting to become ranked.</summary>
 	Qualified = 4,
 
+	/// <summary>Loved: kept as a community favourite, without performance points.</summary>
 	Loved = 5
 }
 
+/// <summary>Converts between status numberings.</summary>
 public static class BeatmapsetStatusExtensions
 {
+	/// <summary>Converts the status number of the osu!direct listing into a status.</summary>
+	/// <param name="osuDirectStatus">The status number of the listing.</param>
+	/// <returns>The matching status; graveyard and numbers that are not known give <see cref="BeatmapsetStatus.Pending"/>.</returns>
 	public static BeatmapsetStatus FromOsuDirect(int osuDirectStatus) // TODO: Move to Protocol
 	{
 		return osuDirectStatus switch

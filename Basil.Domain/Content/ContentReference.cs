@@ -4,8 +4,12 @@ using Basil.Shared.Utilities;
 
 namespace Basil.Domain.Content;
 
+/// <summary>A reference to a content asset: either an absolute http or https address, or a canonical relative asset path.</summary>
 public readonly record struct ContentReference : IParsable<ContentReference>, IFormattable
 {
+	/// <summary>Creates a reference to an online address.</summary>
+	/// <param name="address">An absolute http or https address.</param>
+	/// <exception cref="ArgumentException">The address is not an absolute http or https address.</exception>
 	public ContentReference(Uri address)
 	{
 		ArgumentNullException.ThrowIfNull(address);
@@ -14,6 +18,9 @@ public readonly record struct ContentReference : IParsable<ContentReference>, IF
 		Value = address.AbsoluteUri;
 	}
 
+	/// <summary>Creates a reference to a stored asset.</summary>
+	/// <param name="path">A canonical relative asset path.</param>
+	/// <exception cref="ArgumentException">The path is blank or is not a canonical relative asset path.</exception>
 	public ContentReference(string path)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(path);
@@ -22,8 +29,10 @@ public readonly record struct ContentReference : IParsable<ContentReference>, IF
 		Value = canonical;
 	}
 
+	/// <summary>The address or the path the reference holds; <see langword="null" /> only on a default value.</summary>
 	public string Value { get; }
 
+	/// <summary>Whether the reference names a stored asset rather than an online address.</summary>
 	public bool IsOffline => Value is not null && !IsOnline(Value);
 
 	public string ToString(string? format, IFormatProvider? formatProvider)
@@ -34,6 +43,11 @@ public readonly record struct ContentReference : IParsable<ContentReference>, IF
 		return ToString();
 	}
 
+	/// <summary>Reads a reference from text: an http or https address, or else a canonical relative asset path.</summary>
+	/// <param name="s">The text to read.</param>
+	/// <param name="provider">Ignored.</param>
+	/// <returns>The reference.</returns>
+	/// <exception cref="FormatException">The text is neither.</exception>
 	public static ContentReference Parse(string s, IFormatProvider? provider)
 	{
 		ArgumentNullException.ThrowIfNull(s);
@@ -49,6 +63,11 @@ public readonly record struct ContentReference : IParsable<ContentReference>, IF
 		}
 	}
 
+	/// <summary>Reads a reference from text like <see cref="Parse" /> but reports failure instead of throwing.</summary>
+	/// <param name="s">The text to read.</param>
+	/// <param name="provider">Ignored.</param>
+	/// <param name="result">The reference, or a default value on failure.</param>
+	/// <returns><see langword="true" /> when the text was read.</returns>
 	public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, out ContentReference result)
 	{
 		result = default;
@@ -65,21 +84,28 @@ public readonly record struct ContentReference : IParsable<ContentReference>, IF
 		}
 	}
 
+	/// <summary>Reads a reference from text like <see cref="Parse" />.</summary>
+	/// <param name="text">The text to read.</param>
 	public static explicit operator ContentReference(string text)
 	{
 		return Parse(text, CultureInfo.InvariantCulture);
 	}
 
+	/// <summary>Creates a reference to an online address.</summary>
+	/// <param name="address">An absolute http or https address.</param>
 	public static explicit operator ContentReference(Uri address)
 	{
 		return new ContentReference(address);
 	}
 
+	/// <summary>Gets the address or path of a reference as text.</summary>
+	/// <param name="reference">The reference.</param>
 	public static explicit operator string(ContentReference reference)
 	{
 		return reference.ToString();
 	}
 
+	/// <summary>Gets the address or path, or an empty text on a default value.</summary>
 	public override string ToString()
 	{
 		return Value ?? string.Empty;

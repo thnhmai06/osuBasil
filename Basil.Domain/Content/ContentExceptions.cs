@@ -13,8 +13,10 @@ public sealed class InvalidAddressException() : MenuException("The address must 
 public sealed class InvalidBannerWindowException(DateTimeOffset? startsAt, DateTimeOffset? endsAt)
 	: MenuException("A banner cannot end before it starts.")
 {
+	/// <summary>The start of the rejected window, or <see langword="null" /> when it has none.</summary>
 	public DateTimeOffset? StartsAt { get; } = startsAt;
 
+	/// <summary>The end of the rejected window, or <see langword="null" /> when it has none.</summary>
 	public DateTimeOffset? EndsAt { get; } = endsAt;
 }
 
@@ -27,12 +29,14 @@ public sealed class InvalidImageException() : UploadException("The image cannot 
 /// <summary>An upload is over the size the server accepts for it.</summary>
 public sealed class UploadTooLargeException(long limit) : UploadException("The upload is too large.")
 {
+	/// <summary>The largest size the server accepts, in bytes.</summary>
 	public long Limit { get; } = limit;
 }
 
 /// <summary>An uploaded picture is wider or taller than the server accepts.</summary>
 public sealed class ImageDimensionsTooLargeException(int maxSide) : UploadException("The image is too large in width or height.")
 {
+	/// <summary>The largest width or height the server accepts, in pixels.</summary>
 	public int MaxSide { get; } = maxSide;
 }
 

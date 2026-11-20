@@ -1,9 +1,12 @@
 namespace Basil.Domain.Authentication;
 
+/// <summary>The outcome of an action on a session.</summary>
 public enum SessionActionResult : byte
 {
+	/// <summary>The caller lacks the privileges the action needs.</summary>
 	Denied = 0,
 
+	/// <summary>The action was carried out.</summary>
 	Ok = 1,
 
 	/// <summary>The session had already ended.</summary>

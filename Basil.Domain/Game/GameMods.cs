@@ -2,74 +2,108 @@ using System.Collections.Immutable;
 
 namespace Basil.Domain.Game;
 
+/// <summary>The modifiers a player can apply to a play; the bit values carry the game numbering.</summary>
 [Flags]
 public enum GameMods
 {
+	/// <summary>No modifier.</summary>
 	NoMod = 0,
 
+	/// <summary>The play cannot be failed: running out of health does not end it.</summary>
 	NoFail = 1 << 0,
 
+	/// <summary>Lowers the difficulty values and gives extra lives, for a reduced score multiplier.</summary>
 	Easy = 1 << 1,
 
+	/// <summary>Marks a play made on a touch screen.</summary>
 	TouchScreen = 1 << 2, // old: 'NoVideo'
 
+	/// <summary>Hit objects fade out as they approach, leaving less time to read them.</summary>
 	Hidden = 1 << 3,
 
+	/// <summary>Raises the difficulty values (and flips the playfield vertically in the standard mode), for a higher score multiplier.</summary>
 	HardRock = 1 << 4,
 
+	/// <summary>The play fails on the first miss.</summary>
 	SuddenDeath = 1 << 5,
 
+	/// <summary>Plays the beatmap at 1.5 times the speed.</summary>
 	DoubleTime = 1 << 6,
 
+	/// <summary>The game handles the clicking; the player only moves the cursor.</summary>
 	Relax = 1 << 7,
 
+	/// <summary>Plays the beatmap at 0.75 times the speed.</summary>
 	HalfTime = 1 << 8,
 
+	/// <summary>Plays the beatmap at 1.5 times the speed with a higher pitch; the game sets it together with <see cref="DoubleTime"/>.</summary>
 	Nightcore = 1 << 9,
 
+	/// <summary>Only a small area around the cursor is visible.</summary>
 	Flashlight = 1 << 10,
 
+	/// <summary>The game plays the beatmap by itself.</summary>
 	Autoplay = 1 << 11,
 
+	/// <summary>Spinners complete on their own (standard mode).</summary>
 	SpunOut = 1 << 12,
 
+	/// <summary>The game moves the cursor; the player only clicks (standard mode).</summary>
 	Autopilot = 1 << 13,
 
+	/// <summary>The play fails on anything but a perfect hit; the game sets it together with <see cref="SuddenDeath"/>.</summary>
 	Perfect = 1 << 14,
 
+	/// <summary>Plays mania with four key columns.</summary>
 	Key4 = 1 << 15,
 
+	/// <summary>Plays mania with five key columns.</summary>
 	Key5 = 1 << 16,
 
+	/// <summary>Plays mania with six key columns.</summary>
 	Key6 = 1 << 17,
 
+	/// <summary>Plays mania with seven key columns.</summary>
 	Key7 = 1 << 18,
 
+	/// <summary>Plays mania with eight key columns.</summary>
 	Key8 = 1 << 19,
 
+	/// <summary>Mania notes stay hidden until they approach the middle of the playfield.</summary>
 	FadeIn = 1 << 20,
 
+	/// <summary>Shuffles the key columns of the notes (mania).</summary>
 	Random = 1 << 21,
 
+	/// <summary>The game plays the beatmap by itself, showing its video and storyboard without the playfield.</summary>
 	Cinema = 1 << 22,
 
+	/// <summary>Target practice: replaces the hit objects with targets to hit as precisely as possible (standard mode).</summary>
 	Target = 1 << 23,
 
+	/// <summary>Plays mania with nine key columns.</summary>
 	Key9 = 1 << 24,
 
+	/// <summary>Two players share one beatmap, each with the key columns of the key count mod (mania).</summary>
 	KeyCoop = 1 << 25,
 
+	/// <summary>Plays mania with one key column.</summary>
 	Key1 = 1 << 26,
 
+	/// <summary>Plays mania with three key columns.</summary>
 	Key3 = 1 << 27,
 
+	/// <summary>Plays mania with two key columns.</summary>
 	Key2 = 1 << 28,
 
+	/// <summary>Scores the play with the second scoring system, which weighs accuracy and combo differently.</summary>
 	ScoreV2 = 1 << 29,
 
+	/// <summary>Flips the key columns of the notes horizontally (mania).</summary>
 	Mirror = 1 << 30
 }
 
+/// <summary>Parses and validates sets of <see cref="GameMods"/>.</summary>
 public static class ModsExtensions
 {
 	private static readonly ImmutableDictionary<string, GameMods> ModStrToMod = ImmutableDictionary.CreateRange(
@@ -145,6 +179,13 @@ public static class ModsExtensions
 
 	extension(GameMods gameMods)
 	{
+		/// <summary>Removes the mods that cannot be used together or in the given mode.</summary>
+		/// <param name="mode">The mode the mods are used in.</param>
+		/// <returns>The mods that remain valid.</returns>
+		/// <remarks>
+		/// <see cref="GameMods.Nightcore"/> wins over <see cref="GameMods.DoubleTime"/>, and speed-up mods win over <see cref="GameMods.HalfTime"/>. <see cref="GameMods.Easy"/> wins over <see cref="GameMods.HardRock"/>. <see cref="GameMods.NoFail"/>, <see cref="GameMods.Relax"/> and <see cref="GameMods.Autopilot"/> remove <see cref="GameMods.SuddenDeath"/> and <see cref="GameMods.Perfect"/>, and Relax or Autopilot also remove NoFail. <see cref="GameMods.Perfect"/> wins over <see cref="GameMods.SuddenDeath"/>.
+		/// Mods that belong to another mode are dropped (<see cref="GameModsGroups.OsuSpecific"/> outside standard, <see cref="GameModsGroups.ManiaSpecific"/> outside mania). In standard, <see cref="GameMods.Autopilot"/> is also dropped next to <see cref="GameMods.SpunOut"/> or <see cref="GameMods.Relax"/>; in mania, <see cref="GameMods.Relax"/> is dropped, and <see cref="GameMods.FadeIn"/> next to <see cref="GameMods.Hidden"/>. When several key count mods are set, only the lowest key count stays.
+		/// </remarks>
 		public GameMods RemoveInvalidMods(GameMode mode)
 		{
 			var result = gameMods;
@@ -157,6 +198,9 @@ public static class ModsExtensions
 			return result;
 		}
 
+		/// <summary>Keeps only the mods that change how hard the beatmap is.</summary>
+		/// <param name="mode">The mode the mods are used in.</param>
+		/// <returns>The valid mods of <see cref="GameModsGroups.Difficulty"/>, with <see cref="GameMods.Nightcore"/> replaced by <see cref="GameMods.DoubleTime"/>.</returns>
 		public GameMods ReduceToDifficulty(GameMode mode)
 		{
 			var reduced = gameMods.RemoveInvalidMods(mode) & GameModsGroups.Difficulty;
@@ -165,12 +209,18 @@ public static class ModsExtensions
 				: (reduced & ~GameMods.Nightcore) | GameMods.DoubleTime;
 		}
 
+		/// <summary>Tells whether the mods can be used together in the given mode.</summary>
+		/// <param name="mode">The mode the mods are used in.</param>
+		/// <returns>True when removing the invalid mods would change nothing; <see cref="GameMods.DoubleTime"/> with <see cref="GameMods.Nightcore"/> and <see cref="GameMods.SuddenDeath"/> with <see cref="GameMods.Perfect"/> count as valid, because the game sets both.</returns>
 		public bool IsValid(GameMode mode)
 		{
 			var canonical = Canonical(gameMods);
 			return canonical == canonical.RemoveInvalidMods(mode);
 		}
 
+		/// <summary>Rejects mods that cannot be used together in the given mode.</summary>
+		/// <param name="mode">The mode the mods are used in.</param>
+		/// <exception cref="InvalidModsException">The mods are not valid for <paramref name="mode"/>.</exception>
 		public void ThrowIfInvalid(GameMode mode)
 		{
 			if (!gameMods.IsValid(mode))
@@ -178,6 +228,9 @@ public static class ModsExtensions
 		}
 	}
 
+	/// <summary>Reads mods from their two-letter acronyms written one after another, such as <c>HDDT</c>.</summary>
+	/// <param name="s">The acronyms, in any letter case.</param>
+	/// <returns>The mods named; unknown acronyms are ignored, and the result is not checked for conflicts.</returns>
 	public static GameMods FromModString(string s)
 	{
 		var mods = GameMods.NoMod;
@@ -191,6 +244,10 @@ public static class ModsExtensions
 		return mods;
 	}
 
+	/// <summary>Reads mods from the space-separated tokens of a now-playing description, such as <c>+Hidden +DoubleTime</c>.</summary>
+	/// <param name="s">The tokens, in any letter case.</param>
+	/// <param name="mode">The mode the mods are used in.</param>
+	/// <returns>The mods named, with those that are invalid for <paramref name="mode"/> removed; unknown tokens are ignored.</returns>
 	public static GameMods FromNowPlayingString(string s, GameMode mode)
 	{
 		var mods = GameMods.NoMod;
@@ -307,17 +364,23 @@ public static class ModsExtensions
 	}
 }
 
+/// <summary>Sets of mods that share a role.</summary>
 public static class GameModsGroups
 {
+	/// <summary>The mods that change the speed of the beatmap.</summary>
 	public const GameMods SpeedChanging = GameMods.DoubleTime | GameMods.Nightcore | GameMods.HalfTime;
 
+	/// <summary>The mods that set the number of mania key columns.</summary>
 	public const GameMods Key = GameMods.Key1 | GameMods.Key2 | GameMods.Key3 | GameMods.Key4 | GameMods.Key5 |
 	                            GameMods.Key6 | GameMods.Key7 | GameMods.Key8 | GameMods.Key9;
 
+	/// <summary>The mods that only exist in the standard mode.</summary>
 	public const GameMods OsuSpecific = GameMods.Autopilot | GameMods.SpunOut | GameMods.Target;
 
+	/// <summary>The mods that only exist in the mania mode.</summary>
 	public const GameMods ManiaSpecific = GameMods.Mirror | GameMods.Random | GameMods.FadeIn | GameMods.KeyCoop | Key;
 
+	/// <summary>The mods that change how hard a beatmap is, and so its star rating.</summary>
 	public const GameMods Difficulty = GameMods.Easy | GameMods.HardRock | GameMods.DoubleTime | GameMods.Nightcore |
 	                                   GameMods.HalfTime | GameMods.Flashlight | GameMods.Hidden |
 	                                   GameMods.TouchScreen | GameMods.KeyCoop | Key;

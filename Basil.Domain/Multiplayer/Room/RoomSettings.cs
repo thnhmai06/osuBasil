@@ -5,11 +5,17 @@ using Basil.Domain.Users;
 
 namespace Basil.Domain.Multiplayer.Room;
 
+/// <summary>The settings of a room and the rules for changing them.</summary>
 public sealed class RoomSettings
 {
 	private readonly MatchRecord _match;
 	private readonly Room _room;
 
+	/// <summary>Creates the settings of a room.</summary>
+	/// <param name="room">The room the settings belong to.</param>
+	/// <param name="match">The match the room hosts.</param>
+	/// <param name="matchSettings">The settings the room starts with.</param>
+	/// <param name="password">The password players must give to join; empty for none.</param>
 	internal RoomSettings(Room room, MatchRecord match, MatchSettings matchSettings, string password)
 	{
 		_room = room;
@@ -19,18 +25,31 @@ public sealed class RoomSettings
 		MatchSettings = new MatchSettingsView(matchSettings);
 	}
 
+	/// <summary>Gets the match settings the room changes and copies into each round.</summary>
 	internal MatchSettings Editable { get; }
 
+	/// <summary>Gets a read-only view of the match settings.</summary>
 	public IMatchSettings MatchSettings { get; }
 
+	/// <summary>Gets the name of the room.</summary>
 	public string Name => _match.Value.Name;
 
+	/// <summary>Gets whether the room is private.</summary>
 	public bool IsPrivate => _match.Value.IsPrivate;
 
+	/// <summary>Gets the password players must give to join; empty when there is none.</summary>
 	public string Password { get; internal set; }
 
+	/// <summary>Gets the room's beatmap, or <see langword="null"/> when none is chosen.</summary>
 	public BeatmapReference? Beatmap { get; internal set; }
 
+	/// <summary>Applies a change to the room's settings; refused when the room is closed or a round is in progress.</summary>
+	/// <remarks>Choosing a beatmap resets ready slots to not ready. Changing the mode strips mods the new mode does not allow from the room and every slot. Changing the team type reassigns the seated players' teams. Changing the size locks or opens empty slots. Turning freemods on or off moves mods between the room and the players' slots.</remarks>
+	/// <param name="caller">The user making the change, whose own slot keeps the non-speed mods when the room is in freemods; <see langword="null"/> when no user acts.</param>
+	/// <param name="change">The changes; a member left unset keeps its current value.</param>
+	/// <returns>The outcome, and whether any setting changed (false for an empty change).</returns>
+	/// <exception cref="InvalidRoomSettingsException">The name is blank, the size is outside 1 to <see cref="RoomRules.MaxPlayers"/>, a beatmap is both set and cleared, or an enum value is undefined.</exception>
+	/// <exception cref="InvalidModsException">The requested mods are not valid for the mode.</exception>
 	public (RoomActionResult Outcome, bool Changed) Configure(UserRecord? caller, RoomSettingsChange change)
 	{
 		if (_room.IsClosed) return (RoomActionResult.RoomClosed, false);
@@ -145,6 +164,8 @@ public sealed class RoomSettings
 		}
 	}
 
+	/// <summary>Gets whether a password lets a player join: always when the room has no password, otherwise only when equal.</summary>
+	/// <param name="password">The password the player gave.</param>
 	public bool PasswordMatches(string password)
 	{
 		return string.IsNullOrEmpty(Password) || Password == password;
