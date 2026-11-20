@@ -1,6 +1,6 @@
 namespace Basil.Application.Diagnostics.Services;
 
-public sealed class DiagnosticsSample
+public sealed class DiagnosticsSample(IEnumerable<KeyValuePair<string, object>> values)
 {
 	public static readonly IReadOnlyList<string> Categories =
 	[
@@ -8,12 +8,7 @@ public sealed class DiagnosticsSample
 		"events", "sessions", "connections"
 	];
 
-	private readonly Dictionary<string, object> _values;
-
-	public DiagnosticsSample(IEnumerable<KeyValuePair<string, object>> values)
-	{
-		_values = new Dictionary<string, object>(values);
-	}
+	private readonly Dictionary<string, object> _values = new(values);
 
 	public IReadOnlyDictionary<string, object> All => _values;
 

@@ -1,17 +1,8 @@
 namespace Basil.Infrastructure.Scores.Storage;
 
-internal sealed class SliceStream : Stream
+internal sealed class SliceStream(Stream inner, long start, long length) : Stream
 {
-	private readonly Stream _inner;
-	private readonly long _start;
 	private long _position;
-
-	public SliceStream(Stream inner, long start, long length)
-	{
-		_inner = inner;
-		_start = start;
-		Length = length;
-	}
 
 	public override bool CanRead => true;
 
@@ -19,7 +10,7 @@ internal sealed class SliceStream : Stream
 
 	public override bool CanWrite => false;
 
-	public override long Length { get; }
+	public override long Length { get; } = length;
 
 	public override long Position
 	{
@@ -41,8 +32,8 @@ internal sealed class SliceStream : Stream
 		var window = Window(buffer.Length);
 		if (window == 0) return 0;
 
-		_inner.Position = _start + _position;
-		var read = _inner.Read(buffer[..window]);
+		inner.Position = start + _position;
+		var read = inner.Read(buffer[..window]);
 		_position += read;
 		return read;
 	}
@@ -52,8 +43,8 @@ internal sealed class SliceStream : Stream
 		var window = Window(buffer.Length);
 		if (window == 0) return 0;
 
-		_inner.Position = _start + _position;
-		var read = await _inner.ReadAsync(buffer[..window], ct);
+		inner.Position = start + _position;
+		var read = await inner.ReadAsync(buffer[..window], ct);
 		_position += read;
 		return read;
 	}
@@ -91,12 +82,12 @@ internal sealed class SliceStream : Stream
 
 	public override ValueTask DisposeAsync()
 	{
-		return _inner.DisposeAsync();
+		return inner.DisposeAsync();
 	}
 
 	protected override void Dispose(bool disposing)
 	{
-		if (disposing) _inner.Dispose();
+		if (disposing) inner.Dispose();
 		base.Dispose(disposing);
 	}
 

@@ -39,36 +39,28 @@ public sealed record CommandSession(bool Dashboard, Func<string, CancellationTok
 	public static CommandSession Plain { get; } = new(false);
 }
 
-public sealed class CommandCall
+public sealed class CommandCall(
+	IServiceProvider services,
+	ICommandOutput output,
+	ViewFormatter formatter,
+	Dictionary<string, string> words,
+	Dictionary<string, string> options,
+	CancellationToken ct,
+	CommandSession? session = null)
 {
-	private readonly Dictionary<string, string> _options;
-	private readonly Dictionary<string, string> _words;
 	private OperatorSession? _by;
 
-	public CommandCall(IServiceProvider services, ICommandOutput output, ViewFormatter formatter,
-		Dictionary<string, string> words, Dictionary<string, string> options, CancellationToken ct,
-		CommandSession? session = null)
-	{
-		Session = session ?? CommandSession.Plain;
-		Services = services;
-		Output = output;
-		Formatter = formatter;
-		_words = words;
-		_options = options;
-		CancellationToken = ct;
-	}
+	public CommandSession Session { get; } = session ?? CommandSession.Plain;
 
-	public CommandSession Session { get; }
+	public IServiceProvider Services { get; } = services;
 
-	public IServiceProvider Services { get; }
+	public ICommandOutput Output { get; } = output;
 
-	public ICommandOutput Output { get; }
+	public ViewFormatter Formatter { get; } = formatter;
 
-	public ViewFormatter Formatter { get; }
+	public CancellationToken CancellationToken { get; } = ct;
 
-	public CancellationToken CancellationToken { get; }
-
-	public IReadOnlyDictionary<string, string> Options => _options;
+	public IReadOnlyDictionary<string, string> Options => options;
 
 	public T Get<T>() where T : notnull
 	{
@@ -83,27 +75,27 @@ public sealed class CommandCall
 
 	public int Id(string name)
 	{
-		return int.Parse(_words[name], CultureInfo.InvariantCulture);
+		return int.Parse(words[name], CultureInfo.InvariantCulture);
 	}
 
 	public string Word(string name)
 	{
-		return _words[name];
+		return words[name];
 	}
 
 	public bool Has(string name)
 	{
-		return _options.ContainsKey(name);
+		return options.ContainsKey(name);
 	}
 
 	public string? Text(string name)
 	{
-		return _options.GetValueOrDefault(name);
+		return options.GetValueOrDefault(name);
 	}
 
 	public int? Int(string name)
 	{
-		return _options.TryGetValue(name, out var text)
+		return options.TryGetValue(name, out var text)
 			? int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
 				? value
 				: throw CommandException.Invalid($"--{name} must be a whole number.")
@@ -112,7 +104,7 @@ public sealed class CommandCall
 
 	public bool? Bool(string name)
 	{
-		return _options.TryGetValue(name, out var text)
+		return options.TryGetValue(name, out var text)
 			? text.Length == 0 || text.Equals("true", StringComparison.OrdinalIgnoreCase) ? true
 			: text.Equals("false", StringComparison.OrdinalIgnoreCase) ? false
 			: throw CommandException.Invalid($"--{name} must be true or false.")
@@ -121,7 +113,7 @@ public sealed class CommandCall
 
 	public ulong? Mask(string name)
 	{
-		return _options.TryGetValue(name, out var text)
+		return options.TryGetValue(name, out var text)
 			? ulong.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
 				? value
 				: throw CommandException.Invalid($"--{name} must be a number (a bitmask).")
@@ -130,7 +122,7 @@ public sealed class CommandCall
 
 	public TimeSpan? Duration(string name)
 	{
-		if (!_options.TryGetValue(name, out var text)) return null;
+		if (!options.TryGetValue(name, out var text)) return null;
 
 		if (text.Length > 1 &&
 		    double.TryParse(text[..^1], NumberStyles.Float, CultureInfo.InvariantCulture, out var amount) &&
@@ -148,14 +140,14 @@ public sealed class CommandCall
 
 	public string[]? List(string name)
 	{
-		return _options.TryGetValue(name, out var text)
+		return options.TryGetValue(name, out var text)
 			? text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
 			: null;
 	}
 
 	public string Required(string name)
 	{
-		return _options.TryGetValue(name, out var text) && text.Length > 0
+		return options.TryGetValue(name, out var text) && text.Length > 0
 			? text
 			: throw CommandException.Invalid($"--{name} is required.");
 	}

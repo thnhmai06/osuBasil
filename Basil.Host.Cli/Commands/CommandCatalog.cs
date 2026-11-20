@@ -10,14 +10,9 @@ public sealed record ParsedCommand(
 
 public sealed record ParseFailure(string Message, IReadOnlyList<CommandDef> Candidates);
 
-public sealed class CommandCatalog
+public sealed class CommandCatalog(IEnumerable<CommandDef> commands)
 {
-	public CommandCatalog(IEnumerable<CommandDef> commands)
-	{
-		All = [.. commands];
-	}
-
-	public IReadOnlyList<CommandDef> All { get; }
+	public IReadOnlyList<CommandDef> All { get; } = [.. commands];
 
 	public static IReadOnlyList<string> Split(string line)
 	{

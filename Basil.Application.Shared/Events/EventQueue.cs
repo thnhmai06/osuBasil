@@ -3,20 +3,14 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Application.Shared.Events;
 
-public sealed class EventQueue
+public sealed class EventQueue(ILogger<EventQueue> logger)
 {
 	private readonly Channel<IEventDelivery> _deliveries =
 		Channel.CreateUnbounded<IEventDelivery>(new UnboundedChannelOptions { SingleReader = true });
 
-	private readonly ILogger<EventQueue> _logger;
 	private long _failures;
 	private int _outstanding;
 	private long _published;
-
-	public EventQueue(ILogger<EventQueue> logger)
-	{
-		_logger = logger;
-	}
 
 	public int Outstanding => Volatile.Read(ref _outstanding);
 
@@ -73,7 +67,7 @@ public sealed class EventQueue
 		catch (Exception exception)
 		{
 			CountFailure();
-			_logger.LogError(exception, "An event could not be delivered");
+			logger.LogError(exception, "An event could not be delivered");
 		}
 		finally
 		{

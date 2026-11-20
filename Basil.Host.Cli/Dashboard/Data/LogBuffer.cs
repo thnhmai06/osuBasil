@@ -4,23 +4,15 @@ namespace Basil.Host.Cli.Dashboard.Data;
 
 public sealed record LogLine(DateTimeOffset Time, LogLevel Level, string Category, string Message);
 
-public sealed class LogBuffer : ILoggerProvider
+public sealed class LogBuffer(TimeProvider clock, int capacity = 2000) : ILoggerProvider
 {
-	private readonly int _capacity;
-	private readonly TimeProvider _clock;
 	private readonly Lock _gate = new();
 	private readonly Queue<LogLine> _lines = new();
 	private long _total;
 
-	public LogBuffer(TimeProvider clock, int capacity = 2000)
-	{
-		_clock = clock;
-		_capacity = capacity;
-	}
-
 	public ILogger CreateLogger(string categoryName)
 	{
-		return new BufferLogger(this, categoryName, _clock);
+		return new BufferLogger(this, categoryName, clock);
 	}
 
 	public void Dispose()
@@ -51,7 +43,7 @@ public sealed class LogBuffer : ILoggerProvider
 		{
 			_total++;
 			_lines.Enqueue(line);
-			while (_lines.Count > _capacity) _lines.Dequeue();
+			while (_lines.Count > capacity) _lines.Dequeue();
 		}
 	}
 

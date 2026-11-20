@@ -5,7 +5,7 @@ using XenoAtom.Terminal.UI.Styling;
 
 namespace Basil.Host.Cli.Dashboard.Shell.Toasts;
 
-internal sealed class ToastTray
+internal sealed class ToastTray(Glyphs glyphs, Palette palette, TimeProvider clock, Action<Action> post)
 {
 	public const int Width = 40;
 
@@ -17,20 +17,8 @@ internal sealed class ToastTray
 
 	public static readonly TimeSpan ErrorLifetime = TimeSpan.FromSeconds(10);
 
-	private readonly TimeProvider _clock;
 	private readonly List<Entry> _entries = [];
-	private readonly Glyphs _glyphs;
-	private readonly Palette _palette;
-	private readonly Action<Action> _post;
 	private readonly State<int> _version = new(0);
-
-	public ToastTray(Glyphs glyphs, Palette palette, TimeProvider clock, Action<Action> post)
-	{
-		_glyphs = glyphs;
-		_palette = palette;
-		_clock = clock;
-		_post = post;
-	}
 
 	public bool Any => _entries.Count > 0;
 
@@ -41,7 +29,7 @@ internal sealed class ToastTray
 		for (var i = 0; i < MaxVisible; i++)
 		{
 			var slot = i;
-			var box = new Group().Style(_glyphs.Ascii ? GroupStyle.Ascii : GroupStyle.Single)
+			var box = new Group().Style(glyphs.Ascii ? GroupStyle.Ascii : GroupStyle.Single)
 				.IsVisible(() => Visible(slot)).MinWidth(Width).MaxWidth(Width).MinHeight(Height).MaxHeight(Height)
 				.Content(new Markup(() => Line(slot)));
 			box.PointerPressed(() => Dismiss(slot));
@@ -53,7 +41,7 @@ internal sealed class ToastTray
 
 	public void Show(string text, ToastKind kind = ToastKind.Info)
 	{
-		_post(() =>
+		post(() =>
 		{
 			var entry = _entries.Find(e => e.Text == text);
 			if (entry is null)
@@ -68,16 +56,16 @@ internal sealed class ToastTray
 			}
 
 			entry.Kind = (ToastKind)Math.Max((int)entry.Kind, (int)kind);
-			entry.Deadline = _clock.GetTimestamp() +
+			entry.Deadline = clock.GetTimestamp() +
 			                 (long)((entry.Kind == ToastKind.Error ? ErrorLifetime : Lifetime).TotalSeconds *
-			                        _clock.TimestampFrequency);
+			                        clock.TimestampFrequency);
 			_version.Value++;
 		});
 	}
 
 	public void Tick()
 	{
-		var now = _clock.GetTimestamp();
+		var now = clock.GetTimestamp();
 		if (_entries.RemoveAll(entry => now >= entry.Deadline) > 0) _version.Value++;
 	}
 
@@ -110,15 +98,15 @@ internal sealed class ToastTray
 		var entry = _entries[slot];
 		var (mark, ink) = entry.Kind switch
 		{
-			ToastKind.Error => (_glyphs.ToastError, Ink.Error),
+			ToastKind.Error => (glyphs.ToastError, Ink.Error),
 			ToastKind.Warning => (Glyphs.ToastWarning, Ink.Warning),
-			_ => (_glyphs.ToastInfo, Ink.Success)
+			_ => (glyphs.ToastInfo, Ink.Success)
 		};
 		var repeats = entry.Count > 1 ? $"×{entry.Count}" : string.Empty;
 		var room = Width - 2 - 2 - (repeats.Length > 0 ? repeats.Length + 1 : 0);
 		var text = Palette.Plain(entry.Text).Fit(room);
 		var gap = new string(' ', Math.Max(Width - 2 - 2 - text.Length - repeats.Length, 0));
-		return $"{_palette.Wrap(ink, mark)} {Palette.Escape(text)}{gap}{_palette.Wrap(Ink.Muted, repeats)}";
+		return $"{palette.Wrap(ink, mark)} {Palette.Escape(text)}{gap}{palette.Wrap(Ink.Muted, repeats)}";
 	}
 
 	private sealed class Entry(string text)

@@ -14,22 +14,14 @@ public static class ProcessExitCodes
 	public const int Restart = 75;
 }
 
-public sealed class ShutdownController : IServerControl
+public sealed class ShutdownController(
+	CtrlCMachine machine,
+	IHostApplicationLifetime lifetime,
+	ILogger<ShutdownController> logger,
+	Action<int>? exit = null)
+	: IServerControl
 {
-	private readonly Action<int> _exit;
-	private readonly IHostApplicationLifetime _lifetime;
-	private readonly ILogger<ShutdownController> _logger;
-	private readonly CtrlCMachine _machine;
-
-	public ShutdownController(CtrlCMachine machine, IHostApplicationLifetime lifetime,
-		ILogger<ShutdownController> logger,
-		Action<int>? exit = null)
-	{
-		_machine = machine;
-		_lifetime = lifetime;
-		_logger = logger;
-		_exit = exit ?? Environment.Exit;
-	}
+	private readonly Action<int> _exit = exit ?? Environment.Exit;
 
 	public bool RestartRequested { get; private set; }
 
@@ -38,29 +30,29 @@ public sealed class ShutdownController : IServerControl
 	public void RequestShutdown(bool restart)
 	{
 		RestartRequested |= restart;
-		Apply(_machine.Terminate());
+		Apply(machine.Terminate());
 	}
 
 	public event Action<ShutdownMessage>? Message;
 
 	public void Interrupt(bool hasTypedText = false)
 	{
-		Apply(_machine.Press(hasTypedText));
+		Apply(machine.Press(hasTypedText));
 	}
 
 	public void Terminate()
 	{
-		Apply(_machine.Terminate());
+		Apply(machine.Terminate());
 	}
 
 	public void Tick()
 	{
-		Apply(_machine.Tick());
+		Apply(machine.Tick());
 	}
 
 	public void Finish()
 	{
-		_machine.Finish();
+		machine.Finish();
 	}
 
 	private void Apply(CtrlCAction action)
@@ -78,16 +70,16 @@ public sealed class ShutdownController : IServerControl
 				Message?.Invoke(new ShutdownMessage(ShutdownMessageKind.Clear, string.Empty));
 				break;
 			case CtrlCAction.BeginShutdown:
-				_logger.LogInformation("Shutting down");
+				logger.LogInformation("Shutting down");
 				Message?.Invoke(new ShutdownMessage(ShutdownMessageKind.Progress, "Shutting down the server..."));
-				_lifetime.StopApplication();
+				lifetime.StopApplication();
 				break;
 			case CtrlCAction.WarnSlow:
 				Message?.Invoke(new ShutdownMessage(ShutdownMessageKind.Warning,
 					"Shutdown is taking longer than expected. Press Ctrl+C again to force shutdown (data loss may occur)."));
 				break;
 			case CtrlCAction.ForceExit:
-				_logger.LogWarning("Shutdown forced");
+				logger.LogWarning("Shutdown forced");
 				_exit(ProcessExitCodes.Error);
 				break;
 		}

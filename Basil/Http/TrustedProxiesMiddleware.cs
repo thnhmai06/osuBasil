@@ -3,7 +3,7 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Http;
 
-internal sealed class TrustedProxiesMiddleware
+internal sealed class TrustedProxiesMiddleware(RequestDelegate next, IOptions<ServerOptions> options)
 {
 	private static readonly string[] ForwardingHeaders =
 	[
@@ -14,14 +14,7 @@ internal sealed class TrustedProxiesMiddleware
 		"X-Country-Code"
 	];
 
-	private readonly RequestDelegate _next;
-	private readonly IPNetwork[] _trusted;
-
-	public TrustedProxiesMiddleware(RequestDelegate next, IOptions<ServerOptions> options)
-	{
-		_next = next;
-		_trusted = [.. options.Value.TrustedProxies.Select(ParseNetwork)];
-	}
+	private readonly IPNetwork[] _trusted = [.. options.Value.TrustedProxies.Select(ParseNetwork)];
 
 	public Task InvokeAsync(HttpContext context)
 	{
@@ -33,7 +26,7 @@ internal sealed class TrustedProxiesMiddleware
 			foreach (var header in ForwardingHeaders)
 				context.Request.Headers.Remove(header);
 
-		return _next(context);
+		return next(context);
 	}
 
 	private static IPNetwork ParseNetwork(string proxy)
