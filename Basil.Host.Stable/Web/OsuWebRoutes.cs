@@ -11,6 +11,7 @@ using Basil.Application.Anticheat.Services;
 using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Storage;
+using Basil.Application.Content.Messages;
 using Basil.Application.Rulesets.Messages;
 using Basil.Application.Scores.Messages;
 using Basil.Application.Scores.Objects;
@@ -82,9 +83,18 @@ internal static class OsuWebRoutes
 		web.MapGet("/web/osu-rate.php", RateAsync);
 		web.MapPost("/web/osu-comment.php", CommentAsync);
 		web.MapPost("/users", RegisterAsync);
-		foreach (var stub in new[]
-			         { "bancho_connect.php", "check-updates.php", "osu-getseasonal.php", "osu-markasread.php" })
-			web.MapGet("/web/" + stub, () => Results.Text(stub == "osu-getseasonal.php" ? "[]" : string.Empty));
+		web.MapGet("/web/osu-getseasonal.php", GetSeasonalsAsync);
+		foreach (var stub in new[] { "bancho_connect.php", "check-updates.php", "osu-markasread.php" })
+			web.MapGet("/web/" + stub, () => Results.Text(string.Empty));
+	}
+
+	// The client takes absolute URLs; the images are served by the assets host of the domain it called.
+	private static async Task<IResult> GetSeasonalsAsync(HttpContext context, ISender sender, CancellationToken ct)
+	{
+		var domain = context.Request.Host.Host["osu.".Length..];
+		var seasonals = await sender.Send(new ListSeasonals(), ct);
+		return Results.Json(seasonals.Select(image =>
+			$"https://assets.{domain}/menu/seasonals/{Path.GetFileName(image.Value)}"));
 	}
 
 	private static IResult Text(string text, int status = 200)
