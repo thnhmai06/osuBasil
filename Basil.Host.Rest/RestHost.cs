@@ -75,7 +75,7 @@ public static class RestHost
 			.WithDescription(
 				"The state is `healthy`, `degraded` when the server is busier than usual, or `shedding` when it is overloaded and refuses the least valuable work.");
 		app.MapDocs();
-		app.MapGuides();
+		app.MapDocsSite();
 		var v1 = app.MapGroup("/v1");
 		v1.MapAuth();
 		v1.MapUsers();

@@ -1,4 +1,3 @@
-using Basil.Host.Shared.Documentation;
 using Microsoft.OpenApi;
 using Scalar.AspNetCore;
 
@@ -19,7 +18,7 @@ internal static class OpenApiSetup
 
 	                                **Live data.** Routes marked as streams use Server-Sent Events and need no content negotiation; data is up to about one second old.
 
-	                                **Guides.** The chat commands of BasilBot and the IRC server are described at [`/guides`](/guides).
+	                                **Guides.** The chat commands of BasilBot and the IRC server are described at [`/docs/`](/docs/).
 	                                """;
 
 	public static IServiceCollection AddBasilOpenApi(this IServiceCollection services)
@@ -133,32 +132,17 @@ internal static class OpenApiSetup
 				return Task.CompletedTask;
 			});
 		});
-		services.AddOpenApi(ApiDocument.Stable, options =>
-		{
-			options.ShouldInclude = description => description.GroupName == ApiDocument.Stable;
-			options.AddDocumentTransformer((document, context, _) =>
-			{
-				var described = context.ApplicationServices.GetServices<ApiDocument>()
-					.FirstOrDefault(candidate => candidate.Name == ApiDocument.Stable);
-				document.Info = new OpenApiInfo
-				{
-					Title = described?.Title ?? "Basil osu! (stable) client endpoints", Version = "stable",
-					Description = described?.Overview
-				};
-				return Task.CompletedTask;
-			});
-		});
 		return services;
 	}
 
 	public static void MapDocs(this IEndpointRouteBuilder app)
 	{
 		app.MapOpenApi().ExcludeFromDescription();
-		app.MapScalarApiReference("/docs",
+		app.MapScalarApiReference("/docs/api",
 				options =>
 				{
 					options.WithTitle("Basil API").WithOpenApiRoutePattern("/openapi/{documentName}.json")
-						.AddDocument("v1", "Basil API").AddDocument(ApiDocument.Stable, "osu! (stable) client");
+						.AddDocument("v1", "Basil API");
 				})
 			.ExcludeFromDescription();
 	}

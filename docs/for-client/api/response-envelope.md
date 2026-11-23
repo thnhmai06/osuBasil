@@ -202,7 +202,7 @@ Do not assume that the `PUT` and `PATCH` request bodies have the same schema.
 The generated OpenAPI documentation contains the authoritative schemas:
 
 ```text
-https://api.<domain>/docs/
+https://api.<domain>/docs/api/
 ```
 
 ---

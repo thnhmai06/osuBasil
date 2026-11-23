@@ -68,19 +68,18 @@ instance serves them on its `api.` host:
 
 | Reference | Address | Format |
 | --- | --- | --- |
-| HTTP API | `/docs/v1` | Scalar, from `/openapi/v1.json` |
-| Endpoints the osu! (stable) client calls, and its packet ids | `/docs/osu-stable` | Scalar, from `/openapi/osu-stable.json` |
-| BasilBot commands | `/guides/bot` | page; Markdown at `/guides/bot.md` |
-| IRC | `/guides/irc` | page; Markdown at `/guides/irc.md` |
+| HTTP API | `/docs/api/` | Scalar, from `/openapi/v1.json` |
+| BasilBot commands | `/docs/bot/` | page |
+| IRC | `/docs/irc/` | page |
 
-The same references are published on [GitHub Pages](https://thnhmai06.github.io/osuBasil/).
+`/docs/` lists them. The same site, with the same layout, is published on [GitHub Pages](https://thnhmai06.github.io/osuBasil/).
+The endpoints the osu! (stable) client calls have no generated reference; [`for-developers/osu-stable.md`](for-developers/osu-stable.md) describes them.
 
 These generated references are the source for the detailed:
 
 * HTTP routes
 * request and response schemas
 * status codes
-* the endpoints and packets of the osu! (stable) client
 * BasilBot commands
 * the commands and capabilities of the IRC server
 

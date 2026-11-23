@@ -28,6 +28,8 @@ internal static class SpectateRoutes
 			                 The response is streamed using Server-Sent Events. Opening it spectates the player as an osu! client would: the player sees a spectator, and the spectating privilege, blocks and restrictions apply. The stream only watches; it joins no chat channel.
 
 			                 The first event is the snapshot with the player's profile and in-game status. After that a bundle arrives every second with the frames, score updates and status changes since the previous one.
+
+			                 A player who is not in game is answered with 409.
 			                 """);
 	}
 

@@ -1,7 +1,7 @@
 # Live updates (SSE) for clients
 
 Basil pushes one-way state with **Server-Sent Events** (`text/event-stream`). There is no WebSocket endpoint. The
-authoritative generated reference for each route is at `https://api.<domain>/docs/`.
+authoritative generated reference for each route is at `https://api.<domain>/docs/api/`.
 
 ## Routes
 

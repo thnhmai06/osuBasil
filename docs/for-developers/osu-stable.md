@@ -4,7 +4,7 @@
 
 Basil's osu! (stable) transport receives batches of binary packets through the osu! stable HTTP long-poll endpoint.
 
-The client-facing packet format is documented in [`protocol.md`](../for-client/osu-stable/protocol.md). This document describes
+The client-facing packet format is documented in [`protocol.md`](../for-client/osu-stable/protocol.md). The endpoints the client calls have no generated reference; this page and `protocol.md` are their only documentation. This document describes
 how `Basil.Host.Stable` turns those packets into operations on the Application objects, and how the answers get back to
 the client.
 

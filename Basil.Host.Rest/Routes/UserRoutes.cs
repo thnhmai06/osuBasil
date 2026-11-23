@@ -34,7 +34,7 @@ internal static class UserRoutes
 		token.MapGet("/", SearchAsync).Admitted(WorkClass.Listing).WithSummary("Search accounts.")
 			.WithDescription("`query` uses the user search syntax.");
 		token.MapPost("/", CreateAsync).WithSummary("Create an account.")
-			.WithDescription("For staff only. Accounts do not sign themselves up through this API.");
+			.WithDescription("Needs the Owner privilege, and the new account can only be given privileges the caller holds. Accounts do not sign themselves up through this API.");
 		token.MapPatch("/{id:int}", PatchAsync).WithSummary("Update an account.")
 			.WithDescription(
 				"Only the fields sent change. `away` and `pmPrivate` can be changed by the account itself only, and an empty `away` clears the away message.");
@@ -93,9 +93,9 @@ internal static class UserRoutes
 		token.MapPut("/{id:int}/silence", SilenceAsync)
 			.WithSummary("Create a silence on an account.")
 			.WithDescription(
-				"The silence lasts until `endsAt`. A silenced account cannot post chat messages and receives no private messages.");
+				"The silence lasts until `endsAt`, which must be in the future. A silenced account cannot post chat messages and receives no private messages.");
 		token.MapDelete("/{id:int}/silence", UnsilenceAsync).WithSummary("Delete the silence of an account.")
-			.WithDescription("The silence ends at once.");
+			.WithDescription("The silence ends at once. An account that is not silenced is answered with 404.");
 	}
 
 	private static async Task<IResult> GetAsync(int id, ISender sender, UserRegistry registry,

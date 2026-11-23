@@ -117,7 +117,7 @@ An administrator can also create an account through Basil's API, or with the ser
 See the API documentation available at:
 
 ```text
-https://api.<domain>/docs/
+https://api.<domain>/docs/api/
 ```
 
 ---

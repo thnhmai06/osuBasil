@@ -21,7 +21,7 @@ internal static class RulesetRoutes
 		ruleset.MapPost("/update", UpdateAsync)
 			.WithSummary("Update the ruleset version.")
 			.WithDescription("""
-			                 Stages the newest stable version for the next restart, after checking it against the hash its feed publishes; nothing is kept when the check fails. The star ratings already stored stay as they were until the beatmaps are reloaded with `POST /v1/beatmapsets/reload`.
+			                 Stages the newest stable version for the next restart once it has been verified; nothing is kept when verification fails. The star ratings already stored stay as they were until the beatmaps are reloaded with `POST /v1/beatmapsets/reload`.
 
 			                 When no newer version exists, `staged` is `false` and nothing needs to be done.
 

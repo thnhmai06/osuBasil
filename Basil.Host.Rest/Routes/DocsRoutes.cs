@@ -4,32 +4,26 @@ using Markdig;
 
 namespace Basil.Host.Rest.Routes;
 
-internal static class GuideRoutes
+internal static class DocsRoutes
 {
 	private static readonly MarkdownPipeline Pipeline =
 		new MarkdownPipelineBuilder().UsePipeTables().DisableHtml().Build();
 
-	public static void MapGuides(this IEndpointRouteBuilder app)
+	public static void MapDocsSite(this IEndpointRouteBuilder app)
 	{
-		app.MapGet("/guides", (IEnumerable<IDocumentPage> pages) => Html("Guides",
-				"<h1>Guides</h1><ul>" + string.Concat(pages.OrderBy(page => page.Slug).Select(page =>
-					$"<li><a href=\"/guides/{page.Slug}\">{WebUtility.HtmlEncode(page.Title)}</a></li>")) + "</ul>"))
+		app.MapGet("/", () => Results.Redirect("/docs/")).ExcludeFromDescription();
+		app.MapGet("/docs", (HttpContext context) => context.Request.Path.Value!.EndsWith('/')
+				? Html("Basil Documentation", "<h1>Basil Documentation</h1><ul>" +
+				                              "<li><a href=\"api/\">HTTP API</a></li>" +
+				                              "<li><a href=\"irc/\">IRC</a></li>" +
+				                              "<li><a href=\"bot/\">BasilBot</a></li></ul>")
+				: Results.Redirect("/docs/"))
 			.ExcludeFromDescription();
-		app.MapGet("/guides/{slug}", (string slug, IEnumerable<IDocumentPage> pages) =>
-				Find(pages, slug) is { } page
+		app.MapGet("/docs/{slug}", (string slug, IEnumerable<IDocumentPage> pages) =>
+				pages.FirstOrDefault(page => page.Slug.Equals(slug, StringComparison.OrdinalIgnoreCase)) is { } page
 					? Html(page.Title, Markdown.ToHtml(page.Markdown(), Pipeline))
 					: Results.NotFound())
 			.ExcludeFromDescription();
-		app.MapGet("/guides/{slug}.md", (string slug, IEnumerable<IDocumentPage> pages) =>
-				Find(pages, slug) is { } page
-					? Results.Text(page.Markdown(), "text/markdown; charset=utf-8")
-					: Results.NotFound())
-			.ExcludeFromDescription();
-	}
-
-	private static IDocumentPage? Find(IEnumerable<IDocumentPage> pages, string slug)
-	{
-		return pages.FirstOrDefault(page => page.Slug.Equals(slug, StringComparison.OrdinalIgnoreCase));
 	}
 
 	private static IResult Html(string title, string body)

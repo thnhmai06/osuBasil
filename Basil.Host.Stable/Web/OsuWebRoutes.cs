@@ -28,7 +28,6 @@ using Basil.Gateway.Admission;
 using Basil.Gateway.Limits;
 using Basil.Gateway.RateLimiting;
 using Basil.Host.Stable.Packets;
-using Basil.Host.Stable.Routes;
 using Basil.Host.Stable.Support;
 using Basil.Protocol.Game.Stable.Models.Client;
 using Basil.Protocol.Game.Stable.Models.Scores;
@@ -46,7 +45,7 @@ internal static class OsuWebRoutes
 
 	public static void MapOsuWeb(this IEndpointRouteBuilder app)
 	{
-		var web = app.MapGroup("").WithGroupName(StableDocumentation.Group).WithTags("Web")
+		var web = app.MapGroup("")
 			.WithMetadata(new AdmissionPolicyAttribute()).AddEndpointFilter<StableAdmission>()
 			.AddEndpointFilter(async (invocation, next) =>
 			{
@@ -59,105 +58,33 @@ internal static class OsuWebRoutes
 					return Results.BadRequest();
 				}
 			});
-		web.MapGet("/", () => "osu").WithSummary("Say that the web host of the osu! client is there.");
+		web.MapGet("/", () => "osu");
 		web.MapGet("/web/osu-osz2-getscores.php", GetScoresAsync)
-			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Listing })
-			.WithSummary("List the best scores of a beatmap.")
-			.WithDescription("""
-			                 Query: `us` (username), `ha` (password hash), `c` (beatmap hash), `m` (mode), `v` (leaderboard type), `mods`.
-			                 The answer is a text: a header line with the ranked status and the beatmap, then one line per score.
-			                 An unknown beatmap is answered `-1|false`; wrong credentials are answered 401.
-			                 """);
-		web.MapGet("/web/osu-getfriends.php", GetFriendsAsync)
-			.WithSummary("List the ids of the player's friends.")
-			.WithDescription("Query: `u` (username), `h` (password hash). The answer is one id per line.");
-		web.MapPost("/web/osu-getbeatmapinfo.php", GetBeatmapInfoAsync)
-			.WithSummary("Say which of the listed beatmap files the server knows.")
-			.WithDescription("""
-			                 Query: `u`, `h`. The JSON body lists the file names; the answer has one line per known file.
-			                 The number of file names answered is capped.
-			                 """);
+			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Listing });
+		web.MapGet("/web/osu-getfriends.php", GetFriendsAsync);
+		web.MapPost("/web/osu-getbeatmapinfo.php", GetBeatmapInfoAsync);
 		web.MapPost("/web/osu-submit-modular-selector.php", SubmitAsync)
-			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Upload })
-			.WithSummary("Submit a score.")
-			.WithDescription("""
-			                 A multipart form: the encrypted score (`score`, with `iv` and `osuver`), the encrypted client hash (`s`), `pass`,
-			                 `c1`, `sbk` and the replay. A score that is accepted is answered with a line of beatmap statistics; anything
-			                 else (wrong credentials, a score that cannot be read, a refused score) is answered `error: no`.
-			                 """);
-		web.MapGet("/web/osu-getreplay.php", GetReplayAsync)
-			.WithSummary("Download the replay of a score.")
-			.WithDescription("Query: `u`, `h`, `c` (score id). The answer is the replay file, or 404.");
+			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Upload });
+		web.MapGet("/web/osu-getreplay.php", GetReplayAsync);
 		web.MapPost("/web/osu-screenshot.php", ScreenshotAsync)
-			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Upload })
-			.WithSummary("Upload a screenshot.")
-			.WithDescription("""
-			                 A multipart form with `u`, `p` and the picture `ss`. The answer is the reference of the stored screenshot;
-			                 400 is a refused picture and 413 one that is too large.
-			                 """);
-		web.MapGet("/web/lastfm.php", LastFmAsync)
-			.WithSummary("Receive the client's cheat-detection flags.")
-			.WithDescription("Query: `us`, `ha`, `b` (the flags, written `a` followed by a number).");
+			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Upload });
+		web.MapGet("/web/lastfm.php", LastFmAsync);
 		web.MapGet("/web/osu-search.php", SearchAsync)
-			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Listing })
-			.WithSummary("Search beatmapsets for osu!direct.")
-			.WithDescription("""
-			                 Query: `u`, `h`, `q` (the search; `Newest`, `Top+Rated` and `Most+Played` search nothing), `r` (ranked
-			                 status, 0 to 8; 4 is every status), `m` (game mode; -1 is every mode) and `p` (the page, from 0).
-			                 Needs the privilege to use osu!direct, otherwise 403; a missing or invalid parameter is answered 400.
-			                 The first line is the number of beatmapsets found, or 101 when the page is full, which tells the client that
-			                 another page follows. Each next line is a beatmapset, 100 at most, with its difficulties ordered by stars.
-			                 """);
+			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Listing });
 		web.MapGet("/web/osu-search-set.php", SearchSetAsync)
-			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Listing })
-			.WithSummary("Look up one beatmapset for osu!direct.")
-			.WithDescription("Query: `u`, `h`, `s` (set id). Needs the privilege to use osu!direct, otherwise 403.");
-		web.MapGet("/d/{setId}", DownloadAsync)
-			.WithSummary("Download a beatmapset archive.")
-			.WithDescription("""
-			                 Query: `u`, `h`. The id may end with `n` (without video). Answers the archive, or 404 when the server does
-			                 not have it; needs the privilege to use osu!direct, otherwise 403.
-			                 """);
+			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Listing });
+		web.MapGet("/d/{setId}", DownloadAsync);
 		web.MapGet("/web/maps/{filename}", GetBeatmapFileAsync)
-			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Listing })
-			.WithSummary("Download the .osu file of a beatmap by its file name.")
-			.WithDescription(
-				"The file name is the one osu! gives the difficulty. Answers the file, or 404 when the server does not have it.");
-		web.MapPost("/difficulty-rating", GetDifficultyRatingAsync)
-			.WithSummary("Get the star rating of a beatmap.")
-			.WithDescription("""
-			                 Query: `b` (beatmap id) and `mods` (the mods number). The answer is the JSON `{"beatmap_id", "mods", "rating"}`.
-			                 The rating is the star rating of the beatmap under the mods, rounded to two decimals. Answers 400 for a
-			                 parameter that is not a number and 404 when the server does not have the beatmap or cannot rate it.
-			                 """);
-		web.MapGet("/web/osu-getfavourites.php", GetFavouritesAsync)
-			.WithSummary("List the ids of the player's favourite beatmapsets.")
-			.WithDescription("Query: `u`, `h`. Basil keeps no favourites, so the answer is empty.");
-		web.MapGet("/web/osu-addfavourite.php", AddFavouriteAsync)
-			.WithSummary("Add a beatmapset to the player's favourites.")
-			.WithDescription(
-				"Query: `u`, `h`, `a` (set id). Basil keeps no favourites, so nothing is added and the answer is empty.");
-		web.MapGet("/web/osu-rate.php", RateAsync)
-			.WithSummary("Rate a beatmap, or ask whether the player may.")
-			.WithDescription(
-				"Query: `u`, `p` (password hash), `c` (beatmap hash), `v` (the rating). Basil keeps no ratings: the answer is `not ranked`.");
-		web.MapPost("/web/osu-comment.php", CommentAsync)
-			.WithSummary("Read or write the comments of a beatmap.")
-			.WithDescription(
-				"A form with `u`, `p` and the comment fields. Basil keeps no comments, so the answer is empty.");
-		web.MapPost("/users", RegisterAsync)
-			.WithSummary("Register an account, or only check that the details are acceptable.")
-			.WithDescription("""
-			                 A form with `user[username]`, `user[user_email]`, `user[password]` and `check` (anything but `0` only checks
-			                 and is answered `ok`). Refusals are answered with a JSON `form_error`. Checks from one address are limited,
-			                 then answered 429.
-			                 """);
+			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Listing });
+		web.MapPost("/difficulty-rating", GetDifficultyRatingAsync);
+		web.MapGet("/web/osu-getfavourites.php", GetFavouritesAsync);
+		web.MapGet("/web/osu-addfavourite.php", AddFavouriteAsync);
+		web.MapGet("/web/osu-rate.php", RateAsync);
+		web.MapPost("/web/osu-comment.php", CommentAsync);
+		web.MapPost("/users", RegisterAsync);
 		foreach (var stub in new[]
 			         { "bancho_connect.php", "check-updates.php", "osu-getseasonal.php", "osu-markasread.php" })
-			web.MapGet("/web/" + stub, () => Results.Text(stub == "osu-getseasonal.php" ? "[]" : string.Empty))
-				.WithSummary($"Answer the client's call to {stub} with nothing to say.")
-				.WithDescription(
-					"Basil has nothing to offer here; the answer is empty (`[]` for the seasonal backgrounds).");
+			web.MapGet("/web/" + stub, () => Results.Text(stub == "osu-getseasonal.php" ? "[]" : string.Empty));
 	}
 
 	private static IResult Text(string text, int status = 200)

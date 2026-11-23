@@ -23,7 +23,6 @@ public static class StableRoutes
 		services.AddSingleton<LoginAttemptGuard>();
 		services.AddSingleton<StableState>();
 		services.AddSingleton<RestartAnnouncer>();
-		services.AddSingleton(StableDocumentation.Document);
 		services.AddSingleton<StableShutdown>();
 		services.AddSingleton<StableLogin>();
 		services.AddSingleton<PacketHandlers>();
@@ -56,12 +55,10 @@ public static class StableRoutes
 
 	internal static void MapStable(this IEndpointRouteBuilder app)
 	{
-		var cho = app.MapGroup("").WithGroupName(StableDocumentation.Group).WithTags("Game server")
+		var cho = app.MapGroup("")
 			.WithMetadata(new AdmissionPolicyAttribute()).AddEndpointFilter<StableAdmission>();
-		cho.MapGet("/", () => "cho").WithSummary("Say that the game server of the osu! client is there.");
-		cho.MapPost("/", ExchangeAsync)
-			.WithSummary("Log in, or exchange packets.")
-			.WithDescription(StableDocumentation.ExchangeDescription());
+		cho.MapGet("/", () => "cho");
+		cho.MapPost("/", ExchangeAsync);
 	}
 
 	private static async Task<IResult> ExchangeAsync(HttpContext context, SessionRegistry registry, StableLogin login,

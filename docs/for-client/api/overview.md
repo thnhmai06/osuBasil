@@ -39,13 +39,13 @@ It contains:
 Open:
 
 ```text
-https://api.<domain>/docs/
+https://api.<domain>/docs/api/
 ```
 
 For example:
 
 ```text
-https://api.example.com/docs/
+https://api.example.com/docs/api/
 ```
 
 ### Online documentation

@@ -45,7 +45,7 @@ The complete command reference is generated from BasilBot's command catalog: the
 `!help` and `!mp help`, so the reference, the help and the commands the bot answers cannot drift apart.
 
 It lists every command with its arguments and what it does. A running instance serves it at
-`https://api.<domain>/guides/bot` (Markdown at `/guides/bot.md`), and it is published on
+`https://api.<domain>/docs/bot/`, and it is published on
 [GitHub Pages](https://thnhmai06.github.io/osuBasil/).
 
 The generated reference is the authoritative source for the current command syntax. This page intentionally does not

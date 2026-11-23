@@ -91,10 +91,10 @@ jobs:
         run: |
           mkdir -p openapi
           curl -sf -H "Host: api.basil.local" http://127.0.0.1:5099/openapi/v1.json -o openapi/v1.json
-          curl -sf -H "Host: api.basil.local" http://127.0.0.1:5099/openapi/osu-stable.json -o openapi/osu-stable.json
-          # The guides the bot and the IRC host write about themselves, as pages.
+          # The pages of the documentation site the server serves.
+          curl -sf -H "Host: api.basil.local" http://127.0.0.1:5099/docs/ -o openapi/index.html
           for guide in bot irc; do
-            curl -sf -H "Host: api.basil.local" "http://127.0.0.1:5099/guides/$guide" -o "openapi/$guide.html"
+            curl -sf -H "Host: api.basil.local" "http://127.0.0.1:5099/docs/$guide/" -o "openapi/$guide.html"
           done
 
       # The collection is built from the checked-in document, so the two must describe the document the server serves.
@@ -175,32 +175,12 @@ jobs:
           EOF
           }
           scalar api "Basil API" v1.json
-          scalar osu-stable "osu! (stable) client" osu-stable.json
           for guide in bot irc; do
             mkdir -p "$SITE/docs/$guide"
             # The guides name the host they were written on; a published page names no host.
             sed 's/basil\.local/your-domain/g' "openapi/$guide.html" > "$SITE/docs/$guide/index.html"
           done
-          cat > "$SITE/docs/index.html" <<EOF
-          <!doctype html>
-          <html lang="en">
-          <head>
-          	<meta charset="utf-8">
-          	<meta content="width=device-width, initial-scale=1" name="viewport">
-          	<link href="icon.png" rel="icon" type="image/png">
-          	<title>Basil Documentation</title>
-          </head>
-          <body>
-          <h1>Basil Documentation</h1>
-          <ul>
-          	<li><a href="api/">HTTP API</a></li>
-          	<li><a href="osu-stable/">osu! (stable) client endpoints</a></li>
-          	<li><a href="bot/">BasilBot commands</a></li>
-          	<li><a href="irc/">IRC</a></li>
-          </ul>
-          </body>
-          </html>
-          EOF
+          cp openapi/index.html "$SITE/docs/index.html"
           cat > "$SITE/index.html" <<EOF
           <!doctype html>
           <html lang="en">
