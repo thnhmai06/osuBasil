@@ -66,6 +66,9 @@
 		<Content Include="..\assets\menu-banner.png" Link="Data\Menu\Banners\default-banner@2x.png">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
+		<Content Include="..\assets\github-banner.png" Link="Data\Menu\Seasonals\github-banner.png">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
 		<!-- The operator's files live in Configurations/ beside the executable (settings, schema, certificate, templates). -->
 		<Content Update="Configurations\**" CopyToOutputDirectory="PreserveNewest"/>
 		<Content Update="Data\Localizations\*.json">

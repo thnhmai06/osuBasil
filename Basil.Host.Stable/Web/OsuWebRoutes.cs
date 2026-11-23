@@ -59,7 +59,7 @@ internal static class OsuWebRoutes
 					return Results.BadRequest();
 				}
 			});
-		web.MapGet("/", () => "osu");
+		web.MapGet("/", () => Results.Redirect("https://github.com/thnhmai06/osuBasil"));
 		web.MapGet("/web/osu-osz2-getscores.php", GetScoresAsync)
 			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Listing });
 		web.MapGet("/web/osu-getfriends.php", GetFriendsAsync);

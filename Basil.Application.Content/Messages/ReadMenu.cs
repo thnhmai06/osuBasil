@@ -3,7 +3,7 @@ using Mediator;
 
 namespace Basil.Application.Content.Messages;
 
-public sealed record ListBanners : IRequest<IReadOnlyList<MenuBanner>>;
+public sealed record ListBanners(bool OnlyAvailable = false) : IRequest<IReadOnlyList<MenuBanner>>;
 
 public sealed record ListSeasonals : IRequest<IReadOnlyList<ContentReference>>;
 

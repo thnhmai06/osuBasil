@@ -22,7 +22,8 @@ moved to `assets.<domain>`, a corresponding `GET` on `api.<domain>` redirects to
 `assets.<domain>` serves:
 
 * `GET /menu-content.json` — the main-menu banner manifest. Its path and field names are fixed by the protocol,
-  including the client's PascalCase `IsCurrent` field. See `MenuContentMiddleware`.
+  including the client's PascalCase `IsCurrent` field. See `MenuContentMiddleware`. A banner whose stored image is
+  missing is left out of the manifest; the HTTP API and the console still list it, so it can be deleted.
 
 * `GET /menu/banners/{fileName}` — menu banners.
 
@@ -34,7 +35,13 @@ moved to `assets.<domain>`, a corresponding `GET` on `api.<domain>` redirects to
   and `?rmode=`.
 
 * `GET /menu/seasonals` — lists seasonal files by bare filename. `osu.<domain>/web/osu-getseasonal.php` uses this
-  listing to construct its URLs.
+  listing to construct its URLs. The list is the content of the seasonals folder, so an image placed there is served
+  at once.
+
+A fresh install has one banner (`default-banner@2x.png`, always current, opening the project's GitHub page) and one
+seasonal background (`github-banner.png`). Both files ship in the program's `Data` folder, and the database starts with
+the banner's record. When `Basil:Storage:Location` points outside the program folder, copy them there to keep them;
+otherwise the banner is left out of the manifest as above.
 
 * `GET /beatmapsets/{beatmapsetId}/background` — beatmapset background.
 

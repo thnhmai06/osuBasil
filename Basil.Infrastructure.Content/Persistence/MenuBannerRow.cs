@@ -23,5 +23,11 @@ internal sealed class MenuBannerRowConfiguration : IEntityTypeConfiguration<Menu
 		builder.ToTable("menu_banners");
 		builder.HasKey(row => row.Image);
 		builder.Property(row => row.Image).HasMaxLength(255);
+		builder.HasData(new MenuBannerRow
+		{
+			Image = "Menu/Banners/default-banner@2x.png",
+			Url = "https://github.com/thnhmai06/osuBasil",
+			CreatedAt = new DateTimeOffset(2026, 11, 24, 0, 0, 0, TimeSpan.Zero)
+		});
 	}
 }

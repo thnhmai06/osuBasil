@@ -156,7 +156,7 @@ internal sealed class MenuContentMiddleware(RequestDelegate next)
 		}
 
 		var now = clock.GetUtcNow();
-		var banners = await sender.Send(new ListBanners(), context.RequestAborted);
+		var banners = await sender.Send(new ListBanners(true), context.RequestAborted);
 		var images = banners.Select(b => new MenuContentImage(
 			b.Image.IsOffline
 				? $"https://assets.{options.Value.Domain}/menu/banners/{Path.GetFileName(b.Image.Value)}"
