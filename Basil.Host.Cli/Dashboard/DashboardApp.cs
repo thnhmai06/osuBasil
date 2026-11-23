@@ -187,11 +187,11 @@ public sealed class DashboardApp
 	private string SmallLine(int line)
 	{
 		var (needWidth, needHeight) = Layout.Needed(Tab);
-		var width = _palette.Wrap(_columns.Value < needWidth ? Ink.Error : Ink.Success, needWidth.ToString());
-		var height = _palette.Wrap(_rows.Value < needHeight ? Ink.Error : Ink.Success, needHeight.ToString());
+		var currentWidth = _palette.Wrap(_columns.Value < needWidth ? Ink.Error : Ink.Success, _columns.Value.ToString());
+		var currentHeight = _palette.Wrap(_rows.Value < needHeight ? Ink.Error : Ink.Success, _rows.Value.ToString());
 		return line == 0
-			? $"Current : {_columns.Value} × {_rows.Value}"
-			: $"Needed  : {width} × {height}  ({Tab})";
+			? $"Current : {currentWidth} × {currentHeight}"
+			: $"Needed  : {needWidth} × {needHeight}  ({Tab})";
 	}
 
 	// The key reminders of the tab in view; the ones with an action can be clicked.
