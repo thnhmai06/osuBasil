@@ -34,11 +34,13 @@ touching users, connections, privileges, silences or the bot.
   connection closes one event-queue step later.
 * **BasilBot is the server's voice.** The server has one fixed user, id 1. At startup it makes sure id 1 is the bot: it
   takes over an existing id (restoring a deleted account under the default name, keeping a live one's name and country,
-  removing its privileges, password and silence and closing its sessions) or creates it. This is the one
+  setting its privileges to `Moderator`, removing its password and silence and closing its sessions) or creates it
+  with the Vietnam flag. This is the one
   account the server creates and the one id it chooses. The bot is a friend of everybody. Nobody can sign in as it or
   act for it (no login, no presentable token, no delegation); its record is fixed (not deleted, silenced, given
   privileges or a password, or disconnected), while its metadata (name, country, avatar) is editable. It never passes a
-  privilege check because it never asks for anything; its privileges only decide how a client shows it. It is a module (`Application.Bot` and
+  privilege check because it never asks for anything; its `Moderator` privilege is for display only (how a client shows
+  it), and its own connections act with no privileges. It is a module (`Application.Bot` and
   `Infrastructure.Bot`) bound to user id 1. It is online with exactly one Stable and one Irc
   session, opened by the server with no transport behind them, and has no session type of its own: they are an
   ordinary `StableSession` and `IrcSession` that `Session.IsServerOwned` marks (the session of bot id 1).
@@ -64,7 +66,7 @@ touching users, connections, privileges, silences or the bot.
   itself says (a message with no actor) and what its own osu! and IRC sessions post are never parsed as commands, so
   no reply can start a command. It
   is the **one entry point that skips privilege checks**, because whoever sits at the console owns the machine; BasilBot
-  itself still has no privileges.
+  itself acts with no privileges (its `Moderator` is display only).
 * **Locks freeze an area for everyone but its manager.** `ServerSettings.Locks` is one flags enum: `Accounts`
   (registration; `Owner`), `Rooms` (creation; `Tournament`), `Beatmapsets` (upload and delete on every entry
   point; `Tournament`, while the file watcher keeps running) and `Profiles` (a user changing their own username,

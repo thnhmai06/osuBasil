@@ -58,7 +58,7 @@ public abstract class Session(Domain.Sessions.Session state, string token) : IAc
 
 	public virtual UserPrivileges EffectivePrivileges(DateTimeOffset now)
 	{
-		return User.EffectivePrivileges(now);
+		return IsServerOwned ? UserPrivileges.None : User.EffectivePrivileges(now);
 	}
 
 	internal SessionStatus StatusAt(DateTimeOffset now)

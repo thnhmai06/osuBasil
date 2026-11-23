@@ -360,7 +360,7 @@ public sealed class SessionRegistry
 	public async Task<UserRecord> EnsureBotAsync(CancellationToken ct = default)
 	{
 		var stored = await _context.Users.GetAsync(BasilBot.Id, ct);
-		var isBot = stored is { Value: { DeletedAt: null, Privileges: UserPrivileges.None, SilencedEnd: null } };
+		var isBot = stored is { Value: { DeletedAt: null, Privileges: UserPrivileges.Moderator, SilencedEnd: null } };
 
 		if (!isBot && stored is not null) CloseAll(stored, SessionEndReason.Revoked);
 
@@ -368,8 +368,8 @@ public sealed class SessionRegistry
 			? stored!
 			: await _context.Users.ReplaceAsync(BasilBot.Id, stored is { Value.DeletedAt: null }
 				? new UserData
-					{ Name = stored.Value.Name, Country = stored.Value.Country, Privileges = UserPrivileges.None }
-				: new UserData { Name = BotName, Privileges = UserPrivileges.None });
+					{ Name = stored.Value.Name, Country = stored.Value.Country, Privileges = UserPrivileges.Moderator }
+				: new UserData { Name = BotName, Country = Country.Vn, Privileges = UserPrivileges.Moderator });
 
 		await _context.Credentials.DeleteAsync(bot);
 		return bot;
