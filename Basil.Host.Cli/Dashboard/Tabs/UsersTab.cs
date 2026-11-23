@@ -1,15 +1,15 @@
 using Basil.Application.Multiplayer.Registry;
+using Basil.Application.Sessions.Registry;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Registry;
 using Basil.Domain.Users;
 using Basil.Host.Cli.Dashboard.Shell;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using XenoAtom.Terminal.UI;
-using User = Basil.Application.Users.Objects.User;
+using Basil.Application.Sessions.Objects;
 
 namespace Basil.Host.Cli.Dashboard.Tabs;
 
@@ -30,7 +30,7 @@ internal sealed class UsersSource(IServiceProvider services, TimeProvider clock)
 {
 	public async Task<IReadOnlyList<SectionData<UserItem>>> LoadAsync(string query, int limit, CancellationToken ct)
 	{
-		var registry = services.GetRequiredService<UserRegistry>();
+		var registry = services.GetRequiredService<SessionRegistry>();
 		var lobby = services.GetRequiredService<Lobby>();
 		// The table hides deleted accounts, as the delete dialog promises, unless the search asks for them.
 		var parsed = UserQuery.Parse(query);
@@ -62,7 +62,7 @@ internal sealed class UsersSource(IServiceProvider services, TimeProvider clock)
 		        countries.Any(c => string.Equals(c.ToAcronym(), country, StringComparison.OrdinalIgnoreCase)));
 	}
 
-	internal static UserItem Item(Lobby lobby, UserRecord record, User? user,
+	internal static UserItem Item(Lobby lobby, UserRecord record, UserSessions? user,
 		DateTimeOffset now)
 	{
 		var mask = user is null ? (ulong)record.Value.Privileges : (ulong)user.EffectivePrivileges(now);

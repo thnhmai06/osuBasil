@@ -5,7 +5,7 @@ using Basil.Application.Bot.Replies;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Servers.Objects;
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
 using Basil.Domain.Multiplayer.Room;
 using Mediator;
 using Microsoft.Extensions.Logging;

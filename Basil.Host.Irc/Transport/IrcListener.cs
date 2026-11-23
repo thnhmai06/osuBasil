@@ -1,3 +1,4 @@
+using Basil.Application.Sessions.Registry;
 using Basil.Domain;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -6,7 +7,6 @@ using System.Net.Sockets;
 using System.Text;
 using Basil.Application.Diagnostics.Services;
 using Basil.Application.Shared.Settings;
-using Basil.Application.Users.Registry;
 using Basil.Domain.Sessions;
 using Basil.Gateway.Admission;
 using Basil.Gateway.Limits;
@@ -26,7 +26,7 @@ internal sealed class IrcListener(
 	IrcClients clients,
 	IrcState state,
 	Admission admission,
-	UserRegistry registry,
+	SessionRegistry registry,
 	ISender sender,
 	TimeProvider clock,
 	ILogger<IrcListener> logger) : BackgroundService

@@ -1,6 +1,6 @@
+using Basil.Application.Sessions.Registry;
 using System.Globalization;
 using Basil.Application.Beatmaps.Messages;
-using Basil.Application.Users.Registry;
 using Basil.Domain.Beatmaps;
 using Basil.Host.Cli.Dashboard.Shell;
 using Mediator;
@@ -42,7 +42,7 @@ internal sealed class BeatmapDetails(IServiceProvider services, CommandActions a
 			return new DetailView(id.ToString(CultureInfo.InvariantCulture), [("Beatmap", "not found", Ink.Warning)],
 				[]);
 
-		var actor = await services.GetRequiredService<UserRegistry>().OperateAsync();
+		var actor = await services.GetRequiredService<SessionRegistry>().OperateAsync();
 		var set = await sender.Send(new GetBeatmapset(actor, map.Beatmapset.Id));
 		return Of(BeatmapsSource.Item(map, map.Beatmapset, set?.Beatmaps.Count ?? 1));
 	}

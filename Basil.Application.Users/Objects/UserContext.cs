@@ -1,4 +1,3 @@
-using Basil.Application.Sessions.Persistence;
 using Basil.Application.Content.Ports;
 using Basil.Application.Shared.Events;
 using Basil.Application.Shared.Settings;
@@ -17,8 +16,6 @@ internal sealed record UserContext(
 	IUserRepository Users,
 	IModerationLogRepository ModerationLog,
 	IRelationshipRepository Relationships,
-	ISessionRepository Sessions,
-	ICredentialRepository Credentials,
 	IUserAvatarStorage Avatars,
 	IScreenshotInspector Inspector,
 	IUploadSpool Spool,

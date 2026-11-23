@@ -1,8 +1,8 @@
+using Basil.Application.Sessions.Registry;
 using Basil.Domain;
 using System.Globalization;
 using System.Text.Json;
 using Basil.Application.Shared.Settings;
-using Basil.Application.Users.Registry;
 using Basil.Gateway.RateLimiting;
 using Basil.Host.Rest.Sse;
 using Mediator;
@@ -14,7 +14,7 @@ internal sealed class RestPipeline(RequestDelegate next)
 {
 	internal const string RetryAfterWhileStopping = "5";
 
-	public async Task InvokeAsync(HttpContext context, UserRegistry registry, ISender sender,
+	public async Task InvokeAsync(HttpContext context, SessionRegistry registry, ISender sender,
 		RateLimiter limiter, SseHub hub, ILogger<RestPipeline> logger)
 	{
 		if (hub.Stopping)

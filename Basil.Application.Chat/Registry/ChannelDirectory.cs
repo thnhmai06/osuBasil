@@ -1,8 +1,8 @@
 using Basil.Application.Chat.Messages;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Multiplayer.Registry;
-using Basil.Application.Users.Objects.Sessions;
-using Basil.Application.Users.Registry;
+using Basil.Application.Sessions.Objects;
+using Basil.Application.Sessions.Registry;
 
 namespace Basil.Application.Chat.Registry;
 
@@ -11,12 +11,12 @@ public sealed class ChannelDirectory
 	private readonly GeneralChannelRegistry _general;
 	private readonly Lobby _lobby;
 	private readonly PmChannels _pmChannels;
-	private readonly UserRegistry _registry;
+	private readonly SessionRegistry _registry;
 	private readonly RoomChannels _roomChannels;
 	private readonly SpectatorChannels _spectatorChannels;
 
 	internal ChannelDirectory(GeneralChannelRegistry general, Lobby lobby, RoomChannels roomChannels,
-		SpectatorChannels spectatorChannels, PmChannels pmChannels, UserRegistry registry)
+		SpectatorChannels spectatorChannels, PmChannels pmChannels, SessionRegistry registry)
 	{
 		_general = general;
 		_lobby = lobby;

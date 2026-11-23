@@ -1,7 +1,7 @@
 using Basil.Application.Chat.Objects;
 using Basil.Application.Servers.Capabilities;
-using Basil.Application.Users.Objects.Events;
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
+using Basil.Application.Sessions.Objects.Events;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using User = Basil.Application.Users.Objects.User;
@@ -57,7 +57,7 @@ public sealed partial class Server
 		return true;
 	}
 
-	public Task<bool> WhisperAsync(User to, string text, bool notice = false,
+	public Task<bool> WhisperAsync(UserSessions to, string text, bool notice = false,
 		CancellationToken ct = default)
 	{
 		if (!to.IsOnline) return Task.FromResult(false);
@@ -109,7 +109,7 @@ public sealed partial class Server
 			.ToList();
 		if (recipients.Count == 0) return 0;
 
-		context.Events.Publish(new UserNotificationSent(recipients, text));
+		context.Events.Publish(new SessionNotificationSent(recipients, text));
 		return recipients.Count;
 	}
 }

@@ -1,8 +1,8 @@
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Multiplayer.Registry;
-using Basil.Application.Users.Objects.Sessions;
-using Basil.Application.Users.Registry;
+using Basil.Application.Sessions.Objects;
+using Basil.Application.Sessions.Registry;
 using Basil.Host.Stable.Support;
 using Basil.Protocol.Game.Stable.Wire.Packets;
 using Mediator;
@@ -128,7 +128,7 @@ internal sealed class RoomObserverDelivery(Outbox outbox) : INotificationHandler
 	}
 }
 
-internal sealed class RoomInviteDelivery(UserRegistry registry, Outbox outbox) : INotificationHandler<RoomPlayerInvited>
+internal sealed class RoomInviteDelivery(SessionRegistry registry, Outbox outbox) : INotificationHandler<RoomPlayerInvited>
 {
 	public ValueTask Handle(RoomPlayerInvited notification, CancellationToken ct)
 	{

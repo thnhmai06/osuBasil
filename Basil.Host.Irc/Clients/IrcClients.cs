@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
 
 namespace Basil.Host.Irc.Clients;
 

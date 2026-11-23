@@ -8,7 +8,7 @@ using Basil.Application.Content.Storage;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Shared.Storage;
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
 using Basil.Application.Users.Persistence;
 
 namespace Basil.Application.Servers.Objects;

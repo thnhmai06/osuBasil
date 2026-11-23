@@ -3,7 +3,7 @@ using Basil.Application.Chat.Objects;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
 using Basil.Domain.Chat;
 using Basil.Host.Irc.Clients;
 using Basil.Host.Irc.Support;
@@ -114,7 +114,7 @@ internal sealed partial class IrcCommands
 
 	private User? FindUser(string nick)
 	{
-		return registry.Online.Values.FirstOrDefault(user => IrcView.IsNick(user.Record, nick));
+		return registry.Online.Values.FirstOrDefault(user => IrcView.IsNick(user.Record, nick))?.User;
 	}
 
 	private async Task JoinAsync(IrcSocket session, Session actor, IrcMessage message,

@@ -1,6 +1,6 @@
 using Basil.Application.Chat.Registry;
 using Basil.Application.Multiplayer.Registry;
-using Basil.Application.Users.Registry;
+using Basil.Application.Sessions.Registry;
 using Basil.Host.Cli.Commands;
 using Basil.Host.Cli.Dashboard;
 using Basil.Host.Cli.Dashboard.Data;
@@ -66,7 +66,7 @@ public static class CliHost
 	}
 }
 
-internal sealed class LiveSuggestions(UserRegistry registry, Lobby lobby, GeneralChannelRegistry channels)
+internal sealed class LiveSuggestions(SessionRegistry registry, Lobby lobby, GeneralChannelRegistry channels)
 	: ISuggestionSource
 {
 	public IEnumerable<string> Ids(string resource)

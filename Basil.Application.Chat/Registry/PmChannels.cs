@@ -1,12 +1,12 @@
 using System.Collections.Concurrent;
 using Basil.Application.Chat.Objects;
-using Basil.Application.Users.Objects;
+using Basil.Application.Sessions.Objects;
 
 namespace Basil.Application.Chat.Registry;
 
 public sealed class PmChannels
 {
-	private readonly ConcurrentDictionary<User, PmChannel> _channels = new(ReferenceEqualityComparer.Instance);
+	private readonly ConcurrentDictionary<UserSessions, PmChannel> _channels = new(ReferenceEqualityComparer.Instance);
 	private readonly ChannelContext _context;
 
 	internal PmChannels(ChannelContext context)
@@ -14,7 +14,7 @@ public sealed class PmChannels
 		_context = context;
 	}
 
-	public PmChannel Of(User owner)
+	public PmChannel Of(UserSessions owner)
 	{
 		if (!owner.IsOnline)
 		{
@@ -30,7 +30,7 @@ public sealed class PmChannels
 		var channel = _channels.GetOrAdd(owner, static (current, context) => new PmChannel(current, context), _context);
 		if (!owner.IsOnline)
 		{
-			_channels.TryRemove(new KeyValuePair<User, PmChannel>(owner, channel));
+			_channels.TryRemove(new KeyValuePair<UserSessions, PmChannel>(owner, channel));
 			channel.Close();
 			return channel;
 		}
@@ -43,12 +43,12 @@ public sealed class PmChannels
 		return channel;
 	}
 
-	internal PmChannel? Find(User owner)
+	internal PmChannel? Find(UserSessions owner)
 	{
 		return _channels.GetValueOrDefault(owner);
 	}
 
-	internal PmChannel? Remove(User owner)
+	internal PmChannel? Remove(UserSessions owner)
 	{
 		return _channels.TryRemove(owner, out var channel) ? channel : null;
 	}

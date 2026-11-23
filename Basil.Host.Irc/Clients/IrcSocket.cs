@@ -4,7 +4,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Channels;
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
 using Basil.Domain.Users;
 using Basil.Host.Irc.Support;
 using Basil.Host.Irc.Transport;

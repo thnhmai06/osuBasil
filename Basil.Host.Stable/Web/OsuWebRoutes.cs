@@ -1,3 +1,5 @@
+using Basil.Application.Sessions.Persistence;
+using Basil.Application.Sessions.Registry;
 using Basil.Domain.Users;
 using Basil.Domain.Content;
 using Basil.Domain;
@@ -18,8 +20,6 @@ using Basil.Application.Servers.Objects;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Messages;
-using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Registry;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Client;
 using Basil.Domain.Game;
@@ -231,7 +231,7 @@ internal static class OsuWebRoutes
 		return Text(string.Join('\n', lines));
 	}
 
-	private static async Task<IResult> SubmitAsync(HttpContext context, UserRegistry registry, ISender sender,
+	private static async Task<IResult> SubmitAsync(HttpContext context, SessionRegistry registry, ISender sender,
 		IAnticheatReporter anticheat, WebAuthentication auth,
 		CancellationToken ct)
 	{
@@ -517,7 +517,7 @@ internal static class OsuWebRoutes
 			$"{set.Id}.osz|{meta.Artist}|{meta.Title}|{meta.Creator}|{(int)set.Status}|10.0|{set.UpdatedAt:yyyy-MM-dd HH:mm:ss}|{set.Id}|0|0|0|0|0";
 	}
 
-	private static async Task<IResult> RegisterAsync(HttpContext context, UserRegistry registry,
+	private static async Task<IResult> RegisterAsync(HttpContext context, SessionRegistry registry,
 		ISender sender,
 		RateLimiter limiter, CancellationToken ct)
 	{

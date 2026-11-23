@@ -1,5 +1,5 @@
 using Basil.Application.Multiplayer.Objects;
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
 using Basil.Domain.Multiplayer.Report.Matches;
 using Mediator;
 using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;

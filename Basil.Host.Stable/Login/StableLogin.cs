@@ -1,3 +1,6 @@
+using Basil.Application.Sessions.Objects;
+using Basil.Application.Sessions.Persistence;
+using Basil.Application.Sessions.Registry;
 using Basil.Application.Users;
 using System.Net;
 using Basil.Application.Chat.Objects;
@@ -6,8 +9,6 @@ using Basil.Application.Scores.Messages;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Registry;
 using Basil.Domain.Sessions;
 using Basil.Domain.Client;
 using Basil.Domain.Game;
@@ -17,13 +18,13 @@ using Basil.Host.Stable.Support;
 using Basil.Protocol.Game.Stable.Models.Authentication;
 using Basil.Shared.Structures.Cryptography;
 using Mediator;
-using Session = Basil.Application.Users.Objects.Sessions.Session;
-using User = Basil.Application.Users.Objects.User;
+using Session = Basil.Application.Sessions.Objects.Session;
+using UserSessions = Basil.Application.Sessions.Objects.UserSessions;
 
 namespace Basil.Host.Stable.Login;
 
 internal sealed class StableLogin(
-	UserRegistry registry,
+	SessionRegistry registry,
 	GeneralChannelRegistry channels,
 	Outbox outbox,
 	LoginAttemptGuard attempts,
@@ -113,7 +114,7 @@ internal sealed class StableLogin(
 
 	private async Task<byte[]> WelcomeAsync(Session connection, CancellationToken ct)
 	{
-		var user = connection.User;
+		var user = connection.Siblings;
 		var now = clock.GetUtcNow();
 		var effective = user.EffectivePrivileges(now);
 		var roles = StableView.Roles(effective);
@@ -123,9 +124,9 @@ internal sealed class StableLogin(
 		var silenceSeconds = user.Record.Value.IsSilenced(now)
 			? (int)(user.Record.Value.SilencedEnd!.Value - now).TotalSeconds
 			: 0;
-		var others = new List<(User User, UserStats Stats)>();
+		var others = new List<(UserSessions User, UserStats Stats)>();
 		foreach (var other in registry.Online.Values.Where(other => !ReferenceEquals(other, user)))
-			others.Add((other, await sender.Send(new GetUserStats(other,
+			others.Add((other, await sender.Send(new GetUserStats(other.User,
 				other.Stable?.Status.Detail?.Mode ?? GameMode.Standard), ct)));
 
 		var welcome = Outbox.Build(writer =>

@@ -1,5 +1,4 @@
 using Basil.Application.Shared.Settings;
-using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Users;
 using User = Basil.Application.Users.Objects.User;
 
@@ -9,7 +8,7 @@ public readonly struct ScopedUserProfile(ScopedUser scoped)
 {
 	public async Task<UserActionResult> SetAwayAsync(string? message)
 	{
-		if (scoped is { IsSelf: false, Actor: not OperatorSession }) return UserActionResult.Denied;
+		if (scoped is { IsSelf: false, IsOperator: false }) return UserActionResult.Denied;
 		if (await scoped.ResolveAsync() is not { } user) return UserActionResult.NotFound;
 
 		user.Profile.SetAway(message);
@@ -18,7 +17,7 @@ public readonly struct ScopedUserProfile(ScopedUser scoped)
 
 	public async Task<UserActionResult> SetPmPrivateAsync(bool pmPrivate)
 	{
-		if (scoped is { IsSelf: false, Actor: not OperatorSession }) return UserActionResult.Denied;
+		if (scoped is { IsSelf: false, IsOperator: false }) return UserActionResult.Denied;
 		if (await scoped.ResolveAsync() is not { } user) return UserActionResult.NotFound;
 
 		user.Profile.SetPmPrivate(pmPrivate);

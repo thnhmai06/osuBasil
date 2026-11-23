@@ -1,4 +1,3 @@
-using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Capabilities;
@@ -15,25 +14,25 @@ public readonly struct ScopedUserRelationships
 	public async Task<UserActionResult> AddFriendAsync()
 	{
 		if (await _scoped.ResolveAsync() is not { } target) return UserActionResult.NotFound;
-		return await _scoped.Actor.User.Relationships.AddFriendAsync(target.Record);
+		return await _scoped.ActorUser.Relationships.AddFriendAsync(target.Record);
 	}
 
 	public async Task<UserActionResult> RemoveFriendAsync()
 	{
 		if (await _scoped.ResolveAsync() is not { } target) return UserActionResult.NotFound;
-		return await _scoped.Actor.User.Relationships.RemoveFriendAsync(target.Record);
+		return await _scoped.ActorUser.Relationships.RemoveFriendAsync(target.Record);
 	}
 
 	public async Task<UserActionResult> BlockAsync()
 	{
 		if (await _scoped.ResolveAsync() is not { } target) return UserActionResult.NotFound;
-		return await _scoped.Actor.User.Relationships.BlockAsync(target.Record);
+		return await _scoped.ActorUser.Relationships.BlockAsync(target.Record);
 	}
 
 	public async Task<UserActionResult> UnblockAsync()
 	{
 		if (await _scoped.ResolveAsync() is not { } target) return UserActionResult.NotFound;
-		return await _scoped.Actor.User.Relationships.UnblockAsync(target.Record);
+		return await _scoped.ActorUser.Relationships.UnblockAsync(target.Record);
 	}
 
 	public Task<(UserActionResult Result, IReadOnlyList<UserRecord> Users)> FriendsAsync(
@@ -52,7 +51,7 @@ public readonly struct ScopedUserRelationships
 		RelationshipType type, CancellationToken ct)
 	{
 		// The operator reads any account's lists; everyone else reads their own.
-		if (_scoped is { IsSelf: false, Actor: not OperatorSession }) return (UserActionResult.NotSelf, []);
+		if (_scoped is { IsSelf: false, IsOperator: false }) return (UserActionResult.NotSelf, []);
 
 		if (await _scoped.ResolveAsync(ct) is not { } user) return (UserActionResult.NotFound, []);
 

@@ -9,9 +9,13 @@
 	<ItemGroup>
 		<ProjectReference Include="..\Basil.Application.Shared\Basil.Application.Shared.csproj"/>
 		<ProjectReference Include="..\Basil.Domain\Basil.Domain.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Users\Basil.Application.Users.csproj"/>
 	</ItemGroup>
 
 	<ItemGroup>
+		<InternalsVisibleTo Include="Basil"/>
+		<InternalsVisibleTo Include="Basil.Infrastructure.Sessions"/>
+		<InternalsVisibleTo Include="Basil.Infrastructure.Sessions.Tests"/>
 		<InternalsVisibleTo Include="Basil.Application.Sessions.Tests"/>
 	</ItemGroup>
 

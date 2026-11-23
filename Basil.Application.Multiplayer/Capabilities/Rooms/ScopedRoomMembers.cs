@@ -1,6 +1,6 @@
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Users;
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
 using Basil.Domain.Multiplayer.Room;
 using User = Basil.Application.Users.Objects.User;
 
@@ -55,7 +55,7 @@ public readonly struct ScopedRoomMembers
 			: RoomTargetResult.NotFound;
 	}
 
-	public async Task<RoomInviteResult> InviteAsync(User target)
+	public async Task<RoomInviteResult> InviteAsync(UserSessions target)
 	{
 		if (_scoped.Require(RoomPrivileges.Player | RoomPrivileges.Moderators) is not null)
 			return RoomInviteResult.Denied;

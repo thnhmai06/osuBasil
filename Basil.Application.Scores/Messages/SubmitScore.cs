@@ -1,6 +1,6 @@
 using Basil.Application.Scores.Objects;
 using Basil.Application.Scores.Persistence;
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
 using Basil.Domain.Scores;
 using Mediator;
 

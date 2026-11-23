@@ -1,5 +1,5 @@
-using Basil.Application.Users.Messages;
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Messages;
+using Basil.Application.Sessions.Objects;
 using Basil.Domain.Spectating;
 using Basil.Protocol.Game.Stable.Wire.Packets;
 

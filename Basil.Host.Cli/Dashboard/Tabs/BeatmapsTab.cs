@@ -1,7 +1,7 @@
 using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Beatmaps.Persistence;
+using Basil.Application.Sessions.Registry;
 using Basil.Application.Shared.Paging;
-using Basil.Application.Users.Registry;
 using Basil.Domain.Beatmaps;
 using Basil.Host.Cli.Dashboard.Shell;
 using Mediator;
@@ -36,7 +36,7 @@ internal sealed class BeatmapsSource(IServiceProvider services) : IListSource<Be
 	public async Task<IReadOnlyList<SectionData<BeatmapItem>>> LoadAsync(string query, int limit,
 		CancellationToken ct)
 	{
-		var actor = await services.GetRequiredService<UserRegistry>().OperateAsync(ct);
+		var actor = await services.GetRequiredService<SessionRegistry>().OperateAsync(ct);
 		var sender = services.GetRequiredService<ISender>();
 		var found = await sender.Send(new SearchBeatmapsets(actor, BeatmapQuery.Parse(query),
 			new PageRequest(0, limit)), ct);

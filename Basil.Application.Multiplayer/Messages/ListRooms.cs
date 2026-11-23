@@ -1,7 +1,7 @@
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Shared.Paging;
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
 using Mediator;
 
 namespace Basil.Application.Multiplayer.Messages;

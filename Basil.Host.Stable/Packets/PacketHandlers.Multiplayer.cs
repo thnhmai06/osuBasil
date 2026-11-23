@@ -1,7 +1,7 @@
 using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects;
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Game;
 using Basil.Domain.Multiplayer.Report.Matches;

@@ -1,10 +1,8 @@
 using Basil.Application.Users.Capabilities;
 using Basil.Application.Users.Objects.Events;
-using Basil.Application.Users.Objects.Sessions;
-using Basil.Domain.Sessions;
+using Basil.Application.Shared.Actors;
 using Basil.Domain.Game;
 using Basil.Domain.Users;
-using Session = Basil.Application.Users.Objects.Sessions.Session;
 using DomainUser = Basil.Domain.Users.User;
 
 namespace Basil.Application.Users.Objects;
@@ -16,8 +14,6 @@ public sealed class User
 		State = new DomainUser(record, new Dictionary<GameMode, UserStats>());
 		Context = context;
 		Profile = new UserProfile(this);
-		Credentials = new UserCredentials(this);
-		Sessions = new UserSessions(this);
 		Silence = new UserSilence(this);
 		Relationships = new UserRelationships(this);
 	}
@@ -30,34 +26,15 @@ public sealed class User
 
 	public bool PmPrivate => State.PmPrivate;
 
-	public bool IsOnline =>
-		Context.Registry.OnlineNow.TryGetValue(Record, out var online) && ReferenceEquals(online, this);
-
 	public UserSilence Silence { get; }
 
 	public UserProfile Profile { get; }
-
-	public UserCredentials Credentials { get; }
-
-	public UserSessions Sessions { get; }
 
 	public UserRelationships Relationships { get; }
 
 	internal UserContext Context { get; }
 
-	public IReadOnlySet<Session> this[SessionType type] => Sessions[type];
-
-	public IEnumerable<Session> Connections => Sessions.Connections;
-
-	public StableSession? Stable => Sessions.Osu;
-
-	public IrcSession? Irc => Sessions.Irc;
-
-	public IEnumerable<IrcSession> Ircs => Sessions.Ircs;
-
-	public IEnumerable<TourneySession> Tourneys => Sessions.Tourneys;
-
-	public ScopedUser ScopeTo(Session actor)
+	public ScopedUser ScopeTo(IActor actor)
 	{
 		return new ScopedUser(this, actor);
 	}
@@ -70,7 +47,7 @@ public sealed class User
 	internal void Apply(Action<UserData> rule)
 	{
 		rule(Record.Value);
-		var online = Context.Registry.OnlineNow.GetValueOrDefault(Record);
+		var online = Context.Registry.Live(Record);
 		if (online is not null && !ReferenceEquals(online.Record, Record))
 			rule(online.Record.Value);
 	}
@@ -106,7 +83,7 @@ public sealed class User
 			data.DeletedAt = now;
 			data.Privileges = UserPrivileges.None;
 		});
-		Context.Registry.CloseAll(Record, SessionEndReason.Deleted);
+		Context.Events.Publish(new UserDeleted(Record));
 		return UserActionResult.Ok;
 	}
 
@@ -114,20 +91,7 @@ public sealed class User
 	{
 		await StoreChangeAsync(data => data.Privileges = privileges);
 		Apply(data => data.Privileges = privileges);
-		if (Context.Registry.OnlineNow.GetValueOrDefault(Record) is { } online)
-			Context.Registry.CloseDisallowed(online);
-
 		Context.Events.Publish(new UserPrivilegesChanged(Record, privileges));
 		return UserActionResult.Ok;
-	}
-
-	internal void Add(Session connection)
-	{
-		Sessions.Add(connection);
-	}
-
-	internal bool Remove(Session connection)
-	{
-		return Sessions.Remove(connection);
 	}
 }

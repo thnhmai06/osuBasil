@@ -1,6 +1,6 @@
+using Basil.Application.Sessions.Registry;
 using System.Diagnostics;
 using Basil.Application.Diagnostics.Services;
-using Basil.Application.Users.Registry;
 using Basil.Domain.Sessions;
 using Basil.Gateway.Admission;
 using Basil.Gateway.RateLimiting;
@@ -64,7 +64,7 @@ public static class StableRoutes
 			.WithDescription(StableDocumentation.ExchangeDescription());
 	}
 
-	private static async Task<IResult> ExchangeAsync(HttpContext context, UserRegistry registry, StableLogin login,
+	private static async Task<IResult> ExchangeAsync(HttpContext context, SessionRegistry registry, StableLogin login,
 		PacketDispatcher dispatcher, Outbox outbox, CancellationToken ct)
 	{
 		using var buffer = new MemoryStream();

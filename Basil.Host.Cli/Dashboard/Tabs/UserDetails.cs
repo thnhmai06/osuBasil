@@ -1,10 +1,11 @@
+using Basil.Application.Sessions.Messages;
+using Basil.Application.Sessions.Registry;
 using Basil.Application.Users;
 using System.Globalization;
 using Basil.Application.Sessions.Persistence;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Messages;
-using Basil.Application.Users.Registry;
 using Basil.Domain.Sessions;
 using Basil.Domain.Users;
 using Basil.Host.Cli.Dashboard.Shell;
@@ -124,13 +125,13 @@ internal sealed class UserDetails(
 
 	private UserItem ItemOf(UserRecord record)
 	{
-		services.GetRequiredService<UserRegistry>().Online.TryGetValue(record, out var online);
+		services.GetRequiredService<SessionRegistry>().Online.TryGetValue(record, out var online);
 		return UsersSource.Item(services.GetRequiredService<Lobby>(), record, online, clock.GetUtcNow());
 	}
 
 	private async Task<DetailView> SessionAsync(int userId, long id)
 	{
-		var actor = await services.GetRequiredService<UserRegistry>().OperateAsync();
+		var actor = await services.GetRequiredService<SessionRegistry>().OperateAsync();
 		var (outcome, record) = await services.GetRequiredService<ISender>()
 			.Send(new GetUserSession(actor, userId, id));
 		return outcome == UserActionResult.Ok && record is not null
@@ -142,7 +143,7 @@ internal sealed class UserDetails(
 	// The newest sessions of the account, read once as the console command does, shown as the table of the Sessions tab.
 	private async Task<DetailView> SessionsAsync(UserItem user)
 	{
-		var actor = await services.GetRequiredService<UserRegistry>().OperateAsync();
+		var actor = await services.GetRequiredService<SessionRegistry>().OperateAsync();
 		var (outcome, page) = await services.GetRequiredService<ISender>().Send(new ListUserSessions(actor,
 			user.Id, new PageRequest(0, RowsShown), SessionFilter.Any, null));
 		if (outcome != UserActionResult.Ok || page is null)
@@ -172,7 +173,7 @@ internal sealed class UserDetails(
 	private async Task<DetailView> RelationsAsync(UserItem user, bool friends)
 	{
 		var title = friends ? "Friends" : "Blocks";
-		var actor = await services.GetRequiredService<UserRegistry>().OperateAsync();
+		var actor = await services.GetRequiredService<SessionRegistry>().OperateAsync();
 		var sender = services.GetRequiredService<ISender>();
 		var target = user.Id;
 		var (outcome, records) = friends

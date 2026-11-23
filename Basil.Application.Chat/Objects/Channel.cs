@@ -4,7 +4,7 @@ using Basil.Domain.Sessions;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using Basil.Shared.Structures.Data;
-using Session = Basil.Application.Users.Objects.Sessions.Session;
+using Session = Basil.Application.Sessions.Objects.Session;
 
 namespace Basil.Application.Chat.Objects;
 
@@ -76,7 +76,7 @@ public abstract class Channel
 
 		Message? awayReply = null;
 		if (actor is not null
-		    && this is PmChannel { Owner.AwayMessage: { } away } pmChannel
+		    && this is PmChannel { Owner.User.AwayMessage: { } away } pmChannel
 		    && !ReferenceEquals(actor.User, pmChannel.Owner)
 		    && !notice)
 			awayReply = new Message { Author = pmChannel.Owner.Record, Content = away, Timestamp = now };
@@ -150,7 +150,7 @@ public abstract class Channel
 				relationship.Type == RelationshipType.Block && relationship.Target.Equals(self));
 			var friend = relationships.Any(relationship =>
 				relationship.Type == RelationshipType.Friend && relationship.Target.Equals(self));
-			if (blocked || (pm.Owner.PmPrivate && !friend)) return ChannelJoinResult.Blocked;
+			if (blocked || (pm.Owner.User.PmPrivate && !friend)) return ChannelJoinResult.Blocked;
 		}
 
 		if (pm.Owner.Record.Id != BasilBot.Id && recipientSilenced)

@@ -1,5 +1,5 @@
 using Basil.Application.Bot.Replies;
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Bot.Commands;

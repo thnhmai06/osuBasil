@@ -1,5 +1,5 @@
-using Basil.Application.Users.Messages;
 using Basil.Application.Users.Registry;
+using Basil.Application.Users.Messages;
 using Basil.Domain.Users;
 using Mediator;
 

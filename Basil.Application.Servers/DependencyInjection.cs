@@ -9,7 +9,7 @@ using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Shared.Storage;
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
 using Basil.Application.Users.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 

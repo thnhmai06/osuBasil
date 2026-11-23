@@ -1,5 +1,5 @@
 using System.Globalization;
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
 using Basil.Gateway.Admission;
 using Basil.Gateway.Limits;
 

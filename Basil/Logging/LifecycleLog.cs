@@ -1,13 +1,14 @@
 using Basil.Application.Multiplayer.Objects.Events;
+using Basil.Application.Sessions.Objects.Events;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Events;
 using Mediator;
 
 namespace Basil.Logging;
 
-internal sealed class LoginLog(ILogger<LoginLog> logger) : INotificationHandler<UserSessionOpened>
+internal sealed class LoginLog(ILogger<LoginLog> logger) : INotificationHandler<SessionOpened>
 {
-	public ValueTask Handle(UserSessionOpened notification, CancellationToken ct)
+	public ValueTask Handle(SessionOpened notification, CancellationToken ct)
 	{
 		var connection = notification.Session;
 		logger.LogInformation("{Type} login of {User} ({UserId})", connection.Type, connection.Record.Value.Name,
@@ -16,9 +17,9 @@ internal sealed class LoginLog(ILogger<LoginLog> logger) : INotificationHandler<
 	}
 }
 
-internal sealed class LogoutLog(ILogger<LogoutLog> logger) : INotificationHandler<UserSessionClosed>
+internal sealed class LogoutLog(ILogger<LogoutLog> logger) : INotificationHandler<SessionClosed>
 {
-	public ValueTask Handle(UserSessionClosed notification, CancellationToken ct)
+	public ValueTask Handle(SessionClosed notification, CancellationToken ct)
 	{
 		var connection = notification.Session;
 		logger.LogInformation("{Type} logout of {User} ({UserId}): {Reason}", connection.Type,

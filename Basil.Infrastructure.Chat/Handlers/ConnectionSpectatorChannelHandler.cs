@@ -1,15 +1,14 @@
 using Basil.Application.Chat.Registry;
-using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Events;
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
+using Basil.Application.Sessions.Objects.Events;
 using Mediator;
 
 namespace Basil.Infrastructure.Chat.Handlers;
 
 internal sealed class ConnectionSpectatorChannelHandler(SpectatorChannels channels)
-	: INotificationHandler<UserSessionClosed>
+	: INotificationHandler<SessionClosed>
 {
-	public ValueTask Handle(UserSessionClosed @event, CancellationToken ct)
+	public ValueTask Handle(SessionClosed @event, CancellationToken ct)
 	{
 		if (@event.Session is StableSession host && channels.Remove(host) is { } channel)
 			channel.Close();

@@ -1,7 +1,7 @@
 using System.Runtime;
 using Basil.Application.Diagnostics.Capabilities;
 using Basil.Application.Diagnostics.Services;
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
 
 namespace Basil.Application.Diagnostics.Objects;
 

@@ -4,7 +4,7 @@ using Basil.Application.Bot.Replies;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Objects.Events;
 using Basil.Application.Servers.Objects;
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Bot.Handlers.Commands;
@@ -54,10 +54,10 @@ internal sealed class ChatHandler(
 			privateMessage ? null : posted.Channel.Name,
 			replies,
 			(text, sendToken) => SendSplitAsync(text, (piece, token) => privateMessage
-				? server.WhisperAsync(actor.User, piece, ct: token)
+				? server.WhisperAsync(actor.Siblings, piece, ct: token)
 				: server.SayAsync(posted.Channel, piece, ct: token), sendToken),
 			(text, sendToken) =>
-				SendSplitAsync(text, (piece, token) => server.WhisperAsync(actor.User, piece, ct: token),
+				SendSplitAsync(text, (piece, token) => server.WhisperAsync(actor.Siblings, piece, ct: token),
 					sendToken));
 	}
 

@@ -1,11 +1,12 @@
+using Basil.Application.Sessions.Messages;
+using Basil.Application.Sessions.Registry;
 using Basil.Application.Users;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Messages;
-using Basil.Application.Users.Objects.Sessions;
-using Basil.Application.Users.Registry;
+using Basil.Application.Sessions.Objects;
 using Basil.Domain.Users;
 using Basil.Gateway.RateLimiting;
 using Basil.Host.Stable.Support;
@@ -15,7 +16,7 @@ using Mediator;
 namespace Basil.Host.Stable.Web;
 
 internal sealed class WebAuthentication(
-	UserRegistry registry,
+	SessionRegistry registry,
 	ISender sender,
 	LoginAttemptGuard attempts,
 	TimeProvider clock)
@@ -51,7 +52,7 @@ internal sealed class WebAuthentication(
 
 		if (_verified.TryGetValue(client, out var known) && SameDigest(known, passwordMd5)) return client;
 		if (Md5Hash.TryParse(passwordMd5, null, out var digest) &&
-		    await sender.Send(new VerifyUserPassword(online, digest), ct))
+		    await sender.Send(new VerifyUserPassword(online.User, digest), ct))
 		{
 			_verified.AddOrUpdate(client, passwordMd5.ToLowerInvariant());
 			return client;

@@ -1,7 +1,7 @@
 using Basil.Application.Chat.Messages;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users;
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using Basil.Host.Stable.Support;

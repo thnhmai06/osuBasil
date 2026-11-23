@@ -1,5 +1,5 @@
 using Basil.Application.Multiplayer.Objects.Events;
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
 using Basil.Domain.Multiplayer.Room;
 using Basil.Domain.Users;
 using User = Basil.Application.Users.Objects.User;
@@ -105,7 +105,7 @@ public sealed partial class Room
 		}
 	}
 
-	internal RoomInviteResult Invite(UserRecord actor, User target)
+	internal RoomInviteResult Invite(UserRecord actor, UserSessions target)
 	{
 		using (Enter())
 		{

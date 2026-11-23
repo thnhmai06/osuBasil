@@ -1,11 +1,11 @@
+using Basil.Application.Sessions.Persistence;
+using Basil.Application.Sessions.Registry;
 using System.Text;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Shared.Settings;
-using Basil.Application.Users.Objects.Sessions;
-using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Registry;
+using Basil.Application.Sessions.Objects;
 using Basil.Domain.Sessions;
 using Basil.Gateway.Admission;
 using Basil.Gateway.RateLimiting;
@@ -21,7 +21,7 @@ namespace Basil.Host.Irc.Commands;
 
 [AdmissionPolicy]
 internal sealed partial class IrcCommands(
-	UserRegistry registry,
+	SessionRegistry registry,
 	Server server,
 	GeneralChannelRegistry general,
 	Lobby lobby,

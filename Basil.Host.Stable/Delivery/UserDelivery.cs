@@ -1,7 +1,8 @@
 using Basil.Application.Scores.Messages;
+using Basil.Application.Sessions.Objects.Events;
+using Basil.Application.Sessions.Registry;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Events;
-using Basil.Application.Users.Registry;
 using Basil.Domain.Sessions;
 using Basil.Domain.Game;
 using Basil.Host.Stable.Support;
@@ -10,16 +11,16 @@ using Mediator;
 namespace Basil.Host.Stable.Delivery;
 
 internal sealed class UserOnlineDelivery(
-	UserRegistry registry,
+	SessionRegistry registry,
 	Outbox outbox,
 	ISender sender,
-	TimeProvider clock) : INotificationHandler<UserSessionOpened>
+	TimeProvider clock) : INotificationHandler<SessionOpened>
 {
-	public async ValueTask Handle(UserSessionOpened notification, CancellationToken ct)
+	public async ValueTask Handle(SessionOpened notification, CancellationToken ct)
 	{
 		if (!notification.CameOnline || notification.Session.Type is not SessionType.Stable) return;
-		var user = notification.Session.User;
-		var stats = await sender.Send(new GetUserStats(user, user.Stable?.Status.Detail?.Mode ?? GameMode.Standard), ct);
+		var user = notification.Session.Siblings;
+		var stats = await sender.Send(new GetUserStats(user.User, user.Stable?.Status.Detail?.Mode ?? GameMode.Standard), ct);
 		var now = clock.GetUtcNow();
 		outbox.Send(registry.OpenStableClients(), writer =>
 		{
@@ -29,10 +30,10 @@ internal sealed class UserOnlineDelivery(
 	}
 }
 
-internal sealed class UserOfflineDelivery(UserRegistry registry, Outbox outbox)
-	: INotificationHandler<UserSessionClosed>
+internal sealed class UserOfflineDelivery(SessionRegistry registry, Outbox outbox)
+	: INotificationHandler<SessionClosed>
 {
-	public ValueTask Handle(UserSessionClosed notification, CancellationToken ct)
+	public ValueTask Handle(SessionClosed notification, CancellationToken ct)
 	{
 		var connection = notification.Session;
 		outbox.Remove(connection);
@@ -43,27 +44,27 @@ internal sealed class UserOfflineDelivery(UserRegistry registry, Outbox outbox)
 	}
 }
 
-internal sealed class UserStatusDelivery(UserRegistry registry, Outbox outbox, ISender sender)
-	: INotificationHandler<UserSessionStatusChanged>
+internal sealed class UserStatusDelivery(SessionRegistry registry, Outbox outbox, ISender sender)
+	: INotificationHandler<SessionStatusChanged>
 {
-	public async ValueTask Handle(UserSessionStatusChanged notification, CancellationToken ct)
+	public async ValueTask Handle(SessionStatusChanged notification, CancellationToken ct)
 	{
-		var user = notification.Session.User;
-		var stats = await sender.Send(new GetUserStats(user, notification.Status.Detail?.Mode ?? GameMode.Standard), ct);
+		var user = notification.Session.Siblings;
+		var stats = await sender.Send(new GetUserStats(user.User, notification.Status.Detail?.Mode ?? GameMode.Standard), ct);
 		outbox.Send(registry.OpenStableClients(), writer => StableView.WriteStats(writer, user, stats));
 	}
 }
 
-internal sealed class UserNotificationDelivery(Outbox outbox) : INotificationHandler<UserNotificationSent>
+internal sealed class UserNotificationDelivery(Outbox outbox) : INotificationHandler<SessionNotificationSent>
 {
-	public ValueTask Handle(UserNotificationSent notification, CancellationToken ct)
+	public ValueTask Handle(SessionNotificationSent notification, CancellationToken ct)
 	{
 		outbox.Send(notification.Recipients, writer => writer.Notification(notification.Text));
 		return ValueTask.CompletedTask;
 	}
 }
 
-internal sealed class UserSilencedDelivery(UserRegistry registry, Outbox outbox, TimeProvider clock)
+internal sealed class UserSilencedDelivery(SessionRegistry registry, Outbox outbox, TimeProvider clock)
 	: INotificationHandler<UserSilenced>
 {
 	public ValueTask Handle(UserSilenced notification, CancellationToken ct)
@@ -74,7 +75,7 @@ internal sealed class UserSilencedDelivery(UserRegistry registry, Outbox outbox,
 	}
 }
 
-internal sealed class UserUnsilencedDelivery(UserRegistry registry, Outbox outbox)
+internal sealed class UserUnsilencedDelivery(SessionRegistry registry, Outbox outbox)
 	: INotificationHandler<UserUnsilenced>
 {
 	public ValueTask Handle(UserUnsilenced notification, CancellationToken ct)
@@ -84,7 +85,7 @@ internal sealed class UserUnsilencedDelivery(UserRegistry registry, Outbox outbo
 	}
 }
 
-internal sealed class UserPrivilegesDelivery(UserRegistry registry, Outbox outbox, TimeProvider clock)
+internal sealed class UserPrivilegesDelivery(SessionRegistry registry, Outbox outbox, TimeProvider clock)
 	: INotificationHandler<UserPrivilegesChanged>
 {
 	public ValueTask Handle(UserPrivilegesChanged notification, CancellationToken ct)
@@ -96,9 +97,9 @@ internal sealed class UserPrivilegesDelivery(UserRegistry registry, Outbox outbo
 	}
 }
 
-internal sealed class SpectatorJoinedDelivery(Outbox outbox) : INotificationHandler<UserSpectatorJoined>
+internal sealed class SpectatorJoinedDelivery(Outbox outbox) : INotificationHandler<SpectatorJoined>
 {
-	public ValueTask Handle(UserSpectatorJoined notification, CancellationToken ct)
+	public ValueTask Handle(SpectatorJoined notification, CancellationToken ct)
 	{
 		var (host, spectator) = (notification.Host, notification.Spectator);
 		var others = host.Spectators.Where(other => !ReferenceEquals(other, spectator)).ToList();
@@ -112,9 +113,9 @@ internal sealed class SpectatorJoinedDelivery(Outbox outbox) : INotificationHand
 	}
 }
 
-internal sealed class SpectatorLeftDelivery(Outbox outbox) : INotificationHandler<UserSpectatorLeft>
+internal sealed class SpectatorLeftDelivery(Outbox outbox) : INotificationHandler<SpectatorLeft>
 {
-	public ValueTask Handle(UserSpectatorLeft notification, CancellationToken ct)
+	public ValueTask Handle(SpectatorLeft notification, CancellationToken ct)
 	{
 		var (host, spectator) = (notification.Host, notification.Spectator);
 		outbox.Send(host, writer => writer.SpectatorLeft(spectator.Record.Id));
@@ -123,9 +124,9 @@ internal sealed class SpectatorLeftDelivery(Outbox outbox) : INotificationHandle
 	}
 }
 
-internal sealed class SpectatorFailedDelivery(Outbox outbox) : INotificationHandler<UserSpectatorFailed>
+internal sealed class SpectatorFailedDelivery(Outbox outbox) : INotificationHandler<SpectatorFailed>
 {
-	public ValueTask Handle(UserSpectatorFailed notification, CancellationToken ct)
+	public ValueTask Handle(SpectatorFailed notification, CancellationToken ct)
 	{
 		outbox.Send(notification.Host, writer => writer.SpectatorCantSpectate(notification.Spectator.Record.Id));
 		return ValueTask.CompletedTask;

@@ -3,7 +3,7 @@ using Basil.Application.Scores.Objects.Events;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Scores.Ports;
 using Basil.Application.Shared.Events;
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
 using Basil.Domain.Scores;
 
 namespace Basil.Application.Scores.Objects;

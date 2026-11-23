@@ -1,11 +1,11 @@
+using Basil.Application.Sessions.Registry;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
 using Basil.Application.Shared.Settings;
-using Basil.Application.Users.Objects.Sessions;
-using Basil.Application.Users.Registry;
+using Basil.Application.Sessions.Objects;
 using Basil.Host.Rest.Http;
 using Mediator;
 using Microsoft.Extensions.Hosting;
@@ -69,7 +69,7 @@ public sealed class SseStream
 	}
 }
 
-public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISender sender) : IHostedService
+public sealed class SseHub(TimeProvider clock, SessionRegistry registry, ISender sender) : IHostedService
 {
 	private static readonly byte[] KeepAlive = ": keep-alive\n\n"u8.ToArray();
 	private readonly ConcurrentDictionary<string, int> _open = new();

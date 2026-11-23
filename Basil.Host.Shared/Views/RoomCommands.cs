@@ -1,16 +1,15 @@
 using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects;
+using Basil.Application.Sessions.Registry;
 using Basil.Application.Users;
-using Basil.Application.Users.Objects.Sessions;
-using Basil.Application.Users.Registry;
+using Basil.Application.Sessions.Objects;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Game;
 using Basil.Domain.Multiplayer.Room;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
-using User = Basil.Application.Users.Objects.User;
 
 namespace Basil.Host.Shared.Views;
 
@@ -163,8 +162,8 @@ public static class RoomCommands
 			new RoomSettingsChange(Beatmap: reference, Mode: body.Mode ?? beatmap.Metadata.Mode)), ct);
 	}
 
-	private static User? OnlineUser(IServiceProvider services, int id)
+	private static UserSessions? OnlineUser(IServiceProvider services, int id)
 	{
-		return services.GetRequiredService<UserRegistry>().Online.FirstOrDefault(pair => pair.Key.Id == id).Value;
+		return services.GetRequiredService<SessionRegistry>().Online.FirstOrDefault(pair => pair.Key.Id == id).Value;
 	}
 }

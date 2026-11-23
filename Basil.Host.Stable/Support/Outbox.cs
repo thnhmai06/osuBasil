@@ -1,13 +1,13 @@
+using Basil.Application.Sessions.Registry;
 using System.Collections.Concurrent;
-using Basil.Application.Users.Objects.Sessions;
-using Basil.Application.Users.Registry;
+using Basil.Application.Sessions.Objects;
 using Basil.Domain.Sessions;
 using Basil.Protocol.Game.Stable.Wire.Packets;
-using Session = Basil.Application.Users.Objects.Sessions.Session;
+using Session = Basil.Application.Sessions.Objects.Session;
 
 namespace Basil.Host.Stable.Support;
 
-internal sealed class Outbox(UserRegistry registry)
+internal sealed class Outbox(SessionRegistry registry)
 {
 	public const int MaxQueuedPackets = 10_000;
 

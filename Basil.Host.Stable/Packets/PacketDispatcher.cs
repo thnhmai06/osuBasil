@@ -1,5 +1,5 @@
 using Basil.Domain;
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
 using Basil.Protocol.Game.Stable.Wire.Packets;
 
 namespace Basil.Host.Stable.Packets;

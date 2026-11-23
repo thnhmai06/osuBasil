@@ -1,4 +1,4 @@
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
 using Basil.Domain.Client;
 
 namespace Basil.Application.Anticheat.Services;

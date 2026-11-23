@@ -1,14 +1,13 @@
 using Basil.Application.Chat.Registry;
-using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Events;
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
+using Basil.Application.Sessions.Objects.Events;
 using Mediator;
 
 namespace Basil.Infrastructure.Chat.Handlers;
 
-internal sealed class SpectatorLeftHandler(SpectatorChannels channels) : INotificationHandler<UserSpectatorLeft>
+internal sealed class SpectatorLeftHandler(SpectatorChannels channels) : INotificationHandler<SpectatorLeft>
 {
-	public ValueTask Handle(UserSpectatorLeft @event, CancellationToken ct)
+	public ValueTask Handle(SpectatorLeft @event, CancellationToken ct)
 	{
 		if (@event.Spectator is ApiSession || channels.Find(@event.Host) is not { } channel)
 			return ValueTask.CompletedTask;

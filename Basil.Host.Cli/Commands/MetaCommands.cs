@@ -1,7 +1,7 @@
+using Basil.Application.Sessions.Registry;
 using System.Diagnostics;
 using System.Reflection;
 using Basil.Application.Multiplayer.Registry;
-using Basil.Application.Users.Registry;
 using Basil.Domain.Sessions;
 
 namespace Basil.Host.Cli.Commands;
@@ -117,7 +117,7 @@ internal static class MetaCommands
 
 	private static Task<int> StatusAsync(CommandCall call)
 	{
-		var registry = call.Get<UserRegistry>();
+		var registry = call.Get<SessionRegistry>();
 		var lobby = call.Get<Lobby>();
 		var now = call.Get<TimeProvider>().GetUtcNow();
 		using var process = Process.GetCurrentProcess();

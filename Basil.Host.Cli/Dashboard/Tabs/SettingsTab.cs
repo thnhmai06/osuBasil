@@ -1,9 +1,9 @@
+using Basil.Application.Sessions.Registry;
 using System.Collections;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Basil.Application.Servers.Messages.Content;
-using Basil.Application.Users.Registry;
 using Basil.Host.Cli.Commands;
 using Basil.Host.Cli.Dashboard.Shell;
 using Basil.Host.Cli.Dashboard.Shell.Toasts;
@@ -252,7 +252,7 @@ internal sealed class SettingsTab : ITabView
 		{
 			try
 			{
-				var registry = _services.GetRequiredService<UserRegistry>();
+				var registry = _services.GetRequiredService<SessionRegistry>();
 				var actor = await registry.OperateAsync(CancellationToken.None);
 				var (_, settings) = await _services.GetRequiredService<ISender>().Send(new GetSettings(actor));
 				if (settings is null) return;

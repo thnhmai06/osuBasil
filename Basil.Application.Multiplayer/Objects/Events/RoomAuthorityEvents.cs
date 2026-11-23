@@ -1,5 +1,5 @@
 using Basil.Application.Multiplayer.Objects.Rooms;
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer.Objects.Events;

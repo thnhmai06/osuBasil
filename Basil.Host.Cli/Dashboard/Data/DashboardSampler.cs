@@ -1,14 +1,13 @@
+using Basil.Application.Sessions.Registry;
 using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Basil.Application.Diagnostics.Services;
 using Basil.Application.Multiplayer.Registry;
-using Basil.Application.Users.Registry;
 using Basil.Domain.Users;
 using Basil.Host.Shared.Json;
 using Microsoft.Extensions.DependencyInjection;
-using User = Basil.Application.Users.Objects.User;
 
 namespace Basil.Host.Cli.Dashboard.Data;
 
@@ -18,7 +17,7 @@ public sealed class DashboardSampler(IServiceProvider services, DashboardModel m
 
 	public void Sample()
 	{
-		var registry = services.GetRequiredService<UserRegistry>();
+		var registry = services.GetRequiredService<SessionRegistry>();
 		var lobby = services.GetRequiredService<Lobby>();
 		// The intake answers without waiting for anything, so the frame loop can take the sample where it stands.
 		var sample = services.GetRequiredService<IDiagnosticsIntake>().TakeSampleAsync().AsTask().GetAwaiter()
@@ -108,7 +107,7 @@ public sealed class DashboardSampler(IServiceProvider services, DashboardModel m
 			: new Dictionary<string, int>();
 	}
 
-	private static List<UserRow> UserRows(UserRegistry registry, Lobby lobby, DateTimeOffset now)
+	private static List<UserRow> UserRows(SessionRegistry registry, Lobby lobby, DateTimeOffset now)
 	{
 		return
 		[
@@ -117,7 +116,7 @@ public sealed class DashboardSampler(IServiceProvider services, DashboardModel m
 					new UserRow(
 						user.Record.Id, user.Record.Value.Name,
 						string.Join(' ', user.Connections.Select(c => c.Type.ToString().ToLowerInvariant()).Distinct()),
-						user.Stable?.Status.Activity.ToString() ?? "-", RoomOf(lobby, user),
+						user.Stable?.Status.Activity.ToString() ?? "-", RoomOf(lobby, user.Record),
 					now - user.Connections.Select(c => c.LastActiveAt).DefaultIfEmpty(now).Max(),
 						(ulong)user.EffectivePrivileges(now)))
 		];
@@ -138,10 +137,10 @@ public sealed class DashboardSampler(IServiceProvider services, DashboardModel m
 		];
 	}
 
-	private static string RoomOf(Lobby lobby, User user)
+	private static string RoomOf(Lobby lobby, UserRecord user)
 	{
 		var room = lobby.Rooms.Values.FirstOrDefault(r =>
-			r.Slots.Any(slot => slot.Player is not null && slot.Player.Equals(user.Record)));
+			r.Slots.Any(slot => slot.Player is not null && slot.Player.Equals(user)));
 		return room is null ? "-" : $"#{room.Id}";
 	}
 

@@ -1,9 +1,9 @@
+using Basil.Application.Sessions.Messages;
+using Basil.Application.Sessions.Objects.Events;
+using Basil.Application.Sessions.Registry;
 using Basil.Application.Users;
 using Basil.Application.Users.Messages;
-using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Events;
-using Basil.Application.Users.Objects.Sessions;
-using Basil.Application.Users.Registry;
+using Basil.Application.Sessions.Objects;
 using Basil.Domain.Sessions;
 using Basil.Domain.Game;
 using Basil.Domain.Spectating;
@@ -32,7 +32,7 @@ internal static class SpectateRoutes
 	}
 
 	private static async Task<IResult> SpectateAsync(HttpContext context, int id,
-		UserRegistry registry, ISender sender)
+		SessionRegistry registry, ISender sender)
 	{
 		if (await sender.Send(new GetUser(id), context.RequestAborted) is not { } record)
 			return Api.NotFound("No such user.");
@@ -90,18 +90,18 @@ internal static class SpectateRoutes
 	}
 }
 
-internal sealed class SpectateFramesFeed(SseHub hub) : INotificationHandler<UserSpectatorFramesReceived>
+internal sealed class SpectateFramesFeed(SseHub hub) : INotificationHandler<SpectatorFramesReceived>
 {
-	public ValueTask Handle(UserSpectatorFramesReceived notification, CancellationToken ct)
+	public ValueTask Handle(SpectatorFramesReceived notification, CancellationToken ct)
 	{
 		hub.Publish(SpectateRoutes.KeyOf(notification.Host.Record.Id), SpectateRoutes.BundleOf(notification.Bundle));
 		return ValueTask.CompletedTask;
 	}
 }
 
-internal sealed class SpectateStatusFeed(SseHub hub) : INotificationHandler<UserSessionStatusChanged>
+internal sealed class SpectateStatusFeed(SseHub hub) : INotificationHandler<SessionStatusChanged>
 {
-	public ValueTask Handle(UserSessionStatusChanged notification, CancellationToken ct)
+	public ValueTask Handle(SessionStatusChanged notification, CancellationToken ct)
 	{
 		hub.Publish(SpectateRoutes.KeyOf(notification.Session.Record.Id),
 			new { type = "status", status = SpectateRoutes.StatusOf(notification.Status) });
@@ -109,9 +109,9 @@ internal sealed class SpectateStatusFeed(SseHub hub) : INotificationHandler<User
 	}
 }
 
-internal sealed class SpectateEnd(SseHub hub) : INotificationHandler<UserSpectatorLeft>
+internal sealed class SpectateEnd(SseHub hub) : INotificationHandler<SpectatorLeft>
 {
-	public ValueTask Handle(UserSpectatorLeft notification, CancellationToken ct)
+	public ValueTask Handle(SpectatorLeft notification, CancellationToken ct)
 	{
 		if (notification.Spectator is ApiSession)
 			hub.Close(SpectateRoutes.KeyOf(notification.Host.Record.Id), notification.Spectator);

@@ -1,4 +1,4 @@
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
 
 namespace Basil.Application.Bot.Objects;
 

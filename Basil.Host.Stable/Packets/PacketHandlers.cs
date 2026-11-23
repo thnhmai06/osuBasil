@@ -2,10 +2,11 @@ using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Scores.Messages;
+using Basil.Application.Sessions.Messages;
+using Basil.Application.Sessions.Registry;
 using Basil.Application.Users;
 using Basil.Application.Users.Messages;
-using Basil.Application.Users.Objects.Sessions;
-using Basil.Application.Users.Registry;
+using Basil.Application.Sessions.Objects;
 using Basil.Domain.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Game;
@@ -17,14 +18,14 @@ using Basil.Protocol.Game.Stable.Models.Beatmaps;
 using Basil.Protocol.Game.Stable.Wire.Packets;
 using Basil.Shared.Structures.Cryptography;
 using Mediator;
-using Session = Basil.Application.Users.Objects.Sessions.Session;
-using User = Basil.Application.Users.Objects.User;
+using Session = Basil.Application.Sessions.Objects.Session;
+using UserSessions = Basil.Application.Sessions.Objects.UserSessions;
 
 namespace Basil.Host.Stable.Packets;
 
 [AdmissionPolicy]
 internal sealed partial class PacketHandlers(
-	UserRegistry registry,
+	SessionRegistry registry,
 	Lobby lobby,
 	ISender sender,
 	Outbox outbox,
@@ -132,7 +133,7 @@ internal sealed partial class PacketHandlers(
 
 		var stats = new List<UserStats>();
 		foreach (var user in wanted)
-			stats.Add(await sender.Send(new GetUserStats(user, user.Stable?.Status.Detail?.Mode ?? GameMode.Standard),
+			stats.Add(await sender.Send(new GetUserStats(user.User, user.Stable?.Status.Detail?.Mode ?? GameMode.Standard),
 				ct));
 		outbox.Send(actor, writer =>
 		{
@@ -148,7 +149,7 @@ internal sealed partial class PacketHandlers(
 		var now = clock.GetUtcNow();
 		var stats = new List<UserStats>();
 		foreach (var user in wanted)
-			stats.Add(await sender.Send(new GetUserStats(user, user.Stable?.Status.Detail?.Mode ?? GameMode.Standard),
+			stats.Add(await sender.Send(new GetUserStats(user.User, user.Stable?.Status.Detail?.Mode ?? GameMode.Standard),
 				ct));
 		outbox.Send(actor, writer =>
 		{
@@ -158,7 +159,7 @@ internal sealed partial class PacketHandlers(
 	}
 
 	// shortcut: one pass over the online users per request; a lookup by id needs an index in the registry.
-	private List<User> OnlineUsers(IEnumerable<int> ids)
+	private List<UserSessions> OnlineUsers(IEnumerable<int> ids)
 	{
 		var asked = ids.ToList();
 		var wanted = asked.ToHashSet();

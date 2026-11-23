@@ -17,6 +17,7 @@
 		<ProjectReference Include="..\Basil.Application.Diagnostics\Basil.Application.Diagnostics.csproj"/>
 		<ProjectReference Include="..\Basil.Application.Multiplayer\Basil.Application.Multiplayer.csproj"/>
 		<ProjectReference Include="..\Basil.Application.Servers\Basil.Application.Servers.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Sessions\Basil.Application.Sessions.csproj"/>
 		<ProjectReference Include="..\Basil.Application.Users\Basil.Application.Users.csproj"/>
 	</ItemGroup>
 

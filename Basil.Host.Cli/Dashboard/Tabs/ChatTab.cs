@@ -1,11 +1,11 @@
+using Basil.Application.Sessions.Registry;
 using Basil.Application.Users;
 using Basil.Host.Shared.Errors;
 using Basil.Domain;
 using Basil.Application.Chat.Messages;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Multiplayer.Registry;
-using Basil.Application.Users.Objects.Sessions;
-using Basil.Application.Users.Registry;
+using Basil.Application.Sessions.Objects;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using Basil.Host.Cli.Dashboard.Data;
@@ -455,7 +455,7 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 	{
 		if (author.Equals("BasilBot", StringComparison.OrdinalIgnoreCase)) return Ink.ChatBot;
 
-		var user = _services.GetRequiredService<UserRegistry>().Online.Keys
+		var user = _services.GetRequiredService<SessionRegistry>().Online.Keys
 			.FirstOrDefault(record => record.Value.Name.Equals(author, StringComparison.OrdinalIgnoreCase));
 		return user is null ? Ink.Text : UserInk.Of(user.Value.Privileges);
 	}
@@ -512,7 +512,7 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 
 	private Task<OperatorSession> Operator()
 	{
-		return _operator ??= _services.GetRequiredService<UserRegistry>().OperateAsync(CancellationToken.None);
+		return _operator ??= _services.GetRequiredService<SessionRegistry>().OperateAsync(CancellationToken.None);
 	}
 
 	private void Send()
@@ -530,7 +530,7 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 				ChatTarget target;
 				if (!channel.StartsWith('#'))
 				{
-					var recipient = _services.GetRequiredService<UserRegistry>().Online.Values
+					var recipient = _services.GetRequiredService<SessionRegistry>().Online.Values
 						.FirstOrDefault(u => u.Record.Value.Name.Equals(channel, StringComparison.OrdinalIgnoreCase));
 					if (recipient is null)
 					{

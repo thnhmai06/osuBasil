@@ -14,11 +14,12 @@ using Basil.Application.Rulesets.Objects.Events;
 using Basil.Application.Scores;
 using Basil.Application.Scores.Objects.Events;
 using Basil.Application.Servers;
+using Basil.Application.Sessions;
+using Basil.Application.Sessions.Objects.Events;
 using Basil.Application.Shared;
 using Basil.Application.Shared.Events;
 using Basil.Infrastructure.Shared.Events;
 using Basil.Application.Users;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Events;
 using Basil.Configuration;
 using Basil.Gateway.Admission;
@@ -54,7 +55,7 @@ public static class DependencyInjection
 		{
 			services.AddBasilStorage();
 			services.AddHostedService<RuntimeStartup>();
-			services.AddUsersBackgroundWork();
+			services.AddSessionsBackgroundWork();
 			services.AddMultiplayerBackgroundWork();
 			services.AddBotInfrastructure();
 			// Before the work that waits for it: a scan at start-up waits for the difficulty of what it finds.
@@ -90,6 +91,7 @@ public static class DependencyInjection
 		{
 			services.AddEvents();
 			services.AddUsersApplication();
+			services.AddSessionsApplication();
 			services.AddRulesetsApplication();
 			services.AddBeatmapsApplication();
 			services.AddScoresApplication();
@@ -124,6 +126,7 @@ public static class DependencyInjection
 				options.PipelineBehaviors = [typeof(MessageMeasurement<,>)];
 			});
 			AddCategory<UserEvent>(services);
+			AddCategory<SessionEvent>(services);
 			AddCategory<ChannelEvent>(services);
 			AddCategory<LobbyEvent>(services);
 			AddCategory<RoomEvent>(services);

@@ -1,4 +1,4 @@
-using Basil.Application.Users.Registry;
+using Basil.Application.Sessions.Registry;
 using Basil.Domain.Users;
 using Basil.Host.Cli.Dashboard.Shell;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,7 +11,7 @@ internal sealed class SessionsSource(IServiceProvider services, TimeProvider clo
 	{
 		var now = clock.GetUtcNow();
 		var text = query.Trim();
-		var items = services.GetRequiredService<UserRegistry>().Online.Values.Where(user => user.Record.Id != BasilBot.Id)
+		var items = services.GetRequiredService<SessionRegistry>().Online.Values.Where(user => user.Record.Id != BasilBot.Id)
 			.SelectMany(user => user.Connections.Where(connection => !connection.IsServerOwned))
 			.Select(connection => SessionItem.Of(connection.State, now) with { Live = true })
 			.Where(item => Matches(item, text))

@@ -5,7 +5,7 @@ using Basil.Domain.Multiplayer.Room;
 using Basil.Protocol.Game.Stable.Models.Multiplayer;
 using Basil.Protocol.Game.Stable.Wire.Packets;
 using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
-using User = Basil.Application.Users.Objects.User;
+using UserSessions = Basil.Application.Sessions.Objects.UserSessions;
 
 namespace Basil.Host.Stable.Support;
 
@@ -35,7 +35,7 @@ internal static class StableView
 		return (int)Roles(effective);
 	}
 
-	public static void WritePresence(PacketWriter writer, User user, UserStats stats, DateTimeOffset now)
+	public static void WritePresence(PacketWriter writer, UserSessions user, UserStats stats, DateTimeOffset now)
 	{
 		var client = user.Stable;
 		writer.UserPresence(user.Record.Id, user.Record.Value.Name, client?.UtcOffset ?? 0,
@@ -43,7 +43,7 @@ internal static class StableView
 			(int)(client?.Status.Detail?.Mode ?? GameMode.Standard), 0, 0, stats.Rank);
 	}
 
-	public static void WriteStats(PacketWriter writer, User user, UserStats stats)
+	public static void WriteStats(PacketWriter writer, UserSessions user, UserStats stats)
 	{
 		var status = user.Stable?.Status ?? new UserStatus();
 		var detail = status.Detail;

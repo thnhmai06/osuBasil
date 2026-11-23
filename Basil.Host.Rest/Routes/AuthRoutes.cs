@@ -1,9 +1,9 @@
+using Basil.Application.Sessions.Messages;
+using Basil.Application.Sessions.Persistence;
+using Basil.Application.Sessions.Registry;
 using Basil.Application.Users;
 using System.Text;
 using Basil.Application.Shared.Settings;
-using Basil.Application.Users.Messages;
-using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Registry;
 using Basil.Domain.Sessions;
 using Basil.Gateway.RateLimiting;
 using Basil.Host.Rest.Http;
@@ -37,7 +37,7 @@ internal static class AuthRoutes
 			.WithDescription("Names the signed-in user.");
 	}
 
-	private static async Task<IResult> LoginAsync(HttpContext context, LoginRequest request, UserRegistry registry,
+	private static async Task<IResult> LoginAsync(HttpContext context, LoginRequest request, SessionRegistry registry,
 		ISender sender, LoginAttemptGuard attempts)
 	{
 		if (string.IsNullOrEmpty(request.Username) || string.IsNullOrEmpty(request.Password))

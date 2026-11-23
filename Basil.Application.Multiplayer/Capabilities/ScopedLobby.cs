@@ -3,7 +3,7 @@ using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Shared.Privileges;
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
 using Basil.Domain.Multiplayer.Report.Matches;
 using Basil.Domain.Multiplayer.Room;
 using Basil.Domain.Users;
@@ -69,7 +69,7 @@ public readonly struct ScopedLobby
 	{
 		// A room opened in game seats its creator; a room opened through the API seats the creator's osu! client when it may join.
 		return source is RoomSource.Api
-			? Actor.User.Stable is { IsOpen: true } stable &&
+			? Actor.Siblings.Stable is { IsOpen: true } stable &&
 			  stable.User.EffectivePrivileges(Lobby.Context.Clock.GetUtcNow()).Allows(UserPrivileges.Player)
 				? stable
 				: null

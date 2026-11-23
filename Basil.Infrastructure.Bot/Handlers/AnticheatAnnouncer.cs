@@ -5,7 +5,7 @@ using Basil.Application.Chat.Registry;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Servers.Objects;
-using Basil.Application.Users.Registry;
+using Basil.Application.Sessions.Registry;
 using Basil.Domain.Client;
 using Basil.Domain.Users;
 using Mediator;
@@ -16,7 +16,7 @@ internal sealed class AnticheatAnnouncer(
 	Server server,
 	Lobby lobby,
 	RoomChannels channels,
-	UserRegistry users,
+	SessionRegistry users,
 	IReplies replies)
 	: INotificationHandler<AnticheatPlayerFlagged>
 {

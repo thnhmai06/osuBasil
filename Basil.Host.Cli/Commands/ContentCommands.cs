@@ -9,7 +9,7 @@ using Basil.Application.Servers.Objects;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Messages;
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
 using Basil.Domain.Content;
 using Basil.Host.Shared.Json;
 using Basil.Host.Shared.Views;

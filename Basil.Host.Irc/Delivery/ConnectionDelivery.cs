@@ -1,5 +1,5 @@
+using Basil.Application.Sessions.Objects.Events;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Events;
 using Basil.Host.Irc.Clients;
 using Basil.Host.Irc.Support;
 using Basil.Host.Irc.Transport;
@@ -10,9 +10,9 @@ using Microsoft.Extensions.Options;
 namespace Basil.Host.Irc.Delivery;
 
 internal sealed class ConnectionClosedDelivery(IrcClients clients, IrcPresence presence, IOptions<IrcOptions> options)
-	: INotificationHandler<UserSessionClosed>
+	: INotificationHandler<SessionClosed>
 {
-	public ValueTask Handle(UserSessionClosed notification, CancellationToken ct)
+	public ValueTask Handle(SessionClosed notification, CancellationToken ct)
 	{
 		var connection = notification.Session;
 		if (clients.Find(connection) is { } own) own.Close(IrcReplies.Closing(notification.Reason));

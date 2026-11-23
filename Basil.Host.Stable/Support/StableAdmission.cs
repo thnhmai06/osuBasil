@@ -1,9 +1,9 @@
-using Basil.Application.Users.Registry;
+using Basil.Application.Sessions.Registry;
 using Basil.Gateway.Admission;
 
 namespace Basil.Host.Stable.Support;
 
-internal sealed class StableAdmission(Admission admission, UserRegistry registry) : IEndpointFilter
+internal sealed class StableAdmission(Admission admission, SessionRegistry registry) : IEndpointFilter
 {
 	public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext invocation,
 		EndpointFilterDelegate next)

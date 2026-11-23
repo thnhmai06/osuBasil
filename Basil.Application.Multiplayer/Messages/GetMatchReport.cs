@@ -1,4 +1,4 @@
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
 using Basil.Domain.Multiplayer.Report;
 using Basil.Domain.Multiplayer.Report.Matches;
 using Basil.Domain.Multiplayer.Report.Rounds;

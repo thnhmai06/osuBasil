@@ -47,7 +47,7 @@ internal sealed class ChannelPartedDelivery(IrcClients clients, IrcPresence pres
 				: new IrcMessage("PART", mask, channel.Name));
 
 		// A user who still has a connection in the channel, or who went offline (one QUIT says that), shows no PART.
-		if (channel.Members.Any(other => ReferenceEquals(other.User, member.User)) || !member.User.IsOnline ||
+		if (channel.Members.Any(other => ReferenceEquals(other.User, member.User)) || !member.Siblings.IsOnline ||
 		    !presence.Remove(member.Record, channel))
 			return ValueTask.CompletedTask;
 

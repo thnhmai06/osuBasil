@@ -3,7 +3,7 @@ using Basil.Application.Bot.Replies;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Servers.Objects;
-using Basil.Application.Users.Registry;
+using Basil.Application.Sessions.Registry;
 using Basil.Domain.Multiplayer.Report.Rounds;
 using Basil.Domain.Users;
 using Basil.Shared.Structures.Data;
@@ -15,7 +15,7 @@ namespace Basil.Infrastructure.Bot.Handlers;
 internal sealed class RoomAnnouncer(
 	Server server,
 	RoomChannels channels,
-	UserRegistry users,
+	SessionRegistry users,
 	TimeProvider timeProvider,
 	IReplies replies)
 	: INotificationHandler<LobbyRoomClosingAnnounced>,

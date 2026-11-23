@@ -3,9 +3,9 @@ using Basil.Application.Chat.Objects.Events;
 using Basil.Application.Chat.Persistence;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Multiplayer.Registry;
+using Basil.Application.Sessions.Registry;
 using Basil.Application.Shared.Events;
 using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Registry;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Application.Chat;
@@ -31,7 +31,7 @@ public static class DependencyInjection
 			sp.GetRequiredService<RoomChannels>(),
 			sp.GetRequiredService<SpectatorChannels>(),
 			sp.GetRequiredService<PmChannels>(),
-			sp.GetRequiredService<UserRegistry>()));
+			sp.GetRequiredService<SessionRegistry>()));
 		return services;
 	}
 }

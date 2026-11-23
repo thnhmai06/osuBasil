@@ -1,6 +1,6 @@
+using Basil.Application.Sessions.Registry;
 using System.Globalization;
-using Basil.Application.Users.Objects.Sessions;
-using Basil.Application.Users.Registry;
+using Basil.Application.Sessions.Objects;
 
 namespace Basil.Host.Cli.Commands;
 
@@ -70,7 +70,7 @@ public sealed class CommandCall(
 
 	public async Task<OperatorSession> ByAsync()
 	{
-		return _by ??= await Get<UserRegistry>().OperateAsync(CancellationToken);
+		return _by ??= await Get<SessionRegistry>().OperateAsync(CancellationToken);
 	}
 
 	public int Id(string name)

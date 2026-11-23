@@ -1,3 +1,5 @@
+using Basil.Application.Sessions.Messages;
+using Basil.Application.Users.Registry;
 using Basil.Application.Users;
 using System.Text;
 using Basil.Application.Sessions.Persistence;
@@ -5,7 +7,6 @@ using Basil.Application.Shared.Paging;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Registry;
 using Basil.Domain.Sessions;
 using Basil.Domain.Users;
 using Basil.Gateway.Limits;
@@ -14,7 +15,7 @@ using Basil.Host.Rest.Sse;
 using Basil.Host.Shared.Views;
 using Basil.Shared.Structures.Cryptography;
 using Mediator;
-using Session = Basil.Application.Users.Objects.Sessions.Session;
+using Session = Basil.Application.Sessions.Objects.Session;
 
 namespace Basil.Host.Rest.Routes;
 

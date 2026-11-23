@@ -1,3 +1,4 @@
+using Basil.Application.Sessions.Registry;
 using System.Collections.Frozen;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Bot.Commands;
@@ -5,7 +6,6 @@ using Basil.Application.Bot.Registry;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Registry;
 using Basil.Domain.Chat;
 using Basil.Domain.Game;
 using Basil.Domain.Users;
@@ -15,7 +15,7 @@ namespace Basil.Infrastructure.Bot.Handlers.Commands.Mp;
 
 internal sealed partial class MpCommands(
 	Lobby lobby,
-	UserRegistry registry,
+	SessionRegistry registry,
 	IUserRepository users,
 	IBeatmapRepository beatmaps,
 	MpTargets targets,
@@ -156,7 +156,7 @@ internal sealed partial class MpCommands(
 		}
 
 		// (c) Seated room: where the sender is currently playing
-		var seated = actor.User.Stable is { } client ? lobby.RoomOf(client) : null;
+		var seated = actor.Siblings.Stable is { } client ? lobby.RoomOf(client) : null;
 		return seated;
 	}
 

@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using Basil.Application.Multiplayer.Capabilities.Rooms;
 using Basil.Application.Multiplayer.Objects.Events;
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
 using Basil.Domain.Multiplayer.Room;
 using Basil.Domain.Users;
 using DomainRoom = Basil.Domain.Multiplayer.Room.Room;

@@ -1,6 +1,6 @@
 using Basil.Application.Chat.Objects;
 using Basil.Application.Shared.Privileges;
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
 

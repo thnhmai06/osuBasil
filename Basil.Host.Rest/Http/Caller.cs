@@ -1,6 +1,6 @@
+using Basil.Application.Sessions.Registry;
 using System.Net;
-using Basil.Application.Users.Objects.Sessions;
-using Basil.Application.Users.Registry;
+using Basil.Application.Sessions.Objects;
 using Basil.Gateway.Admission;
 using Basil.Gateway.Limits;
 
@@ -37,7 +37,7 @@ public static class Caller
 			return context.Connection.RemoteIpAddress ?? IPAddress.Loopback;
 		}
 
-		public async Task<bool> AuthenticateAsync(UserRegistry registry)
+		public async Task<bool> AuthenticateAsync(SessionRegistry registry)
 		{
 			var header = context.Request.Headers.Authorization.ToString();
 			if (!header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)) return false;

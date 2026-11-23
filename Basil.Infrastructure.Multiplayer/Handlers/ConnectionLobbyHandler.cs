@@ -1,19 +1,18 @@
 using Basil.Application.Multiplayer.Registry;
+using Basil.Application.Sessions.Objects.Events;
 using Basil.Infrastructure.Shared.Events;
-using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Events;
-using Basil.Application.Users.Objects.Sessions;
+using Basil.Application.Sessions.Objects;
 using Mediator;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
 internal sealed class ConnectionLobbyHandler(Lobby lobby, ILogger<ConnectionLobbyHandler> logger)
-	: INotificationHandler<UserSessionClosed>
+	: INotificationHandler<SessionClosed>
 {
 	private const string Subject = "the closed connection of user";
 
-	public async ValueTask Handle(UserSessionClosed @event, CancellationToken ct)
+	public async ValueTask Handle(SessionClosed @event, CancellationToken ct)
 	{
 		var connection = @event.Session;
 		await HandlerStep.RunAsync(logger, "release its room", Subject, connection.Record.Id,
