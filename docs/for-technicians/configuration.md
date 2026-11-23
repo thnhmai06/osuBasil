@@ -40,7 +40,7 @@ Sources, later winning over earlier: `appsettings.json`, `appsettings.{Environme
 underscore stands for `:`), command-line arguments (`--Basil:Server:Domain=...`). The file is strict JSON: no comments and
 no trailing commas. `appsettings.schema.json` describes every key.
 
-Relative paths (the certificate, `Storage:Location`, `Logging:File:Location`) are relative to the executable.
+Relative paths (the certificate, `Logging:File:Location`) are relative to the executable. Stored files (replays, avatars, beatmapsets, menu images, the cache) always live in `Data` beside the executable; it is not configurable.
 
 ### Available settings
 
@@ -64,8 +64,7 @@ under `Basil`.
 | `Basil:Server:TrustedProxies` | IPs and CIDR ranges whose forwarding headers are trusted; defaults to loopback |
 | `Basil:Server:Irc:Port` | plain TCP port of IRC, default `6667`; `0` picks a free port |
 | `Basil:Server:Multicast:Enabled`, `UseIPv4`, `UseIPv6`, `DnsTtl` | answer multicast DNS for the domain and its subdomains (off unless enabled), on the standard mDNS groups and port 5353; `UseIPv4` and `UseIPv6` (default `true`) switch one address family off when `false`; `DnsTtl` is how many seconds a client may keep an answer |
-| `Basil:Storage:Location` | directory that holds stored files, default `Data` |
-| `Basil:Assets:CacheDirectory`, `FfmpegFolder` | the directory for the temporary files made while audio previews are built (default `Cache/Previews` under the storage location), and the folder of the ffmpeg executable (default: found on the PATH) |
+| `Basil:Assets:CacheDirectory`, `FfmpegFolder` | the directory for the temporary files made while audio previews are built (default `Data/Cache/Previews` beside the executable), and the folder of the ffmpeg executable (default: found on the PATH) |
 | `Basil:Database:Read:PoolSize`, `Write:PoolSize` | PostgreSQL is the only database; the connection strings are in `ConnectionStrings:Read` and `Write`; migrations run against the write endpoint; `Read:PoolSize` caps the reading pool (`0` keeps the driver's default), `Write:PoolSize` is the number of simultaneous writing connections, default `8` |
 | `Basil:Updates:CheckOnStartup`, `Source`, `Channel` | startup update check, its feed, and the release channel (`stable`, or the name of another published channel) |
 | `Basil:Bot:Replies:Path` | path of the replies file, default `Configurations/Templates/replies.json` |
@@ -112,7 +111,7 @@ environment variable or command-line argument, where `:` is `__` in variables); 
 | `Basil:Server:Ports:Irc` | `Basil:Server:Irc:Port` |
 | `Basil:Server:LanAdvertise` (default `true`) | `Basil:Server:Multicast:Enabled` (default `false`) |
 | (new) | `Basil:Server:Name`, `Basil:Server:Multicast:UseIPv4`, `UseIPv6`, `DnsTtl` |
-| `Basil:Storage:DataDirectory` | `Basil:Storage:Location` |
+| `Basil:Storage:DataDirectory`, `Basil:Storage:Location` | removed: stored files are always in `Data` beside the executable |
 | `Basil:Database:ConnectionString` | `ConnectionStrings:Write` (and `ConnectionStrings:Read`, which falls back to `Write`) |
 | `Basil:Database:WriteConnections` | `Basil:Database:Write:PoolSize` |
 | (new) | `Basil:Database:Read:PoolSize` |

@@ -1,14 +1,11 @@
-using Microsoft.Extensions.Options;
-
 namespace Basil.Infrastructure.Shared.Storage;
 
 public sealed class DataPaths
 {
-	public DataPaths(IOptions<StorageOptions> options)
+	public DataPaths()
 	{
-		Root = Path.GetFullPath(Path.IsPathRooted(options.Value.Location)
-			? options.Value.Location
-			: Path.Combine(AppContext.BaseDirectory, options.Value.Location));
+		// Stored files always live in Data beside the executable.
+		Root = Path.Combine(AppContext.BaseDirectory, "Data");
 		Beatmapsets = new DataStorage(Root, "Beatmapsets");
 		Replays = new DataStorage(Root, "Replays");
 		Avatars = new DataStorage(Root, "Avatars");

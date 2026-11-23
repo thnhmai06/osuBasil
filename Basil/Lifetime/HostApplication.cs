@@ -17,7 +17,6 @@ using Basil.Infrastructure.Diagnostics.Services;
 using Basil.Infrastructure.Shared;
 using Basil.Infrastructure.Shared.Storage;
 using Basil.Logging;
-using Microsoft.Extensions.Options;
 using SixLabors.ImageSharp.Web.Caching;
 
 namespace Basil.Lifetime;
@@ -51,14 +50,14 @@ public static class HostApplication
 		builder.Services.AddRestApi(builder.Configuration);
 		builder.Services.AddRestImages();
 		builder.Services.AddOptions<PhysicalFileSystemCacheOptions>()
-			.Configure<IOptions<StorageOptions>>((cache, storage) =>
+			.Configure<DataPaths>((cache, paths) =>
 			{
-				cache.CacheRootPath = Path.Combine(storage.Value.Location, "Cache");
+				cache.CacheRootPath = paths.Cache.Path;
 				cache.CacheFolder = "imagesharp";
 			});
 		builder.Services.AddCli(mode,
 			provider => ControlSocket.PathIn(
-				provider.GetRequiredService<IOptions<StorageOptions>>().Value.Location),
+				provider.GetRequiredService<DataPaths>().Root),
 			Path.Combine(AppContext.BaseDirectory, "Configurations"));
 		builder.Services.AddSingleton<ShutdownSequence>();
 		// Registered last, so that it stops first: the other services are told and the rooms closed while they still run.

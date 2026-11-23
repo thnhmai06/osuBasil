@@ -1,7 +1,6 @@
 using Basil.Host.Cli.Commands;
 using Basil.Host.Cli.Socket;
 using Basil.Infrastructure.Shared.Storage;
-using Microsoft.Extensions.Options;
 
 namespace Basil.Lifetime;
 
@@ -37,8 +36,7 @@ public static class ShellRunner
 			return ExitCodes.Invalid;
 		}
 
-		var path = ControlSocket.PathIn(app.Services.GetRequiredService<IOptions<StorageOptions>>().Value
-			.Location);
+		var path = ControlSocket.PathIn(app.Services.GetRequiredService<DataPaths>().Root);
 		using (var running = await ControlClient.ConnectAsync(path, ct))
 		{
 			if (running is not null) return await ForwardAsync(running, parsed, args, output, input, ct);

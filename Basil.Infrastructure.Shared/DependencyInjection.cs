@@ -52,13 +52,6 @@ public static class DependencyInjection
 
 		public IServiceCollection AddSharedInfrastructureOptions(IConfiguration configuration)
 		{
-			var storage = configuration.GetSection("Basil:Storage").Get<StorageOptions>();
-			if (string.IsNullOrWhiteSpace(storage?.Location))
-				throw new InvalidOperationException("Basil:Storage:Location is not set.");
-			// A relative location is relative to the executable.
-			if (!Path.IsPathRooted(storage.Location))
-				storage.Location = Path.Combine(AppContext.BaseDirectory, storage.Location);
-			services.AddSingleton(Options.Create(storage));
 			services.AddSingleton(Options.Create(DatabaseSetup.Read(configuration)));
 			return services;
 		}

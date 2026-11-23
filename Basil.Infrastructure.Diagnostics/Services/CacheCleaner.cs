@@ -1,14 +1,13 @@
 using Basil.Application.Diagnostics.Services;
 using Basil.Infrastructure.Shared.Storage;
-using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Diagnostics.Services;
 
-internal sealed class CacheCleaner(IOptions<StorageOptions> storage) : ICacheCleaner
+internal sealed class CacheCleaner(DataPaths paths) : ICacheCleaner
 {
 	public int Clear()
 	{
-		var directory = Path.Combine(storage.Value.Location, "Cache");
+		var directory = paths.Cache.Path;
 		if (!Directory.Exists(directory)) return 0;
 
 		var deleted = 0;

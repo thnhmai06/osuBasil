@@ -39,9 +39,8 @@ moved to `assets.<domain>`, a corresponding `GET` on `api.<domain>` redirects to
   at once.
 
 A fresh install has one banner (`default-banner@2x.png`, always current, opening the project's GitHub page) and one
-seasonal background (`github-banner.png`). Both files ship in the program's `Data` folder, and the database starts with
-the banner's record. When `Basil:Storage:Location` points outside the program folder, copy them there to keep them;
-otherwise the banner is left out of the manifest as above.
+seasonal background (`github-banner.png`). Both files ship in the program's `Data` folder, where stored files always live, and the database starts
+with the banner's record.
 
 * `GET /beatmapsets/{beatmapsetId}/background` — beatmapset background.
 

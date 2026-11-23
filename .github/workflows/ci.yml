@@ -54,7 +54,6 @@ jobs:
     env:
       ConnectionStrings__Write: Host=127.0.0.1;Port=5432;Username=postgres;Password=pw;Database=basil
       ConnectionStrings__Read: Host=127.0.0.1;Port=5432;Username=postgres;Password=pw;Database=basil
-      Basil__Storage__Location: ${{ github.workspace }}/ci-data/Data
       Basil__Server__Domain: basil.local
       Basil__Server__Irc__Port: "0"
       Basil__Server__Multicast__Enabled: "false"
