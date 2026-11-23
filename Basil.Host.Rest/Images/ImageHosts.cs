@@ -49,6 +49,7 @@ public static class ImageHosts
 	{
 		app.UseMiddleware<ImageAdmissionMiddleware>();
 		app.UseMiddleware<BeatmapPreviewMiddleware>();
+		app.UseMiddleware<MenuContentMiddleware>();
 		app.UseMiddleware<UndecodableImageMiddleware>();
 		return app.UseImageSharp();
 	}

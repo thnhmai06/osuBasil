@@ -11,7 +11,8 @@ around [ImageSharp.Web](https://docs.sixlabors.com/articles/imagesharp.web/getti
 cropping, and caching now share a single middleware pipeline and on-disk cache, with transformations controlled by
 request commands instead of custom logic for each image type.
 
-The host also owns the main-menu banner feature, whose images are served from `assets.<domain>`.
+The host also owns the main-menu banner feature: `GET /menu-content.json`, the JSON manifest that the osu! stable client
+fetches during startup. This endpoint naturally belongs with the menu assets it describes.
 
 Write operations remain on `api.<domain>` and require a token with the matching privilege. `assets.<domain>` is read-only. When an asset has
 moved to `assets.<domain>`, a corresponding `GET` on `api.<domain>` redirects to the new location.
@@ -19,6 +20,9 @@ moved to `assets.<domain>`, a corresponding `GET` on `api.<domain>` redirects to
 ## What
 
 `assets.<domain>` serves:
+
+* `GET /menu-content.json` — the main-menu banner manifest. Its path and field names are fixed by the protocol,
+  including the client's PascalCase `IsCurrent` field. See `MenuContentMiddleware`.
 
 * `GET /menu/banners/{fileName}` — menu banners.
 

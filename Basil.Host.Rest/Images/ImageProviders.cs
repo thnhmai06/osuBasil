@@ -1,9 +1,11 @@
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Application.Content.Messages;
 using Basil.Application.Users.Messages;
 using Mediator;
+using Microsoft.Extensions.Options;
 
 namespace Basil.Host.Rest.Images;
 
@@ -138,3 +140,37 @@ internal sealed partial class BeatmapPreviewMiddleware(RequestDelegate next)
 	[GeneratedRegex(@"^/preview/(?<id>\d+)\.mp3$")]
 	private static partial Regex PreviewPath();
 }
+
+internal sealed class MenuContentMiddleware(RequestDelegate next)
+{
+	public async Task InvokeAsync(HttpContext context, ISender sender, TimeProvider clock,
+		IOptions<RestOptions> options)
+	{
+		var host = context.Request.Host.Host;
+		if (!HttpMethods.IsGet(context.Request.Method) ||
+		    context.Request.Path != "/menu-content.json" ||
+		    !host.StartsWith("assets.", StringComparison.OrdinalIgnoreCase))
+		{
+			await next(context);
+			return;
+		}
+
+		var now = clock.GetUtcNow();
+		var banners = await sender.Send(new ListBanners(), context.RequestAborted);
+		var images = banners.Select(b => new MenuContentImage(
+			b.Image.IsOffline
+				? $"https://assets.{options.Value.Domain}/menu/banners/{Path.GetFileName(b.Image.Value)}"
+				: b.Image.Value,
+			b.Url.AbsoluteUri, b.IsCurrent(now), b.StartsAt?.ToString("O"), b.EndsAt?.ToString("O"))).ToList();
+		await context.Response.WriteAsJsonAsync(new MenuContentResponse(images), context.RequestAborted);
+	}
+}
+
+internal sealed record MenuContentResponse([property: JsonPropertyName("images")] IReadOnlyList<MenuContentImage> Images);
+
+internal sealed record MenuContentImage(
+	[property: JsonPropertyName("image")] string Image,
+	[property: JsonPropertyName("url")] string Url,
+	[property: JsonPropertyName("IsCurrent")] bool IsCurrent,
+	[property: JsonPropertyName("begins")] string? Begins,
+	[property: JsonPropertyName("expires")] string? Expires);
