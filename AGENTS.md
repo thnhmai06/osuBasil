@@ -332,10 +332,10 @@ dotnet test tests/Application/Users -c Release --no-build --nologo -v q
 Projects that need PostgreSQL start a container; set `DOCKER_HOST` when the daemon is not on the default socket, or set
 `BASIL_TEST_POSTGRES` to use an existing server. Never run every project in one `dotnet test` invocation.
 
-A change to a constructor, a context or a `DependencyInjection.cs` also needs the container check, which
-`tests/Architecture/CompositionTests.cs` runs: it calls `AddBasil()` of the composition root (`Basil`), builds the provider
-with `ValidateOnBuild`, resolves every registration (factory lambdas included) and checks that every event handler is
-registered, against a deadline: a dependency cycle shows up as a hang, not as an error.
+A change to a constructor, a context or a `DependencyInjection.cs` also needs the container check: call `AddBasil()` of the
+composition root (`Basil`), build the provider with `ValidateOnBuild`, resolve every registration (factory lambdas included)
+and check that every event handler is registered, against a deadline, because a dependency cycle shows up as a hang, not as
+an error. No test in the repository runs this check yet; the change is checked in review.
 
 See [`docs/for-developers/development.md`](docs/for-developers/development.md) for the complete development workflow.
 
@@ -393,24 +393,24 @@ the code is split by module, one project per module and layer (`Basil.Applicatio
 References only point down:
 
 ```text
-Sessions    -> Shared
 Rulesets    -> Shared
 Beatmaps    -> Shared, Rulesets
 Content     -> Shared
-Users       -> Shared, Sessions, Content
-Anticheat   -> Users
-Scores      -> Users, Beatmaps, Rulesets
-Multiplayer -> Users, Beatmaps, Content, Scores
-Chat        -> Users, Multiplayer
-Diagnostics -> Users
+Users       -> Shared, Content
+Sessions    -> Users
+Anticheat   -> Users, Sessions
+Scores      -> Users, Sessions, Beatmaps, Rulesets
+Multiplayer -> Users, Sessions, Beatmaps, Content, Scores
+Chat        -> Users, Sessions, Multiplayer
+Diagnostics -> Users, Sessions
 Servers     -> every module above
-Bot         -> Anticheat, Beatmaps, Chat, Multiplayer, Scores, Servers, Users
+Bot         -> Anticheat, Beatmaps, Chat, Multiplayer, Scores, Servers, Sessions, Users
 ```
 
 A module Infrastructure project never references another module; the foreign keys between the module databases
-decide the order in which `AddBasil()` registers the migrations (Users, Sessions, Beatmaps, Content, Shared, Scores,
-Multiplayer, Chat), not these references. `tests/Architecture/ModuleGraphTests.cs` reads the project references and fails on
-an edge outside this graph or on a cycle; `HostGraphTests.cs` does the same for the hosts.
+decide the order in which `AddBasil()` registers the migrations (Users, Sessions, Rulesets (no tables), Beatmaps, Content,
+Shared, Scores, Multiplayer, Chat), not these references. The graph and the host rules are checked in review; no test in
+the repository enforces them yet.
 
 `Basil.Protocol.Stable` wraps the communication between the osu! client and the server, as an API wrapper
 wraps a remote API: it turns what the client sends (osu-stable packets, the delimited strings of the web
@@ -434,8 +434,7 @@ Every project is a folder at the repository root named after its project: `Basil
 `Basil.Protocol.{Game.Stable,Irc}/`. The project file and the namespace keep the full name
 (`Basil.Domain.csproj`, `Basil.Domain.*`, `Basil.Application.Users.Persistence`). Tests mirror the same tree under
 `tests/` (`tests/Application/Users/Basil.Application.Users.Tests.csproj` tests `Basil.Application.Users`;
-shared fixtures are under `tests/Support/`, and the tests that build the whole composition and run several hosts
-under `tests/Architecture/` and `tests/Hosts/`).
+shared fixtures are under `tests/Support/`, and the tests that run several hosts are under `tests/Hosts/`).
 
 The project that defines an options type binds it (`Add<Module>...(IConfiguration)`) **(target)**; the composition root
 only chooses what to run (Kestrel, ports, TLS, the database provider, logging, lifecycle). Until the migration reaches a
@@ -461,8 +460,7 @@ validation and recording; it takes and returns records and plain results, never 
 object or an event), the implementations of **Services/** and the background runs (**Workers/**) live in
 `Basil.Infrastructure.<Module>`. When an object calls such logic, the object's project declares an `internal` interface
 in **Ports/** (`IAccountRules`, `IScoreRecorder`, `IBeatmapsetImporter`) and the Infrastructure project implements it;
-the plain data both sides name stays in **Persistence/**. `tests/Architecture/ImplementationPlacementTests.cs` enforces
-this. Application grants `InternalsVisibleTo` to its own Infrastructure project and the tests of both.
+the plain data both sides name stays in **Persistence/**. This placement is checked in review. Application grants `InternalsVisibleTo` to its own Infrastructure project and the tests of both.
 Each module's public `Add<Module>Application()` builds its contexts and objects; its `Add<Module>Infrastructure()`
 registers the implementations of its ports and its migration. Handlers stay `internal`; a project that has them grants
 `InternalsVisibleTo` to the composition root (the generated Mediator code names them) and to its own test project, and
@@ -482,10 +480,10 @@ system; no host or gateway knows it exists.
 * A host translates: inbound it turns the wire into a strongly typed message of the system (using Protocol), checks what
   the client sent, and sends it through Mediator; outbound it listens to Notifications and writes its wire. It holds no
   business, permission or state rule. A host never calls `ScopeTo`, never references Infrastructure and
-  never references another host. Every message carries the `Session` of the session as its actor, and only the Users
+  never references another host. Every message carries the `Session` of the session as its actor, and only the Sessions
   module creates a `Session`.
 * Every transport references `Basil.Host.Shared` and never another transport. Rest and Cli never reference
-  `Protocol.Stable`. `tests/Architecture/HostGraphTests.cs` enforces this.
+  `Protocol.Stable`. This is checked in review.
 * `Basil.Gateway` (enforcement by the hosts: **target**) is a leaf project that answers `Allow` or `Deny` for each incoming request from size, rate,
   concurrency and load, in two tiers (before and after authentication; the second tier receives an opaque
   `AdmissionSubject` that `Host.Shared` maps from the `Session`). It has no user types and no business facts. Every
@@ -725,7 +723,7 @@ Before considering a code change complete:
 1. Run the smallest relevant tests while iterating.
 2. Run the complete test suite for the final change.
 3. Run a Release build when the change affects production code.
-4. Check architecture tests for cross-layer changes.
+4. Check the module and host graphs by hand for cross-layer changes.
 5. Update authoritative documentation when behavior or design changes.
 6. Review the final diff for unrelated changes.
 7. Check every new or changed member in the Application projects against

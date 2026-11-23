@@ -55,7 +55,7 @@ machine and what the API serves cannot disagree.
 
 ## Design
 
-Diagnostics is a module, `Application.Diagnostics` and `Infrastructure.Diagnostics`, that depends on Users and Shared. It
+Diagnostics is a module, `Application.Diagnostics` and `Infrastructure.Diagnostics`, that depends on Users, Sessions and Shared. It
 offers two services.
 
 * **Intake** (`IDiagnosticsIntake`) receives measurements and turns them into a `DiagnosticsSample`. There are three
@@ -84,7 +84,7 @@ every context, so it is the same for any engine; the pool sizes come from the en
 can be absent. The event queue counts what it publishes and what fails, including each handler that throws.
 
 Every module's Infrastructure project that has handlers owns a `Meter` named `Basil.<Module>` and a handler for
-`CollectDiagnostics`; an architecture test fails when one is missing. Users reports the users online and the open
+`CollectDiagnostics`; review checks that one is present. Sessions reports the users online and the open
 connections of every type (`stable`, `stabletourney`, `irc`, `api`), counting a type with no connection as zero and leaving
 out the bot's own server-owned connections. Multiplayer reports rooms and rounds, Chat the open general channels
 (`application.channels`) and Diagnostics its own watchers (`application.diagnosticsWatchers`); the API host reports the open

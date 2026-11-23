@@ -236,8 +236,8 @@ closes the socket.
 
 ## Related code
 
-* [`Session.cs`](../../Basil.Application.Users/Objects/Sessions/Session.cs): session types
-* [`UserRegistry.cs`](../../Basil.Application.Users/Registry/UserRegistry.cs): `LoginAsync`, `CloseSilent`
+* [`Session.cs`](../../Basil.Application.Sessions/Objects/Session.cs): session types
+* [`SessionRegistry.cs`](../../Basil.Application.Sessions/Registry/SessionRegistry.cs): `LoginAsync`
 * [`Channel.cs`](../../Basil.Application.Chat/Objects/Channel.cs), [`ScopedChannel.cs`](../../Basil.Application.Chat/Capabilities/ScopedChannel.cs): membership, posting, recipients
 * [`RoomChannel.cs`](../../Basil.Application.Chat/Objects/RoomChannel.cs): room channel access
 * [`IrcMessage.cs`](../../Basil.Protocol.Irc/IrcMessage.cs), [`IrcTag.cs`](../../Basil.Protocol.Irc/IrcTag.cs), [`IrcNumericReply.cs`](../../Basil.Protocol.Irc/IrcNumericReply.cs), [`IrcUserPrefix.cs`](../../Basil.Protocol.Irc/IrcUserPrefix.cs): wire format

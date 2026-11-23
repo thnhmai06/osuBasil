@@ -74,7 +74,7 @@ corresponding tests and documentation.
 
 ### Dependency direction
 
-The dependency rule is enforced by architecture tests:
+The dependency rule is checked in review:
 
 ```text
 Domain                  → nothing
@@ -86,7 +86,7 @@ Host.* (transports)     → Host.Shared, their Application and Protocol projects
 Host                    → everything
 ```
 
-`tests/Architecture` (`ModuleGraphTests`, `HostGraphTests`) enforces these boundaries in CI. The module graph is in [`AGENTS.md`](../../AGENTS.md).
+No test in the repository enforces these boundaries yet. The module graph is in [`AGENTS.md`](../../AGENTS.md).
 
 Do not introduce a dependency that points inward across these boundaries simply because it is convenient.
 
@@ -210,7 +210,7 @@ than silently weakening the invariant.
 At minimum:
 
 1. Run the tests relevant to the changed behaviour.
-2. Run architecture tests when changing project dependencies or layer boundaries.
+2. Review project dependencies and layer boundaries by hand when changing them, against the module graph in [`AGENTS.md`](../../AGENTS.md).
 3. Update the authoritative documentation when behaviour or scope changes.
 4. Check that no duplicate source of truth was introduced.
 5. Review user-visible strings for consistency with the centralized reply definitions.

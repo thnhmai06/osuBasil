@@ -8,7 +8,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
 
 * **A capability (`ScopedX`, "Cap") is a `readonly struct` valid for one request or command.** `x.ScopeTo(connection)`
   returns it. It holds the connection (`Actor`) and `Privileges`, the privileges the connection held when it was created (a
-  snapshot taken once, never re-taken), and it never lives in a field or property (an architecture test enforces this).
+  snapshot taken once, never re-taken), and it never lives in a field or property (checked in review).
   It exposes the owner as a property named after it (`Channel`, `Room`, `User`, …) and reaches the owner's parts through
   **forwarding getters** (`room.ScopeTo(actor).Slots`, `.Rounds`, `.Settings`). The owner's raw mutators are `internal` to
   its Application project, so only a capability, which has checked the privileges, can change the owner. A behaviour states
@@ -46,8 +46,8 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
     `InvalidSettings`, `InvalidText`, `Empty`, `InvalidImage`, `TooLarge`, `DimensionsTooLarge`, `InvalidSilence`).
 * **Granting uses the actor's privileges, ranking uses the granted ones.** An actor can grant only privileges they hold;
   the strict-superset hierarchy test compares the privileges the two accounts were granted.
-* **`ConfigureAwait` is not used** anywhere in the project's source (a server has no synchronization context). An
-  architecture test fails on `ConfigureAwait(` in `src/`. This overrides the `code-principles` skill until the skill
+* **`ConfigureAwait` is not used** anywhere in the project's source (a server has no synchronization context). Review rejects
+  `ConfigureAwait(` in `src/`. This overrides the `code-principles` skill until the skill
   is changed.
 
 ### Domain and Application
@@ -102,7 +102,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   Runtime handlers, startup, the bot's announcements, public reads).
   Internal capability helpers keep only application logic that needs no live object (account checks, beatmapset
   indexing, score validation and recording); coordination between objects belongs to the object that is acted on
-  (`UserRegistry` for logins and connections, `Lobby` for what happens across rooms, `ScoreSubmitter` for a
+  (`SessionRegistry` for logins and connections, `Lobby` for what happens across rooms, `ScoreSubmitter` for a
   game client's score, `AnticheatReporter` for its anticheat flags, `Beatmapsets` for imports). Five
   anti-patterns to reject in review: a **God Actor** that gathers every behaviour (every former service ending up
   as `Server.X`); **service-centric procedural
@@ -122,8 +122,8 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   contexts, their outcome enums and their event records live in **Objects/**; the registries that keep live objects in
   RAM (`UserRegistry`, `Lobby`, `GeneralChannelRegistry`, the channel registries) live in **Registry/**; the `Scoped*`
   views live in **Capabilities/** (only those), the ports to external computation in **Ports/**, the contracts of the object-free logic in **Ports/** (an `internal` interface, implemented in `Infrastructure.<Module>/Logic`); the event handlers, the logic and the background runs live in the Infrastructure project (**Handlers/**, **Logic/**, **Workers/**). In the
-  Users module the online user and its context are in `Objects/`, its sessions in `Objects/Sessions/`, and its
-  registry in `Registry/`. Persistence never decides a business rule, emits an event, calls a service or starts a
+  Users module the user and its context are in `Objects/`, and its
+  registry in `Registry/`; the Sessions module keeps its sessions in `Objects/` and its registry in `Registry/`. Persistence never decides a business rule, emits an event, calls a service or starts a
   timer. A state change and its consequences belong to the object that owns the state.
 * **A service the system provides has a contract; the logic behind a capability does not.** What the module offers as
   a service to the hosts and to other modules lives in **Services/** as a contract and its implementation
@@ -178,7 +178,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   `IBeatmapAssets.OpenAsync`, not `ReadFromDiskAsync`.
 * **Registries live in their own folder.** A registry holds live runtime objects, so it is a public class of
   a module's Registry folder (`UserRegistry`, `Lobby`, `GeneralChannelRegistry`) that also owns the operations on what
-  it holds (`UserRegistry` opens and closes connections and logs users in). Mutating registry members are `internal`.
+  it holds (`SessionRegistry` opens and closes connections and logs users in). Mutating registry members are `internal`.
   Persistent repositories, query records and paging belong to the module's Persistence folder, file-storage ports to
   its Storage folder. Other capability ports describe what lies outside the process: files, network, external
   computation and the clock (`TimeProvider`).
@@ -192,7 +192,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   operation (a room keeps its channel in step with its players). A consequence that crosses object boundaries
   (a closed connection removes memberships in rooms and spectator streams) is announced as an event; Infrastructure
   handlers call the operations owned by those objects.
-* **Background work.** An object declares one run of a background job (`UserRegistry.CloseIdle()`,
+* **Background work.** An object declares one run of a background job (`SessionRegistry.EndSilentAsync()`,
   `Beatmapsets.ScanAsync()`); Infrastructure owns the loop, the trigger, the
   period and its configuration. A one-shot timer that is the consequence of an operation (an empty room's
   closing) belongs to the lobby that owns the room and runs on `TimeProvider`. A room's countdown belongs to
@@ -201,10 +201,10 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
 * **Derive whatever is derivable.** A property a runtime object co-owns with its domain object
   (truth in Domain) is a forwarding property (`Room.Name => Match.Name`).
 * **A user is one `User`; each place they log in from is a `Session`.**
-  `User` (sealed) represents the account and, while it is online, everywhere they connect from: it holds what is
-  shared (`AwayMessage`, the `Silence`) plus its sessions as child data, keyed by
-  `SessionType` (`Stable`, `StableTourney`, `Irc`, `Api`), with typed accessors (`Stable`, `Irc`, `Tourneys`,
-  `Apis`); one active session per type (Tourney excepted) is a rule the user registry enforces (see
+  `User` (sealed) represents the account: what is shared (`AwayMessage`, the `Silence`). While the user is online, the
+  Sessions module holds the user's open sessions in `UserSessions`, keyed by
+  `SessionType` (`Stable`, `StableTourney`, `Irc`, `Api`), with typed accessors (`Stable`, `Irc`, `Ircs`, `Tourneys`);
+  one active session per type (Tourney excepted) is a rule the session registry enforces (see
   [`identity-privileges.md`](identity-privileges.md)).
   `Session` is an abstract class (`State`, `User`, `Record`, `Token`, `IsOpen`, `Type`) with `StableSession`,
   `TourneySession`, `IrcSession`, `ApiSession`, `OperatorSession`; each holds only what exists for that kind of client
@@ -217,7 +217,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   eventually consistent with them; the channel never stands for who is spectating.
 * **Identify by the basis object**, not its id (`Room` by `Match`, `GeneralChannel` by `Name`). Runtime
   objects that can be recreated with the same user or name compare **by reference**: a connection
-  is one login, a `User` instance is one online period (`UserRegistry.Online` holds it; an offline account gets a transient instance that is never registered), a
+  is one login, a `User` instance is one online period (`UserRegistry` keeps it while the user is online; an offline account gets a transient instance that is never registered), a
   runtime channel is one opening (`#mp_5` is reused when a room id is reused). Cleanup that carries
   an old object can never touch its replacement. "Is this user already here?" compares the user
   and is a separate check from object identity. Ids are for repository lookups only. Choose object vs identifier
@@ -240,8 +240,8 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   relationships and account operations. Channels, sessions, connections, the lobby, beatmapsets and the server
   follow the same pattern. There are no child service trees for object behaviour; coordination that spans objects
   is a method of the object that is acted on (or of the registry that holds them).
-* **Each owner manages its own kind, and reacts to other kinds only through events.** The user registry
-  opens and closes connections and announces `UserSessionOpened`/`UserSessionClosed`; its responsibility
+* **Each owner manages its own kind, and reacts to other kinds only through events.** The session registry
+  opens and closes connections and announces `SessionOpened`/`SessionClosed`; its responsibility
   ends there. Leaving rooms and parting channels when a connection closes is done by Infrastructure handlers
   that receive the event and call the owning object (`Lobby.ReleaseAsync`, `GeneralChannelRegistry.PartAll`). When a second connection of the same kind arrives
   for a user an owner still holds, the owner **asks the old connection who it is** (`connection.IsOpen`):
@@ -254,8 +254,9 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   watch it, such as BasilBot). An object calls another directly only for a clear ownership relation or to keep
   a rule that must hold within the same operation: objects use storage ports; Chat keeps the channel of each open room,
   of each online user (PM) and of each watched client (spectator); a room tells the lobby when it empties or fills;
-  logging in opens the connection; deleting a user closes their connections at once, a security rule that
-  must not wait for a handler.
+  logging in opens the connection. Deleting a user is not one of these: it publishes `UserDeleted`, and the Sessions
+  handler closes the connections one event-queue step later, while the effective privileges change at once, because a
+  session reads the live `User`.
 * **Application publishes events and handles the ones that concern its own module; Infrastructure only ships them**
   (the handlers are in `Infrastructure.<Module>/Handlers`; contracts and event records stay in Application). The base event,
   `IEventPublisher<T>` lives in Application.Shared and `EventQueue` in Infrastructure.Shared; the feature event records live in the Objects
@@ -294,7 +295,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
 * **Event names are `{Group}{Subject}{PastTenseVerb}`.** The group is the category the event belongs
   to (`Room`, `Channel`, `User`, `Lobby`); when the subject is the group itself it is written once
   (`ChannelOpened`, `UserSilenced`). A subject that belongs to another is written `{Parent}{Child}`
-  (`RoomRoundPlayerLoaded`, `RoomSlotTeamChanged`, `UserSessionOpened`). The abstract category
+  (`RoomRoundPlayerLoaded`, `RoomSlotTeamChanged`, `SessionOpened`). The abstract category
   records follow the same rule (`RoomRoundEvent`, `ChannelMembershipEvent`).
 * **Chat channels.** Domain stores only what is persisted: `GeneralChannelRecord` (identity: the name with its
   `#`) and `GeneralChannelData` (`Topic`, `ReadPrivileges`, `WritePrivileges`, `AutoJoin`, `Visible`); messages

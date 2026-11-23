@@ -28,6 +28,10 @@ touching users, connections, privileges, silences or the bot.
   sessions) requires the actor's **granted** privileges to be a strict superset of the target's. Equals cannot act on
   each other; acting on oneself is exempt, except that nobody silences or unsilences themselves. Granting
   gives only privileges the actor holds.
+* **Changing an account closes its sessions.** Deleting a user publishes `UserDeleted`; changing a user's privileges
+  publishes `UserPrivilegesChanged`. The Sessions module reacts by closing all of that user's sessions, or only those the
+  new privileges no longer allow. The effective privileges change at once, because a session reads the live `User`; the
+  connection closes one event-queue step later.
 * **BasilBot is the server's voice.** The server has one fixed user, id 1. At startup it makes sure id 1 is the bot: it
   takes over an existing id (restoring a deleted account under the default name, keeping a live one's name and country,
   removing its privileges, password and silence and closing its sessions) or creates it. This is the one
@@ -38,7 +42,7 @@ touching users, connections, privileges, silences or the bot.
   `Infrastructure.Bot`) bound to user id 1. It is online with exactly one Stable and one Irc
   session, opened by the server with no transport behind them, and has no session type of its own: they are an
   ordinary `StableSession` and `IrcSession` that `Session.IsServerOwned` marks (the session of bot id 1).
-  A server-owned session is not a game client (`User.Stable` stays `null`), is never indexed by token, never idle-closed
+  A server-owned session is not a game client (`UserSessions` does not count it as the user's stable client), is never indexed by token, never idle-closed
   and is not counted as a client in diagnostics, the console status or the dashboard; transports skip it when delivering. It answers chat commands. A command runs on the objects scoped to the
   **typist's** session and needs that user's privileges; the bot only replies. Its own messages and server announcements
   go straight to chat, past the privilege check. The wording lives in the replies file (see `basil-bot.md`).
@@ -53,7 +57,7 @@ touching users, connections, privileges, silences or the bot.
   `Accounts` lock is set. REST has no self-registration: `POST /v1/users` is for `Owner`. The server creates no
   account by itself; the first administrator is made by the operator with a console command.
 * **The console is the operator's entry point.** It runs in `Basil.Host.Cli`, as the dashboard command box or as
-  `Basil.Host <command>` from a shell. It acts through `UserRegistry.OperateAsync`, which returns an `OperatorSession`:
+  `Basil.Host <command>` from a shell. It acts through `SessionRegistry.OperateAsync`, which returns an `OperatorSession`:
   BasilBot's identity with every privilege, outranking every account, never registered, so no client can present it. It
   can also post chat messages as BasilBot (the dashboard's Chat tab): BasilBot reads a `!` command in such a message
   and runs it with the operator as the typist, so with every right. Only that session is read this way; what BasilBot
@@ -87,15 +91,15 @@ touching users, connections, privileges, silences or the bot.
   `SessionActionResult` (`Heartbeat`, `End`, `GiveWay`).
 
   Only an API session survives a restart: it resumes by its token while it is not `Expired`
-  (`UserRegistry.ResumeAsync`, one read of the store for a token the server does not hold). A closed or revoked session
+  (`SessionRegistry.ResumeAsync`, one read of the store for a token the server does not hold). A closed or revoked session
   never resumes, and a resume checks the account again (deleted). osu! and IRC sessions are ended at startup with
   `ServerStopped`; an osu! client with an unknown token is told to restart and signs in again with its saved password,
   as bancho.py does, and IRC signs in with the account password in `PASS` (as osu! and the API do). IRC is plain TCP, so that password crosses the network readable; see
   [`https.md`](../for-technicians/https.md). Ended sessions are deleted after `Sessions.RetentionPeriod` (90 days by
   default). `Sessions.MaxPerUser` and `Sessions.ApiToken.Lifetime` no longer exist.
 * **One active session per user and type.** Why: a second sign-in of the same kind is either a mistake (a client still
-  running) or a takeover, and the silence of the old one tells which. The Users module enforces it in
-  `UserRegistry.Open`, under the account gate, for every type except StableTourney (no check, no count). It applies
+  running) or a takeover, and the silence of the old one tells which. The Sessions module enforces it in
+  `SessionRegistry.Open`, under the account gate, for every type except StableTourney (no check, no count). It applies
   to the user's session in memory or, after a restart, only in the store. The decision when a new login finds an old
   session of the same type:
 
@@ -110,7 +114,7 @@ touching users, connections, privileges, silences or the bot.
   A refusal is `LoginFailure.AlreadyOnline`: the osu! client gets bancho.py's "User already logged in." notice, IRC a
   `464` plus `ERROR`, the API a `409`. BasilBot's sessions are fixed at one Stable and one Irc. Refusals are counted in
   diagnostics (`basil.connections.rejected`, tags `type` and `reason=already_online`). Open live streams (SSE) have a
-  per-user ceiling equal to the per-address one and answer `429`. This is a business rule of Users, not an admission
+  per-user ceiling equal to the per-address one and answer `429`. This is a business rule of Sessions, not an admission
   policy of the gateway. In a channel, a new session of an exclusive type takes the place of the user's closed one of
   that type.
 * **Logging out ends the session, not saved passwords.** Closing any session ends it and its token; the client can

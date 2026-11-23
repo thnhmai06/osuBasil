@@ -96,7 +96,7 @@ Repository contracts, byte storages and the Registry / Repository / Storage mode
   key and index strings, a nullable unique column instead of a filtered index, and `EF.Functions.Like` over lowered text with the
   `!` escape character. Tests run on PostgreSQL.
 * **Module schemas.** Each module has its own `DbContext`, row configuration set and migration history
-  (`__ef_migrations_<module>`). `DatabaseMigrator` applies Users, Sessions, Beatmaps, Content, Shared (the settings), Scores,
+  (`__ef_migrations_<module>`). `DatabaseMigrator` applies Users, Sessions, Rulesets (no tables), Beatmaps, Content, Shared (the settings), Scores,
   Multiplayer and Chat in that order; referencing contexts preserve foreign keys by mapping principal rows as excluded from
   their migrations. The system is not in production, so a module's migrations may be regenerated while the schema settles; see
   [`database.md`](../for-developers/database.md#migrations).

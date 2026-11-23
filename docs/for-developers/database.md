@@ -27,7 +27,8 @@ earlier SQLite file to write in parallel, so a deployment needs a database serve
 
 | Group        | Tables                                                                      | Notes                                                                 |
 |--------------|-----------------------------------------------------------------------------|-----------------------------------------------------------------------|
-| Accounts     | `users`, `credentials`, `relationships`, `logins`           | `logins` is append-only history                                       |
+| Accounts     | `users`, `relationships`, `moderation_log`                  | `moderation_log` is append-only history                               |
+| Sessions     | `credentials`, `sessions`                                   | a `sessions` row is one sign-in: its token hash and its connection    |
 | Server       | `settings` (one row per setting, shared context), `channels`, `menu_banners` | resident: loaded at startup, never released                           |
 | Beatmaps     | `beatmapsets`, `beatmaps`, counters `local_beatmapset`, `local_beatmap` | mirror the stored beatmapset files; local ids start at 1 000 000 000 |
 | Multiplayer  | `matches`, `rounds`, `match_events`, `round_scores`                         | `match_events` is append-only history                                 |
@@ -99,7 +100,7 @@ reference another's, the principal is not the other module's row type: `ContextM
 `UsersPrincipal` and `ScoresPrincipal`, excluded from migrations, and a row declares the key with
 `HasOne(ContextModel.UsersTable, null).WithMany().HasForeignKey("UserId")`. The generated constraint is the same as with a row type.
 
-At startup `DatabaseMigrator` applies the module migrations in foreign-key order: Users, Sessions, Beatmaps, Content,
+At startup `DatabaseMigrator` applies the module migrations in foreign-key order: Users, Sessions, Rulesets (no tables), Beatmaps, Content,
 the shared tables (Shared), Scores, Multiplayer, then Chat. Each records its migrations in `__ef_migrations_<module>`. The id counters belong to the module that owns the table (the beatmap counters to Beatmaps, the user counter, where accounts start at 2 because id 1 is BasilBot, to Users), and the seeded channels to Chat. Persistence holds no SQL
 text: schema changes are Entity Framework migrations and reads and writes use LINQ and row objects.
 
@@ -127,8 +128,8 @@ identity columns (ids come from the counter tables of `IdCounters`), JSON and ad
 converters, key and index strings have a `HasMaxLength`, and a unique name among the live accounts is a nullable unique
 `active_name` column instead of a filtered index. `dotnet ef` still runs on the Npgsql design-time factory, so a generated
 migration carries `type: "..."` arguments, store-type lines in the snapshot and Npgsql annotations. `tools/normalize-migrations.sh`
-removes them and turns entity-name strings into `typeof(Row).FullName!`; `PersistenceBoundaryTests` fails when a migration
-file still contains `Npgsql`, `type:` or `.HasColumnType(`. Add a migration with:
+removes them and turns entity-name strings into `typeof(Row).FullName!`; review rejects a migration
+file that still contains `Npgsql`, `type:` or `.HasColumnType(`. Add a migration with:
 
 ```bash
 tools/add-migration.sh <Module> <Name>     # runs dotnet ef, moves the snapshot, normalizes the files
@@ -138,7 +139,7 @@ Each module has exactly one migration, `InitialCreate`, until a first release. T
 delete `Basil.Infrastructure.Persistence/Migrations`, then run the script with `InitialCreate` for Users, Sessions,
 Beatmaps, Content, Shared, Scores, Multiplayer and Chat in that order. Every existing development database must then be
 dropped and recreated, because its `__ef_migrations_<module>` history names migrations that no longer exist. The runtime ignores `PendingModelChangesWarning`, because a neutral
-snapshot never equals a provider's model; `ModuleMigrationTests` checks the model against the migrations with the provider's
+snapshot never equals a provider's model; the model is checked against the migrations with the provider's
 own differ instead.
 
 ## Related code

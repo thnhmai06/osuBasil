@@ -27,16 +27,34 @@ primitives, `Handlers/` for the Mediator handlers, `Logic/` for the object-free 
 service implementations and `Workers/` for the loops and hosted services. Tests mirror the same folders under `tests/`.
 
 ```text
-Users/         IUserRepository and friends, UserQuery, login inputs    (Persistence)
+Users/         IUserRepository, IRelationshipRepository,
+               IModerationLogRepository, UserQuery                     (Persistence)
                IUserAvatarStorage                                      (Storage)
-               IAccountRules (internal)                                (Ports)
-               User, UserContext, UserProfile, UserActionResult  (Objects)
-               Session, SessionContext, SessionAuthResult,
-               PlayerStatus                                            (Objects/Sessions)
+               User, UserContext, UserProfile, UserRelationships,
+               UserSilence, UserEvents                                 (Objects)
                UserRegistry                                            (Registry)
-               ScopedUser*, ScopedStableSession                         (Capabilities)
+               ScopedUser*                                             (Capabilities)
+               the user and moderation messages                        (Messages)
+               the user handlers, EfUserRepository and the avatar
+               storage                                                 (Infrastructure)
+Sessions/      ICredentialRepository, ISessionRepository, LoginAttempt,
+               RegisterAttempt, CredentialChecks                       (Persistence)
+               IAccountRules (internal)                                (Ports)
+               Session and its kinds (StableSession, TourneySession,
+               IrcSession, ApiSession, OperatorSession), SessionContext,
+               UserSessions, UserCredentials, SessionAuthResult,
+               LoginResult, SessionMetrics, SessionEvents              (Objects)
+               SessionRegistry                                         (Registry)
+               ScopedSessionRegistry, ScopedStableSession,
+               ScopedUserCredentials, ScopedUserSessions               (Capabilities)
+               the session, credential and spectating messages,
+               SetPlayerStatus                                         (Messages)
                AccountRules                                            (Infrastructure Logic)
-               ConnectionHandler                                       (Infrastructure Handlers)
+               ConnectionHandler, the session handlers, and the handlers
+               that close sessions when a user is deleted or changes
+               privileges                                              (Infrastructure Handlers)
+               SessionSweeper, SessionRetentionSweeper                 (Infrastructure Workers)
+               SessionsMeter, EfSessionRepository, EfCredentialRepository (Infrastructure)
 Chat/          IChannelRepository                                      (Persistence)
                the channel tree, ChannelContext, ChannelJoinResult,
                ChannelEvents                                            (Objects)
@@ -103,8 +121,8 @@ not Domain and not host configuration.
   `Multiplayer` objects. Anticheat flags,
   wherever they arrive (score submission, `lastfm.php`), are reported through `IAnticheatReporter.Report`,
   the single source of anticheat events; BasilBot turns them into chat warnings.
-* `Chat` references `Multiplayer`, and both reference `Users` (`Room.Host`, `Channel.Members`, the online
-  `User`); treat them as one cluster. Inside `Users`, a user holds its sessions and a session knows its user. Their runtime objects and registries live in Objects;
+* `Chat` references `Multiplayer`, and both reference `Users` and `Sessions` (`Room.Host`, `Channel.Members`, the online
+  `User`); treat them as one cluster. `Users` knows no session: `Sessions` holds a user's open sessions (`UserSessions`), and a session knows its user. Their runtime objects and registries live in Objects;
   persistent repositories remain in each module's Persistence folder. Objects change their own state through behaviour, with
   implementation access limited to the owning object and its collaborators. References run from the acted-on
   object to the actor, never back.

@@ -42,23 +42,25 @@ Basil.Host.Stable/.Irc/.Rest/.Cli  transports                                   
 Basil                            composition root -> everything
 ```
 
-`tests/Architecture/` reads the project references and fails on an edge outside this graph, on a cycle, and on a host
-that references another host.
+The project graph is checked in review; no test in the repository enforces it yet.
 
 ## Modules
 
-A module owns one slice of the business. The compiler enforces which module may use which:
+A module owns one slice of the business. The project references enforce which module may use which:
 
 ```text
-Sessions, Beatmaps, Content -> Shared
-Users        -> Sessions, Content
-Anticheat    -> Users
-Scores       -> Users, Beatmaps
-Multiplayer  -> Users, Beatmaps, Content, Scores
-Chat         -> Users, Multiplayer
-Diagnostics  -> Users
+Rulesets     -> Shared
+Beatmaps     -> Shared, Rulesets
+Content      -> Shared
+Users        -> Shared, Content
+Sessions     -> Users
+Anticheat    -> Users, Sessions
+Scores       -> Users, Sessions, Beatmaps, Rulesets
+Multiplayer  -> Users, Sessions, Beatmaps, Content, Scores
+Chat         -> Users, Sessions, Multiplayer
+Diagnostics  -> Users, Sessions
 Servers      -> every module above
-Bot          -> Anticheat, Beatmaps, Chat, Multiplayer, Scores, Servers, Users
+Bot          -> Anticheat, Beatmaps, Chat, Multiplayer, Scores, Servers, Sessions, Users
 ```
 
 Each module is two projects. `Basil.Application.<Module>` holds only contracts and runtime objects.
@@ -166,20 +168,19 @@ FAQ, scores, an account's public profile) carries no actor. The checks that admi
 allowed origins, the message of the day) have no exception: they send the public `ReadSettings` message, which the
 cache-aside settings repository answers from memory. A message names an account by `int TargetId` and a stored thing by
 its id (`int SetId`, `int MatchId`), so the answer to "does it exist" comes only after the module has checked the caller's
-privileges. `tests/Architecture/HostGraphTests.cs` enforces the rule by reflection over the host assemblies and by a scan of
-`src/Hosts` for service lookups of a repository or a storage, each with a positive control.
+privileges. This rule is checked in review.
 
 ### How the host knows whose request it is
 
 * **Which handler?** The host does not choose a handler. It chooses a **message type** from the wire (an HTTP route, a
   packet id, an IRC command) and sends it. Mediator maps a message type to exactly one handler at compile time. The host
   knows only the message record in `Application.<Module>`, not the handler or the module that implements it.
-* **Whose request?** Every transport session is bound to a `Session`, an object of the Users module. Logging in is a
+* **Whose request?** Every transport session is bound to a `Session`, an object of the Sessions module. Logging in is a
   Command with no actor and returns the `Session`. On Rest the token is resolved by a Query to a `Session` that is
   attached to the request; on Stable the polling request carries the `osu-token`; on IRC the socket keeps the
   `Session` after PASS and NICK. Every later message carries the `Session` as its actor, and the handler
   calls `object.ScopeTo(message.Actor)`; the capability computes effective privileges and checks them with `Lacks`.
-* **Unforgeable.** Only the Users module creates a `Session` (its constructor is `internal`), so a host cannot build one.
+* **Unforgeable.** Only the Sessions module creates a `Session` (its constructors are `internal`), so a host cannot build one.
   A bad token resolves to nothing and the host answers 401 before any business message is built.
 
 ### Gateway: admission control
@@ -226,7 +227,7 @@ room.ScopeTo(actor).Members.JoinAsync(password);
 
 A capability is a `readonly struct` valid for one request. It snapshots the actor's effective privileges once, offers
 forwarding getters for the owner's parts, and calls the owner's `internal` raw mutators. Behaviours that can be refused return
-the outcome enum of the object. A capability is never stored in a field or property (an architecture test enforces this). System work
+the outcome enum of the object. A capability is never stored in a field or property (checked in review). System work
 with no caller (startup, event handlers reacting for the server, announcements) calls the object directly.
 
 ## Sessions
@@ -263,12 +264,12 @@ that root. The first event is a snapshot. See [`sse.md`](sse.md).
 
 ## Invariants
 
-* Dependencies point down; `tests/Architecture/` enforces the module and host graphs.
+* Dependencies point down; the module and host graphs are checked in review.
 * Domain is dependency-free, holds no lock, and holds every business operation of one object; Application only exposes contracts and coordinates objects, connections, locks and timers.
 * The acted-on object stores the relation and emits the event.
 * A notification is never awaited under a lock; objects enqueue, a dispatcher publishes.
 * A capability lives for one request.
-* Only Users creates a `Session`; every business message carries one.
+* Only the Sessions module creates a `Session`; every business message carries one.
 * Every entry point declares an admission policy **(target)**.
 * Performance points are display-only; they never affect ranking or gameplay.
 * User-visible reply strings are centralized in the production type that owns them.
@@ -283,7 +284,6 @@ that root. The first event is a snapshot. See [`sse.md`](sse.md).
 * `Basil/` — the composition root (`Lifetime/` for start, restart and shutdown, `Http/` for its middleware).
 * `Basil.Gateway/` — admission control in `Admission/`, `Limits/` and `RateLimiting/`.
 * Each module's Infrastructure project keeps its OpenTelemetry meter in `Metrics/`.
-* `tests/Architecture/` — `ModuleGraphTests`, `HostGraphTests`, `CompositionTests`, `ScopedLifetimeTests`.
 
 ## Where to go from here
 

@@ -10,12 +10,12 @@ carrying their own "(target)" notes.
 
 | Area | State |
 |---|---|
-| Module split (Domain, Application and Infrastructure per module, Protocol, Gateway, Hosts, composition root) | Done; `ModuleGraphTests` and `HostGraphTests` enforce it |
+| Module split (Domain, Application and Infrastructure per module, Protocol, Gateway, Hosts, composition root) | Done; the graph is checked in review, and no test in the repository enforces it yet |
 | Awaited persistence (cache-aside), no write-behind queue | Done |
 | Writes take no `CancellationToken`; reads keep it; cancellation tokens are named `ct` | Done |
-| Hosts hold no repository, storage or `ScopeTo`; reads are query messages answered in the owning module | Done, enforced by `HostGraphTests` |
+| Hosts hold no repository, storage or `ScopeTo`; reads are query messages answered in the owning module | Done, checked in review |
 | `Scoped*` views of `Server` by category (`Faq`, `Banners`, `Seasonals`, `Icon`, `Screenshots`, `Settings`, `Channels`, `Beatmapsets`) | Done |
-| Concurrency of the user registry (per-account gate), room countdowns and the SSE hub | Done |
+| Concurrency of the session registry (per-account gate), room countdowns and the SSE hub | Done |
 | XML documentation on every public member (`CS1591` is an error) | Done |
 | Static `IsValidName`/`TryParse` checks instead of catching constructor exceptions | Done for users, MD5 hashes, channels and content names |
 
@@ -30,7 +30,7 @@ carrying their own "(target)" notes.
 
 ## Related code
 
-* `tests/Architecture/ModuleGraphTests.cs`, `HostGraphTests.cs`: the dependency rules above.
+* The dependency rules above are checked in review; the repository has no test that enforces them yet.
 * [`architecture.md`](architecture.md): the target architecture.
 
 ## Known gaps
