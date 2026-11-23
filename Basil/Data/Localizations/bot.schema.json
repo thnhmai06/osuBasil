@@ -1,0 +1,67 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "./bot.schema.json",
+	"title": "BasilBot localization catalog",
+	"description": "Defines the structure and text values for this localization catalog.",
+	"type": "object",
+	"properties": {
+		"$schema": {
+			"const": "./bot.schema.json",
+			"description": "Relative path to the schema for this catalog."
+		},
+		"General": {
+			"type": "object",
+			"properties": {
+				"WhereUsage": {
+					"type": "string",
+					"description": "Usage message shown when !where is missing a player name."
+				},
+				"NotRegistered": {
+					"type": "string",
+					"description": "Reply when !where cannot find an account. {0} is the requested player name."
+				},
+				"WhereIsIn": {
+					"type": "string",
+					"description": "Reports the registered player's country. {0} is the player name and {1} is the country."
+				},
+				"FaqUsage": {
+					"type": "string",
+					"description": "Usage message shown when !faq has no entry name or list argument."
+				},
+				"NoFaqEntryFound": {
+					"type": "string",
+					"description": "Reply when the requested FAQ entry is unavailable. {0} is the requested entry name."
+				},
+				"NoFaqEntriesAvailable": {
+					"type": "string",
+					"description": "Reply when !faq list has no entries to show."
+				},
+				"AvailableFaqEntries": {
+					"type": "string",
+					"description": "Lists the available FAQ entry names. {0} is the formatted list."
+				},
+				"RollResult": {
+					"type": "string",
+					"description": "Shows the result of !roll. {0} is the player name and {1} is the rolled number."
+				}
+			},
+			"required": [
+				"WhereUsage",
+				"NotRegistered",
+				"WhereIsIn",
+				"FaqUsage",
+				"NoFaqEntryFound",
+				"NoFaqEntriesAvailable",
+				"AvailableFaqEntries",
+				"RollResult"
+			],
+			"additionalProperties": false,
+			"description": "Replies for BasilBot commands outside multiplayer management."
+		}
+	},
+	"required": [
+		"$schema",
+		"General"
+	],
+	"additionalProperties": false
+}

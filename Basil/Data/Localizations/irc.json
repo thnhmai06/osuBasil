@@ -1,4 +1,5 @@
 {
+	"$schema": "./irc.schema.json",
 	"Irc": {
 		"Registration": {
 			"Welcome": "Welcome to {0} IRC, {1}",

@@ -1,4 +1,5 @@
 {
+	"$schema": "./bot.schema.json",
 	"General": {
 		"WhereUsage": "Usage: !where <username>",
 		"NotRegistered": "{0} is not registered.",

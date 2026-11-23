@@ -1,4 +1,5 @@
 {
+	"$schema": "./mp.schema.json",
 	"Commands": {
 		"Mp": {
 			"Make": {
