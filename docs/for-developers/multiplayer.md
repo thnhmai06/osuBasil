@@ -20,7 +20,7 @@ var scopedRoom = room.ScopeTo(by);
 
 `ScopedRoom` holds the room, the caller and the `RoomPrivileges` the caller holds for one request or command. Use its parts—`Slots`, `Rounds`, `Settings`, `Authority` and `Members`—rather than asking a service to perform a player's action. Do not retain a scope after the request: its authority is a snapshot.
 
-Each operation returns a `RoomResult` for ordinary outcomes such as success, missing authority or a suspended privilege. The caller does not pass privileges through each operation, and connection type alone never grants authority.
+Each operation returns the outcome enum of its kind (`RoomActionResult`, `RoomJoinResult`, `RoomTargetResult`) for ordinary outcomes such as success or missing authority. The caller does not pass privileges through each operation, and connection type alone never grants authority.
 
 The `!mp` command entry point resolves the room and the typist's connection, then calls `room.ScopeTo(by)`; BasilBot only posts the replies.
 
@@ -52,7 +52,7 @@ The account's privileges then constrain what the scope holds:
 * With effective `Tournament`, the scope holds `RoomPrivileges.Creator` in any room, joined or not: managing every room acts with the creator's authority.
 * Otherwise the account privileges must include `Player`; without it the scoped room holds no role.
 
-This is why a creator or referee who has lost `Player` cannot manage a room, while a `Tournament` holder keeps multiplayer authority. A refusal for lack of an allowed role is the outcome `RoleDenied`; it does not say which roles were missing.
+This is why a creator or referee who has lost `Player` cannot manage a room, while a `Tournament` holder keeps multiplayer authority. A refusal for lack of an allowed role is the outcome `Denied`; it does not say which roles were missing.
 
 ### System-owned operations
 

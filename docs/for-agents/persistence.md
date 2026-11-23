@@ -1,6 +1,6 @@
 # Persistence rules
 
-Repository contracts, byte storages and the Registry / Repository / Storage model. Moved out of `AGENTS.md`; the rules are binding. Read this before touching a repository, a storage, a registry or anything under a module's `Application/Persistence`, `Application/Storage` or `Application/Registry`, an `Infrastructure/Persistence` or `Infrastructure/Storage` folder, or `Infrastructure.Shared`.
+Repository contracts, byte storages and the Registry / Repository / Storage model. Moved out of `AGENTS.md`; the rules are binding. Read this before touching a repository, a storage, a registry or anything under a module's `Basil.Application.<Module>/Persistence`, `Basil.Application.<Module>/Storage` or `Basil.Application.<Module>/Registry`, a `Basil.Infrastructure.<Module>/Persistence` or `Basil.Infrastructure.<Module>/Storage` folder, or `Basil.Infrastructure.Shared`.
 
 > **Migration status.** The old write-behind model (identity map, owned lists, `DatabaseWriter` with its per-root queues and write tickets, `MemoryRepository`, resident-data writes) is **removed**: every module repository runs on `DatabaseSession`. PostgreSQL specifics live in `Basil.Infrastructure.Persistence`, and the `write_tickets` table no longer exists.
 
@@ -26,7 +26,7 @@ Repository contracts, byte storages and the Registry / Repository / Storage mode
   (a missing one reads as absent). Three kinds of type, three owners: the storage holds raw content (`BeatmapsetSource`: a
   `BeatmapsetArchive` `.osz` or a `BeatmapsetFolder` of one set's files), `IBeatmapsetReader` understands it
   (`BeatmapsetContent`), and the repositories hold the records (`Beatmapset`, `Beatmap`; created from `BeatmapsetData`
-  through `IBeatmapsetRepository.CommitAsync`). Raw content is identified by a `ContentFingerprint`: its `ContentStamp`
+  through `IBeatmapsetRepository.CommitAsync`). Raw content is identified by a `ContentIdentifier`: its `ContentMetadata`
   (size, modification time) is known without reading, the MD5 is taken (`BeatmapsetArchive.FingerprintAsync`) only when
   the stamp differs from the one recorded on the set; a `Beatmap` is identified by the MD5 of its `.osu`. One import is
   one beatmapset: `Beatmapsets.ImportAsync` takes one `.osz`; a folder exists only when placed by hand and is
@@ -56,8 +56,8 @@ Repository contracts, byte storages and the Registry / Repository / Storage mode
   `hidden=0`, `ended=0`, `private=1`, enum masks as numbers such as `privilege=4`), and a state is a `bool?` (`null` for both,
   written `*`) whose default, kept when the text has no token for it, is `null` (both). Every caller narrows a query to the asker
   before using it, `UserQuery.Parse(text).LimitTo(effective)`: `LimitTo` sets each state the asker may not see to
-  what a user without that privilege sees (`Deleted = false`, `Hidden = false`); `MatchQuery.LimitTo(effective, viewer)` sets
-  `VisibleTo` to the viewer when they lack `RoomViewPrivate`, so private matches are listed only when the viewer took part in
+  what a user without that privilege sees (`UserQuery`: `Deleted = false` without `UserPrivileges.Owner`; `BeatmapQuery`: `Hidden = false` without `UserPrivileges.Tournament`); `MatchQuery.LimitTo(effective, viewer)` sets
+  `VisibleTo` to the viewer when they lack `UserPrivileges.Tournament`, so private matches are listed only when the viewer took part in
   them or manages them (`private=1` then returns just those). A caller that serves match-owned data (the match, its rounds, events, report or round-score relation) to a
   user must check `ScopedLobby.CanViewAsync` first; the match repositories are plain storage and do not gate. A query used
   without `LimitTo` shows everything, so only the server's own work (a scan, startup recovery) skips it.
@@ -90,7 +90,7 @@ Repository contracts, byte storages and the Registry / Repository / Storage mode
   module's Infrastructure project uses (PostgreSQL is the only database: prefer EF Core's general API when it gives the same
   contract, and use PostgreSQL/Npgsql-specific API when the contract needs it); what is specific to an engine (the Npgsql provider behind `IDatabaseProvider`,
   error recognition, the design-time factories and the neutral migrations) belongs to `Basil.Infrastructure.Persistence`, which
-  only the composition root references; no other `src` project has a database provider package (`PersistenceBoundaryTests`).
+  only the composition root references; no other project has a database provider package (checked in review).
   Rows therefore use only portable mappings: `ValueGeneratedNever` with ids taken from `IdCounters` (no sequences, no identity
   columns, no `HasDefaultValueSql`), no `HasColumnType`, JSON and addresses as text through value converters, `HasMaxLength` on
   key and index strings, a nullable unique column instead of a filtered index, and `EF.Functions.Like` over lowered text with the
@@ -104,7 +104,7 @@ Repository contracts, byte storages and the Registry / Repository / Storage mode
   loaded, the connection released, then sent. Every upload is spooled to a temporary file, validated, then moved
   atomically (see the streaming rule in `AGENTS.md`).
 * **Uploads and the quarantine.** Application takes an upload that it must check through `IUploadSpool`
-  (`Application.Shared/Storage`; `FileUploadSpool` in `Infrastructure.Shared/Storage`): it is copied once into
+  (`Basil.Application.Shared/Storage`; `FileUploadSpool` in `Basil.Infrastructure.Shared/Storage`): it is copied once into
   `<Data>/Spool/<guid>.tmp`, cut one byte past its limit, read back for validation and deleted on disposal. An upload
   that fails validation is moved to `<Data>/Quarantine/<guid>` (`Quarantine.Keep`, which also deletes quarantined
   files older than seven days); an archive the importer cannot read is quarantined the same way
@@ -117,7 +117,7 @@ Repository contracts, byte storages and the Registry / Repository / Storage mode
 
 The Sessions module is the pilot; copy its shape (`EfCredentialRepository`, `EfSessionRepository`).
 
-* **One helper, `DatabaseSession`** (`Infrastructure.Shared/Persistence`), injected into the repository. It has no queue
+* **One helper, `DatabaseSession`** (`Basil.Infrastructure.Shared/Persistence`), injected into the repository. It has no queue
   and no retry of a change. `ReadAsync<TContext, T>(query, ct)` runs a bounded query on a context of its own. `WriteAsync<TContext>(change)` and `WriteAsync<TContext, T>(change)` create a context whose
   commit is confirmed, run the change, call `SaveChanges` and dispose; the second form returns what the change returned
   (a row count). `TransactAsync<TContext>(work)` is the same inside one transaction, for a business operation that
@@ -129,7 +129,7 @@ The Sessions module is the pilot; copy its shape (`EfCredentialRepository`, `EfS
   so a caller that must survive a failed write handles it, and a caller that cannot await (code
   under a lock) must move the write to an event handler outside the lock.
 * **Cache-aside rule.** A small record read on every request may be cached with `CacheAside<TKey, TValue>`
-  (`Infrastructure.Shared/Registry`): `GetAsync(key, load)` fills it on a miss (an absent record is never cached), and
+  (`Basil.Infrastructure.Shared/Registry`): `GetAsync(key, load)` fills it on a miss (an absent record is never cached), and
   the repository calls `Remove(key)` only after the awaited write succeeded, so a refused write leaves the cache
   unchanged. A value loaded while its entry is being removed is not cached. Credentials cache the bcrypt hash by user id.
 * **Concurrency rule.** A row with a single owner (a credential, a session) is written last-write-wins, awaited.

@@ -74,9 +74,8 @@ This is intentionally not a reproduction of osu-web's public API: there is no v1
 
 ### Assets host and main-menu banner
 
-`assets.<domain>` hosts the client-facing main-menu banner manifest
-(`GET /menu-content.json`, matching `assets.ppy.sh`'s real path and schema) plus the image serving
-for menu backgrounds/icon and beatmapset covers, all through ImageSharp.Web. See
+`assets.<domain>` serves the main-menu banner and icon images and beatmapset covers, all through
+ImageSharp.Web. See
 [`assets.md`](assets.md).
 
 This deliberately does not replicate `assets.ppy.sh`'s user-profile-cover, team, contest, or

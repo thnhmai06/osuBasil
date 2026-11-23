@@ -170,8 +170,8 @@ exist.
 | `NotMember` on part | `442` |
 | `AccessDenied`, `NotMember`, `Blocked`, `TargetSilenced` on send, or a missing `Player`/`Player` | `404` with a text that names the reason |
 | unknown nickname | `401` |
-| `Empty` | `412` |
-| `InvalidText` | the message is dropped |
+| `EmptyMessageException` | `412` |
+| `InvalidMessageException` | not caught by the IRC host, so it sends no numeric reply of its own |
 
 ### Presence
 
@@ -240,7 +240,7 @@ closes the socket.
 * [`SessionRegistry.cs`](../../Basil.Application.Sessions/Registry/SessionRegistry.cs): `LoginAsync`
 * [`Channel.cs`](../../Basil.Application.Chat/Objects/Channel.cs), [`ScopedChannel.cs`](../../Basil.Application.Chat/Capabilities/ScopedChannel.cs): membership, posting, recipients
 * [`RoomChannel.cs`](../../Basil.Application.Chat/Objects/RoomChannel.cs): room channel access
-* [`IrcMessage.cs`](../../Basil.Protocol.Irc/IrcMessage.cs), [`IrcTag.cs`](../../Basil.Protocol.Irc/IrcTag.cs), [`IrcNumericReply.cs`](../../Basil.Protocol.Irc/IrcNumericReply.cs), [`IrcUserPrefix.cs`](../../Basil.Protocol.Irc/IrcUserPrefix.cs): wire format
+* [`IrcMessage.cs`](../../Basil.Protocol.Irc/Models/IrcMessage.cs), [`IrcTag.cs`](../../Basil.Protocol.Irc/Models/IrcTag.cs), [`IrcNumericReply.cs`](../../Basil.Protocol.Irc/Models/IrcNumericReply.cs), [`IrcUserPrefix.cs`](../../Basil.Protocol.Irc/Models/IrcUserPrefix.cs): wire format
 * [`Basil.Host.Irc`](../../Basil.Host.Irc): listener, session, commands and delivery
 
 ## See also

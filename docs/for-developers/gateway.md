@@ -119,12 +119,12 @@ runtime-configurable.
 ## Invariants
 
 * The gateway is a leaf; it references no user, room or other business type.
-* Every entry point (an HTTP route, a packet type, an IRC command) declares an admission policy. The rule is
-  `AdmissionPolicyTests`: an entry point declares it by carrying `AdmissionPolicyAttribute` in its metadata, and a
-  positive control proves an entry point without it is detected. The test enumerates every route of the Rest host and of
-  the two osu! routers (as mapped endpoints), every packet type of the osu! client (the whole `ClientPacketType` enum) and
-  every IRC command (the commands of the IRC reference). The attribute only declares; a policy that applies no limit
-  still counts as declared. The images served on `a.`/`assets.` are middleware, not routes, and are not enumerated; `ImageAdmissionTests` covers them.
+* Every entry point (an HTTP route, a packet type, an IRC command) declares an admission policy. An entry point declares it
+  by carrying `AdmissionPolicyAttribute` in its metadata. The rule should be enforced by a test that enumerates every route
+  of the Rest host and of the two osu! routers (as mapped endpoints), every packet type of the osu! client (the whole
+  `ClientPacketType` enum) and every IRC command, and that includes a positive control proving an entry point without the
+  attribute is detected. No such test exists yet. The attribute only declares; a policy that applies no limit still counts
+  as declared. The images served on `a.`/`assets.` are middleware, not routes, and are outside this rule.
 * A denial is decided before business logic runs, and the refusal is the same whether or not the target exists.
 * Bans and restrictions are not gateway concerns.
 

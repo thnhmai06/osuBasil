@@ -49,7 +49,7 @@ Explains how engineering skills use Basil's domain documentation, including:
 
 * `CONTEXT.md`;
 * domain documentation;
-* architecture decisions under `docs/adr/`;
+* architecture decisions and their plans in `docs/`;
 * the `/domain-modeling` workflow.
 
 Read this when working on domain modelling or making changes that introduce or modify domain concepts.
@@ -80,7 +80,7 @@ The dependency rule is checked in review:
 Domain                  → nothing
 Application.<Module>    → Domain, Application.Shared, the modules it uses
 Infrastructure.<Module> → its own Application, Infrastructure.Shared
-Protocol.Stable         → Domain, external libraries
+Protocol.Game.Stable         → Domain, external libraries
 Protocol.Irc            → external libraries only
 Host.* (transports)     → Host.Shared, their Application and Protocol projects
 Host                    → everything

@@ -60,14 +60,14 @@ Every operation returns a `ChannelJoinResult` rather than throwing for ordinary 
 | `Part` | `Ok` | The connection left |
 | | `NotMember` | The connection was not a member |
 | `PostAsync` | `Ok` | The message was accepted |
-| | `Empty` | The text is empty; text of only whitespace is a message |
-| | `InvalidText` | The text holds a control character chat does not carry (tab, CR, LF and U+0001 are carried) |
 | | `NotMember` | The sender is not a member of a channel that requires membership |
 | | `AccessDenied` | The kind of channel does not let the sender write |
 | | `Blocked` | The recipient blocks the sender or accepts private messages only from friends |
 | | | `Silenced` | The sender is silenced and may not post |
 | | `TargetSilenced` | The recipient is silenced, so private messages to them are refused |
 | | `Closed` | The channel is closed |
+
+Empty and invalid text are business errors, not outcomes: `EmptyMessageException` for a text that is empty (text of only whitespace is a message) and `InvalidMessageException` for a control character chat does not carry (tab, CR, LF and U+0001 are carried).
 
 A sender without the `Player` privilege is refused with a denial that names it; a silenced sender is refused with `Silenced`. A closed same-kind connection may be replaced during a join; an open one cannot. osu!tourney and API connections may have multiple concurrent memberships of their kind.
 
@@ -109,10 +109,10 @@ BasilBot is online with a permanent `User` and one Stable and one Irc connection
 * [`ScopedServerChannels.cs`](../../Basil.Application.Servers/Capabilities/ScopedServerChannels.cs): general-channel creation, and the lookup of the channel to manage
 * [`ChannelJoinResult.cs`](../../Basil.Application.Chat/Objects/ChannelJoinResult.cs): operation outcomes
 * [`GeneralChannelRegistry.cs`](../../Basil.Application.Chat/Registry/GeneralChannelRegistry.cs): general-channel ownership and the automatic joins and parts
-* [`GeneralChannel.cs`](../../Basil.Application.Chat/Objects/GeneralChannel.cs), [`PmChannel.cs`](../../Basil.Application.Chat/Objects/PmChannel.cs), [`PmChannels.cs`](../../Basil.Application.Chat/Registry/PmChannels.cs): general and private-message channels, and the private-message channel of each online user; [`GeneralChannelRecord.cs`](../../src/Domain/Chat/GeneralChannelRecord.cs): the stored general channel
+* [`GeneralChannel.cs`](../../Basil.Application.Chat/Objects/GeneralChannel.cs), [`PmChannel.cs`](../../Basil.Application.Chat/Objects/PmChannel.cs), [`PmChannels.cs`](../../Basil.Application.Chat/Registry/PmChannels.cs): general and private-message channels, and the private-message channel of each online user; [`GeneralChannelRecord.cs`](../../Basil.Domain/Chat/GeneralChannelRecord.cs): the stored general channel
 * [`RoomChannel.cs`](../../Basil.Application.Chat/Objects/RoomChannel.cs), [`SpectatorChannel.cs`](../../Basil.Application.Chat/Objects/SpectatorChannel.cs), [`SpectatorChannels.cs`](../../Basil.Application.Chat/Registry/SpectatorChannels.cs): room and spectator channels, and the spectator channel of each watched client
 * [`User.cs`](../../Basil.Application.Users/Objects/User.cs), [`ScopedUser.cs`](../../Basil.Application.Users/Capabilities/ScopedUser.cs): the user's online state (away message, connections)
-* [`ScopedStableSession.cs`](../../Basil.Application.Users/Capabilities/ScopedStableSession.cs): spectator operations
+* [`ScopedStableSession.cs`](../../Basil.Application.Sessions/Capabilities/ScopedStableSession.cs): spectator operations
 * [`Room.cs`](../../Basil.Application.Multiplayer/Objects/Rooms/Room.cs), [`RoomCountdowns.cs`](../../Basil.Infrastructure.Bot/Workers/RoomCountdowns.cs): room ownership and the bot's countdowns
 
 ## See also

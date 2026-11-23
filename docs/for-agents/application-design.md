@@ -1,6 +1,6 @@
 # Application design rules
 
-Rules for Domain and Application objects, capabilities, events and naming. Moved out of `AGENTS.md`; the rules are binding. Read this before touching `src/Domain`, `src/Application/*` or `Basil.Infrastructure.Bot`.
+Rules for Domain and Application objects, capabilities, events and naming. Moved out of `AGENTS.md`; the rules are binding. Read this before touching `Basil.Domain`, `Basil.Application.*` or `Basil.Infrastructure.Bot`.
 
 > **Migration status.** The target architecture ([`architecture.md`](../for-developers/architecture.md)) moves handlers, object-free logic and service implementations from `Basil.Application.<Module>` into `Basil.Infrastructure.<Module>`, makes hosts send Mediator messages instead of calling `ScopeTo`, and moves BasilBot into its own module. The handlers, the object-free logic and the service implementations are already in `Basil.Infrastructure.<Module>`; the contracts stay in Application. A rule below that mentions `Handlers/`, `Logic/` or `Workers/` means the folder of the module's Infrastructure project. Hosts still call `ScopeTo` for the modules not yet migrated. New code follows the target.
 
@@ -16,8 +16,8 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   enum is met when every required bit is held; any other enum is ordered levels and is met when the held value is at least
   the required one. Most capabilities hold the caller's **effective** `UserPrivileges` and answer `XResult.Denied`;
   `ScopedRoom` holds `RoomPrivileges`, the roles the caller holds in the room, computed once from creator, referee, host and player
-  roles and the global privileges; a role refusal is the outcome `RoleDenied`, or `Denied` when the caller
-  may not join rooms at all. An implementation never compares privileges itself.
+  roles and the global privileges; a role refusal is `Denied`, as is a caller who may not join
+  rooms at all. An implementation never compares privileges itself.
 * **Every behaviour that can be refused returns the outcome enum of its object** (`RoomActionResult`, `ChannelJoinResult`,
   `UserActionResult`, `SessionActionResult`, `BeatmapsetEditResult`, …), with a tuple such as `(UserActionResult Outcome, T? Data)` when it also returns data.
   Each enum has `Denied = 0` (the refusal for lack of privileges, which does not say which privileges are lacking, and
@@ -42,12 +42,14 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
     wording belongs to each surface (HTTP, IRC, osu! client, console, BasilBot) and sits outside the domain.
   * A host never checks these rules itself. It translates the wire into the system's own message, sends it, and
     answers an outcome or a business error the same way each time: one place per surface maps a business error to its
-    reply. An enum no longer has members for invalid data (`InvalidName`, `InvalidCountry`, `InvalidMods`,
-    `InvalidSettings`, `InvalidText`, `Empty`, `InvalidImage`, `TooLarge`, `DimensionsTooLarge`, `InvalidSilence`).
+    reply. Invalid data is a business error, an exception rather than an enum member (`InvalidUserNameException`,
+    `InvalidCountryException`, `InvalidModsException`, `InvalidRoomSettingsException`, `InvalidMessageException`,
+    `EmptyMessageException`, `InvalidImageException`, `UploadTooLargeException`, `ImageDimensionsTooLargeException`,
+    `InvalidSilenceException`).
 * **Granting uses the actor's privileges, ranking uses the granted ones.** An actor can grant only privileges they hold;
   the strict-superset hierarchy test compares the privileges the two accounts were granted.
 * **`ConfigureAwait` is not used** anywhere in the project's source (a server has no synchronization context). Review rejects
-  `ConfigureAwait(` in `src/`. This overrides the `code-principles` skill until the skill
+  `ConfigureAwait(` in any project. This overrides the `code-principles` skill until the skill
   is changed.
 
 ### Domain and Application
@@ -157,9 +159,10 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   (a lookup, a repository call, the room gate) re-checks, inside the object's own scope or lock, the state and roles
   the wait could have changed (`IsOpen`, a block, the caller's role in the room, a closed room) before it changes
   anything; a referee removed while waiting for the gate must not act.
-* **A refusal by role is not a lack of account privileges.** Privileges that come from a role in one object (creator,
-  referee, host, player in a room) are decided by that object's own role rules and reported as an outcome named after the
-  role (`NotManager`, `NotHost`); `Denied` is only for account-level privileges checked through `Lacks`.
+* **A refusal by role is a refusal by privilege.** Privileges that come from a role in one object (creator,
+  referee, host, player in a room) are checked by that object's scope (`ScopedRoom.Require`) and refused with `Denied`, the
+  same outcome as a lack of account privileges, so the refusal does not say which role is missing. An outcome named after a
+  role (`RoomTargetResult.NotReferee`) states a business fact about a target, not a privilege check.
 * **System operations are labelled.** A public method on an object that skips the privilege check (`Lobby.Unwatch`,
   `Server.SayAsync`, `Server.WhisperAsync`, `Server.OpenChannel`, `Lobby.ReleaseAsync`, `Room.ReceiveScore`, `Server.Notify`) says in its
   XML summary that the server itself calls it and needs no privileges. A chat command, an API route or any other entry
@@ -175,7 +178,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   temporary file name.
 * **Contract names do not reveal the mechanism.** If the work moved from the file system to the network, or
   from one library to another, the name would not change: `ScanAsync`, not `ScanFileAsync`;
-  `IBeatmapAssets.OpenAsync`, not `ReadFromDiskAsync`.
+  `IBeatmapsetStorage.OpenAsync`, not `ReadFromDiskAsync`.
 * **Registries live in their own folder.** A registry holds live runtime objects, so it is a public class of
   a module's Registry folder (`UserRegistry`, `Lobby`, `GeneralChannelRegistry`) that also owns the operations on what
   it holds (`SessionRegistry` opens and closes connections and logs users in). Mutating registry members are `internal`.
@@ -221,7 +224,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   runtime channel is one opening (`#mp_5` is reused when a room id is reused). Cleanup that carries
   an old object can never touch its replacement. "Is this user already here?" compares the user
   and is a separate check from object identity. Ids are for repository lookups only. Choose object vs identifier
-  deliberately (`Room.Beatmap` object, `PlayerStatus` beatmap `Md5?`); never `string` for an MD5.
+  deliberately (`RoomSettings.Beatmap`, a `BeatmapReference`, or a beatmap checksum as `Md5Hash`); never `string` for an MD5.
 * **Relations are references** in `ConcurrentSet<T>`, never `ConcurrentDictionary<T, byte>`.
 * **`User` or a connection?** If the information is gone once the user goes offline, store the
   connection (`StableSession` as slot occupant or host); otherwise the `User` (creator, referees,
@@ -307,7 +310,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   channel decides who may read and write it. A private message is a post into the recipient's PM channel.
   Access follows osu!: a user may join a channel (including `/join` over IRC) only if an osu! client doing the
   matching in-game action would have access. General channels are created, configured and deleted at runtime through
-  `Server` (`ServerConfigure`); configuring a channel removes the members who may no longer read it.
+  `Server` (the `ConfigureGeneralChannel` message); configuring a channel removes the members who may no longer read it.
 * **Assets are referred to by `ContentReference`** (Domain), never by `string` or `Uri`: either the relative path of a
   file the server stores under its data directory (`Menu/Banners/x.png`, valid on every machine) or an absolute
   http/https address of an asset hosted elsewhere, kept as given and never copied. The value is canonical (its

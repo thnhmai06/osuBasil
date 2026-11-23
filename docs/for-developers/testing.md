@@ -11,9 +11,17 @@ user-visible BasilBot replies. Real osu! clients, IRC clients and tournament too
 
 If not, the test is coupled to an implementation detail.
 
+## Current state
+
+The repository has no test projects at present. The `tests/` folder holds sample content (`tests/Assets`) and empty
+project folders, and `Basil.slnx` lists no test project. The layout below is the rule for the tests written from now
+on, not an inventory of what exists.
+
 ## Test layers
 
-| Layer | Project | Checks |
+Each layer is one test project that mirrors the source project it tests.
+
+| Layer | Intended project | Checks |
 |---|---|---|
 | Domain | `tests/Domain` | rules and values, no I/O |
 | Application | `tests/Application/<Module>` | outcomes, `Lacks`, locks, sessions, restrictions, room state |
@@ -23,28 +31,22 @@ If not, the test is coupled to an implementation detail.
 | End-to-end | `tests/Basil` | several hosts together through the simulated clients |
 | Architecture | `tests/Architecture` | project graph, layering, composition and outcomes |
 
-Host test projects run the real server (`BasilHost`) in the test process: Kestrel and IRC on random ports, the real
-`Basil` composition, a `FakeTimeProvider`, temporary data directories and a PostgreSQL database of their own.
-Clients talk to it over the network exactly as real ones do.
+Host test projects should run the real server in the test process: Kestrel and IRC on random ports, the real `Basil`
+composition, a `FakeTimeProvider`, temporary data directories and a PostgreSQL database of their own. Clients should talk
+to it over the network exactly as real ones do.
 
-Shared support lives under `tests/Support`:
-
-* `Basil.Testing.Clients` — `OsuClient` (osu! (stable) packets and legacy web endpoints), `IrcClient` (CAP, SASL, numerics,
-  IRCv3 tags), `RestClient` and `SseReader` (Bearer or anonymous, ordered events, cancellation), and `BasilHost`.
-* `Basil.Testing.Persistence` — `PersistenceFixture`, which starts a PostgreSQL container or uses the server named by
-  `BASIL_TEST_POSTGRES`, and creates an empty database per test.
-* `Basil.Testing` — shared application fixtures (`RoomFixture`, `ScoreSubmissionFixture`, `BeatmapsetWorld`,
-  `TestApplication`).
+Shared support belongs under `tests/Support`: the simulated osu! (stable), IRC and REST clients, the in-process host, the
+PostgreSQL fixture (a container, or the server named by `BASIL_TEST_POSTGRES`) and the shared application fixtures.
 
 Sample content lives in `tests/Assets`. Do not use a real `Data/` directory or a developer database.
 
 ## Running tests
 
-Run **one project at a time**; never the whole solution in one command:
+When test projects exist, run **one project at a time**; never the whole solution in one command:
 
 ```bash
-dotnet test tests/Hosts/Rest -c Release --no-build --nologo -v q
-dotnet test tests/Application/Users --filter "FullyQualifiedName~<TestClassName>"
+dotnet test tests/<Layer>/<Module> -c Release --no-build --nologo -v q
+dotnet test tests/<Layer>/<Module> --filter "FullyQualifiedName~<TestClassName>"
 ```
 
 Projects that need PostgreSQL use Docker by default. Point the client at the daemon when it is not on the default
@@ -56,9 +58,10 @@ export DOCKER_HOST=unix:///home/haith/.docker/desktop/docker.sock
 
 To use an existing server instead of a container, set `BASIL_TEST_POSTGRES` to a connection string.
 
-`tests/Architecture` also runs the container check: it calls `AddBasil()` and `AddBot()`, builds the provider with
+The container check belongs in `tests/Architecture`: it calls `AddBasil()`, builds the provider with
 `ValidateOnBuild`, resolves every registration (factory lambdas included) and checks that every event handler is
-registered, against a deadline. A dependency cycle shows up as a hang, not as an error.
+registered, against a deadline. A dependency cycle shows up as a hang, not as an error. Until that test exists, a change
+to a constructor, a context or a `DependencyInjection.cs` is checked in review.
 
 ## Writing tests
 
@@ -97,27 +100,21 @@ reply's key or rendered pattern, not a copy of the current English sentence.
 
 ## Architecture tests
 
-`tests/Architecture` enforces what the compiler does not: the module reference graph, layering inside a module, the
-absence of SQL text, the outcome convention and the composition. `HostGraphTests` enforces the host rules: every
-transport references `Basil.Host.Shared`, transports never reference each other, and Rest/Cli never reference
-`Protocol.Stable`. Each such rule has a positive control — an assertion that the opposite claim is detected — so a
-rule that always passes is itself caught.
+`tests/Architecture` is meant to enforce what the compiler does not: the module reference graph, layering inside a module,
+the absence of SQL text, the outcome convention and the composition. The host rules belong there too: every transport
+references `Basil.Host.Shared`, transports never reference each other, and Rest/Cli never reference `Protocol.Game.Stable`.
+No architecture test exists yet, so these rules are checked in review. Each such rule needs a positive control — an
+assertion that the opposite claim is detected — so a rule that always passes is itself caught.
 
 ## REST contract tests (Postman)
 
-The HTTP contract is also checked from outside with Postman, against a running server. The collection, test scripts and
-environment live in `tests/Hosts/Rest/postman/`. OpenAPI generated from the code is the source of truth. xUnit tests
-own behaviour; Postman owns the HTTP contract shape: routes, status codes, envelope, schema, and the public/token matrix.
-
-## Related code
-
-* `tests/Support/Basil.Testing.Clients/` — simulated clients and the in-process host.
-* `tests/Support/Basil.Testing.Persistence/` — the PostgreSQL fixture.
-* `tests/Architecture/` — dependency, host and composition rules.
-* `tests/Hosts/Rest/postman/` — the HTTP contract collection.
+The HTTP contract should also be checked from outside with Postman, against a running server. The collection, test
+scripts and environment would live in `tests/Hosts/Rest/postman/`; none exists yet. OpenAPI generated from the code is the
+source of truth. xUnit tests own behaviour; Postman owns the HTTP contract shape: routes, status codes, envelope, schema,
+and the public/token matrix.
 
 ## See also
 
-* [`architecture.md`](architecture.md) — dependency rules the architecture tests enforce
+* [`architecture.md`](architecture.md) — dependency rules the architecture tests should enforce
 * [`development.md`](development.md) — building and running locally
 * [`../for-agents/identity-privileges.md`](../for-agents/identity-privileges.md) — privilege rules behind refusal tests

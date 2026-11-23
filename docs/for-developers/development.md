@@ -7,7 +7,7 @@ the server locally.
 
 * The [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet).
 * A PostgreSQL server. Basil keeps its records in PostgreSQL, so a development instance needs one; the simplest is a
-  container (see [Clone and run](#clone-and-run)). Docker is also what the Infrastructure and host tests use.
+  container (see [Clone and run](#clone-and-run)). Docker is also what database-backed tests use when no `BASIL_TEST_POSTGRES` server is set (see [Run tests](#run-tests)).
 * [FFmpeg](https://ffmpeg.org), on `PATH`, for beatmapset audio previews. See
   [`deployment.md`](../for-technicians/deployment.md).
 
@@ -103,9 +103,9 @@ TOKEN=$(curl -s -H "Host: api.basil.local" -H "Content-Type: application/json" \
 curl -s -H "Host: api.basil.local" -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8443/v1/channels
 ```
 
-(This assumes `--Kestrel:Endpoints:Https:Url=http://127.0.0.1:8443`.) The tests start the server inside the
-test process and never run the `Program` entry point, so run the real executable at least once before calling a change
-to the hosts, the shutdown or the configuration done: log in, chat over IRC, send `SIGTERM` and check that the exit code
+(This assumes `--Kestrel:Endpoints:Https:Url=http://127.0.0.1:8443`.) Run the real executable at least once before calling
+a change to the hosts, the shutdown or the configuration done, because in-process hosting in tests does not exercise the
+`Program` entry point: log in, chat over IRC, send `SIGTERM` and check that the exit code
 is `0`.
 
 ## Running an osu! client against a development server
@@ -155,27 +155,21 @@ configuration applies whether Basil is running from a development checkout or fr
 
 A local development server normally runs without a reverse proxy, and the client address is the address of the
 connection. Forwarding headers (`X-Forwarded-For`, `X-Real-IP`) are honoured only on requests from an address listed in
-`Server:TrustedProxies`, which defaults to loopback; see [`configuration.md`](../for-technicians/configuration.md).
+`Basil:Server:TrustedProxies`, which defaults to loopback; see [`configuration.md`](../for-technicians/configuration.md).
 
 ## Run tests
 
-The test tree mirrors the project folders at the repository root: one test project per source project, `tests/{Application,Infrastructure}/<Module>` for
-the modules, `tests/Domain/`, `tests/Protocol/`, `tests/Hosts/<Host>` for the hosts, `tests/Architecture/`
-(the project graph, the host graph and the container check) and `tests/Support/` for the shared fixtures and simulated
-clients. Run the project you changed first:
+Basil has no test projects at present: the repository holds no test code and `Basil.slnx` lists none, so there is nothing
+to run yet. The test tree is meant to mirror the project folders at the repository root: one test project per source
+project, `tests/{Application,Infrastructure}/<Module>` for the modules, `tests/Domain/`, `tests/Protocol/`,
+`tests/Hosts/<Host>` for the hosts, `tests/Architecture/` (the project graph, the host graph and the container check) and
+`tests/Support/` for the shared fixtures and simulated clients. See [`testing.md`](testing.md) for the layers.
 
-```bash
-dotnet test tests/Domain
-dotnet test tests/Application/Users
-dotnet test tests/Infrastructure/Users
-dotnet test tests/Hosts/Rest
-dotnet test tests/Architecture
-```
+When test projects exist, run the project you changed first, one at a time, and run every test project listed in
+`Basil.slnx` before opening a pull request: do not pass the solution to `dotnet test`, because the projects that start a
+PostgreSQL container do not run reliably together.
 
-Run every project listed in `Basil.slnx` before opening a pull request, one at a time: do not pass the solution to
-`dotnet test`, because the projects that start a PostgreSQL container do not run reliably together.
-
-The Infrastructure and host test projects create a temporary PostgreSQL database for each test class and remove it
+Database-backed test projects should create a temporary PostgreSQL database for each test class and remove it
 afterward. They use the server named by the `BASIL_TEST_POSTGRES` connection string when it is set, otherwise a
 Testcontainers container (Docker; set `DOCKER_HOST` when the daemon is not on the default socket).
 
@@ -216,6 +210,6 @@ Basil is organized into several layers with deliberately defined responsibilitie
 read:
 
 * [`architecture.md`](architecture.md): how the codebase is structured and how its layers interact
-* [`testing.md`](testing.md): what the test suite guarantees and how new tests should be written
+* [`testing.md`](testing.md): the test layers and how new tests should be written
 * [`docs-guideline.md`](docs-guideline.md): conventions for documentation under `docs/`
 * [`working-scopes.md`](working-scopes.md): what is intentionally in scope and what has been excluded

@@ -264,7 +264,7 @@ Tests are what verify the software for the owner, who reads the code only for pa
   modifier). Pin the exact value only when the value is itself a contract (wire bytes, accuracy and grade of the
   ruleset, the score submission checksum) with hand-written input and output pairs, never a copy of the formula.
 * **Layout mirrors the sources.** One test project per source project (`tests/` tree = the project folders, `Basil.X.Tests`),
-  folders inside mirror the feature folders; shared fixtures live in `tests/Support/Basil.Testing`; sample content in
+  folders inside mirror the feature folders; shared fixtures live in `tests/Support/`; sample content in
   `tests/Assets`.
 * **A refusal test checks the outcome `Denied`** of the object's outcome enum (a refusal does not say which privileges
   are lacking), and every privilege requirement has a test that goes red when it is removed: a caller without the
@@ -302,23 +302,18 @@ Run Basil locally:
 dotnet run --project Basil
 ```
 
-Run every test project listed in `Basil.slnx`, one at a time; never pass the solution to `dotnet test`:
+The repository has no test projects at present; `Basil.slnx` lists none. When test projects exist, run each one on its
+own and never pass the solution to `dotnet test`. The test tree mirrors the project folders, so a test project for
+`tests/<Layer>/<Module>` is run as:
 
 ```bash
-dotnet test tests/Domain -c Release --nologo -v q
-dotnet test tests/Application/Users -c Release --nologo -v q
-```
-
-Run one test project (the test tree mirrors the project folders):
-
-```bash
-dotnet test tests/Application/Users
+dotnet test tests/<Layer>/<Module> -c Release --nologo -v q
 ```
 
 Run a specific test class:
 
 ```bash
-dotnet test tests/Application/Users \
+dotnet test tests/<Layer>/<Module> \
   --filter "FullyQualifiedName~<TestClassName>"
 ```
 
@@ -326,7 +321,7 @@ Verify a change with the whole solution in Release, then run the affected test p
 
 ```bash
 dotnet build Basil.slnx -c Release --nologo -v q
-dotnet test tests/Application/Users -c Release --no-build --nologo -v q
+dotnet test tests/<Layer>/<Module> -c Release --no-build --nologo -v q
 ```
 
 Projects that need PostgreSQL start a container; set `DOCKER_HOST` when the daemon is not on the default socket, or set
@@ -371,7 +366,7 @@ Basil.Infrastructure.<Module>    the implementations of those contracts: Handler
 Basil.Infrastructure.Persistence    Npgsql provider (IDatabaseProvider), design-time  -> Infrastructure.Shared, the
                                  factories and all PostgreSQL migrations;           module Infrastructure projects
                                  only Basil references it
-Basil.Protocol.Stable            the translation language of the osu! wire,      -> Domain, external libraries
+Basil.Protocol.Game.Stable       the translation language of the osu! wire,      -> Domain, external libraries
                                  score submission cipher (BouncyCastle)
 Basil.Protocol.Irc               the translation language of IRC                 -> (nothing)
 Basil.Gateway                    admission control: Allow/Deny from size, rate,  -> the rate-limiting library
@@ -412,16 +407,16 @@ decide the order in which `AddBasil()` registers the migrations (Users, Sessions
 Shared, Scores, Multiplayer, Chat), not these references. The graph and the host rules are checked in review; no test in
 the repository enforces them yet.
 
-`Basil.Protocol.Stable` wraps the communication between the osu! client and the server, as an API wrapper
+`Basil.Protocol.Game.Stable` wraps the communication between the osu! client and the server, as an API wrapper
 wraps a remote API: it turns what the client sends (osu-stable packets, the delimited strings of the web
 endpoints such as the score submission, the client hash, the client build) into C# models of primitives and
 back, including undoing the client's own encoding (the score submission's Rijndael cipher). What the client
-sends and receives is a DTO and belongs to Protocol (`RoomPacket`, `LoginRequestBody`, `ScoreSubmission`; their
+sends and receives is a DTO and belongs to Protocol (`RoomPacket`, `LoginRequest`, `ScoreSubmission`; their
 enum-like fields stay primitives). What the messages mean belongs to Domain, and Protocol builds on it: the game
 enums (`GameMode`, `GameMods`, `UserActivity`, `BeatmapsetStatus`, `GameTeamType`, `GameWinCondition`,
 `UserPrivileges`, `OsuVersionStream`) carry the client's numbering, so the host casts a primitive to them and back
-with no table, and the spectated play (`SpectatorFrame`, `SpectatorScore`, `SpectatorAction`) and the client version
-(`OsuVersion`, text in `ClientBuildText`) are Domain values that Protocol reads and writes. Protocol does not
+with no table, and the spectated play (`SpectatorBundle`, `ReplayFrame`, `ScoreFrame`, `SpectatorAction`) and the client version
+(`OsuVersion`, whose text form `OsuVersionExtensions` parses and writes) are Domain values that Protocol reads and writes. Protocol does not
 validate and gives no business meaning: a number the client sends is checked by the host with `WireMap.Known` and
 `WireMap.Mods` before Application sees it. What has no Domain twin (a slot's neutral team, the open/locked/quit slot
 states) stays a Protocol enum, mapped by the host. If a wire format changes, only Protocol changes; a Domain enum
@@ -433,8 +428,9 @@ Every project is a folder at the repository root named after its project: `Basil
 `Basil.Application.<Module>/`, `Basil.Infrastructure.<Module>/`, `Basil.Host.{Shared,Stable,Irc,Rest,Cli}/`,
 `Basil.Protocol.{Game.Stable,Irc}/`. The project file and the namespace keep the full name
 (`Basil.Domain.csproj`, `Basil.Domain.*`, `Basil.Application.Users.Persistence`). Tests mirror the same tree under
-`tests/` (`tests/Application/Users/Basil.Application.Users.Tests.csproj` tests `Basil.Application.Users`;
-shared fixtures are under `tests/Support/`, and the tests that run several hosts are under `tests/Hosts/`).
+`tests/` (a test project for `Basil.Application.Users` goes in `tests/Application/Users/`, named
+`Basil.Application.Users.Tests.csproj`; shared fixtures go under `tests/Support/`, and tests that run several hosts go under
+`tests/Hosts/`). The repository has no test projects yet, so these are the places new tests belong.
 
 The project that defines an options type binds it (`Add<Module>...(IConfiguration)`) **(target)**; the composition root
 only chooses what to run (Kestrel, ports, TLS, the database provider, logging, lifecycle). Until the migration reaches a
@@ -483,7 +479,7 @@ system; no host or gateway knows it exists.
   never references another host. Every message carries the `Session` of the session as its actor, and only the Sessions
   module creates a `Session`.
 * Every transport references `Basil.Host.Shared` and never another transport. Rest and Cli never reference
-  `Protocol.Stable`. This is checked in review.
+  `Protocol.Game.Stable`. This is checked in review.
 * `Basil.Gateway` (enforcement by the hosts: **target**) is a leaf project that answers `Allow` or `Deny` for each incoming request from size, rate,
   concurrency and load, in two tiers (before and after authentication; the second tier receives an opaque
   `AdmissionSubject` that `Host.Shared` maps from the `Session`). It has no user types and no business facts. Every
@@ -522,9 +518,9 @@ Application; anything else is Domain.
 
 The detailed rules moved out of this file so each can be read when needed. **Read the matching file before touching that area:**
 
-* [`docs/for-agents/application-design.md`](docs/for-agents/application-design.md): Domain models, Application objects, capabilities (`ScopeTo`), contexts, events, channels, naming. Before touching `src/Domain`, `src/Application/*`, `src/Bot`.
+* [`docs/for-agents/application-design.md`](docs/for-agents/application-design.md): Domain models, Application objects, capabilities (`ScopeTo`), contexts, events, channels, naming. Before touching `Basil.Domain/`, `Basil.Application.<Module>/`, `Basil.Application.Bot/`.
 * [`docs/for-agents/identity-privileges.md`](docs/for-agents/identity-privileges.md): privileges, silence, hierarchy, sessions, BasilBot. Before touching users, connections, privileges or the bot.
-* [`docs/for-agents/persistence.md`](docs/for-agents/persistence.md): repositories, byte storages, the Registry / Repository (cache-aside) / Storage model, beatmapset storage. Before touching a repository, a storage or `src/Infrastructure/*` or `Basil.Infrastructure.Shared`.
+* [`docs/for-agents/persistence.md`](docs/for-agents/persistence.md): repositories, byte storages, the Registry / Repository (cache-aside) / Storage model, beatmapset storage. Before touching a repository, a storage or `Basil.Infrastructure.<Module>/` or `Basil.Infrastructure.Shared`.
 * [`docs/for-agents/code-style.md`](docs/for-agents/code-style.md): C# code style and IDE-suggestion rules. Before writing or reviewing C#.
 
 ### Important invariants
@@ -721,7 +717,7 @@ See [`docs/for-agents/domain.md`](docs/for-agents/domain.md).
 Before considering a code change complete:
 
 1. Run the smallest relevant tests while iterating.
-2. Run the complete test suite for the final change.
+2. Run the complete test suite for the final change (none exists yet; see Commands).
 3. Run a Release build when the change affects production code.
 4. Check the module and host graphs by hand for cross-layer changes.
 5. Update authoritative documentation when behavior or design changes.

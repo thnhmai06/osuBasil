@@ -107,14 +107,13 @@ tagged with the host label and the status class. Exceptions are counted from the
 
 ## Testing
 
-`tests/Hosts/Rest/Sse/DiagnosticsTests.cs` covers the HTTP contract: the refusals without a token (`401`) and without the
-privilege (`403`), a stream's self-seeded first event for every category with one category filtered, the bundle each
-second and the supported actions (an unknown action is `404`). `tests/Infrastructure/Diagnostics` covers the feed (the
-newest sample, dropped older ones, a slow watcher beside a fast one), the intake's merging, the sampler, the request
-timing and the refusal of every maintenance request with its denial; `tests/Application/Diagnostics` covers the
-capability. `tests/Infrastructure/Users/Handlers/CollectDiagnosticsHandlerTests.cs` pins that every connection type is
-reported, including zero. `tests/Architecture/DiagnosticsContributionTests.cs` checks that every module with handlers has its
-meter and handler (with a positive control), and the dashboard's use of the sample is tested under `tests/Hosts/Cli/Dashboard`.
+No test covers diagnostics yet. The behaviour should be pinned in the layers of [`testing.md`](testing.md): the HTTP
+contract in the Rest host tests (the refusals without a token (`401`) and without the privilege (`403`), a stream's
+self-seeded first event for every category with one category filtered, the bundle each second and the supported actions
+(an unknown action is `404`)); the feed, the intake's merging, the sampler, the request timing and the refusal of every
+maintenance request in the Infrastructure tests; the capability in the Application tests; that every connection type is
+reported, including zero; and, in the architecture tests, that every module with handlers has its meter and handler (with a
+positive control). The dashboard's use of the sample belongs in the Cli host tests.
 
 ## Related code
 

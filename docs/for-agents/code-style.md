@@ -24,8 +24,8 @@ Moved out of `AGENTS.md`; the rules are binding. Read this before writing or rev
     storage that walks files returns `IEnumerable<T>`, not `IOrderedEnumerable<T>`, even when it sorts them.
 * Every stored time is UTC (`DateTimeOffset.UtcNow`, `TimeProvider.GetUtcNow()`, `timestamptz` columns); only the
   presentation converts it to a local date and time. Never `DateTimeOffset.Now` or `DateTime.Now`.
-* A folder that would share its name with a type in it is plural (`Multiplayer/Matches/Match.cs`), so code never
-  writes `Match.Match`.
+* A folder that would share its name with a type in it is plural (`Basil.Domain/Multiplayer/Report/Rounds/Round.cs`), so code never
+  writes `Round.Round`.
 * A member that uses no instance state is `static` (`LobbyService.RoomOccupied`).
 * Prefer primary constructors, property patterns (`room is { InProgress: false, Beatmap: not null }`) and
   one guard for conditions that return the same result; no redundant casts, `? true : false` or

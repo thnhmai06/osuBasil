@@ -40,7 +40,7 @@ HTTP request.
 
 `PacketDispatcher` processes the request body sequentially.
 
-1. It splits the body into packets (`PacketReader.Split` of `Basil.Protocol.Stable`). A body that is malformed ends the
+1. It splits the body into packets (`PacketReader.Split` of `Basil.Protocol.Game.Stable`). A body that is malformed ends the
    request quietly; nothing is applied.
 2. It gives each packet to `PacketHandlers`, in order.
 3. If handling a packet throws, the error is logged with the packet type and the user, and the next packet still runs.
@@ -96,7 +96,7 @@ Handler ──► scoped Application operation ──► state change, event pub
 ```
 
 * Application publishes the event (a user came online, a member joined a channel, a room changed). The `Delivery` handlers of
-  the host (`UserDelivery`, `ChatDelivery`, `RoomDelivery`) are the only consumers that know the packet form; they build the
+  the host (one file each for users, chat and rooms, in `Basil.Host.Stable/Delivery/`) are the only consumers that know the packet form; they build the
   bytes once and queue them for every open osu! client among the recipients.
 * `RoomAudience` says who hears about a room: its players, its tournament observers (target: removed) and, for the lobby view, the clients
   watching the lobby.
@@ -139,8 +139,8 @@ Room.Operation ── Lock ──┐       |
     ── unlock ───────────┘  Room.Operation waits for the lock
 ```
 
-The lock gives serialization per room without serializing unrelated rooms. The race is covered by
-`tests/Application/Multiplayer/Objects/Rooms/RoomConcurrencyTests.cs`. The complete model is in
+The lock gives serialization per room without serializing unrelated rooms. No test covers this race yet;
+a regression test belongs in `tests/Application/Multiplayer/`. The complete model is in
 [`multiplayer.md`](multiplayer.md); see it before changing room permissions.
 
 ---
@@ -156,7 +156,7 @@ the room lock is held, so a subscriber never sees an older state after a newer o
 
 ## Adding a packet
 
-1. Find the packet type in `ClientPacketType` and the payload layout in `Basil.Protocol.Stable` (add the reader or model there
+1. Find the packet type in `ClientPacketType` and the payload layout in `Basil.Protocol.Game.Stable` (add the reader or model there
    when the layout is new, with a protocol test: packet layouts are wire contracts).
 2. Add a case to `PacketHandlers` (in the partial file of its feature) that reads the payload and calls the operation on the
    scope of the object acted on.
@@ -193,7 +193,7 @@ the connection) is answered with the `RestartServer` packet, which makes the cli
 | Event delivery             | [`UserDelivery.cs`](../../Basil.Host.Stable/Delivery/UserDelivery.cs), [`ChatDelivery.cs`](../../Basil.Host.Stable/Delivery/ChatDelivery.cs), [`RoomDelivery.cs`](../../Basil.Host.Stable/Delivery/RoomDelivery.cs) |
 | Wire format                | [`Basil.Protocol.Game.Stable`](../../Basil.Protocol.Game.Stable) |
 | Room runtime state         | [`Room.cs`](../../Basil.Application.Multiplayer/Objects/Rooms/Room.cs) |
-| Room race tests            | [`RoomConcurrencyTests.cs`](../../tests/Application/Multiplayer/Objects/Rooms/RoomConcurrencyTests.cs) |
-| Host tests                 | [`tests/Hosts/Stable`](../../tests/Hosts/Stable) |
+| Room race tests            | none yet; intended in `tests/Application/Multiplayer/` |
+| Host tests                 | none yet; intended in `tests/Hosts/Stable/` |
 
 ---

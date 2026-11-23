@@ -35,7 +35,7 @@ earlier SQLite file to write in parallel, so a deployment needs a database serve
 | Scores       | `scores`, `user_stats`                                                      | a score belongs to its player; `scores.pp` is null until calculated   |
 
 Conventions: snake_case names, every time is `timestamptz` in UTC (the presentation converts it to local time), MD5
-values are lowercase hex text, an asset is stored as the canonical text of its `AssetReference`.
+values are lowercase hex text, an asset is stored as the canonical text of its `ContentReference`.
 
 The tournament tables separate the match from what changes per round:
 
@@ -146,7 +146,7 @@ own differ instead.
 
 * `Basil.Infrastructure.Shared/Persistence/` — `DatabaseSession`, `Database`, `DatabaseMigrator`, `ContextModel`
 * `Basil.Infrastructure.Shared/Registry/` — `CacheAside`
-* `src/Infrastructure/<Module>/Persistence/` — the module's `DbContext`, the `XxxRow` types and the repositories
+* `Basil.Infrastructure.<Module>/Persistence/` — the module's `DbContext`, the `XxxRow` types and the repositories
 * `Basil.Infrastructure.Persistence/` — `PostgresDatabaseProvider`, the design-time factories and `Migrations/<Module>/`
 * `Basil.Infrastructure.Shared/Workers/StorageStartup.cs` — migration and resident loading at startup; `AddBasilStorage()` registers the
   module migrations in the order above

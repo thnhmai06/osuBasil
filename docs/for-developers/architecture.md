@@ -35,7 +35,7 @@ Basil.Infrastructure.<Module>    implementations of that module's contracts     
 Basil.Infrastructure.Persistence    Npgsql provider (IDatabaseProvider), design-time   -> Infrastructure.Shared, the
                                  factories and all PostgreSQL migrations;            module Infrastructure projects
                                  only Basil references it
-Basil.Protocol.Stable / .Irc     the translation language of each wire            -> Domain / nothing
+Basil.Protocol.Game.Stable / .Irc     the translation language of each wire            -> Domain / nothing
 Basil.Gateway                    (target) admission control                       -> (nothing but the rate-limiting library)
 Basil.Host.Shared                views and outcome-to-error mapping               -> Application projects
 Basil.Host.Stable/.Irc/.Rest/.Cli  transports                                     -> Host.Shared, Protocol, Gateway, Application
@@ -103,7 +103,7 @@ A message is a Mediator **request**: a `record` in the owning module's Applicati
 `Session`). Mediator maps each request type to exactly one handler, so the host never names a handler.
 
 * A command changes state and answers the outcome enum of the object it acts on; a query reads and
-  answers a view or `null`. Both are requests; the name says which (`PostChatMessage`, `GetChannelMembers`).
+  answers a view or `null`. Both are requests; the name says which (`PostChatMessage`, `GetLeaderboard`).
 * A message addresses things by identity, not by a transport's spelling: chat uses a `ChatTarget` (a general channel's
   name, a room's id, a user's id), never an IRC `#name` or an osu! alias. The host translates its own spelling.
 * A message is a public type of Application; its handler is `internal` in Infrastructure and the `Basil` project is made
@@ -144,12 +144,12 @@ sequenceDiagram
 
 ### Protocol: the translation language
 
-`Basil.Protocol.Stable` and `Basil.Protocol.Irc` are the vocabulary and grammar of each wire: the osu! binary packets, IRC
+`Basil.Protocol.Game.Stable` and `Basil.Protocol.Irc` are the vocabulary and grammar of each wire: the osu! binary packets, IRC
 lines, the delimited strings of the web endpoints, and the client's own encoding (the score submission cipher). They are
 C# models of primitives. They do not validate, give no business meaning and coordinate nothing. A host uses Protocol to
 read and write its wire, checks what the client sent (`WireMap.Known`, `WireMap.Mods`) and builds a message of the
 system's language. Only the transports that speak a protocol reference it; Application and Infrastructure never do. If a
-wire format changes, only Protocol changes. `Protocol.Stable` references Domain because the game enums carry the client's
+wire format changes, only Protocol changes. `Protocol.Game.Stable` references Domain because the game enums carry the client's
 numbering; `Protocol.Irc` references nothing.
 
 ### Hosts: translate and dispatch
@@ -200,7 +200,7 @@ exists. It contains no business object, no recovery logic and no admission polic
 
 ## Dependency rules
 
-* Domain and Protocol.Irc reference nothing; Protocol.Stable references Domain only.
+* Domain and Protocol.Irc reference nothing; Protocol.Game.Stable references Domain only.
 * Application.Shared references Domain; Infrastructure.Shared references Application.Shared and Domain.
 * A module Application project references Domain, Application.Shared and the Application projects of the modules it uses.
   A module Infrastructure project references its own Application project, Infrastructure.Shared and Application.Shared,
@@ -208,7 +208,7 @@ exists. It contains no business object, no recovery logic and no admission polic
 * Application never creates a database connection, a file stream or an Infrastructure type; it declares a contract and the
   outer project implements it.
 * Hosts reference `Host.Shared`, Protocol, Gateway and Application projects; they never reference Infrastructure or another
-  host. Rest and Cli never reference `Protocol.Stable`. **(target)** for the Infrastructure part.
+  host. Rest and Cli never reference `Protocol.Game.Stable`. **(target)** for the Infrastructure part.
 * Only the Server references everything.
 * Options belong to the project that defines them: that project binds them (`Add<Module>...(IConfiguration)`). **(target)**;
   today the composition root binds all configuration and hands `IOptions<T>` over.
@@ -276,11 +276,11 @@ that root. The first event is a snapshot. See [`sse.md`](sse.md).
 
 ## Related code
 
-* `src/Domain/` — the system at rest.
+* `Basil.Domain/` — the system at rest.
 * `Basil.Application.Shared/`, `Basil.Infrastructure.Shared/` — shared values (`Paging/`, `Actors/`, `Privileges/Scoped.cs`, `Exceptions/`), events, dispatcher (`Workers/EventDispatcher.cs`).
-* `src/Application/<Module>/`, `src/Infrastructure/<Module>/` — module contracts, objects and implementations.
+* `Basil.Application.<Module>/`, `Basil.Infrastructure.<Module>/` — module contracts, objects and implementations.
 * `Basil.Protocol.Game.Stable/`, `Basil.Protocol.Irc/` — the translation language of each wire.
-* `Basil.Host.Shared/`, `src/Hosts/{Stable,Irc,Rest,Cli}/` — views and the transports.
+* `Basil.Host.Shared/`, `Basil.Host.{Stable,Irc,Rest,Cli}/` — views and the transports.
 * `Basil/` — the composition root (`Lifetime/` for start, restart and shutdown, `Http/` for its middleware).
 * `Basil.Gateway/` — admission control in `Admission/`, `Limits/` and `RateLimiting/`.
 * Each module's Infrastructure project keeps its OpenTelemetry meter in `Metrics/`.

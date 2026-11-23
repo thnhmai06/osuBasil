@@ -25,7 +25,7 @@ carrying their own "(target)" notes.
 |---|---|---|
 | Admission control | `Basil.Gateway` exists and answers `Allow`/`Deny`; the rate limiter and upload limits still sit partly in `Basil.Host.Shared` and the hosts | The hosts only enforce the gateway's answer, and every entry point declares a policy |
 | Options binding | `Basil` binds configuration and hands it over as `IOptions<T>` | The project that defines an options type binds it |
-| Infrastructure part of "Rest and Cli never reference `Protocol.Stable`" | Enforced for the project references of the hosts | Also for the Infrastructure projects |
+| Infrastructure part of "Rest and Cli never reference `Protocol.Game.Stable`" | Enforced for the project references of the hosts | Also for the Infrastructure projects |
 | Tests naming | Most test methods follow `Condition_Result` | All of them |
 
 ## Related code

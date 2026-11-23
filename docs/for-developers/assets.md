@@ -11,8 +11,7 @@ around [ImageSharp.Web](https://docs.sixlabors.com/articles/imagesharp.web/getti
 cropping, and caching now share a single middleware pipeline and on-disk cache, with transformations controlled by
 request commands instead of custom logic for each image type.
 
-The host also owns the main-menu banner feature: `GET /menu-content.json`, the JSON manifest that the osu! stable client
-fetches during startup. This endpoint naturally belongs with the menu assets it describes.
+The host also owns the main-menu banner feature, whose images are served from `assets.<domain>`.
 
 Write operations remain on `api.<domain>` and require a token with the matching privilege. `assets.<domain>` is read-only. When an asset has
 moved to `assets.<domain>`, a corresponding `GET` on `api.<domain>` redirects to the new location.
@@ -20,9 +19,6 @@ moved to `assets.<domain>`, a corresponding `GET` on `api.<domain>` redirects to
 ## What
 
 `assets.<domain>` serves:
-
-* `GET /menu-content.json` — the main-menu banner manifest. Its path and field names are fixed by the protocol,
-  including the client's PascalCase `IsCurrent` field. See `MenuContentRoutes`.
 
 * `GET /menu/banners/{fileName}` — menu banners.
 
@@ -64,7 +60,7 @@ This follows the project's scope rules documented in [`working-scopes.md`](worki
 
 ### Host gating
 
-`UseImageSharp()` runs as normal middleware before the `RequireHost`-based endpoint routing.
+`UseRestImages()`, which calls `UseImageSharp()`, runs as normal middleware before the host-based endpoint routing.
 
 This means an `IImageProvider` cannot rely on the request path alone. The same path may exist on multiple hosts—for
 example, `/beatmapsets/{beatmapsetId}/background` exists both as a real asset route on `assets.<domain>` and as a redirect
@@ -98,20 +94,20 @@ The real osu! client requests some images using bare paths with no query string:
 * `b.<domain>/thumb/{id}.jpg`
 * `assets.<domain>/beatmapsets/{id}/covers/{variant}.jpg`
 
-`ConfigureImageSharp` in `Program.cs` injects the required `width`, `height`, and `rmode=crop` commands through
+`AddRestImages` in `Basil.Host.Rest/Images/ImageHosts.cs` injects the required `width`, `height`, and `rmode=crop` commands through
 `ImageSharpMiddlewareOptions.OnParseCommandsAsync`.
 
 The dimensions are selected from the request path using:
 
 * `BeatmapThumbnailProvider.TryGetSize`
-* `BeatmapsetBackgroundProvider.TryGetCoverSize`
+* `BeatmapImageProvider.TryGetSize`
 
 This works because `OnParseCommandsAsync` executes before ImageSharp.Web checks whether any commands were supplied.
 Injecting commands there therefore causes ImageSharp.Web to process the request even though the original URL contains no
 query string.
 
 Cover dimensions are currently best-effort approximations because no verified primary-source dimensions from osu! web
-were available when this was implemented. `TryGetCoverSize` should be updated if the actual dimensions are confirmed
+were available when this was implemented. `BeatmapImageProvider.TryGetSize` should be updated if the actual dimensions are confirmed
 later.
 
 ### Cache
@@ -131,7 +127,7 @@ avatars. Menu and beatmap images are comparatively static.
 
 ### Asset references
 
-The server refers to an asset by an `AssetReference` (Domain), never by a bare string or URI. A reference is one of:
+The server refers to an asset by a `ContentReference` (Domain), never by a bare string or URI. A reference is one of:
 
 * the path of a file the server stores, relative to the data directory (`Menu/Banners/summer.png`), so it stays
   valid when the installation moves to another machine;
@@ -180,4 +176,4 @@ See [`configuration.md`](../for-technicians/configuration.md) for the complete `
 * `Basil.Host.Rest/Routes/MenuRoutes.cs` — menu banner, icon and seasonal routes.
 * `Basil.Application.Content/Storage/` — the storage ports for avatars, menu assets, screenshots and the FAQ.
 * `Basil.Infrastructure.Content/Storage/` — their file implementations.
-* `src/Domain/Content/MenuBanner.cs` — banner metadata model.
+* `Basil.Domain/Content/MenuBanner.cs` — banner metadata model.

@@ -36,14 +36,13 @@ API route
 
 * `success` is `true` below status 400 and `code` repeats the HTTP status.
 * `meta` is `{ offset, limit, hasNext }` for a page (`Api.Paged`) and `null` otherwise.
-* `errors` is `{ code, missing }` for a failure: `code` is a stable camelCase string, and `missing` is the privilege mask
-  the caller lacks when the refusal is for lack of privileges.
+* `errors` is `{ code }` for a failure: `code` is a stable camelCase string.
 * JSON is camelCase and enums are camelCase strings (`ApiJson.Options`).
 
 Outcomes of the Application objects reach the client through `OutcomeErrors` (in `Basil.Host.Shared`), which maps each
 outcome to an error kind and therefore to a status; `result.Refusal()` and `result.Answer()` turn an outcome
-into an envelope result. A new member of an outcome enum needs a row in that mapping and in the exhaustive table of
-`OutcomeErrorsTests`.
+into an envelope result. A new member of an outcome enum needs a row in that mapping. The mapping should be pinned by a test that covers every
+member; no such test exists yet.
 
 ### Response rules
 
@@ -90,7 +89,7 @@ OpenAPI response:  Envelope
 ```
 
 If the shape of the envelope changes, `Api` and the `Envelope` schema in `OpenApiSetup` change in the same commit, and
-the Postman contract (`tests/Hosts/Rest/postman`) is regenerated from the new document.
+the Postman contract (in `tests/Hosts/Rest/postman`, which does not exist yet) is regenerated from the new document.
 
 ## Embedded references
 
@@ -159,7 +158,7 @@ Use an enveloped `200` response with `data: null` (`Api.Done`) instead.
 ### Forgetting the outcome mapping
 
 A new member of an outcome enum that has no entry in `OutcomeErrors` is answered with the default error kind of its
-enum, which is rarely the status the member means. Add the mapping and its test row.
+enum, which is rarely the status the member means. Add the mapping and a test for it.
 
 ## Related code
 
