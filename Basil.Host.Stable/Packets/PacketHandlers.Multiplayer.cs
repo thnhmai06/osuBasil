@@ -78,7 +78,7 @@ internal sealed partial class PacketHandlers
 	private async Task JoinMatchAsync(StableSession osu, JoinMatchRequest request,
 		CancellationToken ct)
 	{
-		var result = lobby.Find(request.MatchId) is { IsClosed: false } room
+		var result = lobby.FindByWireId(request.MatchId) is { IsClosed: false } room
 			? await sender.Send(new JoinRoom(osu, room, request.Password), ct)
 			: default;
 		if (result != RoomJoinResult.Ok) outbox.Send(osu, writer => writer.MatchJoinFail());
@@ -143,13 +143,13 @@ internal sealed partial class PacketHandlers
 	private Task TransferHostAsync(StableSession osu, Room room, int slot, CancellationToken ct)
 	{
 		return room.Slots.FirstOrDefault(candidate => candidate.Index == slot) is { } target && room.PlayerAt(target) is { } player
-			? Ask(new SetRoomHost(osu, room, player), ct)
+			? Ask(new SetRoomHost(osu, room, player.Record.Id), ct)
 			: Task.CompletedTask;
 	}
 
 	private async Task InviteAsync(StableSession osu, Room room, int userId, CancellationToken ct)
 	{
-		if (OnlineUsers([userId]) is [{ } target]) await sender.Send(new InvitePlayer(osu, room, target), ct);
+		await sender.Send(new InvitePlayer(osu, room, userId), ct);
 	}
 
 	private void ForwardScore(StableSession osu, Room room, PacketReader reader)
@@ -162,7 +162,7 @@ internal sealed partial class PacketHandlers
 
 	private async Task TourneyInfoAsync(Session actor, int matchId, CancellationToken ct)
 	{
-		if (actor is not TourneySession || lobby.Find(matchId) is not { IsClosed: false } room) return;
+		if (actor is not TourneySession || lobby.FindByWireId(matchId) is not { IsClosed: false } room) return;
 		if (!await sender.Send(new CanViewMatch(actor, room.Match.Id), ct)) return;
 		var match = StableView.Match(room);
 		outbox.Send(actor, writer => writer.UpdateMatch(match, false));
@@ -170,14 +170,14 @@ internal sealed partial class PacketHandlers
 
 	private async Task TourneyJoinAsync(Session actor, int matchId, CancellationToken ct)
 	{
-		if (actor is not TourneySession || lobby.Find(matchId) is not { IsClosed: false } room) return;
+		if (actor is not TourneySession || lobby.FindByWireId(matchId) is not { IsClosed: false } room) return;
 		if (!await sender.Send(new CanViewMatch(actor, room.Match.Id), ct)) return;
 		await sender.Send(new ObserveRoom(actor, room), ct);
 	}
 
 	private async Task TourneyLeaveAsync(Session actor, int matchId, CancellationToken ct)
 	{
-		if (actor is TourneySession && lobby.Find(matchId) is { } room)
+		if (actor is TourneySession && lobby.FindByWireId(matchId) is { } room)
 			await sender.Send(new StopObservingRoom(actor, room), ct);
 	}
 }

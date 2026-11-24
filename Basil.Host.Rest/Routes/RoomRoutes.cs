@@ -62,7 +62,7 @@ internal static class RoomRoutes
 
 			var result = await command.Run(new RoomCall(sender, context.Session(), room), body,
 				context.RequestServices, context.RequestAborted);
-			return result.Answer();
+			return result.Answer(() => RoomView.Of(room));
 		}).WithSummary(command.Summary).WithTags("Rooms");
 	}
 

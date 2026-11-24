@@ -61,7 +61,7 @@ internal static class StableView
 			(int)WireMap.ToWire(slot.Team),
 			slot.Mods is { } mods ? (int)mods : 0, slot.Player?.Id)).ToList();
 		var beatmap = room.Settings.Beatmap;
-		return new RoomPacket(room.Id, room.Rounds.InProgress, (int)room.Settings.MatchSettings.Mods,
+		return new RoomPacket(room.WireId, room.Rounds.InProgress, (int)room.Settings.MatchSettings.Mods,
 			room.Settings.Name,
 			room.Settings.Password, beatmap?.FullName ?? string.Empty, beatmap?.Id ?? 0,
 			beatmap?.Hash.ToString() ?? string.Empty,

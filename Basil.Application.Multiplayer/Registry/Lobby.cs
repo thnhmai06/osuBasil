@@ -87,6 +87,14 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 		return _rooms.TryGetValue(id, out var room) && !room.IsClosed ? room : null;
 	}
 
+	/// <summary>Finds an open room by the number the osu! client sees on its wire.</summary>
+	/// <param name="wireId">The room number of the osu! client.</param>
+	public Room? FindByWireId(int wireId)
+	{
+		// ponytail: scans every room; the osu! client asks only when a player joins or a tourney client looks.
+		return _rooms.Values.FirstOrDefault(room => room.WireId == wireId && !room.IsClosed);
+	}
+
 	public Room? RoomOf(StableSession player)
 	{
 		// ponytail: scans every room; add a player index if room counts grow large.
@@ -100,7 +108,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 
 		for (var id = 1; id <= MaxRoomId; id++)
 		{
-			if (_rooms.ContainsKey(id) || !_reserved.Add(id)) continue;
+			if (_rooms.Values.Any(room => room.WireId == id) || !_reserved.Add(id)) continue;
 			return id;
 		}
 
@@ -129,7 +137,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	{
 		using var scope = _sync.EnterScope();
 		_rooms[room.Id] = room;
-		_reserved.Remove(room.Id);
+		_reserved.Remove(room.WireId);
 	}
 
 	internal bool Remove(Room room)
@@ -238,17 +246,17 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 		if (!MatchData.IsValidName(name)) throw new InvalidRoomSettingsException();
 
 		// ponytail: two concurrent opens by one creator can both pass the room limit; count reservations per creator if that matters.
-		if (Reserve() is not { } id) return (null, LobbyResult.NoRoomId);
+		if (Reserve() is not { } wireId) return (null, LobbyResult.NoRoomId);
 
-		var match = await CreateMatchAsync(id, name, creator, isPrivate, now);
-		var room = Establish(id, match, settings, password, seat);
+		var match = await CreateMatchAsync(wireId, name, creator, isPrivate, now);
+		var room = Establish(wireId, match, settings, password, seat);
 
 		var closesAt = !room.Slots.Any(slot => slot.Player is not null) ? StartEmptyClock(room) : (DateTimeOffset?)null;
 		Context.Events.Publish(new LobbyRoomOpened(room, room.Host, closesAt));
 		return (room, LobbyResult.Ok);
 	}
 
-	private async Task<MatchRecord> CreateMatchAsync(int id, string name, UserRecord creator, bool isPrivate,
+	private async Task<MatchRecord> CreateMatchAsync(int wireId, string name, UserRecord creator, bool isPrivate,
 		DateTimeOffset now)
 	{
 		try
@@ -264,19 +272,19 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 		}
 		catch
 		{
-			Release(id);
+			Release(wireId);
 			throw;
 		}
 	}
 
-	private Room Establish(int id, MatchRecord match, MatchSettings? settings, string password,
+	private Room Establish(int wireId, MatchRecord match, MatchSettings? settings, string password,
 		StableSession? seat)
 	{
 		Room room;
 		using (Enter())
 		{
 			var context = new RoomContext(Context.Clock, Context.RoomEvents, this, Context.Users, Context.Settings);
-			room = new Room(id, match, settings ?? new MatchSettings(), context, password);
+			room = new Room(wireId, match, settings ?? new MatchSettings(), context, password);
 			if (seat is not null && RoomOf(seat) is null && TryClaim(seat, room))
 				try
 				{

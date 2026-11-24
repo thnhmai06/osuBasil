@@ -182,6 +182,8 @@ internal static class BeatmapRoutes
 	private static async Task<IResult> PatchAsync(HttpContext context, int id, PatchSetRequest request,
 		ISender sender)
 	{
+		if (request is { Status: null, Visible: null, Locked: null })
+			return Api.Invalid("Send at least one field to change.");
 		if (request.Status is { } status && !Enum.IsDefined(status)) return Api.Invalid("status is not valid.");
 
 		var result = await sender.Send(

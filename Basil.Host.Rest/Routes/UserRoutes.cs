@@ -141,6 +141,9 @@ internal static class UserRoutes
 	{
 		var target = id;
 
+		if (request is { Name: null, Country: null, Away: null, PmPrivate: null, Privileges: null })
+			return Api.Invalid("Send at least one field to change.");
+
 		var ct = context.RequestAborted;
 		if (await PatchNameAndCountryAsync(context, target, request, ct) is { } refusal) return refusal;
 		if (await PatchSelfAndPrivilegesAsync(context, target, request, ct) is { } denied) return denied;

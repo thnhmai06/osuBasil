@@ -88,7 +88,7 @@ internal sealed class RoomPlayerKickedDelivery(RoomAudience audience, Outbox out
 {
 	public ValueTask Handle(RoomPlayerKicked notification, CancellationToken ct)
 	{
-		outbox.Send(notification.Player, writer => writer.DisposeMatch(notification.Room.Id));
+		outbox.Send(notification.Player, writer => writer.DisposeMatch(notification.Room.WireId));
 		audience.Refresh(notification.Room);
 		return ValueTask.CompletedTask;
 	}
@@ -100,7 +100,7 @@ internal sealed class RoomPlayerBannedDelivery(RoomAudience audience, Outbox out
 	public ValueTask Handle(RoomPlayerBanned notification, CancellationToken ct)
 	{
 		if (notification.Evicted is { } evicted)
-			outbox.Send(evicted, writer => writer.DisposeMatch(notification.Room.Id));
+			outbox.Send(evicted, writer => writer.DisposeMatch(notification.Room.WireId));
 		audience.Refresh(notification.Room);
 		return ValueTask.CompletedTask;
 	}
@@ -112,7 +112,7 @@ internal sealed class RoomSlotLockDelivery(RoomAudience audience, Outbox outbox)
 	public ValueTask Handle(RoomSlotLockChanged notification, CancellationToken ct)
 	{
 		if (notification.Evicted is { } evicted)
-			outbox.Send(evicted, writer => writer.DisposeMatch(notification.Room.Id));
+			outbox.Send(evicted, writer => writer.DisposeMatch(notification.Room.WireId));
 		audience.Refresh(notification.Room);
 		return ValueTask.CompletedTask;
 	}
@@ -155,7 +155,7 @@ internal sealed class LobbyRoomClosedDelivery(Lobby lobby, Outbox outbox) : INot
 {
 	public ValueTask Handle(LobbyRoomClosed notification, CancellationToken ct)
 	{
-		var id = notification.Room.Id;
+		var id = notification.Room.WireId;
 		outbox.Send(lobby.Watchers.Concat<Session>(notification.Evicted), writer => writer.DisposeMatch(id));
 		return ValueTask.CompletedTask;
 	}
@@ -185,6 +185,8 @@ internal sealed class RoundStartedDelivery(RoomAudience audience) : INotificatio
 		return ValueTask.CompletedTask;
 	}
 }
+
+internal sealed class RoundLoadExpiredDelivery(RoomAudience audience) : RoomRefreshDelivery<RoomRoundLoadExpired>(audience);
 
 internal sealed class RoundAllLoadedDelivery(RoomAudience audience) : INotificationHandler<RoomRoundAllLoaded>
 {

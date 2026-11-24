@@ -19,25 +19,25 @@ public sealed partial class Room
 	{
 		if (stale is not null) return ReplaceSeat(player, stale);
 
+		var hadHost = State.Members.Host is not null;
 		var (outcome, slot) = Seat(player);
 		if (slot is null) return RoomJoinResults.Of(outcome);
 
 		MarkOccupied();
 		Emit(new RoomPlayerJoined(this, player, slot.Index, null, null));
+		// A room without a host hands it to the player who takes a seat.
+		if (!hadHost) Emit(new RoomHostChanged(this, player.Record, player));
 		return RoomJoinResult.Ok;
-	}
-
-	public bool IsPresent(Session connection)
-	{
-		return (connection is StableSession player && SlotOf(player) is not null)
-		       || (connection is TourneySession observer && Members.Observers.Contains(observer));
 	}
 
 	public bool Involves(Session connection, UserPrivileges privileges)
 	{
-		return IsPresent(connection)
-		       || (IsManagedBy(connection.Record) && privileges.Allows(UserPrivileges.Player))
-		       || privileges.Allows(UserPrivileges.Tournament);
+		return State.Involves(connection.Record, privileges);
+	}
+
+	public bool CanBeViewedBy(Session actor)
+	{
+		return State.CanBeViewedBy(actor.Record, actor.EffectivePrivileges(Now));
 	}
 
 	private RoomActionResult LeaveSeat(StableSession actor)

@@ -72,6 +72,7 @@ internal sealed partial class PacketHandlers(
 		return type switch
 		{
 			ClientPacketType.ChangeAction => ChangeActionAsync(osu, reader, ct),
+			ClientPacketType.ReceiveUpdates => ReceiveUpdatesAsync(osu, reader.ReadInt32(), ct),
 			ClientPacketType.RequestStatusUpdate => StatsRequestAsync(osu, [osu.Record.Id], ct),
 			ClientPacketType.FriendAdd => FriendAsync(osu, reader.ReadInt32(), true, ct),
 			ClientPacketType.FriendRemove => FriendAsync(osu, reader.ReadInt32(), false, ct),
@@ -92,6 +93,11 @@ internal sealed partial class PacketHandlers(
 			ClientPacketType.SpectateFrames => ForwardFramesAsync(osu, payload, ct),
 			_ => HandleRoomAsync(osu, type, reader, ct)
 		};
+	}
+
+	private async Task ReceiveUpdatesAsync(StableSession osu, int wire, CancellationToken ct)
+	{
+		if (WireMap.Known<PresenceFilter>(wire) is { } filter) await sender.Send(new SetPresenceFilter(osu, filter), ct);
 	}
 
 	private static Task Run(Action action)
@@ -161,7 +167,7 @@ internal sealed partial class PacketHandlers(
 	{
 		var asked = ids.ToList();
 		var wanted = asked.ToHashSet();
-		var online = registry.Online.Where(pair => wanted.Contains(pair.Key.Id))
+		var online = registry.Online.Where(pair => wanted.Contains(pair.Key.Id) && pair.Value.HasPresence)
 			.ToDictionary(pair => pair.Key.Id, pair => pair.Value);
 		return [.. asked.Where(online.ContainsKey).Select(id => online[id])];
 	}

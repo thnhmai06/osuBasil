@@ -45,20 +45,21 @@ internal static class ContentRoutes
 
 	private static async Task<IResult> GetCategoryAsync(HttpContext context, string category, ISender sender)
 	{
-		if (!SettingsCategories.Exists(category)) return Api.NotFound("No such settings category.");
-
 		var (result, settings) = await sender.Send(new GetSettings(context.Session()), context.RequestAborted);
-		return result == ServerActionResult.Ok ? Api.Ok(SettingsCategories.Get(category, settings!)) : result.Refusal();
+		if (result != ServerActionResult.Ok) return result.Refusal();
+
+		return SettingsCategories.Exists(category)
+			? Api.Ok(SettingsCategories.Get(category, settings!))
+			: Api.NotFound("No such settings category.");
 	}
 
 	private static async Task<IResult> PatchCategoryAsync(HttpContext context, string category, JsonObject patch,
 		ISender sender)
 	{
-		if (!SettingsCategories.Exists(category)) return Api.NotFound("No such settings category.");
-
 		var actor = context.Session();
 		var (read, current) = await sender.Send(new GetSettings(actor), context.RequestAborted);
 		if (read != ServerActionResult.Ok) return read.Refusal();
+		if (!SettingsCategories.Exists(category)) return Api.NotFound("No such settings category.");
 
 		try
 		{

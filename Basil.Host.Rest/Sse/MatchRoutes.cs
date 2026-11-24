@@ -19,7 +19,7 @@ internal static class MatchRoutes
 	{
 		var matches = v1.MapGroup("/matches").WithTags("Matches");
 		matches.MapGet("/", ListAsync).Admitted(WorkClass.Listing).RequireToken().WithSummary("List matches.")
-			.WithDescription("For room managers only. `query` filters with `ended:` and `private:`.");
+			.WithDescription("Lists the matches the caller may view: public ones, and private ones the caller took part in or manages; a caller who may manage every room sees all. `query` filters with `ended:` and `private:`.");
 		matches.MapGet("/{id:int}", ReportAsync).Sse().WithSummary("Stream a match report.")
 			.WithDescription("""
 			                 The response is streamed using Server-Sent Events and needs no token; a private match is visible only to those who may view it, and everyone else gets 404.

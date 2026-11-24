@@ -11,13 +11,15 @@ public readonly struct ScopedRoomSettings
 		_scoped = scoped;
 	}
 
-	public Task<RoomActionResult> ConfigureAsync(RoomSettingsChange change)
+	public RoomActionResult? RequireConfigure(RoomSettingsChange change)
 	{
 		// Making the room private is for moderators; every other change is for the staff.
-		var allowed = change.IsPrivate is not null ? RoomPrivileges.Moderators : RoomPrivileges.Staff;
+		return _scoped.Require(change.IsPrivate is not null ? RoomPrivileges.Moderators : RoomPrivileges.Staff);
+	}
 
-		return Task.FromResult(_scoped.Require(allowed) ??
-		                       _scoped.Room.Configure(_scoped.Actor, change));
+	public Task<RoomActionResult> ConfigureAsync(RoomSettingsChange change)
+	{
+		return Task.FromResult(RequireConfigure(change) ?? _scoped.Room.Configure(_scoped.Actor, change));
 	}
 
 	public Task<RoomActionResult> SetLockedAsync(bool locked)

@@ -6,4 +6,4 @@ using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 
 namespace Basil.Application.Multiplayer.Messages;
 
-public sealed record InvitePlayer(Session Actor, Room Room, UserSessions Target) : IRequest<RoomInviteResult>;
+public sealed record InvitePlayer(Session Actor, Room Room, int TargetId) : IRequest<RoomInviteResult>;

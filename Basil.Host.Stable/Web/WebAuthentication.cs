@@ -19,8 +19,7 @@ namespace Basil.Host.Stable.Web;
 internal sealed class WebAuthentication(
 	SessionRegistry registry,
 	ISender sender,
-	LoginAttemptGuard attempts,
-	TimeProvider clock)
+	LoginAttemptGuard attempts)
 {
 	// The digest that passed the password check, per connection: later requests skip the slow hash check.
 	private readonly ConditionalWeakTable<StableSession, string> _verified = new();
@@ -31,16 +30,6 @@ internal sealed class WebAuthentication(
 		var address = ClientAddress.Resolve(context);
 		// shortcut: scans the online users, like AuthenticateAsync; add an index by address if the online count grows large.
 		return registry.OpenStableClients().Any(client => client.State.Record.Value.Fingerprint.Ip.Equals(address));
-	}
-
-	public bool MayUseDirect(StableSession client)
-	{
-		return Effective(client).Allows(UserPrivileges.Supporter);
-	}
-
-	public UserPrivileges Effective(StableSession client)
-	{
-		return client.User.EffectivePrivileges(clock.GetUtcNow());
 	}
 
 	public async Task<StableSession?> AuthenticateAsync(HttpContext context, string? username,

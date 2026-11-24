@@ -256,7 +256,7 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 	}
 
 	/// <summary>Seats a player in the first open slot and gives them the player role; refused when the room is closed, the player is banned or no slot is open.</summary>
-	/// <remarks>A player who already holds a slot keeps it. In a team mode the player joins the red team.</remarks>
+	/// <remarks>A player who already holds a slot keeps it. In a team mode the player joins the red team. A room without a host makes the seated player its host.</remarks>
 	/// <param name="player">The player to seat.</param>
 	/// <returns>The outcome and the slot the player holds.</returns>
 	public (RoomActionResult Outcome, RoomSlot? Slot) Seat(UserRecord player)
@@ -270,6 +270,7 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 
 		slot.Occupy(player);
 		_room.Members.Grant(_room.Members.Of(player), RoomPrivileges.Player);
+		if (_room.Members.Host is null) _room.Members.Grant(_room.Members.Of(player), RoomPrivileges.Host);
 
 		if (_room.Settings.Editable.TeamType.IsTeamMode()) slot.Team = GameTeam.Red;
 

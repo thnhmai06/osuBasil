@@ -39,6 +39,9 @@ public sealed class UserSessions
 	/// <summary>Whether this is the set the registry holds for an online account.</summary>
 	public bool IsOnline => _context.Registry.OnlineNow.TryGetValue(Record, out var online) && ReferenceEquals(online, this);
 
+	/// <summary>Whether the account is present in chat and to other players: it holds a connection that is not only an API session.</summary>
+	public bool HasPresence => Connections.Any(connection => connection is not ApiSession);
+
 	public IReadOnlySet<Session> this[SessionType type] =>
 		_connections.TryGetValue(type, out var set) ? set : ImmutableHashSet<Session>.Empty;
 

@@ -27,17 +27,16 @@ public sealed partial class Room
 		}
 	}
 
-	internal RoomActionResult SetHost(UserRecord actor, StableSession? host)
+	internal RoomActionResult SetHost(UserRecord actor, UserRecord? host)
 	{
 		using (Enter())
 		{
-			if (host is not null && Seated(host) is null)
+			var session = host is null ? null : SessionOf(host);
+			if (host is not null && session is null)
 				return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotInRoom;
 
-			var record = host?.Record;
-
-			var (outcome, changed) = State.Members.SetHost(record is null ? null : State.Members.Of(record));
-			if (changed) Emit(new RoomHostChanged(this, actor, host));
+			var (outcome, changed) = State.Members.SetHost(host is null ? null : State.Members.Of(host));
+			if (changed) Emit(new RoomHostChanged(this, actor, session));
 			return outcome;
 		}
 	}

@@ -1,3 +1,4 @@
+using Basil.Application.Sessions.Objects;
 using Basil.Application.Chat.Capabilities;
 using Basil.Application.Chat.Objects.Events;
 using Basil.Domain.Sessions;
@@ -83,7 +84,8 @@ public abstract class Channel
 	{
 		using var scope = Enter();
 		if (IsClosed) return ChannelJoinResult.Closed;
-		if (!CanRead(connection, privileges)) return ChannelJoinResult.AccessDenied;
+		// An API session only holds a token: it is no chat presence.
+		if (connection is ApiSession || !CanRead(connection, privileges)) return ChannelJoinResult.AccessDenied;
 		if (Members.Contains(connection)) return ChannelJoinResult.AlreadyMember;
 
 		Session? replaced = null;

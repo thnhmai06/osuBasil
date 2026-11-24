@@ -55,11 +55,17 @@ public readonly struct ScopedRoomMembers
 			: RoomTargetResult.NotFound;
 	}
 
-	public async Task<RoomInviteResult> InviteAsync(UserSessions target)
+	public RoomInviteResult? RequireInvite()
 	{
-		if (_scoped.Require(RoomPrivileges.Player | RoomPrivileges.Moderators) is not null)
-			return RoomInviteResult.Denied;
-		if (!target.IsOnline) return RoomInviteResult.TargetOffline;
+		return _scoped.Require(RoomPrivileges.Player | RoomPrivileges.Moderators) is null
+			? null
+			: RoomInviteResult.Denied;
+	}
+
+	public async Task<RoomInviteResult> InviteAsync(UserSessions? target)
+	{
+		if (RequireInvite() is { } refusal) return refusal;
+		if (target is not { IsOnline: true }) return RoomInviteResult.TargetOffline;
 		if (!_scoped.ManagesAnyRoom &&
 		    await _scoped.Room.Context.Users.BlocksAsync(target.Record, _scoped.Actor.Record))
 			return RoomInviteResult.Blocked;

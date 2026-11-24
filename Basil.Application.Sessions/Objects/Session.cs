@@ -3,6 +3,7 @@ using Basil.Application.Sessions.Messages;
 using Basil.Application.Sessions.Objects.Events;
 using Basil.Application.Shared.Actors;
 using Basil.Application.Users.Objects;
+using Basil.Domain.Game;
 using Basil.Domain.Sessions;
 using Basil.Domain.Spectating;
 using Basil.Domain.Users;
@@ -112,11 +113,20 @@ public sealed class StableSession : Session
 
 	public UserStatus Status { get; internal set; } = new();
 
+	/// <summary>Gets whose presence and stats the client asked to receive; none until it asks.</summary>
+	public PresenceFilter PresenceFilter { get; internal set; } = PresenceFilter.None;
+
 	public IReadOnlySet<Session> Spectators => _spectators;
 
 	public bool HasApiSpectators => _spectators.Any(spectator => spectator is ApiSession);
 
 	internal ISet<Session> MutableSpectators => _spectators;
+
+	/// <summary>Gets whether the client may search for and download beatmapsets from inside the game (osu!direct).</summary>
+	public bool MayUseDirect()
+	{
+		return EffectivePrivileges(Context.Clock.GetUtcNow()).Allows(UserPrivileges.Supporter);
+	}
 
 	public ScopedStableSession ScopeTo(Session actor)
 	{
@@ -155,7 +165,6 @@ public sealed class StableSession : Session
 		if (!IsOpen) return SessionAuthResult.TargetOffline;
 		// The connection may have closed during the awaits before; check it again before the spectator is added.
 		if (!spectator.IsOpen) return SessionAuthResult.Closed;
-		if (spectator.Record.Equals(Record)) return SessionAuthResult.Self;
 
 		if (!Spectators.Contains(spectator)) MutableSpectators.Add(spectator);
 		Context.Events.Publish(new SpectatorJoined(this, spectator));

@@ -11,9 +11,11 @@ internal sealed class StartRoomCountdownHandler(ISender sender, RoomCountdowns c
 	public async ValueTask<RoomActionResult> Handle(StartRoomCountdown request, CancellationToken ct)
 	{
 		var allowed = await sender.Send(new CheckRoundStart(request.Actor, request.Room), ct);
-		return allowed == RoomActionResult.Ok
-			? await countdowns.StartAsync(request.Actor, request.Room, request.Duration, request.StartsRound,
-				ct)
-			: allowed;
+		if (allowed != RoomActionResult.Ok) return allowed;
+
+		// A countdown that starts a round is refused when a round could not start now.
+		if (request.StartsRound && request.Room.CheckStart() is var refusal and not RoomActionResult.Ok) return refusal;
+
+		return await countdowns.StartAsync(request.Actor, request.Room, request.Duration, request.StartsRound, ct);
 	}
 }

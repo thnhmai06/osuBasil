@@ -100,7 +100,6 @@ public static class OutcomeErrors
 			},
 			RoomActionResult room => room switch
 			{
-				RoomActionResult.IsManager => ErrorKind.Forbidden,
 				RoomActionResult.RoomClosed => ErrorKind.Gone,
 				RoomActionResult.SpeedModNotAllowed or RoomActionResult.NotFreemod or RoomActionResult.NoTeams
 					or RoomActionResult.TagNotAvailable =>
@@ -123,7 +122,6 @@ public static class OutcomeErrors
 			RoomTargetResult target => target switch
 			{
 				RoomTargetResult.NotFound => ErrorKind.NotFound,
-				RoomTargetResult.IsManager => ErrorKind.Forbidden,
 				RoomTargetResult.RoomClosed => ErrorKind.Gone,
 				RoomTargetResult.NoTeams => ErrorKind.Invalid,
 				_ => ErrorKind.Conflict

@@ -11,7 +11,9 @@ namespace Basil.Domain.Multiplayer.Room;
 /// <param name="AllLoaded">Whether every playing player has now loaded, announced once per round.</param>
 /// <param name="AllSkipped">Whether every playing player has now skipped the intro, announced once per round.</param>
 /// <param name="Completed">Whether the round ended because no player was left playing.</param>
-public sealed record RoomRoundProgress(Round Round, bool AllLoaded, bool AllSkipped, bool Completed);
+/// <param name="Dropped">The indexes of the slots whose players never loaded the beatmap in time and no longer take part; empty otherwise.</param>
+public sealed record RoomRoundProgress(Round Round, bool AllLoaded, bool AllSkipped, bool Completed,
+	IReadOnlyList<int>? Dropped = null);
 
 /// <summary>What a player's report changed in the round.</summary>
 /// <param name="Round">The round the report belongs to; the ended round when the report ended it.</param>
@@ -44,12 +46,22 @@ public sealed class RoomRounds
 	/// <summary>Gets whether a round is in progress.</summary>
 	public bool InProgress => CurrentRound is not null;
 
+	private DateTimeOffset? FirstLoadedAt { get; set; }
+
 	private bool AllLoadedAnnounced { get; set; }
 
 	private bool AllSkippedAnnounced { get; set; }
 
 	/// <summary>Gets the score settlement of the last round, or <see langword="null"/> when none has started.</summary>
 	public RoundSettlement? Settlement { get; internal set; }
+
+	/// <summary>Tells whether a round could start now, without starting it; refused when the room is closed, a round is in progress, or the room has no beatmap.</summary>
+	public RoomActionResult CheckStart()
+	{
+		if (_room.IsClosed) return RoomActionResult.RoomClosed;
+		if (InProgress) return RoomActionResult.InProgress;
+		return _room.Settings.Beatmap is null ? RoomActionResult.NoBeatmap : RoomActionResult.Ok;
+	}
 
 	/// <summary>Starts a round on the room's beatmap with every seated player who has it; refused when the room is closed, a round is in progress, or the room has no beatmap.</summary>
 	/// <remarks>The round ends at once when no player takes part. Starting also settles the previous round if it was not settled yet.</remarks>
@@ -58,9 +70,7 @@ public sealed class RoomRounds
 	public (RoomActionResult Outcome, Round? Round, IReadOnlyList<UserRecord> Players, RoundDecision? Previous) StartRound(
 		DateTimeOffset now)
 	{
-		if (_room.IsClosed) return (RoomActionResult.RoomClosed, null, [], null);
-		if (InProgress) return (RoomActionResult.InProgress, null, [], null);
-		if (_room.Settings.Beatmap is null) return (RoomActionResult.NoBeatmap, null, [], null);
+		if (CheckStart() is var refusal and not RoomActionResult.Ok) return (refusal, null, [], null);
 
 		var (round, players, previous) = BeginRound(now);
 		return (RoomActionResult.Ok, round, players, previous);
@@ -79,14 +89,16 @@ public sealed class RoomRounds
 
 	/// <summary>Records that a player has loaded the beatmap; refused when the room is closed or the player is not playing in the round in progress.</summary>
 	/// <param name="player">The player who loaded.</param>
+	/// <param name="now">The time the player loaded; the first load of a round starts the wait for the others.</param>
 	/// <returns>The outcome and a signal, which is <see langword="null"/> when the player had already loaded; its <c>All</c> is true only for the report that completes the set.</returns>
-	public (RoomActionResult Outcome, RoundSignal? Signal) MarkLoaded(UserRecord player)
+	public (RoomActionResult Outcome, RoundSignal? Signal) MarkLoaded(UserRecord player, DateTimeOffset now)
 	{
 		if (_room.IsClosed) return (RoomActionResult.RoomClosed, null);
 		if (!TryGetPlayingSlot(player, out var round, out var slot)) return (RoomActionResult.NotPlaying, null);
 		if (slot.Loaded is true) return (RoomActionResult.Ok, null);
 
 		slot.Loaded = true;
+		FirstLoadedAt ??= now;
 		if (!AllLoadedAnnounced &&
 		    _room.Slots.Where(s => s.Status is RoomSlotStatus.Playing).All(s => s.Loaded is true))
 		{
@@ -191,6 +203,7 @@ public sealed class RoomRounds
 		LastRound = round;
 		AllLoadedAnnounced = false;
 		AllSkippedAnnounced = false;
+		FirstLoadedAt = null;
 
 		var players = new List<UserRecord>();
 		foreach (var slot in _room.Slots.Where(s => s.Player is not null && s.Status is not RoomSlotStatus.NoMap))
@@ -227,6 +240,30 @@ public sealed class RoomRounds
 		if (allSkipped) AllSkippedAnnounced = true;
 
 		return allLoaded || allSkipped ? new RoomRoundProgress(round, allLoaded, allSkipped, false) : null;
+	}
+
+	/// <summary>Stops the round in progress waiting for players who have not loaded the beatmap <see cref="RoomRules.LoadTimeout"/> after the first player loaded: they return to not ready and no score is awaited from them.</summary>
+	/// <remarks>The round ends when nobody is left playing. Nothing happens while nobody has loaded, before the timeout, or when every playing player has loaded.</remarks>
+	/// <param name="now">The time of the check.</param>
+	/// <returns>What changed, or <see langword="null"/> when no round is in progress or nobody was dropped.</returns>
+	public RoomRoundProgress? DropUnloaded(DateTimeOffset now)
+	{
+		if (CurrentRound is not { } round || FirstLoadedAt is not { } first || now - first < RoomRules.LoadTimeout) return null;
+
+		var dropped = _room.Slots.Where(s => s is { Status: RoomSlotStatus.Playing, Loaded: not true }).ToList();
+		if (dropped.Count == 0) return null;
+
+		foreach (var slot in dropped)
+		{
+			Settlement?.Leave(slot.Player!);
+			slot.SetStatus(RoomSlotStatus.NotReady);
+		}
+
+		var indexes = dropped.Select(s => s.Index).ToList();
+		var progress = Advance(now);
+		return progress is null
+			? new RoomRoundProgress(round, false, false, false, indexes)
+			: progress with { Dropped = indexes };
 	}
 
 	/// <summary>Accepts a player's score for the last round; refused when the room is closed or the settlement does not await a score from that player for that beatmap.</summary>

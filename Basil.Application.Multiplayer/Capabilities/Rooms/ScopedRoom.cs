@@ -88,7 +88,7 @@ public readonly struct ScopedRoom
 		return RoomActionResult.Denied;
 	}
 
-	public bool Involves => Room.Involves(Actor, _global);
+	public bool CanView => Room.CanBeViewedBy(Actor);
 
 	internal RoomActionResult? RequireJoin()
 	{

@@ -8,11 +8,6 @@ namespace Basil.Application.Multiplayer.Objects.Rooms;
 
 public sealed partial class Room
 {
-	internal bool Involves(UserRecord user)
-	{
-		return IsManagedBy(user) || Slots.Find(user) is not null;
-	}
-
 	internal RoomJoinResult JoinClaiming(StableSession actor, string password, bool managesAnyRoom)
 	{
 		var lobby = Context.Lobby;

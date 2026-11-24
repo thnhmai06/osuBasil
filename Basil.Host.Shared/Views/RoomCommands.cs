@@ -77,7 +77,8 @@ public static class RoomCommands
 		Command<PrivateRequest>("private", "Update whether the room is private.",
 			(r, b, _, ct) => r.Ask(new ConfigureRoom(r.Actor, r.Room, new RoomSettingsChange(IsPrivate: b.Private)),
 				ct)),
-		Command<MapRequest>("map", "Update the beatmap of the room.", MapAsync),
+		Command<MapRequest>("map", "Update the beatmap of the room.",
+			(r, b, _, ct) => r.Ask(new SetRoomBeatmap(r.Actor, r.Room, b.Beatmap, b.Mode), ct)),
 		Command<ModsRequest>("mods", "Update the mods of the room, or free mods.", (r, b, _, ct) =>
 		{
 			var mods = GameMods.NoMod;
@@ -93,13 +94,7 @@ public static class RoomCommands
 			(r, b, _, ct) => r.Ask(new MovePlayer(r.Actor, r.Room, b.User, b.Slot), ct)),
 		Command<TeamRequest>("team", "Update the team of a player.",
 			(r, b, _, ct) => r.Ask(new SetPlayerTeam(r.Actor, r.Room, b.User, b.Team), ct)),
-		Command<UserRequest>("host", "Update the host of the room to a player.", (r, b, s, ct) =>
-		{
-			var host = OnlineUser(s, b.User)?.Stable;
-			return host is { IsOpen: true }
-				? r.Ask(new SetRoomHost(r.Actor, r.Room, host), ct)
-				: Refuse(RoomTargetResult.TargetOffline);
-		}),
+		Command<UserRequest>("host", "Update the host of the room to a player.", (r, b, _, ct) => r.Ask(new SetRoomHost(r.Actor, r.Room, b.User), ct)),
 		Command<object?>("clearhost", "Remove the host of the room.",
 			(r, _, _, ct) => r.Ask(new SetRoomHost(r.Actor, r.Room, null), ct)),
 		Command<UserRequest>("kick", "Remove a player from the room.",
@@ -108,10 +103,7 @@ public static class RoomCommands
 			(r, b, _, ct) => r.Ask(new BanPlayer(r.Actor, r.Room, b.User), ct)),
 		Command<UserRequest>("unban", "Remove the ban of a player.",
 			(r, b, _, ct) => r.Ask(new UnbanPlayer(r.Actor, r.Room, b.User), ct)),
-		Command<UserRequest>("invite", "Invite an online player to the room.", (r, b, s, ct) =>
-			OnlineUser(s, b.User) is { } target
-				? r.Ask(new InvitePlayer(r.Actor, r.Room, target), ct)
-				: Refuse(RoomInviteResult.TargetOffline)),
+		Command<UserRequest>("invite", "Invite an online player to the room.", (r, b, _, ct) => r.Ask(new InvitePlayer(r.Actor, r.Room, b.User), ct)),
 		Command<UserRequest>("addref", "Add a player as a referee.",
 			(r, b, _, ct) => r.Ask(new AddReferee(r.Actor, r.Room, b.User), ct)),
 		Command<UserRequest>("removeref", "Remove a referee of the room.",
@@ -140,30 +132,10 @@ public static class RoomCommands
 			(room, body, services, ct) => run(room, (TBody)body!, services, ct));
 	}
 
-	private static Task<Enum> Refuse(Enum outcome)
-	{
-		return Task.FromResult(outcome);
-	}
-
 	private static Task<Enum> Countdown(RoomCall room, int seconds, bool startsRound,
 		CancellationToken ct)
 	{
 		return room.Ask(new StartRoomCountdown(room.Actor, room.Room, TimeSpan.FromSeconds(seconds), startsRound), ct);
 	}
 
-	private static async Task<Enum> MapAsync(RoomCall room, MapRequest body, IServiceProvider services,
-		CancellationToken ct)
-	{
-		var beatmap = await services.GetRequiredService<ISender>().Send(new FindBeatmap(body.Beatmap), ct);
-		if (beatmap is null) return RoomActionResult.NoBeatmap;
-
-		var reference = beatmap.Reference;
-		return await room.Ask(new ConfigureRoom(room.Actor, room.Room,
-			new RoomSettingsChange(Beatmap: reference, Mode: body.Mode ?? beatmap.Metadata.Mode)), ct);
-	}
-
-	private static UserSessions? OnlineUser(IServiceProvider services, int id)
-	{
-		return services.GetRequiredService<SessionRegistry>().Online.FirstOrDefault(pair => pair.Key.Id == id).Value;
-	}
 }

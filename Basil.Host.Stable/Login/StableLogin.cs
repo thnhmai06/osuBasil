@@ -125,7 +125,7 @@ internal sealed class StableLogin(
 		var silenceSeconds = user.Record.Value.IsSilenced(now)
 			? (int)(user.Record.Value.SilencedEnd!.Value - now).TotalSeconds
 			: 0;
-		var online = registry.Online.Values.Where(other => !ReferenceEquals(other, user)).ToList();
+		var online = registry.Online.Values.Where(other => !ReferenceEquals(other, user) && other.HasPresence).ToList();
 		var onlineStats = await sender.Send(new GetUsersStats([
 			.. online.Select(other => (other.User, other.Stable?.Status.Detail?.Mode ?? GameMode.Standard))
 		]), ct);

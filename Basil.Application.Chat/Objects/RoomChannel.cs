@@ -20,11 +20,11 @@ public sealed class RoomChannel : Channel
 
 	internal override bool CanRead(Session connection, UserPrivileges privileges)
 	{
-		return Room.Involves(connection, privileges) || privileges.Allows(UserPrivileges.Tournament);
+		return Room.Involves(connection, privileges);
 	}
 
 	internal override bool CanWrite(Session connection, UserPrivileges privileges)
 	{
-		return Room.Involves(connection, privileges) || privileges.Allows(UserPrivileges.Tournament);
+		return Room.Involves(connection, privileges);
 	}
 }

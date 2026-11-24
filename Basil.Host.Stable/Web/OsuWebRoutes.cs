@@ -303,7 +303,7 @@ internal static class OsuWebRoutes
 		var query = context.Request.Query;
 		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is not { } player)
 			return Results.Unauthorized();
-		if (!auth.MayUseDirect(player)) return Results.StatusCode(StatusCodes.Status403Forbidden);
+		if (!player.MayUseDirect()) return Results.StatusCode(StatusCodes.Status403Forbidden);
 		if (!int.TryParse(query["r"], out var status) || status is < 0 or > 8 ||
 		    !int.TryParse(query["m"], out var mode) || mode is < OsuWebReplies.DirectAllModes or > 3 ||
 		    !int.TryParse(query["p"], out var pageNumber) || pageNumber < 0 ||
@@ -370,7 +370,7 @@ internal static class OsuWebRoutes
 		var query = context.Request.Query;
 		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is not { } player)
 			return Results.Unauthorized();
-		if (!auth.MayUseDirect(player)) return Results.StatusCode(StatusCodes.Status403Forbidden);
+		if (!player.MayUseDirect()) return Results.StatusCode(StatusCodes.Status403Forbidden);
 		if (!int.TryParse(query["s"], out var id) ||
 		    await sender.Send(new GetBeatmapset(player, id), ct) is not { } detail)
 			return Text(string.Empty);
@@ -383,7 +383,7 @@ internal static class OsuWebRoutes
 		var query = context.Request.Query;
 		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is not { } player)
 			return Results.Unauthorized();
-		if (!auth.MayUseDirect(player)) return Results.StatusCode(StatusCodes.Status403Forbidden);
+		if (!player.MayUseDirect()) return Results.StatusCode(StatusCodes.Status403Forbidden);
 		var withVideo = !setId.EndsWith('n');
 		if (!int.TryParse(setId.TrimEnd('n'), out var id)) return Results.NotFound();
 		if (await sender.Send(new OpenBeatmapsetArchive(player, id, withVideo), ct) is { } archive)

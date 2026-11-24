@@ -61,14 +61,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var host = registry.Online.GetValueOrDefault(target)?.Stable;
-		if (host is not { IsOpen: true })
-		{
-			await context.Say(MpReplies.Describe(context.Replies, RoomTargetResult.TargetOffline), ct);
-			return false;
-		}
-
-		var outcome = await sender.Send(new SetRoomHost(actor, room, host), ct);
+		var outcome = await sender.Send(new SetRoomHost(actor, room, target.Id), ct);
 		if (outcome != RoomActionResult.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
@@ -113,10 +106,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var targetUser = registry.Online.GetValueOrDefault(target);
-		var outcome = targetUser is null
-			? RoomInviteResult.TargetOffline
-			: await sender.Send(new InvitePlayer(actor, room, targetUser), ct);
+		var outcome = await sender.Send(new InvitePlayer(actor, room, target.Id), ct);
 		if (outcome != RoomInviteResult.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);

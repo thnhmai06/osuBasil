@@ -91,7 +91,7 @@ internal sealed partial class MpCommands
 		}
 
 		var room = lobby.Find(roomId);
-		if (room is null)
+		if (room is null || !room.CanBeViewedBy(context.Actor))
 		{
 			await context.Reply(MpReplies.NoActiveRoomWithHashId, new { room = roomId }, ct);
 			return false;

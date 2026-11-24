@@ -27,8 +27,7 @@ internal static class IrcView
 		var privileges = member.EffectivePrivileges(now);
 		var (authority, voice) = channel switch
 		{
-			RoomChannel room => (room.Room.IsManagedBy(member.Record),
-				room.Room.Involves(member, privileges) || privileges.Allows(UserPrivileges.Tournament)),
+			RoomChannel room => (room.Room.IsManagedBy(member.Record), room.Room.Involves(member, privileges)),
 			GeneralChannel general => (privileges.Allows(UserPrivileges.Moderator),
 				privileges.Allows(general.Record.Value.WritePrivileges)),
 			_ => (false, false)

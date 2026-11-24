@@ -18,9 +18,9 @@ public sealed partial class Room : IEquatable<Room>
 	private ITimer? _timer;
 	private RoundSettlement? _timerSettlement;
 
-	internal Room(int id, MatchRecord match, MatchSettings settings, RoomContext context, string password = "")
+	internal Room(int wireId, MatchRecord match, MatchSettings settings, RoomContext context, string password = "")
 	{
-		Id = id;
+		WireId = wireId;
 		State = new DomainRoom(match, settings, password);
 		Members = new RoomMembers(State.Members.Banned);
 		Context = context;
@@ -32,7 +32,11 @@ public sealed partial class Room : IEquatable<Room>
 
 	public MatchRecord Match => State.Match;
 
-	public int Id { get; }
+	/// <summary>Gets the number that names the room on every surface: the id of its match.</summary>
+	public int Id => Match.Id;
+
+	/// <summary>Gets the number the osu! client sees on its wire; it is reused after the room closes, so only the osu! host maps it.</summary>
+	public int WireId { get; }
 
 	public RoomSlots Slots => State.Slots;
 
@@ -56,7 +60,7 @@ public sealed partial class Room : IEquatable<Room>
 
 	internal bool ClosingWarned { get; set; }
 
-	public string Url => $"osump://{Id}/{Settings.Password}";
+	public string Url => $"osump://{WireId}/{Settings.Password}";
 
 	public string UrlEmbed => $"({Settings.Name})[{Url}]";
 
@@ -94,7 +98,9 @@ public sealed partial class Room : IEquatable<Room>
 
 	internal Lock.Scope Enter()
 	{
-		return _lock.EnterScope();
+		var scope = _lock.EnterScope();
+		DropUnloadedPlayers();
+		return scope;
 	}
 
 	internal void MarkClosed()

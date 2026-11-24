@@ -1,4 +1,5 @@
 using Basil.Domain.Multiplayer.Report.Matches;
+using Basil.Domain.Users;
 
 namespace Basil.Domain.Multiplayer.Room;
 
@@ -35,6 +36,25 @@ public sealed class Room
 
 	/// <summary>Gets whether the match has ended; a closed room refuses every action with <see cref="RoomActionResult.RoomClosed"/>.</summary>
 	public bool IsClosed => Match.Value.EndedAt is not null;
+
+	/// <summary>Gets whether a user takes part in the room: holds a slot, observes it, or manages it with the player privilege; a user who may manage every room does too.</summary>
+	/// <param name="user">The user.</param>
+	/// <param name="effective">The effective privileges of the user's account.</param>
+	public bool Involves(UserRecord user, UserPrivileges effective)
+	{
+		if (effective.Allows(UserPrivileges.Tournament) || Slots.Find(user) is not null) return true;
+
+		return Members.Find(user) is { } member &&
+		       (!member.Has(RoomPrivileges.Moderators) || effective.Allows(UserPrivileges.Player));
+	}
+
+	/// <summary>Gets whether a user may see the room, read its settings and target it: a public room is seen by everyone, a private one only by those who take part in it.</summary>
+	/// <param name="user">The user.</param>
+	/// <param name="effective">The effective privileges of the user's account.</param>
+	public bool CanBeViewedBy(UserRecord user, UserPrivileges effective)
+	{
+		return !Settings.IsPrivate || Involves(user, effective);
+	}
 
 	/// <summary>Closes the room, ending the round in progress as aborted; refused when it is already closed.</summary>
 	public RoomActionResult Close(DateTimeOffset now)

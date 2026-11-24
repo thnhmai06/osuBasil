@@ -102,6 +102,9 @@ internal sealed class SpectatorJoinedDelivery(Outbox outbox) : INotificationHand
 	public ValueTask Handle(SpectatorJoined notification, CancellationToken ct)
 	{
 		var (host, spectator) = (notification.Host, notification.Spectator);
+		// A player spectating themselves is not shown in the game client.
+		if (spectator.Record.Equals(host.Record)) return ValueTask.CompletedTask;
+
 		var others = host.Spectators.Where(other => !ReferenceEquals(other, spectator)).ToList();
 		outbox.Send(host, writer => writer.SpectatorJoined(spectator.Record.Id));
 		outbox.Send(others, writer => writer.FellowSpectatorJoined(spectator.Record.Id));
@@ -118,6 +121,8 @@ internal sealed class SpectatorLeftDelivery(Outbox outbox) : INotificationHandle
 	public ValueTask Handle(SpectatorLeft notification, CancellationToken ct)
 	{
 		var (host, spectator) = (notification.Host, notification.Spectator);
+		if (spectator.Record.Equals(host.Record)) return ValueTask.CompletedTask;
+
 		outbox.Send(host, writer => writer.SpectatorLeft(spectator.Record.Id));
 		outbox.Send(host.Spectators, writer => writer.FellowSpectatorLeft(spectator.Record.Id));
 		return ValueTask.CompletedTask;

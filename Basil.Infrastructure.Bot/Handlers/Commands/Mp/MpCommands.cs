@@ -1,4 +1,3 @@
-using Basil.Application.Sessions.Registry;
 using System.Collections.Frozen;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Bot.Commands;
@@ -15,7 +14,6 @@ namespace Basil.Infrastructure.Bot.Handlers.Commands.Mp;
 
 internal sealed partial class MpCommands(
 	Lobby lobby,
-	SessionRegistry registry,
 	IUserRepository users,
 	IBeatmapRepository beatmaps,
 	MpTargets targets,
@@ -150,8 +148,8 @@ internal sealed partial class MpCommands(
 		var targeted = targets.Get(context.Sender.Id);
 		if (targeted is not null)
 		{
-			// A room id is reused after a room closes, so the remembered room must still be the open room.
-			if (ReferenceEquals(lobby.Find(targeted.Id), targeted)) return targeted;
+			// The remembered room must still be open and viewable by the typist.
+			if (ReferenceEquals(lobby.Find(targeted.Id), targeted) && targeted.CanBeViewedBy(actor)) return targeted;
 			targets.Clear(context.Sender.Id);
 		}
 

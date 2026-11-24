@@ -15,6 +15,8 @@ public sealed record RoomRoundStarted(
 
 public sealed record RoomRoundAborted(Room Room, Round Round) : RoomRoundEvent(Room, Round);
 
+public sealed record RoomRoundLoadExpired(Room Room, Round Round, IReadOnlyList<int> Slots) : RoomRoundEvent(Room, Round);
+
 public sealed record RoomRoundCompleted(Room Room, Round Round, int Slot) : RoomRoundEvent(Room, Round);
 
 public sealed record RoomRoundPlayerLoaded(Room Room, Round Round, int Slot) : RoomRoundEvent(Room, Round);

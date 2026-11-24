@@ -8,8 +8,6 @@ public enum SessionAuthResult : byte
 
 	TargetOffline,
 
-	Self,
-
 	Blocked,
 
 	Closed,

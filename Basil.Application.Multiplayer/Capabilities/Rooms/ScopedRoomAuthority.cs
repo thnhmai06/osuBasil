@@ -30,9 +30,13 @@ public readonly struct ScopedRoomAuthority
 			: RoomTargetResult.NotFound;
 	}
 
-	public Task<RoomActionResult> SetHostAsync(StableSession? host)
+	public async Task<RoomActionResult> SetHostAsync(int? userId)
 	{
-		return Task.FromResult(_scoped.Require(RoomPrivileges.Staff) ??
-		                       _scoped.Room.SetHost(_scoped.Actor.Record, host));
+		if (_scoped.Require(RoomPrivileges.Staff) is { } refusal) return refusal;
+		if (userId is not { } id) return _scoped.Room.SetHost(_scoped.Actor.Record, null);
+
+		return await _scoped.Room.Context.Users.FindAsync(id) is { } record
+			? _scoped.Room.SetHost(_scoped.Actor.Record, record)
+			: RoomActionResult.NotInRoom;
 	}
 }

@@ -85,7 +85,7 @@ touching users, connections, privileges, silences or the bot.
   Every heartbeat moves the last one on: every osu! request or ping (as bancho.py does), every IRC command including
   `PING` and `PONG`, every API request and every open SSE stream. The status comes from how long the session has been
   silent, with thresholds fixed in Domain (`SessionRules`, not settings): under 30 s it is `Active`; from 30 s it is
-  `Replaceable`; from its `ExpiresAfter` (300 s for Stable, StableTourney and Irc; 8 h for Api) it is `Expired`; once
+  `Replaceable`; from its `ExpiresAfter` (60 s for Stable and StableTourney, 300 s for Irc, 8 h for Api) it is `Expired`; once
   closed it is `Ended`. Expiry is lazy: no timer closes a session. It is decided when something looks at it: a
   heartbeat on an `Expired` session ends it `TimedOut` instead of reviving it, a lookup of an online user or a token
   closes it on the spot, and a new login applies the rule below. A background pass only flushes activity to the store
@@ -117,7 +117,7 @@ touching users, connections, privileges, silences or the bot.
   `464` plus `ERROR`, the API a `409`. BasilBot's sessions are fixed at one Stable and one Irc. Refusals are counted in
   diagnostics (`basil.connections.rejected`, tags `type` and `reason=already_online`). Open live streams (SSE) have a
   per-user ceiling equal to the per-address one and answer `429`. This is a business rule of Sessions, not an admission
-  policy of the gateway. In a channel, a new session of an exclusive type takes the place of the user's closed one of
+  policy of the gateway. An API session is no chat presence: it joins no channel, and an account that holds only API sessions is neither in `NAMES` nor in the osu! presence. In a channel, a new session of an exclusive type takes the place of the user's closed one of
   that type.
 * **Logging out ends the session, not saved passwords.** Closing any session ends it and its token; the client can
   sign in again with its password. Changing a password ends every other session of the account. Changing the password

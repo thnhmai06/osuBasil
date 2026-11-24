@@ -6,6 +6,14 @@ namespace Basil.Application.Multiplayer.Objects.Rooms;
 
 public sealed partial class Room
 {
+	public RoomActionResult CheckStart()
+	{
+		using (Enter())
+		{
+			return State.Rounds.CheckStart();
+		}
+	}
+
 	internal RoomActionResult StartRound()
 	{
 		using (Enter())
@@ -41,7 +49,7 @@ public sealed partial class Room
 			if (PlayerOf(actor) is not { } player)
 				return IsClosed ? RoomActionResult.RoomClosed : RoomActionResult.NotPlaying;
 
-			var (outcome, signal) = State.Rounds.MarkLoaded(player);
+			var (outcome, signal) = State.Rounds.MarkLoaded(player, Now);
 			if (signal is { } s)
 			{
 				if (s.All)

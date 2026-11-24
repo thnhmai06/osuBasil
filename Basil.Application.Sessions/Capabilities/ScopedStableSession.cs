@@ -1,5 +1,6 @@
 using Basil.Application.Shared.Privileges;
 using Basil.Application.Sessions.Objects;
+using Basil.Domain.Game;
 using Basil.Domain.Spectating;
 using Basil.Domain.Users;
 using Session = Basil.Application.Sessions.Objects.Session;
@@ -52,6 +53,14 @@ public readonly struct ScopedStableSession
 	public bool PublishFrames(SpectatorBundle bundle)
 	{
 		return ReferenceEquals(Actor, Host) && Host.PublishFrames(bundle);
+	}
+
+	public bool SetPresenceFilter(PresenceFilter filter)
+	{
+		if (!ReferenceEquals(Actor, Host) || Host.PresenceFilter == filter) return false;
+
+		Host.PresenceFilter = filter;
+		return true;
 	}
 
 	public bool SetStatus(UserStatus status)

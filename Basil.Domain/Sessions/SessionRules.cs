@@ -8,8 +8,13 @@ public static class SessionRules
 
 	extension(SessionType type)
 	{
-		/// <summary>How long a session of this type may stay silent before it expires: 8 hours for an API session, 300 seconds for any other.</summary>
-		public TimeSpan ExpiresAfter => type == SessionType.Api ? TimeSpan.FromHours(8) : TimeSpan.FromSeconds(300);
+		/// <summary>How long a session of this type may stay silent before it expires: 8 hours for an API session, 300 seconds for an IRC session and 60 seconds for an osu! session.</summary>
+		public TimeSpan ExpiresAfter => type switch
+		{
+			SessionType.Api => TimeSpan.FromHours(8),
+			SessionType.Irc => TimeSpan.FromSeconds(300),
+			_ => TimeSpan.FromSeconds(60)
+		};
 
 		/// <summary>Whether a user may hold only one live session of this type; every type but <see cref="SessionType.StableTourney" /> is.</summary>
 		public bool IsExclusive => type != SessionType.StableTourney;
