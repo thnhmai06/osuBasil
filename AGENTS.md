@@ -577,10 +577,14 @@ the roles and are separate from the account's `UserPrivileges`. See [`docs/for-a
 Data reaches its consumer directly.
 
 * A database read is bounded (a limit, a page), loaded, the connection released, and only then sent to a client.
-* Every upload is spooled to a temporary file, validated, then moved atomically into place; no part of an uploaded name
-  becomes a path.
-* Application does not buffer a payload in a `MemoryStream` or a `byte[]` copy; an upload it must check goes through
-  `IUploadSpool` (a file, not memory), and a refused one is kept in `<Data>/Quarantine/<guid>` for seven days.
+* Every accepted upload is written into its target storage's temporary file, validated, then moved atomically into
+  place; no part of an uploaded name becomes a path.
+* Application does not buffer a payload in a `MemoryStream` or a `byte[]` copy. An upload is judged before its bytes
+  are taken (owner decision 2026-11-24; **target**, today it still goes through `IUploadSpool` and `Quarantine`): the
+  caller is authorized before the body is read, a declared length above the limit of that kind of upload is refused at
+  once, the body is read as a stream, its first bytes are checked and the connection is cut on a mismatch, on too many
+  bytes or on a too slow sender. Accepted bytes go straight into the target storage. A refused upload is logged, never
+  kept.
 * A stored file is written once: the writer streams into the storage's temporary file (`DataStorage.SaveAsync` with a
   writer), then the move is atomic. A replay is never copied through memory on its way to disk.
 * Large payloads (replays, `.osz` archives, images) never pass through a cache.
@@ -596,6 +600,17 @@ pp is display-only. It never decides a ranking, a leaderboard order, a player's 
 unless the project owner says otherwise.
 
 Do not introduce pp-dependent gameplay behavior.
+
+#### Configuration split
+
+`appsettings.json` holds only how the application behaves and is safe to publish. A value that depends on the
+deployment, above all a secret (connection strings, passwords, keys, tokens), comes from an environment variable and
+never from `appsettings.json` (owner decision 2026-11-24).
+
+#### Optional features never stop the server
+
+An optional feature (mDNS advertising, ffmpeg previews, the update check, and any other the server can run without)
+that fails logs the failure and turns itself off; it never stops or crashes the server (owner decision 2026-11-24).
 
 #### Stable protocol
 

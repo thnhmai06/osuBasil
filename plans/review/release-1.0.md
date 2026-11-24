@@ -24,7 +24,36 @@ its history. Paths are relative to the repository root; the projects live there 
 | D10 | Criteria and starter material | Written per client, after trying each one. Basil also ships what a client needs to start: a usable Postman collection (removed with the tests, see the open questions), a sample IRC configuration, a guide to point the osu! client at a server. |
 | D11 | osu! client behaviour | bancho.py is the reference for every feature the osu! (stable) client uses: the packets it sends, in which order and when, and what it does with what the client sends, rewritten under Basil's own rules. A difference on the osu! side is a finding unless Basil's scope leaves the feature out. |
 | D12 | Text sent to clients | Every text a client receives (chat replies, error and status messages, notifications, generated references and guides) goes through the `humanizer` skill and the writing skills before it is accepted. |
-| D13 | Callers are not the system | The chat system only carries messages and keeps no history. The osu! client, IRC, the HTTP API and BasilBot are only ways to call the system; Domain and Application know none of them. **Partly overtaken (2026-11-24):** `AGENTS.md` now models one `Session` per connection (kinds as subclasses in `Basil.Application.Sessions`), keeps `Basil.Application.Bot` as a module and keeps osu! client types in Domain. The principle is still the owner's standing rule; how it meets `AGENTS.md` is an open question (P3, F-086). |
+| D13 | Callers are not the system | The chat system only carries messages and keeps no history. The osu! client, IRC, the HTTP API and BasilBot are only ways to call the system; Domain and Application know none of them. **Partly overtaken (2026-11-24):** `AGENTS.md` now models one `Session` per connection (kinds as subclasses in `Basil.Application.Sessions`), keeps `Basil.Application.Bot` as a module and keeps osu! client types in Domain. The principle is still the owner's standing rule; how it meets `AGENTS.md` is an open question (P3, F-086). **Settled (2026-11-24, D16):** the session kinds keep their names; only the osu! client types in Domain get neutral names. |
+| D14 | Tests | **Superseded by D42.** Not part of this round (2026-11-24). No test project is rebuilt; the OpenAPI check and the Postman collection wait with them. |
+| D15 | Grading | Every finding marked "not graded" and every owner request is a blocker. |
+| D16 | D13 against `AGENTS.md` | `StableSession`, `IrcSession` and `ApiSession` keep their names and place, and the Bot module stays. `OsuClient`, `OsuFlags` and `OsuFingerprint` in `Basil.Domain/Client/` get neutral names. P3 is withdrawn; F-086 is reduced to the rename. |
+| D17 | One number | Every surface (`#mp_<n>`, `/v1/rooms/<n>`, `/v1/matches/<n>`, BasilBot, dashboard) uses the match id. The runtime room id is only the number the osu! client sees on its wire, mapped by the Stable host (F-019). |
+| D18 | Stream routes | The rule changes, not the routes: `AGENTS.md`, `sse.md` and `docs/for-client/api/sse.md` stop requiring `/live` (F-029, F-031). |
+| D19 | Spectating | The API sends what the client sent: one frames-and-score pair per bundle, and every action (skip, fail, pause, song select...) is forwarded (F-040). |
+| D20 | BasilBot and IRC | An unknown command is answered with a pointer to `!help` in a private message and in `#mp_<n>`, never in a public channel (F-008). Countdown marks stay `PRIVMSG` and the docs change; `404` and `473` name the reason (F-015). |
+| D21 | Idle timeouts | osu! client 60 s, IRC 300 s, API 8 h (F-017). Expiry stays lazy: a silent session is closed when something looks at it (a token lookup, the online list, a lookup by user, a late heartbeat), never by a timer. The background worker only writes the batched last-seen times, now every 30 s instead of 100 s, and ends stored sessions that have no live object. |
+| D22 | API bodies and lists | Room-command bodies take ids only; a missing or mistyped field is a 422 that names it (F-023). `GET /v1/matches` lists for every caller the matches that caller may view (F-030). |
+| D23 | LAN and optional features | mDNS stays and is off in the shipped compose file; the docs point LAN players to the server's IP or a hosts file, or to host networking on Linux. An optional feature (mDNS, ffmpeg, the update check...) never stops the server when it fails: it logs and turns itself off. |
+| D24 | Operation | The dashboard is supported in a container (`tty`, `stdin_open`, `docker compose attach`); one-off commands go through `docker compose exec basil ./Basil <command>`. A log file per connection session (osu!, IRC, API), kept 7 days, beside the system log (F-037). CI also runs on pushes to `develop`. `IDatabaseProvider` is removed (P1 step 1). The owner's code principles (prose, lists only for list-shaped data) govern `docs/`, and `docs-guideline.md` is changed to match. No Postman collection in this round. |
+| D25 | Native and Docker | **Superseded by D29.** Basil ships both: the six native archives (win, linux, osx × x64, arm64) and the Docker image. Binaries are not signed for 1.0; the docs say how to open an unsigned build (SmartScreen, `xattr -d com.apple.quarantine`). The `restart` command and exit code 75 are removed. Managers: compose `restart: on-failure`, a systemd unit with `Restart=on-failure`, and a Windows Service. Replaces the Docker-only plan P2. |
+| D26 | Layout and updates | **Partly superseded by D29** (still holds: `Data/` holds persistent data only, `Configurations/` merged into it, `Localizations/` instead of `Templates/`, shipped files written only when missing, `metadata.json`). A release carries two folders, `Binary/` and `Data/`. `Data/` sits at a fixed place, the install root plus `Data`, with no setting to move it: beside `Binary/` for an archive, Docker and `dotnet run` (the build writes `bin/<configuration>/Binary/` and `Data/` beside it), beside Velopack's `current` on Windows, beside the `.AppImage` on Linux and beside the `.app` on macOS. `Configurations/` is merged into `Data/` flat (`appsettings.json`, the schemas, `tuisettings.json`; the certificate leaves Basil, D37). `Data/` holds persistent data only (what a backup needs besides the database): the configuration files, `metadata.json`, `Localizations/`, `Beatmapsets/`, `Replays/`, `Avatars/`, `Menu/`, `Faqs/`, `Screenshots/`. What can be lost without harm sits beside it at the install root: `Cache/` (audio previews and anything rebuilt on demand), `Logs/` (the system log and the session logs) and `Temp/` (`basil.sock`). The `.incoming_` staging entries stay inside `Beatmapsets/`, because the final placement is a rename on the same filesystem. BasilBot and IRC replies are read from `Data/Localizations/*.json`; `Templates/replies.json` and `RepliesOptions.Path` are removed. Binary writes a shipped file into `Data/` only when it is missing, schemas included. `Data/metadata.json` holds the version of the `Data/` layout (1 at 1.0); Binary migrates the files before anything else starts and refuses to start on a version newer than it knows. The database keeps its own EF migrations. Velopack stays and updates `Binary/` only: it downloads in the background, says so on the dashboard and in the log, and applies the update at the next shutdown without relaunching; the manager or the operator starts the new version. The update check is off in a container. |
+| D27 | Uploads | An upload is judged before its bytes are taken, and never received whole before it is checked. In order: the caller is authenticated and the action authorized before the body is read (an early check; the operation checks again, because a privilege can change during the upload); a declared `Content-Length` above the limit of that kind of upload (avatar, screenshot, menu image, `.osz`, replay) is refused at once, but a body without one is allowed, since the length is only an early refusal; the Gateway bounds concurrent uploads and bytes per user; the body is read as a stream (no `ReadFormAsync`, no framework temp file), its first bytes are checked (image signature and dimensions, zip header) and the connection is cut on a mismatch, on more bytes than the limit or the declared length, or below a minimum data rate. Accepted bytes are written once, into the target storage's own temporary file, then moved atomically. `Spool/` and `Quarantine/` are removed; a refused upload is only logged (caller, address, route, reason, declared size). osu! (stable) uploads (screenshot, score with replay) carry their credentials inside the form and the client's protocol cannot change, so they are accepted only from an address with an open osu! session, an unknown address gets a very tight allowance, and the form credentials are still checked. Ownership: the Gateway judges only size (the declared length against the route's limit, tier 1) and concurrency and rate (tier 2); the host authenticates through Sessions, maps "an open osu! session at this address" to an opaque `AdmissionSubject` tier, wraps the body in a stream with the byte counter and the minimum rate, and aborts the connection; the owning Application object authorizes (early and again in the operation) and its ports check the content (first bytes, then in full) from that one unread stream; the storage writes and moves. |
+| D28 | Data location | **Superseded by D29.** Amends D26: the location of `Data/` is a key of `appsettings.json` (default `<root>/Data`). So `appsettings.json`, its schema and the certificates sit beside `Binary/` at the install root, not in `Data/`; `Data/` keeps the rest (`tuisettings.json`, `metadata.json`, `Localizations/`, the stored files). `Cache/`, `Logs/` and `Temp/` stay at the install root when `Data/` moves. |
+| D29 | Docker, nginx, Cloudflare | Supersedes D25, the native and Velopack parts of D26, and D28. Basil ships only as a Docker image; the native archives, Velopack, the native restart, the Windows Service and the per-OS install root are gone. The server only checks for a newer image and says so; the operator updates with `docker compose pull`. The shipped compose file puts nginx in front: nginx ends TLS for HTTP and for IRC (the `stream` module, 6697 to Basil's plain TCP port), so Kestrel serves plain HTTP and the certificate handling leaves Basil; it holds the per-address protection (body size per route, refused from the declared length; body and header timeouts; `limit_req` and `limit_conn` for HTTP and IRC; the real client address with `real_ip_header`). Basil trusts only the nginx peer, keeps the per-user tier 2, concurrency and load, counts the bytes of a body without a declared length, and checks the content. Only nginx's ports are published. Cloudflare is optional and documented for servers on the Internet (a real domain, rules that let the osu! client through without a challenge, nginx trusting Cloudflare's ranges, IRC pointed at the server's own address because Cloudflare does not carry it); a LAN or tournament keeps nginx with the self-signed `basil.local` certificate (D1). `Data/` is the one volume, at a fixed place in the container, and keeps `appsettings.json` again (with no secret, D36); the certificates live with nginx. `Cache/`, `Logs/` and `Temp/` stay outside it. |
+| D30 | Behind nginx | Every stored file (images, `.osz`, beatmap files, audio, video, replays) is served by nginx through `X-Accel-Redirect`: Basil still looks the file up, checks the right to read it and sets the headers, then names an `internal` location; nginx streams it with ranges from the `Data/` volume mounted read-only. A file that is not on the volume (a default shipped with the program) is served by Basil. No `proxy_cache`. IRC is only TLS on 6697, ended by nginx; there is no plaintext port, so tools that only speak plaintext 6667 (bancho.js, osu-ahr unless it passes a TLS option to node-irc, to verify) cannot connect. nginx sends the PROXY protocol to the IRC port; Basil reads the client address from it only from the nginx peer and closes any IRC connection that does not start with a PROXY header from that peer, so no plaintext path reaches IRC even when its port is published by mistake. Basil reads `X-Forwarded-Proto` from the nginx peer so absolute URLs keep `https` (`SubmissionCharts`, `OsuWebRoutes.cs:202`). SSE responses turn off proxy buffering (`X-Accel-Buffering: no`) and heartbeat below nginx's and Cloudflare's idle timeouts; nginx keeps upstream connections alive for the bancho poll. mDNS is removed (`LanAdvertiser`, the `Multicast` settings and its package); LAN players use the server's address or a hosts file. Basil's per-address limits are removed (tier 1 by `ip:`, the per-address asset rate, `register:<ip>`, `register-check:<ip>`, `rest-anonymous:<ip>` and the address factor of the login guard) because nginx holds them; Basil keeps the per-user tier 2, the server-wide registration cap, the account-and-address login guard, and `MaxRequestBodySize` as a backstop. Compose healthchecks call Basil's `/health` directly. |
+| D31 | What the Gateway keeps | With nginx holding every per-address rule, the Gateway has one tier: the subject is always a signed-in user, and the rest is server capacity. It keeps the per-user allowance split by work class (F-090), the per-session poll allowance, the server-wide concurrency per work class, shedding by load and `/health` (F-088), the account-and-address login guard, the per-user upload rules of D27, and the rules now written inline in the hosts (`chat:<id>`, `rest-mutation:<id>`, `register:server`, `diagnostics:gc-collect`; F-084). A request without a user (assets, the sign-in form, anonymous REST) meets only the server-wide concurrency and nginx's per-address limits. `gateway.md` is rewritten for one tier; F-091 is moot; F-089 shrinks to the move to `System.Threading.RateLimiting`, because the keys are bounded by the number of users. |
+| D32 | Covers and reply files | The six cover variants are rebuilt on demand, so they move from each set folder to `Cache/Covers/`; deleting a set also drops its covers there. The reply files keep the shape `Data/Localizations/<surface>.json` but use named placeholders (`{name}`) instead of `{0}`, matching the replies' declared arguments and MessageFormat. |
+| D33 | Elevated tier | A user with the `Tournament` privilege is admitted under `AdmissionTier.Elevated` (the allowance times `ElevatedMultiplier`), decided on each request from the stored privileges; everyone else is `Standard` (F-092). |
+| D34 | IRC over TLS | nginx's `stream` block listens on 6697 with TLS (1.2 or newer), sends the PROXY header to Basil's internal IRC port, keeps `proxy_timeout` above IRC's 300-second idle limit and applies `limit_conn` per address. Every host that needs a certificate (every HTTP subdomain and `irc.`) uses one default certificate by default, shipped with the nginx configuration and covering every subdomain of `basil.local` including `irc.basil.local`, so a LAN works without setup; an operator on the Internet mounts their own certificate covering the same names (no ACME container; the docs say how to get one). A Cloudflare Origin CA certificate does not serve IRC, because IRC clients reach the origin directly. Behind Cloudflare, `irc.<domain>` stays "DNS only" and exposes the server's address; the docs say so and name nginx's `limit_conn` as IRC's protection. Basil gets a public IRC port distinct from the internal one, so `IrcReference`, `irc-client.md`, `irc.md` and the sample IRC configuration show `irc.<domain>`, 6697 and TLS; the docs say how Irssi, WeeChat and Halloy trust the default certificate. SASL `PLAIN` stays; SASL `EXTERNAL` and the `sts` capability are not offered. The compose file publishes no IRC port of Basil. Since Basil no longer holds the certificate, the warning about the published one moves to the nginx container's start and the docs. |
+| D35 | Wire rules live in Protocol | Every rule of a wire moves into its Protocol project before 1.0 (F-093 to F-095). **The test timing is superseded by D42.** The protocol tests that `AGENTS.md` asks for with an encoding change wait until after 1.0 (owner, 2026-11-24, an exception to that invariant for this move); until then the bytes are checked with the real clients in G8 (osu! stable, Irssi, WeeChat, Halloy). |
+| D36 | Configuration split | `appsettings.json` holds only how the application behaves (limits, timeouts, rules, features) and is safe to publish. Everything that depends on the deployment, above all every secret (the database connection strings and passwords, any key or token), comes from environment variables (the compose `.env`), never from `appsettings.json`; the shipped file has no secret and no deployment value. So nginx may read `Data/` without exposing anything. Which keys are deployment values (the domain, the connection strings, the trusted proxies...) is listed in `configuration.md`; the environment variable names are frozen at 1.0 with the keys (D2). |
+| D37 | No certificate in Basil | Basil terminates no TLS and holds no certificate: Kestrel serves plain HTTP and the IRC listener plain TCP, both inside the compose network; every certificate, the default one included, lives only with nginx. This overrides the certificate parts of D26 and F-052 ("the default certificate directly in `Data/`") and makes the HTTPS warning of F-070 moot. Remove `basil.local.pfx` from `Basil.csproj`, the `Kestrel:Certificates` keys, `KestrelSetup.UsesHttps`, `UsesPublishedCertificate`, `PublishedCertificatePassword`, `UseHsts` and the start-up warning. Outgoing HTTPS calls (the update check, any upstream API) still use TLS as clients. |
+| D38 | Deployment surface frozen at 1.0 | Extends D2 for Docker: the path of `Data/` inside the container, the environment variable names (D36) and the image tag scheme (`v1.x.y`, `latest`) are frozen until 2.0, so an operator upgrades with `docker compose pull` and changes nothing. The compose service names and the nginx configuration may change within 1.x; a change is written in the release notes. |
+| D39 | Rulesets in `Data/` | The four libraries `osu.Game.Rulesets.{Osu,Taiko,Catch,Mania}.dll` are no longer shipped in the image; they live only in `Data/Rulesets/` and are loaded dynamically. `osu.Game`, `osu.Framework` and every other dependency stay shipped. Nothing is downloaded on its own: without the rulesets the server runs and calculates no star rating and no pp (they stay `null`, D23); the operator's ruleset update downloads them when they are missing. Because each ruleset package depends on `ppy.osu.Game` of the same version, the update fetches the version of the shipped `osu.Game`, checked against hashes the program carries, and the program checks those hashes again on every load; a newer ruleset comes with a newer image. When no ruleset was loaded yet, a fresh download is loaded at once, with no restart; its answer says to reload the beatmapsets so the missing values are calculated. Code references only `osu.Game`: rulesets are found as `Ruleset` subclasses in those libraries, and `OsuBeatmapAnalyser` counts objects through `osu.Game`'s shared types or the ruleset's own statistics instead of `HitCircle`, `Slider`, `DrumRoll`, `HoldNote`... Owner, 2026-11-24 (the version rule is the consequence of the package dependency, to confirm). |
+| D40 | The calculation stack in `Data/` | Amends D39 (owner, 2026-11-24): `osu.Game` and `osu.Framework` are not shipped either. The image carries none of the osu! calculation libraries; the program compiles against them (`ExcludeAssets="runtime"`) and resolves them at run time from `Data/Rulesets/` (`AssemblyLoadContext.Resolving`). The ruleset update downloads each needed package from nuget.org at the compiled version: a manifest generated at build lists the packages, the files to take from each and their hashes; only the managed assemblies the calculation path loads are taken (the closure has 138 packages, 7 with native assets, none of which the calculation calls). Every file is checked against the manifest on download and on load. Without the stack the server runs with no star rating and no pp (D23). Measured once at build: which assemblies the path loads, by a trial run. The advisories that come only through `osu.Game` (AutoMapper, MessagePack, SignalR; F-068) leave the image. |
+| D41 | Beatmapset import needs the stack | The beatmapset reader keeps osu.Game's `.osu` decoder (`Infrastructure.Beatmaps/Adapters/OsuBeatmapsetReader.cs:141-143`), so importing also needs the calculation stack (owner, 2026-11-24). Without it an import is refused with a reason that says to run the ruleset update; an `.osz` left in the incoming folder stays where it is and is imported by the scan that runs when the update completes. Upload through the API answers the same refusal. |
+| D42 | Core tests before 1.0 | Tests cover only what is frozen at 1.0 (D2, D38) and the rules of the domain that do not depend on the implementation, plus a regression test for each confirmed bug; expected values come from bancho.py, the protocol and `AGENTS.md`. Seven projects (plan P6): `tests/Protocol/Game.Stable`, `tests/Protocol/Irc`, `tests/Domain`, `tests/Application/{Multiplayer,Sessions,Users}`, `tests/Hosts/{Stable,Irc,Rest}` (a few critical journeys only), `tests/Architecture`, `tests/Infrastructure/Shared`. The protocol and domain tests are written before the refactors that move that code (E3, E4, C2, C4), so they hold the current behaviour checked against bancho.py. Supersedes D14 and the timing of D35 (owner, 2026-11-24). |
 
 ## Release criteria
 
@@ -36,7 +65,7 @@ blocker below is closed. Each line is a check that passes or fails. Lines that a
 * Every answer a client reads says that the server answered, what really happened and what to do next. Every
   client-facing text lives in its surface's reply class and went through the humanizer (D12). A refusal names its
   reason and next step; `Denied` names the role that can act (D4). One situation has one wording on every surface.
-* One number names a room on every surface, and a match has its own stable number (F-019).
+* One number, the match id, names a room on every surface; the runtime room id appears only on the osu! wire (F-019, D17).
 
 **osu! (stable) client**
 
@@ -52,22 +81,26 @@ blocker below is closed. Each line is a check that passes or fails. Lines that a
 
 **IRC and BasilBot**
 
-* Irssi, WeeChat and Halloy connect, join, chat and run every BasilBot command with no error line from the server's
+* Irssi, WeeChat and Halloy connect over TLS, join, chat and run every BasilBot command with no error line from the server's
   answers to their own housekeeping commands (F-018).
 * Every BasilBot command answers, and every privacy rule holds for a user with no role (F-006).
 
 **HTTP API and SSE**
 
-* The OpenAPI document describes every route's body, answers and errors (F-022, F-067); a Postman collection ships
-  and runs green against a fresh server.
+* The OpenAPI document describes every route's body, answers and errors (F-022, F-067).
 * Every refusal follows the envelope contract; privileges and enums are named values in and out (F-025, F-082).
 * The spectate stream has separate `replay` and `activity` events, allows spectating oneself and a player who is not
   playing, and stops only when the player goes offline (F-040 to F-042).
 
 **Operation: console, dashboard, Docker**
 
-* `docker compose up` on a clean machine with only Docker gives a working server following the docs alone; `shutdown`
-  stops it and `restart` restarts it (F-069).
+* `docker compose up` on a clean machine with only Docker gives a working server behind nginx following the docs alone,
+  on a LAN with the default certificate and on the Internet with the operator's; `shutdown` stops it and the container
+  is not started again (F-069, D29, D37).
+* No secret is in `appsettings.json` or on a command line; only nginx's ports are published; IRC is reachable only over
+  TLS (D34, D36, F-098).
+* An upload over its limit or of the wrong kind is refused before its body is taken, and nothing refused is kept
+  (D27).
 * Every documented key, dialog and mode of the dashboard works as `console.md` says (F-049, F-050, F-071 to F-074);
   no enum number is shown or required (F-053); settings show effective values with units (F-046, F-047).
 * The shipped logging writes lifecycle lines only, with a log per session (F-036, F-037).
@@ -84,8 +117,9 @@ blocker below is closed. Each line is a check that passes or fails. Lines that a
 
 **Code**
 
+* The seven test projects of plan P6 pass, one at a time, on the release commit.
 * Build with no warning except the documented, assessed suppressions; no known high-severity advisory unassessed
-  (F-068); no finding of F-080 to F-085 left.
+  (F-068); no Core or Edge item of the roadmap left open.
 
 ## Open findings
 
@@ -203,8 +237,8 @@ channel". Decide which side changes; naming the reason reveals nothing the numer
 
 **F-017. One idle timeout for every connection but the API.** Not graded. Changed: an API session now expires after 8
 hours and a new sign-in of the same type may replace a silent session after 30 seconds
-(`Basil.Domain/Sessions/SessionRules.cs`); every other session still expires after 300 seconds of silence, swept
-every 100 seconds. A crashed game client keeps its slot and channels for up to six and a half minutes. The owner asked
+(`Basil.Domain/Sessions/SessionRules.cs`); every other session still expires after 300 seconds of silence. Expiry is lazy (a silent session closes when something
+looks at it); the 100-second worker only flushes last-seen times and ends stored sessions without a live object. A crashed game client keeps its slot and channels for up to six and a half minutes. The owner asked
 whether five minutes is too long; the per-kind values still need a decision.
 
 **F-018. Irssi shows a server error on every connection and every join.** Not graded. `MODE <nick> +i` is answered
@@ -359,7 +393,7 @@ text in `<configuration directory>/dashboard-theme.txt` (`Basil.Host.Cli/Dashboa
 with the `theme` command. The owner wants a Settings page for the dashboard's preferences, saved in
 `tuisettings.json`.
 
-**F-052. Configuration files, certificate and data live in three places.** Requested by the owner. Changed: the
+**F-052. Configuration files, certificate and data live in three places.** Requested by the owner. The certificate part is overridden by D37 (no certificate in Basil). Changed: the
 `Basil:Storage:Location` key is gone and stored files always live in `Data` beside the executable. Still
 `Configurations/` (appsettings, schema, development certificate) beside the executable, with the theme file in it. The
 owner wants `Configurations/` under `Data/` (`Data/Configurations/appsettings.json` and `tuisettings.json`, the default
@@ -376,7 +410,7 @@ read as names (`player,developer`), and no enum number shown anywhere in the das
 **F-069. `shutdown` inside the shipped compose file restarts the server.** Blocker. `docker-compose.yml` sets
 `restart: unless-stopped` for `basil`; `console.md` says only `on-failure` tells a shutdown (0) from a restart (75).
 
-**F-070. Noise at startup in a container, and an oversized image.** Blocker. Every `docker exec ... ./Basil <command>`
+**F-070. Noise at startup in a container, and an oversized image.** Blocker. The certificate warning goes with D37. Every `docker exec ... ./Basil <command>`
 prints the warning that Basil HTTPS uses the shipped certificate, even for `help`; the base image's
 `ASPNETCORE_HTTP_PORTS` produces an "Overriding address(es)" warning; the server answers multicast DNS for
 `basil.local` inside a container network where it reaches no player. The image tried on 2026-11-18 is 1.07 GB (ffmpeg
@@ -506,21 +540,199 @@ three `TODO` comments (`BasilBot.cs`, `ScoreFrame.cs`, `BeatmapsetStatus.cs`); t
 envelope timestamp reads `DateTimeOffset.UtcNow` (`Basil.Host.Rest/Http/Api.cs:74`); `ScoreListResult` has no
 `Denied = 0`; `ControlSocket.cs:145` starts an unobserved `Task.Run`.
 
+**F-087. A forwarded client address can still be forged behind a trusted proxy.** Blocker, security.
+`TrustedProxiesMiddleware` (`Basil/Http/TrustedProxiesMiddleware.cs`) drops the forwarding headers of an untrusted peer,
+but the readers (`Basil.Host.Rest/Http/Caller.cs` `Ip()` and `Basil.Host.Stable/Support/ClientAddress.cs`, two copies of
+one rule) take the first `X-Forwarded-For` entry, which a client writes itself before nginx appends the real address,
+and prefer `CF-Connecting-IP` behind any proxy, which a proxy other than Cloudflare passes through. Every per-address
+limit (tier 1, the login guard, registration, anonymous REST) and the "open osu! session at this address" rule of D27
+depend on it. Fix (D29: nginx resolves the client address and Basil trusts only the nginx peer, so most of this goes): one resolver in `Basil.Host.Shared` that walks `X-Forwarded-For` from the right and stops at the
+first untrusted hop (ASP.NET's `ForwardedHeaders` does this), and reads `CF-Connecting-IP` only when configured. The
+default loopback list does not match a reverse proxy in another container (its address is on the Docker bridge): the
+compose file and `docker.md` must say so.
+
+**F-088. The load signal is never reported.** Blocker. Nothing calls `LoadSignal.Report`, so its value stays 0; the
+interactive, upload, live and poll classes are shed only from that value (`Admission.cs:29`), so they are never shed,
+and memory and CPU take no part. Report it from `RuntimeSampler`.
+
+**F-089. The rate limiter keeps every event and purges on the request path.** Blocker, abuse. `RateLimiter` stores one
+timestamp per counted request per key (up to 1200 per key for polls and assets, 100 000 keys, about 2 GB at worst) and,
+over its cap, sorts every entry under their locks on the caller's thread, again after each further 10 000 new keys.
+Use `System.Threading.RateLimiting` (sliding window or token bucket) with constant memory per key.
+
+**F-090. One allowance for every kind of work.** Blocker. Interactive, listing, upload and live requests share the
+`user:<id>` bucket of 120 a minute (`Admission.cs:38-43`): a listing burst or an SSE reconnect spends the allowance of
+ordinary actions, and uploads have no count or byte allowance of their own, which D27 needs.
+
+**F-091. IRC before sign-in is limited per connection, not per address.** Moot under D31 (nginx `limit_conn`). An IRC connection without a session
+is admitted under its random `Label` (`IrcListener.cs:170`, `IrcSocket.cs:33`), so each new connection has a fresh
+allowance. To verify: whether anything bounds connections per address.
+
+**F-092. Dead admission settings.** Blocker. `PollRequests` is not read from the settings (`SettingsGatewayLimits.cs`),
+and no subject is ever `AdmissionTier.Elevated` (`AdmissionRefusals.cs:18-26`), so `rateLimits.admission.elevatedMultiplier`
+is shown on the dashboard and does nothing. Decide the rule for `Elevated` or remove the tier. The inline rate rules
+and the three `RateLimiter` registrations are F-084; `Admission` also keeps a limiter of its own, so there are two key
+tables, each with its own cap.
+
+**F-093. The IRC wire is written in the IRC host.** Blocker, architecture (D35). `Basil.Protocol.Irc` holds only the
+models; `Basil.Host.Irc` holds the line framing (`Support/IrcLines.cs` reads CRLF lines up to 512 + 8191 tag bytes,
+`Clients/IrcSocket.cs:154` writes `\r\n`), the wire limits inside the reply class (`IrcReplies.MaxBodyBytes`,
+`MaxLineBytes`, `MaxChunkBytes`, `MaxMessageLength`, beside the texts, against rule 9), the splitting of a long text and
+of `NAMES` into lines (`Support/IrcText.cs`, `Support/IrcChannels.cs`), verbs built from strings (`new IrcMessage("JOIN"`
+four times, `PART`, `PING`, `PONG`, `NOTICE`, `KICK`, `NICK`...) although `IrcMessage` has builders that the repository
+calls twice, the hand-written `ISUPPORT` tokens (`Commands/IrcCommands.cs:196`; `LINELEN=512` is not tied to the limit
+it states), the SASL `PLAIN` decoding (`IrcCommands.cs:415`, base64, `\0`, 400-byte `AUTHENTICATE` chunks), the `CAP`
+encoding (`LS 302`, `sasl=PLAIN`) and the `nick!user@host` mask (`Support/IrcView.cs`). Move them into
+`Basil.Protocol.Irc` (a line reader and writer, the limits, a splitter, a builder per verb, the `ISUPPORT` and `CAP`
+encodings, a SASL decoder, the mask); the host keeps the policy values (which capabilities, `NICKLEN`), authentication,
+routing, and an `IrcReplies` that holds texts only.
+
+**F-094. The osu! room link is built in Application.** Blocker, architecture (D13, D35).
+`Basil.Application.Multiplayer/Objects/Rooms/Room.cs:59-61` builds `osump://{Id}/{Password}` and the osu! chat link
+`({name})[{url}]`; only `Basil.Host.Stable/Delivery/RoomDelivery.cs` uses them. Move both to `Basil.Protocol.Game.Stable`
+and remove them from `Room`. Of the same kind: `Basil.Domain/Chat/Message.cs:48` lets `\u0001` through for CTCP
+`ACTION`; Domain should carry an "action" flag and Protocol write it.
+
+**F-095. The osu-web answers are formatted in the Stable host.** Blocker, architecture (D35). `AGENTS.md` puts the
+delimited strings of the web endpoints in Protocol, but only the score submission is parsed there; the answers are
+built by hand in `Basil.Host.Stable/Web/OsuWebRoutes.cs` (the leaderboard header and rows and `-1|false`, the osu!direct
+lines, `osu-search-set.php`) and `Web/SubmissionCharts.cs` (`chartId:` and `|` joins). Move each into a writer in
+`Basil.Protocol.Game.Stable`.
+
+**F-096. `metadata.json` is decided, not designed.** Blocker (D26). Its format, the list of migration steps, when they
+run at start and what happens on a failed step are not written down.
+
+**F-097. The edge decisions have no owning document.** Blocker, documentation. nginx, Cloudflare, the `Data/` layout and
+the roles of the edge (D26 to D34) need an owner in `docs/index.md` (`docker.md`, `https.md`, `architecture.md`, a new
+page if none fits) before G7.
+
+**F-098. Secrets ship in the configuration file and the compose command line.** Blocker, security (D36).
+`Basil/Configurations/appsettings.json:13` holds the certificate password `basil` and lines 38-40 hold both connection
+strings with `Password=basil`; `docker-compose.yml:32-33` passes the connection strings, password included, as command
+line arguments (visible in `ps` and `docker inspect`), and line 7 asks the operator to keep two copies of the password
+in step. Fix: no secret in `appsettings.json` (the certificate leaves with D29); the connection strings come from
+environment variables built from one `.env` value shared with PostgreSQL; `configuration.md` and `docker.md` list them.
+
+**F-099. Hosts decide privilege rules.** Blocker, architecture. `Basil.Host.Stable/Web/WebAuthentication.cs:27`
+(`MayUseDirect`: osu!direct needs `Supporter`, checked in `OsuWebRoutes.cs:301,368,381`) and the IRC host's rule of who
+may see a room (`room.Involves(...) || Tournament` in `Commands/IrcCommands.Queries.cs:20` and `Support/IrcView.cs:31-32`)
+are permission rules in hosts. Move each to the object that owns it, so that reading a room is one rule for IRC, the API
+and BasilBot (F-006), and the hosts only map the outcome.
+
+**F-100. Hosts change state by calling registries directly.** Blocker, architecture. Decided (owner, 2026-11-24): a
+host may inject a registry to look things up (a session by token, who receives a delivery, a room by id), and every
+change of state goes through a Mediator message. Today the hosts call `SessionRegistry.LoginAsync`
+(`Login/StableLogin.cs:60`, `Rest/Routes/AuthRoutes.cs:60`, IRC), `Close` (`Packets/PacketHandlers.cs:50`,
+`Transport/IrcListener.cs:151`) and `MarkActive` directly (39 host files inject a registry).
+
+**F-101. Domain has references the architecture does not list.** Blocker. `Basil.Domain.csproj` references
+`Microsoft.Extensions.Logging.Abstractions` and `Microsoft.Extensions.Options`, which no Domain file uses; remove them.
+Domain also depends on `Basil.Shared` (`Md5Hash`, `Sha256Hash`, `ConcurrentSet`, `PathValidation`, string and enum
+helpers), a project missing from the graph in `AGENTS.md` and `architecture.md`; add it there with what it may hold.
+
+**F-102. HSTS with the self-signed default certificate locks browsers out.** Blocker, LAN (D1, D30). A browser that
+sees HSTS on `basil.local` refuses the "continue anyway" step for a certificate it does not trust, so `api.basil.local`
+(the generated references) cannot be opened before the certificate is installed. Send HSTS only with an operator's
+certificate.
+
+**F-103. Ctrl+C in an attached dashboard stops the server.** Blocker, operation (D24). `docker compose attach` forwards
+Ctrl+C as SIGINT to the server process; the way out is Ctrl+P Ctrl+Q. This contradicts the Ctrl+C behaviour of
+`console.md` (F-049); the dashboard and `docker.md` must say how to leave without stopping it.
+
+**F-104. `AGENTS.md` will describe the old edge.** Blocker, documentation. It still describes the two-tier Gateway, the
+IRC host as the outside port, `Configurations/Templates/replies.json` and `IUploadSpool`; agents reading it would undo
+D26 to D37. Update it in the same change as each decision lands.
+
+**F-105. Tuning is planned before anything is measured.** Blocker, process (D5, D6). P1 (indexes, compiled queries,
+pool settings) and batch 2 (event lanes, the 200 ms poll wait) change performance, but the load test sits at the end
+and has no harness or scenario (how many osu! polls, IRC clients and API callers, in what mix). Build the harness first
+and take a baseline; each tuning change is measured the same way before and after, kept only when it beats the
+run-to-run variance, otherwise reverted; every attempt, kept or reverted, goes in a `PERF.md` ledger.
+
+**F-106. Fire-and-forget tasks in the dashboard lose their failures.** Blocker. Eight `_ = Task.Run(async ...)` in
+`Basil.Host.Cli/Dashboard` (`DetailPanel.cs:116,137`, `ChatTab.cs:524`, `ListPage.cs:202`, `SettingsTab.cs:251`,
+`CommandActions.cs:55`, `AboutTab.cs:107`, `DashboardApp.cs:270`) drop any exception unlogged; see F-083 and the
+`ControlSocket` case in F-085.
+
+**F-107. Outgoing HTTP without a client factory.** Blocker. `Basil.Infrastructure.Rulesets/DependencyInjection.cs:23`
+creates its own `HttpClient`; the update check of D29 will call out too. Both use a named client from
+`IHttpClientFactory` with a timeout, and a failure turns the feature off without stopping the server (D23).
+
+**F-108. The osu! client's presence filter is ignored.** Blocker, osu! behaviour (D11). `ReceiveUpdates` (packet 79)
+has no handler, so every client receives the presence and stats of everyone; bancho.py keeps the filter (none, all,
+friends) on the player and sends accordingly. Decided (owner, 2026-11-24): do as bancho.py. The filter is kept on the
+osu! session (Core) and the deliveries follow it (Edge).
+
+**F-109. The client's `ErrorReport` packet is dropped.** Blocker. With `osu-error.php` (F-059) it is the only way the
+server learns why a client failed; log it.
+
+**F-110. The client opens pages Basil does not have.** Blocker. The submission chart points to
+`osu.<domain>/beatmapsets/{id}` and `/u/{id}` (`Web/SubmissionCharts.cs:25,36`) and the in-game buttons open the same
+kind of pages; no route answers them. Decided (owner, 2026-11-24): they stay 404 (no web pages, `working-scopes.md`),
+and the chart carries no `chartUrl`. To verify with the real client in E9 that a chart without `chartUrl` still shows.
+
+**F-111. The ruleset update still asks for a restart that no longer exists.** Blocker. Reshaped by D39: the update installs the rulesets that match the shipped `osu.Game` and loads them at once when none was loaded; the texts change with it. `RulesetUpdater.cs:61` and the
+descriptions in `Basil.Host.Rest/Routes/RulesetRoutes.cs:20-24` say the staged rulesets "take effect after a restart",
+but the `restart` command is gone (D25). Decided (owner, 2026-11-24): the runtime update stays (the staged version lives
+in the `Data/` volume and survives a new container); every text says how to restart the container (`docker compose
+restart basil`).
+
+**F-112. Cached difficulty attributes live in `Data/`.** Blocker (D26). `Data/Rulesets/Attributes`
+(`Storage/AttributeStorage.cs:40`) is rebuilt on demand, so it moves to `Cache/`; the downloaded rulesets stay in
+`Data/Rulesets`.
+
+**F-113. Staged rulesets can silently downgrade a newer image.** Moot under D39 (the version is the shipped `osu.Game`'s). Was: blocker, correctness. `RulesetStore.LoadStaged`
+(`Basil.Infrastructure.Rulesets/Storage/RulesetStore.cs:52`) skips the staged version only when it equals the shipped
+one; after `docker compose pull` brings an image with newer rulesets, the older staged ones in the `Data/` volume are
+still loaded. Load a staged version only when it is newer than the shipped one, and drop it otherwise.
+
+**F-114. Staged rulesets may not match the shipped `osu.Game`.** Resolved by design in D39 (the version is pinned to the shipped `osu.Game`). Was: blocker, to verify. Only the four ruleset libraries are
+downloaded; `osu.Game.dll` stays the shipped one, while each `ppy.osu.Game.Rulesets.*` package depends on `ppy.osu.Game`
+of the same version. A ruleset that calls an API the shipped `osu.Game` lacks fails at the first calculation
+(`MissingMethodException`, `TypeLoadException`), not when it is staged. Check the dependency at staging (refuse a version
+whose `ppy.osu.Game` differs from the shipped one, or download it too) and load it in a trial before staging.
+
+**F-115. Code loaded from a writable volume.** Blocker, security; under D39 the hashes the program carries are checked on every load. The staged libraries are loaded with full trust from
+`Data/Rulesets/<version>/`, which the process can write; the hash is checked only when downloading. Check the hashes
+again before loading, and keep the libraries where no upload can reach (a path that no upload or storage writes).
+
+**F-116. The container runs as root.** Blocker, security. `Dockerfile` has no `USER`, so the server, which will load
+downloaded code from `Data/` with full trust (P5), runs as root. Run as the image's `app` user, own `Data/` by it, and
+keep the stored files group-readable for the nginx container that serves them (D30).
+
+**F-117. The Dockerfile still describes the HTTPS server.** Blocker. It exposes 443 and 6667 and its `HEALTHCHECK` calls
+`curl -skf https://127.0.0.1/health`; after D29 and D37 Basil serves plain HTTP, so the check always fails and the
+container is reported unhealthy. Expose the internal HTTP and IRC ports only and check `/health` over HTTP.
+
+**F-118. Container logs are lost and invisible.** Blocker, operation. `Logs/` is outside the volume, so a new container
+loses every log, and `docker logs` shows nothing because the logs go only to files. Write the system log to standard
+output as well; the session logs (D24) go to `Logs/`, which the compose file may mount.
+
+**F-119. Upgrades are not safe.** Blocker, data. The database migrations (`Infrastructure.Shared/Persistence/DatabaseMigrator.cs`)
+and the `Data/` migrations (F-096) run at start with no backup, and an older program started on a database migrated by
+a newer one runs against a schema it does not know. Refuse to start when the database holds migrations the program does
+not know (as `metadata.json` does for `Data/`), and document a backup (`pg_dump` and the `Data/` volume) before
+`docker compose pull`.
+
+**F-120. The release process is not in the roadmap.** Blocker. `release.yml` must build only the multi-architecture
+image and check the ruleset manifest (P5); `ci.yml` must also run on `develop` (D24); the release notes D38 asks for
+need a place (`CHANGELOG.md`) and a step in the release.
+
 **F-086. Domain and Application know the callers by name.** Architecture, decided by owner (D13), plan P3. Changed
 shape, same fact: Application names `StableSession` 122 times in 38 files and the other kinds through
 `Basil.Application.Sessions`; `Basil.Domain/Client/` still holds `OsuClient`, `OsuFlags` and `OsuFingerprint`;
 BasilBot is still the modules `Basil.Application.Bot` and `Basil.Infrastructure.Bot`. `AGENTS.md` now prescribes this
 placement, so P3 and `AGENTS.md` conflict (see the open question).
 
-## In progress (2026-11-24)
+## Committed batches (2026-11-24)
 
-These are being fixed by two batches (batch 1 committed, batch 2 running) and are not listed as open above.
+Both batches are committed; their findings are not listed as open above and wait for the load test to be verified.
 
 * **Batch 1, PostgreSQL-native persistence (committed as `58202abb4`).** Native types, `citext` names, `pg_trgm` search, a beatmap
   file-name column and one batched lookup for the `getbeatmapinfo` flows, leaderboard mode in SQL, and the N+1 fixes
   in the chat block lookup (the per-member part of F-039), user stats, osu!direct, the match events and the match
   report; osu-web authentication; migrations regenerated. Belongs to P1 and G1.
-* **Batch 2 (next).** Images without ImageSharp.Web (fixed variants on disk; closes the in-memory image copy of the
+* **Batch 2 (committed as `620b39a3c` and `c8f3f0014`).** Images without ImageSharp.Web (fixed variants on disk; closes the in-memory image copy of the
   code report and the unbounded resize/cache), avatar without a database read, a ruleset version cache, the `MpTargets`
   leak, the outbox race, `CacheAside` expiry, difficulty-rating mod normalization and range downloads for `.osz`.
   Batch 2 also covers three osu! findings, in progress and not open: F-039 (one event reader per category instead of
@@ -528,43 +740,251 @@ These are being fixed by two batches (batch 1 committed, batch 2 running) and ar
   F-045 (bancho polls of a signed-in session are not rate-counted).
   Belongs to G6 and G5.
 
+## Roles from the edge to the application (D27 to D33)
+
+Each layer does only what the layer outside it cannot know, so that the Application deals with the business alone.
+
+```text
+client (osu! stable, IRC client, API tool, browser, operator shell)
+  -> Cloudflare (optional, HTTP only)
+  -> nginx (TLS, per address, files)
+  -> Basil composition root (Kestrel HTTP, IRC TCP; trusted peer, routing by subdomain)
+  -> host (Stable / Irc / Rest / Cli + Host.Shared) <-> Gateway (per user, server capacity)
+  -> Protocol (bytes <-> DTO)
+  -> Mediator -> Application (+ Domain, Infrastructure, storage)
+```
+
+| Layer | Does | Never does |
+|---|---|---|
+| Cloudflare (optional) | DDoS and WAF at the edge, hides the server's address, caches images by their `Cache-Control`; lets the osu! subdomains through without a challenge | IRC, anything a LAN needs |
+| nginx | TLS for every subdomain and for IRC (6697, `stream`); the real client address (`real_ip_header`, Cloudflare's ranges when used); per address `limit_req` (sign-in, registration, anonymous REST, assets) and `limit_conn` (HTTP, IRC); body size per upload route from the declared length (the largest a route may take: the exact limit of a kind is a setting that can change at run time, so Basil checks it); header and body timeouts; serves every stored file from the read-only `Data/` volume through `X-Accel-Redirect` with ranges; no buffering on SSE; upstream keepalive; HSTS; forwards `Host`, `X-Forwarded-For`, `X-Forwarded-Proto` and, to IRC, the PROXY header | authentication, privileges, content checks, any business rule |
+| Composition root `Basil` | Kestrel on plain HTTP and the IRC listener inside the compose network; trusts only the nginx peer and resolves the client address and scheme from it; routes by subdomain to the hosts; `MaxRequestBodySize` as a backstop; logging and lifecycle | admission policy, business rules |
+| Gateway | Allow or Deny for a signed-in user: allowance per work class (`Elevated` for `Tournament`), poll allowance per session, uploads per user (one at a time, bytes per hour), chat and mutation rules, the account-and-address login guard; server capacity for everyone: concurrency per work class, shedding by load, `/health`, the server-wide registration cap | per-address rules, user types, privileges, content |
+| Hosts + `Host.Shared` | Translate the wire into messages with Protocol and back; authenticate through Sessions (bearer token, `osu-token`, form credentials, IRC with a required PROXY header from nginx); map the `Session` to an `AdmissionSubject` and ask the Gateway; check what the client sent (known enum values, fields present and typed: a 422 that names the field); for a file, ask the Application to open it and answer `X-Accel-Redirect` with its headers; for an upload, send the early authorization, wrap the unread body (byte counter, declared length, minimum rate) and hand it to the operation, and cut the connection on a refusal; map outcomes to the surface's errors and reply constants; write notifications to the wire | business, privilege or state rules; content parsing; reading a file's bytes |
+| Protocol | Bytes and delimited strings to DTOs and back, the score cipher | validation, meaning |
+| Application, Domain, Infrastructure | The business: the actor's privileges (`ScopeTo`), the rules, outcomes and events; the ports check content (first bytes, then in full) from the stream they are handed; the storage writes into its temporary file and moves it atomically, and says where a stored file is | transport, addresses, TLS, rate rules |
+
+Typical paths:
+
+* **API call:** Cloudflare, nginx (TLS, per address), root (peer, routing), Rest host (token to `Session`, Gateway),
+  body to message, Mediator, Application, outcome to envelope.
+* **osu! poll:** nginx keepalive, Stable host (`osu-token`, poll allowance), packets through Protocol to messages, the
+  poll waits for its own deliveries (F-056), notifications back to packets.
+* **File download:** host sends the open message, the Application checks the right to read and returns the stored
+  file, the host answers `X-Accel-Redirect` with the headers, nginx streams the bytes with ranges.
+* **Upload:** nginx refuses a declared length over the route's ceiling; the host authenticates, asks the Gateway and the
+  early authorization, then hands the wrapped stream to the operation; the operation authorizes again, its port checks
+  the first bytes, the storage writes, the port checks in full, the storage moves it into place; any refusal cuts the
+  connection and is logged.
+* **IRC line:** nginx ends TLS and sends the PROXY header; the Irc host reads it, parses the line with Protocol, asks
+  the Gateway, sends the message; replies come from `IrcReplies`.
+* **SSE:** nginx without buffering; the Rest host's hub writes the events with heartbeats below the idle timeouts.
+
 ## Open questions
 
-* Tests: AGENTS.md says there are no test projects and `ci.yml` finds none. The criteria that named a green suite
-  and architecture tests were dropped. Does 1.0 ship without tests, or are tests rebuilt (and the OpenAPI check, the
-  Postman collection and the end-to-end conversation tests of the osu! flows with them)?
-* D13 against `AGENTS.md` (F-086, P3): does the Session model with kinds in `Basil.Application.Sessions`, the Bot
-  module and the osu! client types in Domain stand, or does D13 win and `AGENTS.md` change?
-* `ci.yml` runs on pushes to `main` and `master` and on pull requests only; a push to `develop` runs nothing.
-* `release.yml` lets the updater packaging fail (`continue-on-error`) and `Basil/Program.cs` still starts Velopack;
-  whether the updater is part of the 1.0 promise (P2 removes it).
-* P2 and LAN play (D1 names a LAN context): the server answers multicast DNS for `basil.local`, but multicast does not
-  cross Docker's bridge network; it needs `network_mode: host`, which Docker Desktop on Windows and macOS does not
-  offer. Does LAN play keep mDNS (Linux host networking only) or tell players to use a hosts file or the server's IP?
-* P2: does the dashboard (`--console 1`) stay a supported way to operate a container (`attach`), or does the container
-  run `--console 0` and operators use `docker compose exec basil ./Basil <command>` only?
-* P2: do contributors keep `dotnet run` on their machine while only the release is Docker-only?
-* `docs-guideline.md` prefers lists for enumerations, the owner's code principles prefer prose; which one governs the
-  rebuilt `docs/`?
-* Withdrawn and not tried: a seated player seen from IRC, a bouncer, osu-ahr, WeeChat and Halloy.
+All answered on 2026-11-24 (D14 to D25). Deferred with the tests (D14): a checked-in OpenAPI document, its CI check
+and the Postman collection (F-021). Still not tried: a seated player seen from IRC, a bouncer, osu-ahr, WeeChat and
+Halloy.
 
 ## Roadmap
 
-To be approved group by group; nothing outside a group is changed. Each group ends with a Release build.
+Two groups: **Core** is the logic of the system (`Basil.Domain`, `Basil.Application.*`, `Basil.Infrastructure.*`,
+BasilBot included); **Edge** is everything that talks to the outside (nginx and Cloudflare, Docker, the composition
+root, `Basil.Gateway`, the hosts, `Basil.Host.Shared`, the Protocol projects, the console and the docs). Inside each
+subgroup the items run from the most severe down: security and data first, then correctness, contracts, architecture,
+experience, clean-up. A finding with a Core and an Edge half is listed once where its rule lives, with the other half
+named.
 
-| Group | Content | Findings |
-|---|---|---|
-| G1 Foundations | P1 (PostgreSQL only, tuned): **in progress 2026-11-24**. P2 (Docker only): not started. Configuration layout under `Data/`, dependency advisories | F-052, F-068, F-069, F-070 |
-| G1b The system and its callers | P3, after the D13 question is answered | F-086 |
-| G2 osu! client | Align every Stable flow with bancho.py (D11): slot numbers, the host rule, the round-ends rule, the client's error reports. The poll that carries its own answers (F-056), the event queue (F-039) and the rate limit (F-045) are in batch 2. Retry F-058/F-054 after the slot fix | F-033, F-040, F-044, F-054, F-057 to F-060 (F-039, F-045, F-056 in batch 2) |
-| G3 Texts and contracts | Every client text through reply classes and the humanizer (D12); IRC and BasilBot; HTTP API, OpenAPI, Postman collection; spectating split into `replay` and `activity` | F-005 to F-019, F-021 to F-032, F-041 to F-043, F-067, F-080, F-082 |
-| G4 Operation | Console and dashboard, logging per session, settings | F-034 to F-038, F-046 to F-051, F-053, F-071 to F-076 |
-| G5 Code clean-up | Handlers, swallowed failures, migration leftovers; batch 2 leftovers (`MpTargets`, outbox, `CacheAside`) | F-081, F-083 to F-085 |
-| G6 Capacity | Admission control on every entry point (the policies are declared; the rate rules are still inline, F-084), load test to the ceiling with memory and CPU (D5, D6); batch 2 (images, caches) in progress | none |
-| G7 Documentation | Rebuild `docs/`, client starter material | F-001, F-003 to F-005, F-015, F-031, F-061 to F-067 |
-| G8 Release | Released image with real clients (osu!, Irssi, WeeChat, Halloy, Postman), criteria above, tag `v1.0.0` | none |
+Order of execution: the load harness and its baseline first (F-105, E9 item 1 moves ahead of every tuning change),
+the core tests that hold today's behaviour (plan P6) before the refactors they guard, then E1 and E2 (they change the layout, the configuration and the trust boundary every later
+change builds on), then C1 and C2, then the rest of Core before the Edge subgroups that show its results, E9 last.
+Each subgroup ends with a Release build; the protocol tests wait until after 1.0 (D35).
 
-Two plans of the owner (2026-11-18) change surfaces frozen at 1.0 (D2), so they land before `v1.0.0`.
+### Core
+
+**C1. Security and privacy**
+
+1. F-006 with F-099: one rule for reading a room, owned by the room, used by `!mp in`, `!mp settings`, IRC and the API;
+   osu!direct's `Supporter` rule moves from `WebAuthentication` to its owner.
+2. F-026: authorize before looking up the target or its state, in every operation (the 422-before-403 body half is E5).
+3. F-011: an API session is not a chat presence; the reason a session leaves is true; `!mp host` agrees with `NAMES`.
+
+**C2. Multiplayer and osu! rules**
+
+1. F-057: a room never stays without a host.
+2. F-060: a round whose players cannot load or have left ends by itself.
+3. F-019 (D17): the match id is the one number of a room; the runtime room id is kept only for the osu! wire (E3).
+4. F-041: spectating oneself and a player who is not playing; ended only when the player goes offline.
+5. F-027 with F-032 (core half): refuse what cannot happen when it is asked (a countdown with no beatmap, an empty
+   update); a room command answers the room as it now is; a room rule is never reported as a missing privilege
+   (`kick` of a referee).
+6. F-030: `GET /v1/matches` lists the matches the caller may view (rule here, route in E5).
+7. F-017 (D21): idle limits per kind in `SessionRules` (osu! 60 s, IRC 300 s, API 8 h), expiry still lazy.
+8. F-108 (core half): the osu! session keeps its presence filter (none, all, friends).
+
+**C3. BasilBot**
+
+1. F-008 (D20): an unknown command answers with a pointer to `!help` in a private message and `#mp_<n>`; `!mp timer`,
+   `!mp aborttimer` and `!mp close` answer where the typist is.
+2. F-009: every reply says what happened.
+3. F-010: one situation, one wording; `Denied` names the role that can act (D4).
+4. F-012: the creator is told to join `#mp_<n>`.
+5. F-014: `!mp settings` shows what its help promises.
+6. F-013: `!channel list` shows privilege names and yes/no.
+7. F-016 (BasilBot half): `!mp help` is one answer, not one message per command.
+8. D26 and D32: replies read from `Data/Localizations/<surface>.json` with named placeholders; `Templates/` goes.
+
+**C4. Architecture**
+
+1. F-100: every change of state a host asks for is a Mediator message (login, close, mark active, logout); the hosts
+   keep only lookups (Edge half: the hosts send them).
+2. F-094: the osu! room link leaves `Application.Room`; Domain gets an "action" flag instead of letting `\u0001` in.
+3. F-081: one handler per event type, no state in handlers (`RoomAnnouncer`, `ConnectionChannelHandler`).
+4. F-084 (core half): `SessionRegistry` split by responsibility; the remaining `new Md5(` and bare `catch` around
+   `Parse`; `migration-status.md` made true; options bound by the project that defines them.
+5. F-086 (D16): neutral names for `OsuClient`, `OsuFlags`, `OsuFingerprint`.
+6. F-101: Domain loses its unused package references; `Basil.Shared` enters the graph of `AGENTS.md`.
+
+**C5. Data and storage**
+
+1. Plan P5 (D39 to D41) with F-115: the whole calculation stack (rulesets, `osu.Game`, `osu.Framework`, the managed assemblies the
+   path loads) only in `Data/Rulesets/`, resolved at run time; the update downloads the packages of the build manifest
+   from nuget.org at the compiled version, hashes checked on download and on load; the analyser counts objects without
+   ruleset types; a missing stack leaves star ratings and pp `null`.
+2. D27 (core half, plan P4 steps 1 and 3): early authorization messages; ports check content from the unread stream;
+   storage writes into its own temporary file; `IUploadSpool`, `FileUploadSpool`, `Quarantine` removed.
+3. F-096 with D26: `Data/metadata.json` designed and implemented (format, steps, start-up order, failure).
+4. D26 and D32: `DataPaths` holds persistent data only; covers to `Cache/Covers/`; `Cache/`, `Logs/`, `Temp/` beside
+   `Data/`.
+5. P1 remaining: drop `IDatabaseProvider`; indexes from the real queries; compiled queries and
+   `ExecuteUpdate` where the harness shows a gain (F-105; no tracking is already the default); pool settings; docs.
+6. D21: last-seen flushed every 30 s.
+7. F-112: cached difficulty attributes to `Cache/`.
+8. F-111 (D39): the update installs and loads at once; its answer points to the beatmapset reload.
+
+**C6. Clean-up**
+
+1. F-068: the advisories that remain once the calculation stack leaves the image (D40) assessed; every suppression
+   justified.
+2. F-083: no failure swallowed without a log or a counter (core sites).
+3. F-085 (core half): unused members and packages, `TODO`s, two meters sharing a name, `ScoreListResult` without
+   `Denied = 0`.
+4. F-107: outgoing HTTP through `IHttpClientFactory` with timeouts (rulesets download, update check).
+
+### Edge
+
+**E1. Trust boundary and secrets**
+
+1. F-098 (D36): no secret in `appsettings.json` or on a command line; one `.env` value for the database password.
+2. F-087 (D29, D30): Basil trusts only the nginx peer; one client-address resolver in `Host.Shared`; `X-Forwarded-Proto`
+   read for absolute URLs.
+3. D27 (edge half, plan P4 steps 2, 4 and 5): upload routes declare their kind and limit; streaming reader with the
+   byte counter, minimum rate and `Abort`; osu! uploads only from an address with an open osu! session.
+4. F-034: an unknown shell argument is refused before anything starts; `--help` prints help.
+5. F-116: the container runs as the `app` user; stored files readable by nginx.
+
+**E2. Deployment: Docker, nginx, Cloudflare (plan P2)**
+
+1. F-119: refuse to start on an unknown database migration; backup before upgrading, documented.
+2. F-117: the Dockerfile exposes the internal ports and checks `/health` over HTTP.
+3. D29, D37: Docker only; Kestrel plain HTTP; no certificate in Basil; native builds, Velopack, `restart`, exit code
+   75, `Restarter` and mDNS removed; the update check only reports.
+4. D30, D34: nginx configuration (TLS for every subdomain and IRC 6697, `X-Accel` locations, per-address limits, SSE
+   without buffering, PROXY protocol, default certificate covering `irc.basil.local`); the Cloudflare variant.
+5. F-069: `restart: on-failure`; only nginx publishes ports; healthchecks to `/health`.
+6. F-052 with D26: the `Data/` volume layout; `Configurations/` merged; `appsettings.json` without secrets.
+7. F-070: image without `.pdb`, `.xml`, `createdump`; ffmpeg in its own stage; no start-up noise.
+8. F-036, F-037 (D24): shipped log levels; one log per connection session kept 7 days.
+9. F-035: a control socket message that says the server could not be reached.
+10. F-102: HSTS only with an operator's certificate.
+11. nginx's upstream `keepalive_timeout` below Kestrel's `KeepAliveTimeout` (130 s by default), so nginx never reuses a
+   connection Kestrel has just closed (random 502s on the bancho poll).
+12. F-118: the system log also to standard output; session logs in `Logs/`.
+13. F-120: `release.yml` for the image only with the manifest check; `ci.yml` on `develop`; `CHANGELOG.md`.
+
+**E3. osu! (stable) wire**
+
+1. F-044 and F-033: convert slot numbers at the host boundary in both directions (bancho.py's 0-based ids).
+2. F-058 and F-054: capture and decode the start answer after the slot fix.
+3. F-040 (D19): forward every spectating action; one frames-and-score pair per bundle.
+4. F-059: accept `osu-error.php` and log it.
+5. F-109: log the `ErrorReport` packet.
+6. F-108 (edge half): presence and stats deliveries follow the filter.
+7. F-110: no `chartUrl` in the submission chart; the pages stay 404.
+8. F-095 (D35): the osu-web answers written by `Protocol.Game.Stable`.
+9. F-094 (edge half): the room link written by Protocol.
+
+**E4. IRC**
+
+1. D34: public port 6697 shown in the guide; PROXY header required; no plaintext path.
+2. F-093 (D35): the IRC wire moves into `Protocol.Irc`; `IrcReplies` holds texts only.
+3. F-043: a failed command is answered.
+4. F-018: answer a client's housekeeping (`221`, `368`) and keep `482` for a real change.
+5. F-015 (D20): `404` and `473` name the reason.
+6. F-016 (IRC half): `QUIT` without a reason, `002` with the release version, no `422` when no message of the day.
+7. F-080 (IRC and Stable literals): every client text in its surface's reply class, through the humanizer (D12).
+
+**E5. HTTP API and SSE**
+
+1. F-026 (edge half) and F-023 (D22): authorize before reading the body; a missing or mistyped field is a 422 that names
+   it.
+2. F-024: every refusal has a sentence and names the role that can act.
+3. F-025 and F-082: privileges and enums are named values in and out (the Cli's `DashboardModel` too).
+4. F-028: say which thing is missing.
+5. F-042: the spectate stream sends `replay` and `activity` events; heartbeats below the idle timeouts (D30).
+6. F-022 and F-067: every route's body, answers and errors in the OpenAPI document; descriptions in the order of rule 5.
+7. F-029 (D18): `AGENTS.md`, `sse.md` and the client SSE page say the stream routes need not end in `/live`.
+8. F-021: deferred with the tests (D14).
+
+**E6. Gateway (D31, D33)**
+
+1. F-089: `System.Threading.RateLimiting`, constant memory per key.
+2. F-088: `RuntimeSampler` reports the load signal; shedding works for every class.
+3. F-090: an allowance per work class; upload count and bytes per user.
+4. F-084 (edge half): the inline rate rules (`chat:`, `rest-mutation:`, `register:server`, `diagnostics:gc-collect`)
+   move into the Gateway; one `RateLimiter` registration; the per-address rules removed (nginx holds them).
+5. F-092 (D33): `Elevated` for `Tournament`; `PollRequests` read from the settings.
+6. F-091: moot (D31).
+
+**E7. Console and dashboard**
+
+1. F-071: a dialog left open never blocks the dashboard.
+2. F-072: the `shutdown` confirmation is shown (`restart` is gone).
+3. F-049 and F-050: Ctrl+C as documented; the terminal restored on exit.
+4. F-074: keyboard use as documented.
+5. F-075: toasts name the account and the change; file errors in plain words; password rules enforced.
+6. F-053: names instead of numbers for enums and flag sets, with completion.
+7. F-076: lists fill their frame and count right.
+8. F-073: `--ascii` draws ASCII only.
+9. F-046 and F-047: effective configuration with its source; sizes and durations in the console's units.
+10. F-051: the dashboard's preferences in Settings, saved in `tuisettings.json`.
+11. F-048: empty tabs say how to fill them.
+12. F-038: the smaller operator findings.
+13. F-106: no fire-and-forget task drops its failure.
+14. F-103: leaving an attached dashboard without stopping the server (Ctrl+P Ctrl+Q), shown on screen and in `docker.md`.
+
+**E8. Documentation**
+
+1. F-097: an owner in `docs/index.md` for every edge decision (D26 to D37).
+2. F-104: `AGENTS.md` updated with each decision as it lands (Gateway, IRC, layout, uploads, configuration).
+3. F-064: out-of-scope features removed from the docs.
+4. F-066: no documented behaviour that does not exist; dead links fixed.
+5. F-065: contradicting pages reconciled (the `irc.` record is now required, D34).
+6. F-031: `response-envelope.md` corrected.
+7. F-015 (doc half), F-005: `irc.md` true and public.
+8. F-061: contributor first-run commands that work (`dotnet run` behind the compose nginx).
+9. F-001, F-004, F-003: `working-scopes.md` up to date.
+10. F-062: moot with D29.
+11. D24: `docs-guideline.md` follows the owner's principles; client starter material (sample IRC configuration, the
+    osu! client guide).
+
+**E9. Release**
+
+0. F-105: the load harness, its scenario and the baseline, built before P1 tuning; `PERF.md` ledger kept from then on.
+1. The load test to the ceiling with memory and CPU at each step (D5, D6), after C5 and E6.
+2. The released image with real clients behind nginx: osu! stable (a full multiplayer round), Irssi, WeeChat, Halloy
+   over TLS, the API; once on a LAN and once behind Cloudflare.
+3. Every release criterion checked, then the tag `v1.0.0` (D7).
 
 ### Plan P1: PostgreSQL only, through EF Core, tuned for PostgreSQL (in progress 2026-11-24)
 
@@ -592,41 +1012,143 @@ Remaining:
    sections).
 6. Verify with the load test (D5): queries per second, p95 latency and pool use before and after.
 
-### Plan P2: Docker only, no native builds (not started)
+### Plan P2: Docker only, behind nginx (D29, not started)
 
-Owner (2026-11-18): Basil runs only as a Docker container; the native builds per platform are no longer supported.
+Owner (2026-11-24): Basil runs only as a Docker container, behind nginx, with Cloudflare as an option.
 
-Today: `.github/workflows/release.yml` publishes six self-contained archives, packs a Velopack updater
-(`continue-on-error`) and pushes an image; `Basil/Configuration/UpdateChecker.cs` and `Basil/Lifetime/Restarter.cs`
-(a native restart that starts the same executable) exist; the dashboard needs a terminal (`--console 1`).
+1. Release: drop the six-RID matrix, the archives and Velopack (package, `UpdateChecker`'s update path, `Program.cs`);
+   one multi-architecture image (`linux/amd64`, `linux/arm64`) with version tags, without `.pdb`, `.xml` and
+   `createdump`, with ffmpeg in a separate stage (F-070); F-062 is moot.
+2. Server (D30): remove mDNS, the per-address limits, and the plaintext IRC exposure; add `X-Accel-Redirect` to every
+   file route, PROXY protocol in `IrcListener`, `X-Forwarded-Proto`, `X-Accel-Buffering: no` on SSE. Remove the `restart` command, exit code 75 and `Restarter`; the update check reads the latest image tag
+   and only reports it, and never stops the server when it fails (D23). Kestrel serves plain HTTP; remove the HTTPS
+   setup, the shipped certificate and its warning; trust only the nginx peer (F-087).
+3. Layout in the image: the program, `Data/` as the one volume (`appsettings.json`, `tuisettings.json`,
+   `metadata.json`, `Localizations/`, the stored files), `Cache/`, `Logs/` and `Temp/` beside it; `Templates/` goes
+   (D26).
+4. nginx (D30): an image or a mounted configuration with TLS for every subdomain, the IRC `stream` block on 6697 with
+   `proxy_protocol`, `X-Accel` `internal` locations over the read-only `Data/` volume, upstream keepalive, `client_max_body_size`
+   per upload route, body and header timeouts, `limit_req` and `limit_conn`, `real_ip_header`, the self-signed
+   `basil.local` certificate by default and a real one by mount; a Cloudflare variant (trusted ranges, the
+   `CF-Connecting-IP` header).
+5. Compose: nginx, Basil and PostgreSQL (health check); only nginx publishes ports; `restart: on-failure` (F-069);
+   `tty` and `stdin_open` for the dashboard; mDNS off; secrets from an `.env` file.
+6. Docs: one deployment path (`docker.md`, `deployment.md` merged), `https.md` rewritten for nginx, a Cloudflare
+   section, `configuration.md`, `console.md` (no `restart`), `development.md` (how a contributor runs `dotnet run`
+   behind the compose nginx).
+7. Verify: a clean machine with only Docker reaches a working server (osu! client, IRC, API) from the docs alone, on a
+   LAN and once behind Cloudflare.
 
-Steps (to detail and approve):
+### Plan P4: uploads checked before they are received (D27, not started)
 
-1. Release: drop the archive matrix and Velopack; build and push one multi-architecture image (`linux/amd64`,
-   `linux/arm64`) with version tags; slim the 1.07 GB image (a smaller ffmpeg build or a separate stage, no `.pdb`/`.xml`, F-070).
-2. Server: remove the update checker and the native restart path; `restart` always exits 75 and the compose file uses
-   a restart policy that tells 75 from 0 (`on-failure`, F-069).
-3. The shipped `docker-compose.yml` becomes the one supported way to run: PostgreSQL with a health check, named
-   volumes for `Data` (with `Configurations` under it, F-052), the certificate, logs; secrets from an `.env` file
-   instead of passwords in the command line.
-4. Operator access: the dashboard through `docker compose attach` (`tty: true`, `stdin_open: true`) or
-   `docker compose exec basil ./Basil` for commands (open question).
-5. Docs: `deployment.md` and `docker.md` merge into one path; `configuration.md` lists environment variables first;
-   `development.md` keeps `dotnet run` for contributors only.
-6. Verify: a clean machine with only Docker reaches a working server (osu! client, IRC, API) by following the docs.
+1. Each upload route declares its kind and limit; the shared `UploadLimit` that raises every REST upload to the `.osz`
+   limit goes. An early authorization message per upload (answered by the object that owns the privilege) runs before
+   the body is read.
+2. A streaming multipart reader in `Host.Shared` replaces `ReadFormAsync`: declared length check, first-bytes check per
+   kind, a byte counter, a minimum data rate, `Abort` on any failure.
+3. Storage writes the accepted stream into its own temporary file and moves it atomically; `IUploadSpool`,
+   `FileUploadSpool`, `Quarantine` and their folders are removed; refusals are logged.
+4. Gateway: one upload at a time per user, a server-wide ceiling, a byte allowance per user and hour.
+5. Stable: `osu-screenshot.php` and `osu-submit-modular-selector.php` accept only an address with an open osu!
+   session (a very tight allowance otherwise) and keep checking the form credentials, with no change to what the
+   client sends or receives (bancho.py's behaviour).
+6. Docs: `AGENTS.md` "Streaming", `persistence.md`, `gateway.md`, `configuration.md` (the `Spool` and `Quarantine`
+   rows of F-066 go with them).
 
-### Plan P3: the system knows no caller (D13), waiting for a decision
+### Plan P5: the calculation stack in `Data/` (D39 to D41, not started)
 
-Owner (2026-11-18): Domain and Application know nothing of the osu! client, IRC, the API or BasilBot; only the Hosts do.
-The proposal was: only the User is modelled below the Hosts and a Connection is a Host object; osu! client types move
-out of Domain; BasilBot becomes a caller parsed by a Host; an architecture test fails when a project below the Hosts
-names a caller; and it runs after G1 and before G2.
+**Contract.** The image carries no osu! library. `Data/Rulesets/<version>/` holds the calculation stack: the four
+rulesets, `osu.Game`, `osu.Framework` and the managed assemblies the calculation path loads, at the version Basil was
+compiled against. Installed means every file of the build manifest is there with its hash. Not installed: the server
+runs, imports are refused with a reason (D41), star ratings and pp stay `null`. Only the operator's ruleset update
+downloads anything.
 
-Since 2026-11-18 the code and `AGENTS.md` went another way: one `Session` per connection in
-`Basil.Application.Sessions`, a Bot module, osu! client types in Domain. Item 1 (User only), item 3 (client types) and
-item 4 (BasilBot as a caller) of the proposal conflict with that, and item 5 (an architecture test) has no test
-projects to live in. The owner decides which rule stands (open question) before this plan is detailed; the order
-constraint, before G2, is unchanged because G2 rewrites the osu! flows on top of the session model.
+**Build time.**
+
+1. `Infrastructure.Rulesets` and `Infrastructure.Beatmaps` reference the `ppy.*` packages with
+   `ExcludeAssets="runtime"`: they compile against them and publish none of them.
+2. A manifest tool restores the pinned version, runs the calculation and the `.osu` decoder over sample beatmaps of the
+   four modes with a spread of mods, records every assembly loaded (`AppDomain.AssemblyLoad`), maps each to its package
+   and path in the package, and writes `rulesets.manifest.json` (package id, version, file path, SHA-256). The manifest is
+   embedded in the program.
+3. CI regenerates the manifest when the `ppy.*` version changes and fails when the committed one differs; the image
+   check fails when any `osu.*`, `ppy.*` or other manifest file is in it.
+
+**Start-up.**
+
+1. Before any osu! type is touched, the store registers `AssemblyLoadContext.Default.Resolving` for the manifest's
+   assembly names, pointing at `Data/Rulesets/<version>/`.
+2. The store checks the folder against the manifest (presence and SHA-256): `Installed`, `Missing` or `Damaged`. Only
+   `Installed` enables the calculation and the import; any other state is logged once, shown in the dashboard and in
+   `GET /v1/version`, and turns the feature off without stopping the server (D23).
+
+**Update (`POST /v1/settings/ruleset/update`, the console command).**
+
+1. Authorized as today (`ScopedRulesets`).
+2. For each manifest package: download the `.nupkg` from nuget.org at the pinned version, check the package hash the
+   feed publishes, extract only the listed files into a staging folder inside `Data/Rulesets/`, check each file's
+   SHA-256.
+3. Move the staging folder into `<version>/` in one rename; nothing is kept when any step fails (the answer names the
+   package and the reason; an unreachable feed is 502).
+4. If no osu! type was loaded yet, enable the feature at once; if the stack was already loaded (a repair), the answer
+   says to restart the container.
+5. Then run the incoming scan (pending `.osz` files, D41) and answer with what to do next: reload the beatmapsets for
+   star ratings, recalculate pp for stored scores.
+
+**Code changes.**
+
+1. Spike first: one pp calculation with the stack resolved from a folder in the container; list the loaded assemblies.
+   Stop and report if the path needs a native library.
+2. Manifest tool and the embedded manifest.
+3. `RulesetStore`: install state, hash checks on load, the `Resolving` handler; `Attributes` cache to `Cache/` (F-112).
+4. `RulesetUpdater`: manifest-driven download; `RulesetRoutes` and the console texts through the humanizer (D12, F-111).
+5. Feature-off paths: the analyser, calculator and reader ports answer "not available" instead of throwing; import
+   refusal and the queued `.osz` (D41).
+6. `OsuBeatmapAnalyser` counts objects without ruleset types (D39).
+7. Docs: `configuration.md`, `docker.md`, the operator's first-run steps (run the ruleset update; copying
+   `Data/Rulesets/` from another install works offline).
+
+**Verify (E9).** A fresh container without the stack starts, refuses an import with the reason, and shows the state;
+after the update the queued `.osz` is imported and star ratings and pp appear; a damaged file turns the feature off
+without a crash; the image contains no osu! library.
+
+### Plan P6: core tests (D42, not started)
+
+**Scope.** Only contracts frozen at 1.0 and rules of the domain; each expected value written by hand from bancho.py,
+the protocol or `AGENTS.md`, never pasted from the code under test. bancho.py's own suite is the model: packet byte
+pairs (`tests/unit/packets_test.py`), login parsing and the login lifecycle (`domains/cho_test.py`), match rules
+(`objects/match_test.py`), score parsing and accuracy per ruleset (`objects/score_test.py`), mod filtering
+(`constants/mods_test.py`), authentication (`services/bancho_authentication_test.py`).
+
+| Project | What it pins |
+|---|---|
+| `tests/Protocol/Game.Stable` | Every server packet written and client packet read, as hand-written byte pairs; the login request (trailing newline, version string, client hash and adapters); the score submission decrypted and parsed from a known vector; the osu-web answers once their writers exist (F-095); the slot number mapping (regression for F-044) |
+| `tests/Protocol/Irc` | Line framing (CRLF, the 512-byte limit, tags); splitting by bytes without cutting a UTF-8 sequence; parse and serialize; SASL `PLAIN` decoding; `CAP` and `ISUPPORT` encoding; the PROXY header |
+| `tests/Domain` | Room rules (wrong password, the host leaving hands the host on (F-057), an empty room closes, start only for players with the map, a mode change strips invalid mods, slot moves and locks, teams); a round ends when its players cannot load (F-060); mod filtering; accuracy and grade of the four modes as exact hand-written pairs; session expiry (D21); privilege and silence rules |
+| `tests/Application/{Multiplayer,Sessions,Users}` | The refusal matrix: every privilege requirement has a test that answers `Denied` and goes red when the rule is removed; creator, referee and host kept apart; one rule for reading a room (F-006); authentication (wrong password, unknown user, restricted user) |
+| `tests/Hosts/{Stable,Irc,Rest}` | A few critical journeys only, through the real composition in process (Kestrel and IRC on random ports, `FakeTimeProvider`, temporary data, a PostgreSQL of their own), with simulated clients over real sockets: osu! sign-in, packet dispatch and logout, and a refused sign-in that opens no session (bancho.py `integration/domains/cho_test.py`); a score submitted from the form to the leaderboard (`integration/domains/osu_test.py`); one full multiplayer round with two clients (create, join, ready, start, scores, results), which also checks that the poll carries its own deliveries (F-056); IRC registration through a PROXY header, join, `PRIVMSG` and `!mp make`, and a connection without a PROXY header closed; REST envelope and refusal shape, and the SSE event shape. The calculation stack is installed from the test assets (P5) |
+| `tests/Architecture` | The project graph and the host rules, each with a positive control; the container check (`AddBasil()`, `ValidateOnBuild`, every registration resolved, every event handler registered, under a deadline) |
+| `tests/Infrastructure/Shared` | Migrations apply on an empty PostgreSQL; start refused on an unknown migration (F-119); the `Data/` migrations (F-096) |
+
+**Left out on purpose.** The dashboard (E7); reply wording (not frozen, D2: tests assert reply keys and constants);
+internal structure, call counts and logs; pp and star values (the osu! libraries' own behaviour: only finite, and
+changed when the mods change); Gateway thresholds (policy); images and covers; every journey beyond the few in `tests/Hosts`
+(real clients in E9); nginx and Cloudflare (E9, with `nginx -t` in CI); Postman (D24); performance (F-105).
+
+**Gates.** Local: the two Protocol projects and Domain (no database, seconds). Pull request (`ci.yml` on `develop` and
+`main`): all seven, one `dotnet test` per project; Application, Hosts and Infrastructure use a PostgreSQL container. Release: E9
+with real clients behind nginx, and the load test. A flaky test goes to quarantine with an owner and seven days to be
+fixed; it is never retried until green. Time goes through `FakeTimeProvider`, never a sleep.
+
+**Order.** The Protocol projects before E3 and E4 move the wire (they hold today's bytes against bancho.py, and are
+updated only where bancho.py proves today's bytes wrong, as for F-044); Domain and Application before C2 and C4;
+Architecture before C4; Hosts after E1 and E2 (they run behind the new trust boundary: the PROXY header, plain HTTP);
+Infrastructure with F-119 and F-096. `docs/for-developers/testing.md` and `AGENTS.md`
+("Commands", "Final verification") change in the same work.
+
+### Plan P3: withdrawn (D16)
+
+Only the rename of the osu! client types in `Basil.Domain/Client/` remains, tracked as F-086.
 
 ## Progress
 
@@ -634,4 +1156,5 @@ constraint, before G2, is unchanged because G2 rewrites the osu! flows on top of
 |---|---|
 | 2026-11-17 | Reading and interview done (D1 to D10); IRC and BasilBot, the HTTP API, the Cli (part 1) and the event system tried; owner's reports on logging, chat latency and spectating. |
 | 2026-11-18 | Real osu! client, a multiplayer round, documentation, Docker image, Cli (part 2), codebase review and the first full build and test run; D11 to D13 and plans P1 to P3 added. |
+| 2026-11-24 | Interview: D14 to D25; P2 changed to native and Docker, P3 withdrawn; batch 2 committed (`620b39a3c`, `c8f3f0014`). |
 | 2026-11-24 | Review brought up to date and merged into this file: 86 findings and three reports checked against the code, closed ones deleted. PostgreSQL batch 1 committed, batch 2 running. |
