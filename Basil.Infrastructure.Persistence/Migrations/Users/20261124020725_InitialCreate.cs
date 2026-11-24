@@ -13,12 +13,15 @@ namespace Basil.Infrastructure.Persistence.Migrations.Users
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AlterDatabase()
+                .Annotation("Npgsql:PostgresExtension:citext", ",,");
+
             migrationBuilder.CreateTable(
                 name: "user_id_counters",
                 columns: table => new
                 {
-                    name = table.Column<string>(maxLength: 64, nullable: false),
-                    next = table.Column<long>(nullable: false)
+                    name = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
+                    next = table.Column<long>(type: "bigint", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -29,14 +32,14 @@ namespace Basil.Infrastructure.Persistence.Migrations.Users
                 name: "users",
                 columns: table => new
                 {
-                    id = table.Column<int>(nullable: false),
-                    name = table.Column<string>(nullable: false),
-                    normalized_name = table.Column<string>(maxLength: 255, nullable: false),
-                    active_name = table.Column<string>(maxLength: 255, nullable: true),
-                    country = table.Column<int>(nullable: false),
-                    privileges = table.Column<int>(nullable: false),
-                    silenced_until = table.Column<DateTimeOffset>(nullable: true),
-                    deleted_at = table.Column<DateTimeOffset>(nullable: true)
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    name = table.Column<string>(type: "text", nullable: false),
+                    normalized_name = table.Column<string>(type: "citext", nullable: false),
+                    active_name = table.Column<string>(type: "citext", nullable: true),
+                    country = table.Column<int>(type: "integer", nullable: false),
+                    privileges = table.Column<int>(type: "integer", nullable: false),
+                    silenced_until = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    deleted_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -48,12 +51,12 @@ namespace Basil.Infrastructure.Persistence.Migrations.Users
                 name: "moderation_log",
                 columns: table => new
                 {
-                    id = table.Column<long>(nullable: false),
-                    action = table.Column<int>(nullable: false),
-                    by_id = table.Column<int>(nullable: false),
-                    target_id = table.Column<int>(nullable: false),
-                    reason = table.Column<string>(nullable: true),
-                    timestamp = table.Column<DateTimeOffset>(nullable: false)
+                    id = table.Column<long>(type: "bigint", nullable: false),
+                    action = table.Column<int>(type: "integer", nullable: false),
+                    by_id = table.Column<int>(type: "integer", nullable: false),
+                    target_id = table.Column<int>(type: "integer", nullable: false),
+                    reason = table.Column<string>(type: "text", nullable: true),
+                    timestamp = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -74,10 +77,10 @@ namespace Basil.Infrastructure.Persistence.Migrations.Users
                 name: "relationships",
                 columns: table => new
                 {
-                    actor_id = table.Column<int>(nullable: false),
-                    target_id = table.Column<int>(nullable: false),
-                    type = table.Column<int>(nullable: false),
-                    created_at = table.Column<DateTimeOffset>(nullable: false)
+                    actor_id = table.Column<int>(type: "integer", nullable: false),
+                    target_id = table.Column<int>(type: "integer", nullable: false),
+                    type = table.Column<int>(type: "integer", nullable: false),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -115,9 +118,9 @@ namespace Basil.Infrastructure.Persistence.Migrations.Users
                 descending: new[] { false, true });
 
             migrationBuilder.CreateIndex(
-                name: "ix_relationships_target_id",
+                name: "ix_relationships_target_id_type",
                 table: "relationships",
-                column: "target_id");
+                columns: new[] { "target_id", "type" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_users_active_name",

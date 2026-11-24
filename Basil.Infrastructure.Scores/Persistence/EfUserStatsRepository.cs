@@ -20,6 +20,26 @@ internal sealed class EfUserStatsRepository(DatabaseSession database) : IUserSta
 		return row is null ? new UserStats { UserId = userId, Mode = mode } : ToStats(row);
 	}
 
+	public async Task<IReadOnlyList<UserStats>> ListAsync(IReadOnlyList<(UserRecord User, GameMode Mode)> players,
+		CancellationToken ct = default)
+	{
+		var ids = players.Select(player => player.User.Id).Distinct().ToArray();
+		var modes = players.Select(player => (int)player.Mode).Distinct().ToArray();
+		var rows = ids.Length == 0
+			? []
+			: await database.ReadAsync((ScoresDbContext context) => context.UserStats
+				.Where(stats => ids.Contains(stats.UserId) && modes.Contains(stats.Mode))
+				.Take(ids.Length * modes.Length)
+				.ToListAsync(ct), ct);
+		var byKey = rows.ToDictionary(row => (row.UserId, row.Mode));
+		return
+		[
+			.. players.Select(player => byKey.TryGetValue((player.User.Id, (int)player.Mode), out var row)
+				? ToStats(row)
+				: new UserStats { UserId = player.User.Id, Mode = player.Mode })
+		];
+	}
+
 	public Task CreateOrUpdateAsync(UserStats stats)
 	{
 		var row = new UserStatsRow

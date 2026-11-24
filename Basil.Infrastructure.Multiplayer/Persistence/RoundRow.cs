@@ -37,6 +37,7 @@ internal sealed class RoundRowConfiguration : IEntityTypeConfiguration<RoundRow>
 	public void Configure(EntityTypeBuilder<RoundRow> builder)
 	{
 		builder.ToTable("rounds");
+		builder.Property(row => row.Result).HasColumnType("jsonb");
 		builder.HasKey(row => new { row.MatchId, row.Number });
 		builder.HasOne<MatchRow>().WithMany().HasForeignKey(row => row.MatchId).OnDelete(DeleteBehavior.NoAction);
 	}

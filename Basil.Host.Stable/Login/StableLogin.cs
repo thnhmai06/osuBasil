@@ -124,10 +124,11 @@ internal sealed class StableLogin(
 		var silenceSeconds = user.Record.Value.IsSilenced(now)
 			? (int)(user.Record.Value.SilencedEnd!.Value - now).TotalSeconds
 			: 0;
-		var others = new List<(UserSessions User, UserStats Stats)>();
-		foreach (var other in registry.Online.Values.Where(other => !ReferenceEquals(other, user)))
-			others.Add((other, await sender.Send(new GetUserStats(other.User,
-				other.Stable?.Status.Detail?.Mode ?? GameMode.Standard), ct)));
+		var online = registry.Online.Values.Where(other => !ReferenceEquals(other, user)).ToList();
+		var onlineStats = await sender.Send(new GetUsersStats([
+			.. online.Select(other => (other.User, other.Stable?.Status.Detail?.Mode ?? GameMode.Standard))
+		]), ct);
+		var others = online.Select((other, index) => (User: other, Stats: onlineStats[index])).ToList();
 
 		var welcome = Outbox.Build(writer =>
 		{

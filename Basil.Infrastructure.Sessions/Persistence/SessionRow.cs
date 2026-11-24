@@ -52,7 +52,6 @@ internal sealed class SessionRowConfiguration : IEntityTypeConfiguration<Session
 		builder.ToTable("sessions");
 		builder.HasKey(row => row.Id);
 		builder.Property(row => row.Id).ValueGeneratedNever();
-		builder.Property(row => row.Ip).HasConversion<string>().HasMaxLength(45);
 		builder.HasOne(ContextModel.UsersTable, null).WithMany().HasForeignKey("UserId");
 		builder.Property(row => row.TokenHash).HasMaxLength(32);
 		builder.HasIndex(row => row.TokenHash).IsUnique();

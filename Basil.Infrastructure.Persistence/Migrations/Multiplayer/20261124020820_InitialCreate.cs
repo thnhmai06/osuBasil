@@ -17,12 +17,12 @@ namespace Basil.Infrastructure.Persistence.Migrations.Multiplayer
                 name: "matches",
                 columns: table => new
                 {
-                    id = table.Column<int>(nullable: false),
-                    name = table.Column<string>(nullable: false),
-                    creator_id = table.Column<int>(nullable: false),
-                    started_at = table.Column<DateTimeOffset>(nullable: false),
-                    ended_at = table.Column<DateTimeOffset>(nullable: true),
-                    is_private = table.Column<bool>(nullable: false)
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    name = table.Column<string>(type: "text", nullable: false),
+                    creator_id = table.Column<int>(type: "integer", nullable: false),
+                    started_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    ended_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    is_private = table.Column<bool>(type: "boolean", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -39,8 +39,8 @@ namespace Basil.Infrastructure.Persistence.Migrations.Multiplayer
                 name: "multiplayer_id_counters",
                 columns: table => new
                 {
-                    name = table.Column<string>(maxLength: 64, nullable: false),
-                    next = table.Column<long>(nullable: false)
+                    name = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
+                    next = table.Column<long>(type: "bigint", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -51,10 +51,10 @@ namespace Basil.Infrastructure.Persistence.Migrations.Multiplayer
                 name: "round_scores",
                 columns: table => new
                 {
-                    score_id = table.Column<int>(nullable: false),
-                    match_id = table.Column<int>(nullable: false),
-                    round_number = table.Column<int>(nullable: false),
-                    team = table.Column<int>(nullable: true)
+                    score_id = table.Column<int>(type: "integer", nullable: false),
+                    match_id = table.Column<int>(type: "integer", nullable: false),
+                    round_number = table.Column<int>(type: "integer", nullable: false),
+                    team = table.Column<int>(type: "integer", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -70,13 +70,13 @@ namespace Basil.Infrastructure.Persistence.Migrations.Multiplayer
                 name: "match_events",
                 columns: table => new
                 {
-                    id = table.Column<long>(nullable: false),
-                    match_id = table.Column<int>(nullable: false),
-                    type = table.Column<int>(nullable: false),
-                    timestamp = table.Column<DateTimeOffset>(nullable: false),
-                    actor_id = table.Column<int>(nullable: true),
-                    target_id = table.Column<int>(nullable: true),
-                    detail = table.Column<string>(nullable: true)
+                    id = table.Column<long>(type: "bigint", nullable: false),
+                    match_id = table.Column<int>(type: "integer", nullable: false),
+                    type = table.Column<int>(type: "integer", nullable: false),
+                    timestamp = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    actor_id = table.Column<int>(type: "integer", nullable: true),
+                    target_id = table.Column<int>(type: "integer", nullable: true),
+                    detail = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -102,19 +102,19 @@ namespace Basil.Infrastructure.Persistence.Migrations.Multiplayer
                 name: "rounds",
                 columns: table => new
                 {
-                    match_id = table.Column<int>(nullable: false),
-                    number = table.Column<int>(nullable: false),
-                    beatmap_hash = table.Column<string>(nullable: false),
-                    mode = table.Column<int>(nullable: false),
-                    mods = table.Column<int>(nullable: false),
-                    freemods = table.Column<bool>(nullable: false),
-                    team_type = table.Column<int>(nullable: false),
-                    win_condition = table.Column<int>(nullable: false),
-                    seed = table.Column<int>(nullable: false),
-                    started_at = table.Column<DateTimeOffset>(nullable: false),
-                    ended_at = table.Column<DateTimeOffset>(nullable: true),
-                    aborted = table.Column<bool>(nullable: false),
-                    result = table.Column<string>(nullable: true)
+                    match_id = table.Column<int>(type: "integer", nullable: false),
+                    number = table.Column<int>(type: "integer", nullable: false),
+                    beatmap_hash = table.Column<string>(type: "text", nullable: false),
+                    mode = table.Column<int>(type: "integer", nullable: false),
+                    mods = table.Column<int>(type: "integer", nullable: false),
+                    freemods = table.Column<bool>(type: "boolean", nullable: false),
+                    team_type = table.Column<int>(type: "integer", nullable: false),
+                    win_condition = table.Column<int>(type: "integer", nullable: false),
+                    seed = table.Column<int>(type: "integer", nullable: false),
+                    started_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    ended_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    aborted = table.Column<bool>(type: "boolean", nullable: false),
+                    result = table.Column<string>(type: "jsonb", nullable: true)
                 },
                 constraints: table =>
                 {

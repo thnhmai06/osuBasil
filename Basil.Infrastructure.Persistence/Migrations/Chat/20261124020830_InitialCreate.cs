@@ -12,16 +12,19 @@ namespace Basil.Infrastructure.Persistence.Migrations.Chat
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AlterDatabase()
+                .Annotation("Npgsql:PostgresExtension:citext", ",,");
+
             migrationBuilder.CreateTable(
                 name: "channels",
                 columns: table => new
                 {
-                    name = table.Column<string>(maxLength: 255, nullable: false),
-                    topic = table.Column<string>(nullable: false),
-                    read_privileges = table.Column<int>(nullable: false),
-                    write_privileges = table.Column<int>(nullable: false),
-                    auto_join = table.Column<bool>(nullable: false),
-                    visible = table.Column<bool>(nullable: false)
+                    name = table.Column<string>(type: "citext", nullable: false),
+                    topic = table.Column<string>(type: "text", nullable: false),
+                    read_privileges = table.Column<int>(type: "integer", nullable: false),
+                    write_privileges = table.Column<int>(type: "integer", nullable: false),
+                    auto_join = table.Column<bool>(type: "boolean", nullable: false),
+                    visible = table.Column<bool>(type: "boolean", nullable: false)
                 },
                 constraints: table =>
                 {

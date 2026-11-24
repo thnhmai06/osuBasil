@@ -14,6 +14,9 @@ internal sealed class BeatmapRow
 
 	public string Version { get; set; } = "";
 
+	/// <summary>The normalized name of the .osu file of the beatmap, see <see cref="BeatmapFileName"/>.</summary>
+	public string FileName { get; set; } = "";
+
 	public int Mode { get; set; }
 
 	public double? Star { get; set; }
@@ -64,12 +67,12 @@ internal sealed class BeatmapRowConfiguration : IEntityTypeConfiguration<Beatmap
 		builder.ToTable("beatmaps", table => table.HasCheckConstraint("beatmaps_id_check", "id >= 1"));
 		builder.HasKey(row => row.Id);
 		builder.Property(row => row.Id).ValueGeneratedNever();
-		builder.Property(row => row.ObjectCount).HasConversion(
-			objects => objects.GetRawText(),
-			json => JsonSerializer.Deserialize<JsonElement>(json, (JsonSerializerOptions?)null));
+		builder.Property(row => row.ObjectCount).HasColumnType("jsonb");
 		builder.Property(row => row.Hash).HasMaxLength(128);
 		builder.HasIndex(row => row.Hash).IsUnique();
 		builder.HasIndex(row => row.BeatmapsetId);
 		builder.HasIndex(row => row.Mode);
+		builder.HasIndex(row => row.FileName);
+		builder.HasIndex(row => row.Version).HasMethod("gin").HasOperators("gin_trgm_ops");
 	}
 }

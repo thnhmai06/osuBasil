@@ -24,6 +24,7 @@ internal sealed class BeatmapsDbContext(DbContextOptions<BeatmapsDbContext> opti
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
 		ContextModel.ApplyModuleConfigurations<BeatmapsDbContext>(modelBuilder);
+		modelBuilder.HasPostgresExtension("pg_trgm");
 		IdCounters.Map(modelBuilder, "beatmap_id_counters", (LocalBeatmapsetIds, LocalIdFloor),
 			(LocalBeatmapIds, LocalIdFloor));
 	}

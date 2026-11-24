@@ -15,11 +15,11 @@ namespace Basil.Infrastructure.Persistence.Migrations.Content
                 name: "menu_banners",
                 columns: table => new
                 {
-                    image = table.Column<string>(maxLength: 255, nullable: false),
-                    url = table.Column<string>(nullable: false),
-                    starts_at = table.Column<DateTimeOffset>(nullable: true),
-                    ends_at = table.Column<DateTimeOffset>(nullable: true),
-                    created_at = table.Column<DateTimeOffset>(nullable: false)
+                    image = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    url = table.Column<string>(type: "text", nullable: false),
+                    starts_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    ends_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {

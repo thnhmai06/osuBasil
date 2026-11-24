@@ -55,6 +55,43 @@ internal sealed class EfBeatmapRepository(DatabaseSession database) : IBeatmapRe
 		return [.. rows.Select(row => ToBeatmap(row, set))];
 	}
 
+	public async Task<IReadOnlyList<BeatmapRecord>> ListAsync(IReadOnlyCollection<BeatmapsetRecord> sets,
+		CancellationToken ct = default)
+	{
+		var bySet = sets.ToDictionary(set => set.Id);
+		var ids = bySet.Keys.ToArray();
+		var rows = await database.ReadAsync((BeatmapsDbContext context) => context.Beatmaps
+			.Where(b => ids.Contains(b.BeatmapsetId))
+			.OrderBy(b => b.Id)
+			.Take(ListLimits.Ceiling)
+			.ToListAsync(ct), ct);
+		return [.. rows.Select(row => ToBeatmap(row, bySet[row.BeatmapsetId]))];
+	}
+
+	public async Task<IReadOnlyList<BeatmapRecord?>> ListAsync(IReadOnlyList<string> fileNames,
+		CancellationToken ct = default)
+	{
+		var wanted = fileNames.Select(name => string.IsNullOrWhiteSpace(name) ? null : BeatmapFileName.Normalize(name))
+			.ToList();
+		var names = wanted.OfType<string>().Distinct().ToList();
+		var rows = names.Count == 0
+			? []
+			: await database.ReadAsync((BeatmapsDbContext context) => context.Beatmaps
+				.Include(b => b.Set)
+				.Where(b => names.Contains(b.FileName))
+				.OrderByDescending(b => b.BeatmapsetId)
+				.ThenBy(b => b.Star)
+				.ThenBy(b => b.Id)
+				.Take(ListLimits.Ceiling)
+				.ToListAsync(ct), ct);
+
+		// The first row in the order of a single lookup wins when several difficulties share a file name.
+		var first = rows.GroupBy(row => row.FileName).ToDictionary(group => group.Key, group => group.First());
+		return [.. wanted.Select(name => name is not null && first.TryGetValue(name, out var row)
+			? ToBeatmap(row, row.Set.ToRecord())
+			: null)];
+	}
+
 	public async Task<Page<BeatmapRecord>> ListAsync(BeatmapQuery query, PageRequest page,
 		CancellationToken ct = default)
 	{
@@ -202,6 +239,8 @@ internal sealed class EfBeatmapRepository(DatabaseSession database) : IBeatmapRe
 			BeatmapsetId = beatmap.Beatmapset.Id,
 			Hash = beatmap.Hash.HashValue,
 			Version = beatmap.Metadata.VersionName,
+			FileName = BeatmapFileName.Of(beatmap.Beatmapset.Metadata.Artist, beatmap.Beatmapset.Metadata.Title,
+				beatmap.Beatmapset.Metadata.Creator, beatmap.Metadata.VersionName),
 			Mode = (int)beatmap.Metadata.Mode,
 			Star = difficulty?.Star,
 			Length = (int?)difficulty?.Length.TotalMilliseconds,

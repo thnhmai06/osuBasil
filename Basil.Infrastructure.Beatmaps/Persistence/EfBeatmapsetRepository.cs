@@ -16,6 +16,16 @@ internal sealed class EfBeatmapsetRepository(DatabaseSession database, TimeProvi
 		return row?.ToRecord();
 	}
 
+	public async Task<IReadOnlyList<BeatmapsetRecord>> ListAsync(IReadOnlyCollection<int> ids,
+		CancellationToken ct = default)
+	{
+		var wanted = ids.ToArray();
+		var rows = await database.ReadAsync((BeatmapsDbContext context) => context.Beatmapsets
+			.Where(s => wanted.Contains(s.Id))
+			.ToListAsync(ct), ct);
+		return [.. rows.Select(row => row.ToRecord())];
+	}
+
 	public Task UpdateAsync(BeatmapsetRecord set)
 	{
 		var row = ToRow(set);

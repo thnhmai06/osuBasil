@@ -31,8 +31,8 @@ internal sealed class UserRowConfiguration : IEntityTypeConfiguration<UserRow>
 		// Id 1 is BasilBot, the fixed account the server speaks as; it is stored at startup under that id, so the
 		// accounts the database numbers start at 2.
 		builder.Property(row => row.Id).ValueGeneratedNever();
-		builder.Property(row => row.NormalizedName).HasMaxLength(255);
-		builder.Property(row => row.ActiveName).HasMaxLength(255);
+		builder.Property(row => row.NormalizedName).HasColumnType("citext");
+		builder.Property(row => row.ActiveName).HasColumnType("citext");
 		builder.HasIndex(row => row.NormalizedName);
 		builder.HasIndex(row => row.ActiveName).IsUnique();
 	}

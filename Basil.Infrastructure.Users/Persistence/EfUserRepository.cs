@@ -106,6 +106,18 @@ internal sealed class EfUserRepository(DatabaseSession database) : IUserReposito
 		return row is null ? null : ToUser(row);
 	}
 
+	public async Task<IReadOnlyList<UserRecord>> GetManyAsync(IReadOnlyCollection<int> ids,
+		CancellationToken ct = default)
+	{
+		var wanted = ids.ToArray();
+		var rows = await database.ReadAsync((UsersDbContext context) => context.Users
+			.Where(candidate => wanted.Contains(candidate.Id))
+			.OrderBy(candidate => candidate.Id)
+			.Take(ListLimits.Ceiling)
+			.ToListAsync(ct), ct);
+		return [.. rows.Select(ToUser)];
+	}
+
 	public async ValueTask<UserRecord?> GetByNameAsync(string name, CancellationToken ct = default)
 	{
 		var normalized = UserData.TryNormalize(name);

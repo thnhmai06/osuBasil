@@ -6,13 +6,14 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
 namespace Basil.Infrastructure.Persistence.Migrations.Multiplayer
 {
     [DbContext(typeof(MultiplayerDbContext))]
-    [Migration("20261123175759_InitialCreate")]
+    [Migration("20261124020820_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -20,30 +21,39 @@ namespace Basil.Infrastructure.Persistence.Migrations.Multiplayer
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.14");
+                .HasAnnotation("ProductVersion", "10.0.14")
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity(typeof(Basil.Infrastructure.Multiplayer.Persistence.MatchEventRow).FullName!, b =>
                 {
                     b.Property<long>("Id")
+                        .HasColumnType("bigint")
                         .HasColumnName("id");
 
                     b.Property<int?>("ActorId")
+                        .HasColumnType("integer")
                         .HasColumnName("actor_id");
 
                     b.Property<string>("Detail")
+                        .HasColumnType("text")
                         .HasColumnName("detail");
 
                     b.Property<int>("MatchId")
+                        .HasColumnType("integer")
                         .HasColumnName("match_id");
 
                     b.Property<int?>("TargetId")
+                        .HasColumnType("integer")
                         .HasColumnName("target_id");
 
                     b.Property<DateTimeOffset>("Timestamp")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("timestamp");
 
                     b.Property<int>("Type")
+                        .HasColumnType("integer")
                         .HasColumnName("type");
 
                     b.HasKey("Id")
@@ -64,22 +74,28 @@ namespace Basil.Infrastructure.Persistence.Migrations.Multiplayer
             modelBuilder.Entity(typeof(Basil.Infrastructure.Multiplayer.Persistence.MatchRow).FullName!, b =>
                 {
                     b.Property<int>("Id")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
                     b.Property<int>("CreatorId")
+                        .HasColumnType("integer")
                         .HasColumnName("creator_id");
 
                     b.Property<DateTimeOffset?>("EndedAt")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("ended_at");
 
                     b.Property<bool>("IsPrivate")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_private");
 
                     b.Property<string>("Name")
                         .IsRequired()
+                        .HasColumnType("text")
                         .HasColumnName("name");
 
                     b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("started_at");
 
                     b.HasKey("Id")
@@ -100,43 +116,56 @@ namespace Basil.Infrastructure.Persistence.Migrations.Multiplayer
             modelBuilder.Entity(typeof(Basil.Infrastructure.Multiplayer.Persistence.RoundRow).FullName!, b =>
                 {
                     b.Property<int>("MatchId")
+                        .HasColumnType("integer")
                         .HasColumnName("match_id");
 
                     b.Property<int>("Number")
+                        .HasColumnType("integer")
                         .HasColumnName("number");
 
                     b.Property<bool>("Aborted")
+                        .HasColumnType("boolean")
                         .HasColumnName("aborted");
 
                     b.Property<string>("BeatmapHash")
                         .IsRequired()
+                        .HasColumnType("text")
                         .HasColumnName("beatmap_hash");
 
                     b.Property<DateTimeOffset?>("EndedAt")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("ended_at");
 
                     b.Property<bool>("Freemods")
+                        .HasColumnType("boolean")
                         .HasColumnName("freemods");
 
                     b.Property<int>("Mode")
+                        .HasColumnType("integer")
                         .HasColumnName("mode");
 
                     b.Property<int>("Mods")
+                        .HasColumnType("integer")
                         .HasColumnName("mods");
 
                     b.Property<string>("Result")
+                        .HasColumnType("jsonb")
                         .HasColumnName("result");
 
                     b.Property<int>("Seed")
+                        .HasColumnType("integer")
                         .HasColumnName("seed");
 
                     b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("started_at");
 
                     b.Property<int>("TeamType")
+                        .HasColumnType("integer")
                         .HasColumnName("team_type");
 
                     b.Property<int>("WinCondition")
+                        .HasColumnType("integer")
                         .HasColumnName("win_condition");
 
                     b.HasKey("MatchId", "Number")
@@ -148,15 +177,19 @@ namespace Basil.Infrastructure.Persistence.Migrations.Multiplayer
             modelBuilder.Entity(typeof(Basil.Infrastructure.Multiplayer.Persistence.RoundScoreRow).FullName!, b =>
                 {
                     b.Property<int>("ScoreId")
+                        .HasColumnType("integer")
                         .HasColumnName("score_id");
 
                     b.Property<int>("MatchId")
+                        .HasColumnType("integer")
                         .HasColumnName("match_id");
 
                     b.Property<int>("RoundNumber")
+                        .HasColumnType("integer")
                         .HasColumnName("round_number");
 
                     b.Property<int?>("Team")
+                        .HasColumnType("integer")
                         .HasColumnName("team");
 
                     b.HasKey("ScoreId")
@@ -172,9 +205,11 @@ namespace Basil.Infrastructure.Persistence.Migrations.Multiplayer
                 {
                     b.Property<string>("Name")
                         .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
                         .HasColumnName("name");
 
                     b.Property<long>("Next")
+                        .HasColumnType("bigint")
                         .HasColumnName("next");
 
                     b.HasKey("Name")
@@ -199,8 +234,10 @@ namespace Basil.Infrastructure.Persistence.Migrations.Multiplayer
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.HasKey("Id")
                         .HasName("pk_scores");
@@ -215,8 +252,10 @@ namespace Basil.Infrastructure.Persistence.Migrations.Multiplayer
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.HasKey("Id")
                         .HasName("pk_users");

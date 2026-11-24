@@ -62,6 +62,8 @@ internal sealed class ScoreRowConfiguration : IEntityTypeConfiguration<ScoreRow>
 		// The leaderboard of a beatmap: best score first, then the earlier play and the lower id (also serves a lookup by beatmap).
 		builder.HasIndex(row => new { row.BeatmapHash, row.TotalScore, row.Timestamp, row.Id })
 			.IsDescending(false, true, false, false);
+		// The best play per player of a beatmap and mode: the leaderboard's anti-join looks up the other plays of the same player.
+		builder.HasIndex(row => new { row.BeatmapHash, row.Mode, row.UserId, row.TotalScore });
 		builder.HasIndex(row => row.Checksum).IsUnique();
 	}
 }

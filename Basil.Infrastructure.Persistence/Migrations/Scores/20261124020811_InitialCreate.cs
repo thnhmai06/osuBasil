@@ -15,8 +15,8 @@ namespace Basil.Infrastructure.Persistence.Migrations.Scores
                 name: "score_id_counters",
                 columns: table => new
                 {
-                    name = table.Column<string>(maxLength: 64, nullable: false),
-                    next = table.Column<long>(nullable: false)
+                    name = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
+                    next = table.Column<long>(type: "bigint", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -27,26 +27,26 @@ namespace Basil.Infrastructure.Persistence.Migrations.Scores
                 name: "scores",
                 columns: table => new
                 {
-                    id = table.Column<int>(nullable: false),
-                    user_id = table.Column<int>(nullable: true),
-                    beatmap_hash = table.Column<string>(maxLength: 128, nullable: true),
-                    mode = table.Column<int>(nullable: false),
-                    mods = table.Column<int>(nullable: false),
-                    num300 = table.Column<int>(nullable: false),
-                    num100 = table.Column<int>(nullable: false),
-                    num50 = table.Column<int>(nullable: false),
-                    num_geki = table.Column<int>(nullable: false),
-                    num_katu = table.Column<int>(nullable: false),
-                    num_miss = table.Column<int>(nullable: false),
-                    total_score = table.Column<int>(nullable: false),
-                    max_combo = table.Column<int>(nullable: false),
-                    current_combo = table.Column<int>(nullable: false),
-                    grade = table.Column<int>(nullable: false),
-                    is_passed = table.Column<bool>(nullable: false),
-                    is_full_combo = table.Column<bool>(nullable: false),
-                    timestamp = table.Column<DateTimeOffset>(nullable: false),
-                    checksum = table.Column<string>(maxLength: 128, nullable: true),
-                    pp = table.Column<double>(nullable: true)
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    user_id = table.Column<int>(type: "integer", nullable: true),
+                    beatmap_hash = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: true),
+                    mode = table.Column<int>(type: "integer", nullable: false),
+                    mods = table.Column<int>(type: "integer", nullable: false),
+                    num300 = table.Column<int>(type: "integer", nullable: false),
+                    num100 = table.Column<int>(type: "integer", nullable: false),
+                    num50 = table.Column<int>(type: "integer", nullable: false),
+                    num_geki = table.Column<int>(type: "integer", nullable: false),
+                    num_katu = table.Column<int>(type: "integer", nullable: false),
+                    num_miss = table.Column<int>(type: "integer", nullable: false),
+                    total_score = table.Column<int>(type: "integer", nullable: false),
+                    max_combo = table.Column<int>(type: "integer", nullable: false),
+                    current_combo = table.Column<int>(type: "integer", nullable: false),
+                    grade = table.Column<int>(type: "integer", nullable: false),
+                    is_passed = table.Column<bool>(type: "boolean", nullable: false),
+                    is_full_combo = table.Column<bool>(type: "boolean", nullable: false),
+                    timestamp = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    checksum = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: true),
+                    pp = table.Column<double>(type: "double precision", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -63,11 +63,11 @@ namespace Basil.Infrastructure.Persistence.Migrations.Scores
                 name: "user_stats",
                 columns: table => new
                 {
-                    user_id = table.Column<int>(nullable: false),
-                    mode = table.Column<int>(nullable: false),
-                    total_score = table.Column<long>(nullable: false),
-                    ranked_score = table.Column<long>(nullable: false),
-                    play_count = table.Column<int>(nullable: false)
+                    user_id = table.Column<int>(type: "integer", nullable: false),
+                    mode = table.Column<int>(type: "integer", nullable: false),
+                    total_score = table.Column<long>(type: "bigint", nullable: false),
+                    ranked_score = table.Column<long>(type: "bigint", nullable: false),
+                    play_count = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -83,6 +83,11 @@ namespace Basil.Infrastructure.Persistence.Migrations.Scores
                 table: "score_id_counters",
                 columns: new[] { "name", "next" },
                 values: new object[] { "score", 1L });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_scores_beatmap_hash_mode_user_id_total_score",
+                table: "scores",
+                columns: new[] { "beatmap_hash", "mode", "user_id", "total_score" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_scores_beatmap_hash_total_score_timestamp_id",

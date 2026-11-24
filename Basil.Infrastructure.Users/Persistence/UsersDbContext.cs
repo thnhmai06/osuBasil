@@ -22,6 +22,7 @@ internal sealed class UsersDbContext(DbContextOptions<UsersDbContext> options) :
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
 		ContextModel.ApplyModuleConfigurations<UsersDbContext>(modelBuilder);
+		modelBuilder.HasPostgresExtension("citext");
 		IdCounters.Map(modelBuilder, "user_id_counters", ("user", 2), ("moderation_log", 1));
 	}
 }

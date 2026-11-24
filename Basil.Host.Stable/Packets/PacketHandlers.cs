@@ -131,10 +131,9 @@ internal sealed partial class PacketHandlers(
 	{
 		var wanted = OnlineUsers(ids);
 
-		var stats = new List<UserStats>();
-		foreach (var user in wanted)
-			stats.Add(await sender.Send(new GetUserStats(user.User, user.Stable?.Status.Detail?.Mode ?? GameMode.Standard),
-				ct));
+		var stats = await sender.Send(new GetUsersStats([
+			.. wanted.Select(user => (user.User, user.Stable?.Status.Detail?.Mode ?? GameMode.Standard))
+		]), ct);
 		outbox.Send(actor, writer =>
 		{
 			for (var index = 0; index < wanted.Count; index++)
@@ -147,10 +146,9 @@ internal sealed partial class PacketHandlers(
 		var wanted = OnlineUsers(ids);
 
 		var now = clock.GetUtcNow();
-		var stats = new List<UserStats>();
-		foreach (var user in wanted)
-			stats.Add(await sender.Send(new GetUserStats(user.User, user.Stable?.Status.Detail?.Mode ?? GameMode.Standard),
-				ct));
+		var stats = await sender.Send(new GetUsersStats([
+			.. wanted.Select(user => (user.User, user.Stable?.Status.Detail?.Mode ?? GameMode.Standard))
+		]), ct);
 		outbox.Send(actor, writer =>
 		{
 			for (var index = 0; index < wanted.Count; index++)
@@ -184,8 +182,10 @@ internal sealed partial class PacketHandlers(
 		CancellationToken ct)
 	{
 		var entries = new List<BeatmapInfoResponse>();
-		for (var index = 0; index < Math.Min(request.Filenames.Count, MaxRequestedFilenames); index++)
-			if (await sender.Send(new FindBeatmapByFileName(request.Filenames[index]), ct) is { } map)
+		var maps = await sender.Send(
+			new FindBeatmapsByFileNames([.. request.Filenames.Take(MaxRequestedFilenames)]), ct);
+		for (var index = 0; index < maps.Count; index++)
+			if (maps[index] is { } map)
 				entries.Add(new BeatmapInfoResponse((short)index, map.Id,
 					map.Beatmapset.Id, 0, (byte)map.Beatmapset.Status, -1, -1, -1, -1,
 					map.Hash.ToString()));

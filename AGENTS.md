@@ -525,6 +525,12 @@ The detailed rules moved out of this file so each can be read when needed. **Rea
 
 ### Important invariants
 
+#### PostgreSQL-native persistence
+
+PostgreSQL-native (owner decision 2026-11-24): PostgreSQL is the only database and persistence uses Npgsql features
+(`jsonb`, `inet`, `citext`, `pg_trgm` GIN indexes, `ILike`) through EF Core's API; still no SQL text. Module Infrastructure
+projects may reference `Npgsql.EntityFrameworkCore.PostgreSQL`. See [`database.md`](docs/for-developers/database.md).
+
 #### Multiplayer concurrency
 
 `Room` is mutable shared state.

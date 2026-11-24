@@ -121,15 +121,19 @@ PostgreSQL is the only database, so there is no provider setting. The read and w
 and pool size. Prefer EF Core's general API when it gives the same contract; use PostgreSQL/Npgsql-specific API when the
 contract needs it. Migrations run against the write endpoint.
 
-### Provider neutral migrations
+### PostgreSQL-native migrations
 
-The migrations name no engine. Every Row maps through EF Core methods only: no `HasColumnType`, no sequences or
-identity columns (ids come from the counter tables of `IdCounters`), JSON and addresses are stored as text through value
-converters, key and index strings have a `HasMaxLength`, and a unique name among the live accounts is a nullable unique
-`active_name` column instead of a filtered index. `dotnet ef` still runs on the Npgsql design-time factory, so a generated
-migration carries `type: "..."` arguments, store-type lines in the snapshot and Npgsql annotations. `tools/normalize-migrations.sh`
-removes them and turns entity-name strings into `typeof(Row).FullName!`; review rejects a migration
-file that still contains `Npgsql`, `type:` or `.HasColumnType(`. Add a migration with:
+Persistence uses PostgreSQL and Npgsql features through EF Core's API; there is still no SQL text. Rows get their native
+store types from the provider (`timestamptz`, `inet` for addresses, `jsonb` for JSON, `citext` for the names that are
+matched case-insensitively), the contexts declare the extensions they need (`HasPostgresExtension("citext")`,
+`"pg_trgm"`), and text search uses `EF.Functions.ILike` over GIN trigram indexes (`HasMethod("gin")` with
+`HasOperators("gin_trgm_ops")`). A module Infrastructure project that needs this API references
+`Npgsql.EntityFrameworkCore.PostgreSQL`; it never references `Basil.Infrastructure.Persistence`. Ids still come from the
+counter tables of `IdCounters`, and a unique name among the live accounts is the nullable unique `active_name` column,
+because a filtered index needs SQL text.
+
+The generated migrations keep the store types and the Npgsql annotations. `tools/normalize-migrations.sh` only turns
+entity-name strings into `typeof(Row).FullName!`. Add a migration with:
 
 ```bash
 tools/add-migration.sh <Module> <Name>     # runs dotnet ef, moves the snapshot, normalizes the files
@@ -138,9 +142,7 @@ tools/add-migration.sh <Module> <Name>     # runs dotnet ef, moves the snapshot,
 Each module has exactly one migration, `InitialCreate`, until a first release. To regenerate everything from scratch,
 delete `Basil.Infrastructure.Persistence/Migrations`, then run the script with `InitialCreate` for Users, Sessions,
 Beatmaps, Content, Shared, Scores, Multiplayer and Chat in that order. Every existing development database must then be
-dropped and recreated, because its `__ef_migrations_<module>` history names migrations that no longer exist. The runtime ignores `PendingModelChangesWarning`, because a neutral
-snapshot never equals a provider's model; the model is checked against the migrations with the provider's
-own differ instead.
+dropped and recreated, because its `__ef_migrations_<module>` history names migrations that no longer exist.
 
 ## Related code
 

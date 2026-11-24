@@ -25,7 +25,7 @@ internal sealed class ChannelRowConfiguration : IEntityTypeConfiguration<Channel
 	{
 		builder.ToTable("channels");
 		builder.HasKey(row => row.Name);
-		builder.Property(row => row.Name).HasMaxLength(255);
+		builder.Property(row => row.Name).HasColumnType("citext");
 		builder.HasData(
 			new ChannelRow { Name = "#osu", Topic = "General discussion.", AutoJoin = true, Visible = true },
 			new ChannelRow

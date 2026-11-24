@@ -56,16 +56,11 @@ public abstract class Channel
 		var members = Members.ToArray();
 		if (posted.Actor is null || posted.BypassesBlocks || this is PmChannel) return members;
 
-		var blockers = new HashSet<UserRecord>();
-		foreach (var user in members.Select(member => member.Record).Where(user => !user.Equals(author)).Distinct())
-		{
-			var relationships = await Context.Relationships.ListAsync(user, ct);
-			if (relationships.Any(relationship => relationship.Type == RelationshipType.Block &&
-			                                      relationship.Target.Equals(author)))
-				blockers.Add(user);
-		}
+		var candidates = members.Select(member => member.Record).Where(user => !user.Equals(author))
+			.Select(user => user.Id).Distinct().ToArray();
+		var blockers = await Context.Relationships.ListBlockerIdsAsync(author, candidates, ct);
 
-		return blockers.Count == 0 ? members : [.. members.Where(member => !blockers.Contains(member.Record))];
+		return blockers.Count == 0 ? members : [.. members.Where(member => !blockers.Contains(member.Record.Id))];
 	}
 
 	public void PostMessage(UserRecord author, string text, bool notice, DateTimeOffset now, Session? actor,

@@ -14,8 +14,8 @@ namespace Basil.Infrastructure.Persistence.Migrations.Shared
                 name: "settings",
                 columns: table => new
                 {
-                    name = table.Column<string>(maxLength: 255, nullable: false),
-                    value = table.Column<string>(nullable: true)
+                    name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    value = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {

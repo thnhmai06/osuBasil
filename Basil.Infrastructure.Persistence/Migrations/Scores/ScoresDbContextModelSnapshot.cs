@@ -5,6 +5,7 @@ using Basil.Infrastructure.Scores.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
@@ -17,71 +18,93 @@ namespace Basil.Infrastructure.Persistence.Migrations.Scores
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.14");
+                .HasAnnotation("ProductVersion", "10.0.14")
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity(typeof(Basil.Infrastructure.Scores.Persistence.ScoreRow).FullName!, b =>
                 {
                     b.Property<int>("Id")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
                     b.Property<string>("BeatmapHash")
                         .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
                         .HasColumnName("beatmap_hash");
 
                     b.Property<string>("Checksum")
                         .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
                         .HasColumnName("checksum");
 
                     b.Property<int>("CurrentCombo")
+                        .HasColumnType("integer")
                         .HasColumnName("current_combo");
 
                     b.Property<int>("Grade")
+                        .HasColumnType("integer")
                         .HasColumnName("grade");
 
                     b.Property<bool>("IsFullCombo")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_full_combo");
 
                     b.Property<bool>("IsPassed")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_passed");
 
                     b.Property<int>("MaxCombo")
+                        .HasColumnType("integer")
                         .HasColumnName("max_combo");
 
                     b.Property<int>("Mode")
+                        .HasColumnType("integer")
                         .HasColumnName("mode");
 
                     b.Property<int>("Mods")
+                        .HasColumnType("integer")
                         .HasColumnName("mods");
 
                     b.Property<int>("Num100")
+                        .HasColumnType("integer")
                         .HasColumnName("num100");
 
                     b.Property<int>("Num300")
+                        .HasColumnType("integer")
                         .HasColumnName("num300");
 
                     b.Property<int>("Num50")
+                        .HasColumnType("integer")
                         .HasColumnName("num50");
 
                     b.Property<int>("NumGeki")
+                        .HasColumnType("integer")
                         .HasColumnName("num_geki");
 
                     b.Property<int>("NumKatu")
+                        .HasColumnType("integer")
                         .HasColumnName("num_katu");
 
                     b.Property<int>("NumMiss")
+                        .HasColumnType("integer")
                         .HasColumnName("num_miss");
 
                     b.Property<double?>("Pp")
+                        .HasColumnType("double precision")
                         .HasColumnName("pp");
 
                     b.Property<DateTimeOffset>("Timestamp")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("timestamp");
 
                     b.Property<int>("TotalScore")
+                        .HasColumnType("integer")
                         .HasColumnName("total_score");
 
                     b.Property<int?>("UserId")
+                        .HasColumnType("integer")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
@@ -93,6 +116,9 @@ namespace Basil.Infrastructure.Persistence.Migrations.Scores
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_scores_user_id");
+
+                    b.HasIndex("BeatmapHash", "Mode", "UserId", "TotalScore")
+                        .HasDatabaseName("ix_scores_beatmap_hash_mode_user_id_total_score");
 
                     b.HasIndex("BeatmapHash", "TotalScore", "Timestamp", "Id")
                         .IsDescending(false, true, false, false)
@@ -107,18 +133,23 @@ namespace Basil.Infrastructure.Persistence.Migrations.Scores
             modelBuilder.Entity(typeof(Basil.Infrastructure.Scores.Persistence.UserStatsRow).FullName!, b =>
                 {
                     b.Property<int>("UserId")
+                        .HasColumnType("integer")
                         .HasColumnName("user_id");
 
                     b.Property<int>("Mode")
+                        .HasColumnType("integer")
                         .HasColumnName("mode");
 
                     b.Property<int>("PlayCount")
+                        .HasColumnType("integer")
                         .HasColumnName("play_count");
 
                     b.Property<long>("RankedScore")
+                        .HasColumnType("bigint")
                         .HasColumnName("ranked_score");
 
                     b.Property<long>("TotalScore")
+                        .HasColumnType("bigint")
                         .HasColumnName("total_score");
 
                     b.HasKey("UserId", "Mode")
@@ -131,9 +162,11 @@ namespace Basil.Infrastructure.Persistence.Migrations.Scores
                 {
                     b.Property<string>("Name")
                         .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
                         .HasColumnName("name");
 
                     b.Property<long>("Next")
+                        .HasColumnType("bigint")
                         .HasColumnName("next");
 
                     b.HasKey("Name")
@@ -153,8 +186,10 @@ namespace Basil.Infrastructure.Persistence.Migrations.Scores
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.HasKey("Id")
                         .HasName("pk_users");

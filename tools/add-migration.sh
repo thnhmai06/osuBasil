@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Adds a provider neutral migration to the context of one module.
+# Adds a PostgreSQL migration to the context of one module.
 #
 # Usage: tools/add-migration.sh <Module> <Name>     (for example: tools/add-migration.sh Users AddRestrictionReason)
 set -euo pipefail

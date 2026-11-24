@@ -38,14 +38,13 @@ internal sealed class EfMatchEventRepository(DatabaseSession database, IUserRepo
 			.Take(ListLimits.Ceiling)
 			.ToListAsync(ct), ct);
 
-		var events = new List<MatchEvent>(rows.Count);
-		foreach (var row in rows)
-		{
-			var actor = row.ActorId is { } actorId ? await users.GetAsync(actorId, ct) : null;
-			var target = row.TargetId is { } targetId ? await users.GetAsync(targetId, ct) : null;
-			events.Add(new MatchEvent(match, (MatchEventType)row.Type, row.Timestamp, actor, target, row.Detail));
-		}
-
-		return events;
+		var ids = rows.SelectMany(row => new[] { row.ActorId, row.TargetId }).OfType<int>().Distinct().ToArray();
+		var found = (await users.GetManyAsync(ids, ct)).ToDictionary(user => user.Id);
+		return
+		[
+			.. rows.Select(row => new MatchEvent(match, (MatchEventType)row.Type, row.Timestamp,
+				row.ActorId is { } actorId ? found.GetValueOrDefault(actorId) : null,
+				row.TargetId is { } targetId ? found.GetValueOrDefault(targetId) : null, row.Detail))
+		];
 	}
 }

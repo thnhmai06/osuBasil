@@ -4,6 +4,7 @@ using Basil.Infrastructure.Users.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
@@ -16,16 +17,21 @@ namespace Basil.Infrastructure.Persistence.Migrations.Users
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.14");
+                .HasAnnotation("ProductVersion", "10.0.14")
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "citext");
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity(typeof(Basil.Infrastructure.Shared.Persistence.IdCounterRow).FullName!, b =>
                 {
                     b.Property<string>("Name")
                         .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
                         .HasColumnName("name");
 
                     b.Property<long>("Next")
+                        .HasColumnType("bigint")
                         .HasColumnName("next");
 
                     b.HasKey("Name")
@@ -49,21 +55,27 @@ namespace Basil.Infrastructure.Persistence.Migrations.Users
             modelBuilder.Entity(typeof(Basil.Infrastructure.Users.Persistence.ModerationLogRow).FullName!, b =>
                 {
                     b.Property<long>("Id")
+                        .HasColumnType("bigint")
                         .HasColumnName("id");
 
                     b.Property<int>("Action")
+                        .HasColumnType("integer")
                         .HasColumnName("action");
 
                     b.Property<int>("ById")
+                        .HasColumnType("integer")
                         .HasColumnName("by_id");
 
                     b.Property<string>("Reason")
+                        .HasColumnType("text")
                         .HasColumnName("reason");
 
                     b.Property<int>("TargetId")
+                        .HasColumnType("integer")
                         .HasColumnName("target_id");
 
                     b.Property<DateTimeOffset>("Timestamp")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("timestamp");
 
                     b.HasKey("Id")
@@ -82,22 +94,26 @@ namespace Basil.Infrastructure.Persistence.Migrations.Users
             modelBuilder.Entity(typeof(Basil.Infrastructure.Users.Persistence.RelationshipRow).FullName!, b =>
                 {
                     b.Property<int>("ActorId")
+                        .HasColumnType("integer")
                         .HasColumnName("actor_id");
 
                     b.Property<int>("TargetId")
+                        .HasColumnType("integer")
                         .HasColumnName("target_id");
 
                     b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<int>("Type")
+                        .HasColumnType("integer")
                         .HasColumnName("type");
 
                     b.HasKey("ActorId", "TargetId")
                         .HasName("pk_relationships");
 
-                    b.HasIndex("TargetId")
-                        .HasDatabaseName("ix_relationships_target_id");
+                    b.HasIndex("TargetId", "Type")
+                        .HasDatabaseName("ix_relationships_target_id_type");
 
                     b.ToTable("relationships", (string)null);
                 });
@@ -105,31 +121,37 @@ namespace Basil.Infrastructure.Persistence.Migrations.Users
             modelBuilder.Entity(typeof(Basil.Infrastructure.Users.Persistence.UserRow).FullName!, b =>
                 {
                     b.Property<int>("Id")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
                     b.Property<string>("ActiveName")
-                        .HasMaxLength(255)
+                        .HasColumnType("citext")
                         .HasColumnName("active_name");
 
                     b.Property<int>("Country")
+                        .HasColumnType("integer")
                         .HasColumnName("country");
 
                     b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("deleted_at");
 
                     b.Property<string>("Name")
                         .IsRequired()
+                        .HasColumnType("text")
                         .HasColumnName("name");
 
                     b.Property<string>("NormalizedName")
                         .IsRequired()
-                        .HasMaxLength(255)
+                        .HasColumnType("citext")
                         .HasColumnName("normalized_name");
 
                     b.Property<int>("Privileges")
+                        .HasColumnType("integer")
                         .HasColumnName("privileges");
 
                     b.Property<DateTimeOffset?>("SilencedUntil")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("silenced_until");
 
                     b.HasKey("Id")

@@ -43,6 +43,9 @@ internal sealed class BeatmapsetRowConfiguration : IEntityTypeConfiguration<Beat
 		builder.HasKey(row => row.Id);
 		builder.Property(row => row.Id).ValueGeneratedNever();
 		builder.Property(row => row.Status).HasConversion<int>();
+		builder.HasIndex(row => row.Artist).HasMethod("gin").HasOperators("gin_trgm_ops");
+		builder.HasIndex(row => row.Title).HasMethod("gin").HasOperators("gin_trgm_ops");
+		builder.HasIndex(row => row.Creator).HasMethod("gin").HasOperators("gin_trgm_ops");
 		builder.HasMany(row => row.Beatmaps).WithOne(row => row.Set).HasForeignKey(row => row.BeatmapsetId)
 			.OnDelete(DeleteBehavior.Cascade);
 	}

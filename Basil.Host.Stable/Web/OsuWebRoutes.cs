@@ -160,8 +160,10 @@ internal static class OsuWebRoutes
 			await JsonSerializer.DeserializeAsync<BeatmapInfoBody>(context.Request.Body, cancellationToken: ct)
 			?? new BeatmapInfoBody();
 		var lines = new List<string>();
-		for (var index = 0; index < Math.Min(request.Filenames.Length, PacketHandlers.MaxRequestedFilenames); index++)
-			if (await sender.Send(new FindBeatmapByFileName(request.Filenames[index]), ct) is { } map)
+		var maps = await sender.Send(
+			new FindBeatmapsByFileNames([.. request.Filenames.Take(PacketHandlers.MaxRequestedFilenames)]), ct);
+		for (var index = 0; index < maps.Count; index++)
+			if (maps[index] is { } map)
 				lines.Add(
 					$"{index}|{map.Id}|{map.Beatmapset.Id}|0|{(int)map.Beatmapset.Status}|N|N|N|N|{map.Hash}");
 
@@ -324,9 +326,8 @@ internal static class OsuWebRoutes
 				? OsuWebReplies.DirectMorePages
 				: page.Items.Count).ToString(CultureInfo.InvariantCulture)
 		};
-		foreach (var set in page.Items)
-			if (await sender.Send(new GetBeatmapset(player, set.Id), ct) is { } detail)
-				lines.Add(SearchLine(detail));
+		var details = await sender.Send(new GetBeatmapsets(player, [.. page.Items.Select(set => set.Id)]), ct);
+		lines.AddRange(details.Select(SearchLine));
 		return Text(string.Join('\n', lines));
 	}
 

@@ -7,6 +7,8 @@ public interface IBeatmapsetRepository
 {
 	ValueTask<BeatmapsetRecord?> GetAsync(int id, CancellationToken ct = default);
 
+	Task<IReadOnlyList<BeatmapsetRecord>> ListAsync(IReadOnlyCollection<int> ids, CancellationToken ct = default);
+
 	Task UpdateAsync(BeatmapsetRecord set);
 
 	Task<Page<BeatmapsetRecord>> ListAsync(BeatmapQuery query, PageRequest page,

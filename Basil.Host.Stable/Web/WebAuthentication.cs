@@ -41,8 +41,9 @@ internal sealed class WebAuthentication(
 		if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(passwordMd5)) return null;
 		var normalized = UserData.TryNormalize(username);
 		if (normalized is null) return null;
-		if (await sender.Send(new FindUserByName(username), ct) is not { } record) return null;
-		var online = registry.Of(record);
+		// shortcut: scans the online users; the client must be online anyway, add an index if the online count grows large.
+		var online = registry.Online.Values.FirstOrDefault(user => user.Record.Value.NormalizedName == normalized);
+		if (online is null) return null;
 		if (online.Stable is not { IsOpen: true } client) return null;
 		var rules = (await sender.Send(new ReadSettings(), ct)).RateLimits.Login;
 		var ipKey = $"login-fail:{ClientAddress.Resolve(context)}";

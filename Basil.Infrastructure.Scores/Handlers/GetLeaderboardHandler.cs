@@ -17,16 +17,13 @@ internal sealed class GetLeaderboardHandler(IBeatmapRepository beatmaps, IScoreR
 		if (await beatmaps.GetAsync(request.BeatmapHash, ct) is not { } map) return null;
 
 		var page = await scores.ListAsync(
-			new ScoreQuery(BeatmapHash: request.BeatmapHash, Mods: request.Mods, BestPerPlayer: true),
+			new ScoreQuery(BeatmapHash: request.BeatmapHash, Mods: request.Mods, BestPerPlayer: true,
+				Mode: request.Mode),
 			new PageRequest(0, Size), ct);
-		var entries = new List<LeaderboardEntry>();
-		foreach (var score in page.Items.Where(score => score.Value.Mode == request.Mode))
-		{
-			var name = score.Value.UserId is { } id && await users.GetAsync(id, ct) is { } user
-				? user.Value.Name
-				: "?";
-			entries.Add(new LeaderboardEntry(score, name));
-		}
+		var ids = page.Items.Select(score => score.Value.UserId).OfType<int>().Distinct().ToArray();
+		var names = (await users.GetManyAsync(ids, ct)).ToDictionary(user => user.Id, user => user.Value.Name);
+		var entries = page.Items.Select(score => new LeaderboardEntry(score,
+			score.Value.UserId is { } id && names.TryGetValue(id, out var name) ? name : "?")).ToList();
 
 		return new Leaderboard(map, entries);
 	}

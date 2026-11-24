@@ -20,6 +20,7 @@ internal sealed class RelationshipRowConfiguration : IEntityTypeConfiguration<Re
 	{
 		builder.ToTable("relationships");
 		builder.HasKey(row => new { row.ActorId, row.TargetId });
+		builder.HasIndex(row => new { row.TargetId, row.Type });
 		builder.HasOne<UserRow>().WithMany().HasForeignKey(row => row.ActorId).OnDelete(DeleteBehavior.NoAction);
 		builder.HasOne<UserRow>().WithMany().HasForeignKey(row => row.TargetId).OnDelete(DeleteBehavior.NoAction);
 	}

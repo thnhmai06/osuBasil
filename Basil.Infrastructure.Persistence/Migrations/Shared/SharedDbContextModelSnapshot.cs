@@ -3,6 +3,7 @@ using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
@@ -15,16 +16,20 @@ namespace Basil.Infrastructure.Persistence.Migrations.Shared
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.14");
+                .HasAnnotation("ProductVersion", "10.0.14")
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity(typeof(Basil.Infrastructure.Shared.Persistence.SettingRow).FullName!, b =>
                 {
                     b.Property<string>("Name")
                         .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
                         .HasColumnName("name");
 
                     b.Property<string>("Value")
+                        .HasColumnType("text")
                         .HasColumnName("value");
 
                     b.HasKey("Name")

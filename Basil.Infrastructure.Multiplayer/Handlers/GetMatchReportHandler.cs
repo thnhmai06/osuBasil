@@ -23,10 +23,10 @@ internal sealed class GetMatchReportHandler(
 
 		var report = await reports.GetAsync(match, ct);
 		var ordered = report.Records.OrderBy(entry => entry.Timestamp).ToList();
-		var entries = new List<MatchReportEntry>();
-		foreach (var entry in ordered.Skip(request.From))
-			entries.Add(new MatchReportEntry(entry,
-				entry is Round round ? await roundScores.ListAsync(round, ct) : []));
+		var shown = ordered.Skip(request.From).ToList();
+		var scores = (await roundScores.ListAsync([.. shown.OfType<Round>()], ct)).ToLookup(score => score.Round.Index);
+		var entries = shown.Select(entry => new MatchReportEntry(entry,
+			entry is Round round ? [.. scores[round.Index]] : [])).ToList();
 		return new MatchReportSnapshot(report.Match, ordered.Count, entries);
 	}
 }

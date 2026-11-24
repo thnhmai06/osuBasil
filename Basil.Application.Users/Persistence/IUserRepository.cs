@@ -17,6 +17,9 @@ public interface IUserRepository
 
 	ValueTask<UserRecord?> GetAsync(int id, CancellationToken ct = default);
 
+	/// <summary>Gets the users with these ids; an id no user has is left out.</summary>
+	Task<IReadOnlyList<UserRecord>> GetManyAsync(IReadOnlyCollection<int> ids, CancellationToken ct = default);
+
 	ValueTask<UserRecord?> GetByNameAsync(string name, CancellationToken ct = default);
 
 	Task<Page<UserRecord>> ListAsync(UserQuery query, PageRequest page, CancellationToken ct = default);

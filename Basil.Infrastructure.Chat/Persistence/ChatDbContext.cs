@@ -18,5 +18,6 @@ internal sealed class ChatDbContext(DbContextOptions<ChatDbContext> options) : D
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
 		ContextModel.ApplyModuleConfigurations<ChatDbContext>(modelBuilder);
+		modelBuilder.HasPostgresExtension("citext");
 	}
 }
