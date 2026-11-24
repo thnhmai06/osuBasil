@@ -29,6 +29,8 @@ public static class IrcHost
 			{
 				irc.Port = configuration.GetValue("Basil:Server:Irc:Port", irc.Port);
 				irc.Domain = configuration.GetValue("Basil:Server:Domain", irc.Domain)!;
+				irc.TrustedProxies = configuration.GetSection("Basil:Server:TrustedProxies").Get<string[]>() ??
+				                     irc.TrustedProxies;
 			});
 			services.AddSingleton<IrcListener>();
 			services.AddHostedService(sp => sp.GetRequiredService<IrcListener>());

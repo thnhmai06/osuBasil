@@ -31,8 +31,7 @@ Configurations/
 ├── appsettings.json
 ├── appsettings.{Environment}.json   optional overlay
 ├── appsettings.schema.json
-├── Templates/replies.json           BasilBot's wording; written with defaults when absent
-└── basil.local.pfx                  the bundled development certificate
+└── Templates/replies.json           BasilBot's wording; written with defaults when absent
 ```
 
 Sources, later winning over earlier: `appsettings.json`, `appsettings.{Environment}.json` (selected by
@@ -40,7 +39,7 @@ Sources, later winning over earlier: `appsettings.json`, `appsettings.{Environme
 underscore stands for `:`), command-line arguments (`--Basil:Server:Domain=...`). The file is strict JSON: no comments and
 no trailing commas. `appsettings.schema.json` describes every key.
 
-Relative paths (the certificate, `Logging:File:Location`) are relative to the executable. Stored files (replays, avatars, beatmapsets, menu images, the cache) always live in `Data` beside the executable; it is not configurable.
+Relative paths (`Logging:File:Location`) are relative to the executable. Stored files (replays, avatars, beatmapsets, menu images, the cache) always live in `Data` beside the executable; it is not configurable.
 
 ### Available settings
 
@@ -49,8 +48,7 @@ under `Basil`.
 
 | Setting | Meaning |
 |---|---|
-| `Kestrel:Endpoints:<name>:Url` | where the web server listens, default `https://0.0.0.0:443` (osu! connects to 443); an `http://` URL serves plain HTTP behind a proxy; port `0` picks a free port |
-| `Kestrel:Certificates:Default:Path`, `Password` | PFX of the HTTPS endpoints |
+| `Kestrel:Endpoints:<name>:Url` | where the web server listens, default `http://0.0.0.0:8080`: plain HTTP behind nginx, which ends TLS (Basil holds no certificate); port `0` picks a free port |
 | `Logging:LogLevel` | lowest level written: `Default`, and one entry per source prefix (the longest prefix wins) |
 | `Logging:File:Enabled`, `Location` | write log files, and the folder (default `Logs`) |
 | `Logging:File:Rolling:Interval`, `MaxSize` | a new file starts after this interval (default `Day`) or at this size (default `100MB`) |
@@ -61,16 +59,18 @@ under `Basil`.
 | `OpenTelemetry:OtlpEndpoint`, `Metrics`, `Traces`, `Logs` | OpenTelemetry export; off by default |
 | `Basil:Server:Name` | the name the server calls itself (the OpenTelemetry service name), default `Basil` |
 | `Basil:Server:Domain` | the public domain; every subdomain is derived from it |
-| `Basil:Server:TrustedProxies` | IPs and CIDR ranges whose forwarding headers are trusted; defaults to loopback |
-| `Basil:Server:Irc:Port` | plain TCP port of IRC, default `6667`; `0` picks a free port |
-| `Basil:Server:Multicast:Enabled`, `UseIPv4`, `UseIPv6`, `DnsTtl` | answer multicast DNS for the domain and its subdomains (off unless enabled), on the standard mDNS groups and port 5353; `UseIPv4` and `UseIPv6` (default `true`) switch one address family off when `false`; `DnsTtl` is how many seconds a client may keep an answer |
+| `Basil:Server:TrustedProxies` | IPs and CIDR ranges of the reverse proxy: only these may tell Basil the client address (`X-Real-IP`), country and scheme, and open IRC connections (with a PROXY protocol header); defaults to loopback, the Compose file sets the compose network |
+| `Basil:Server:Irc:Port` | internal plain TCP port of IRC, default `6667`, reached only through nginx on `6697`; `0` picks a free port |
+| `Basil:Server:Files:AccelPrefix` | the nginx location that serves the `Data` folder (the Compose file sets `/_files/`); when set, stored files are sent by nginx through `X-Accel-Redirect`, when empty Basil sends them itself (for `dotnet run` without nginx) |
 | `Basil:Assets:CacheDirectory`, `FfmpegFolder` | the directory for the temporary files made while audio previews are built (default `Data/Cache/Previews` beside the executable), and the folder of the ffmpeg executable (default: found on the PATH) |
 | `Basil:Database:Read:PoolSize`, `Write:PoolSize` | PostgreSQL is the only database; the connection strings are in `ConnectionStrings:Read` and `Write`; migrations run against the write endpoint; `Read:PoolSize` caps the reading pool (`0` keeps the driver's default), `Write:PoolSize` is the number of simultaneous writing connections, default `8` |
-| `Basil:Updates:CheckOnStartup`, `Source`, `Channel` | startup update check, its feed, and the release channel (`stable`, or the name of another published channel) |
+| `Basil:Updates:CheckOnStartup`, `Source` | startup check of the latest release of the GitHub repository in `Source`; it only reports a newer version |
 | `Basil:Bot:Replies:Path` | path of the replies file, default `Configurations/Templates/replies.json` |
 
-Because the shipped file lists both connection strings, override both (`ConnectionStrings__Write` and
-`ConnectionStrings__Read`) or edit the file; a variable for `Write` alone leaves `Read` pointing at the file's value.
+The connection strings are deployment values and secrets, so the shipped file has none: set the environment variables
+`ConnectionStrings__Write` and, to read from a replica, `ConnectionStrings__Read` (the Compose file builds both from
+`POSTGRES_PASSWORD` in `.env`). Without `Write`, Basil refuses to start and names the variable. `Basil:Server:Domain` and
+`Basil:Server:TrustedProxies` are deployment values too.
 
 ### Applying changes
 
@@ -94,7 +94,7 @@ Basil <command>       run one console command (in the running server, or offline
 ```
 
 When stdin or stdout is redirected, the server falls back to `--console 0`. A setting can be overridden per run with
-`--Kestrel:Endpoints:Https:Url=https://0.0.0.0:8443`.
+`--Kestrel:Endpoints:Http:Url=http://0.0.0.0:8081`.
 
 ## Upgrading from v1.0.0-alpha.1
 
@@ -103,14 +103,12 @@ environment variable or command-line argument, where `:` is `__` in variables); 
 
 | Old | New |
 |---|---|
-| `Basil:Server:Bind`, `Basil:Server:Ports:Https` | the URL of `Kestrel:Endpoints:Https:Url`, for example `https://0.0.0.0:443` |
-| `Basil:Server:Certificate:Path` | `Kestrel:Certificates:Default:Path` |
-| `Basil:Server:Certificate:Password` | `Kestrel:Certificates:Default:Password` |
-| an empty certificate path (plain HTTP behind a proxy) | an `http://` URL in `Kestrel:Endpoints:Https:Url` and no certificate |
+| `Basil:Server:Bind`, `Basil:Server:Ports:Https` | the URL of `Kestrel:Endpoints:Http:Url`, for example `http://0.0.0.0:8080` |
+| `Basil:Server:Certificate:*` | removed: nginx holds every certificate |
 | `--urls`, `ASPNETCORE_URLS` | `Kestrel:Endpoints:<name>:Url` (it now wins over `--urls` when both are set) |
 | `Basil:Server:Ports:Irc` | `Basil:Server:Irc:Port` |
-| `Basil:Server:LanAdvertise` (default `true`) | `Basil:Server:Multicast:Enabled` (default `false`) |
-| (new) | `Basil:Server:Name`, `Basil:Server:Multicast:UseIPv4`, `UseIPv6`, `DnsTtl` |
+| `Basil:Server:LanAdvertise`, `Basil:Server:Multicast:*` | removed: Basil no longer advertises the domain over multicast DNS |
+| (new) | `Basil:Server:Name` |
 | `Basil:Storage:DataDirectory`, `Basil:Storage:Location` | removed: stored files are always in `Data` beside the executable |
 | `Basil:Database:ConnectionString` | `ConnectionStrings:Write` (and `ConnectionStrings:Read`, which falls back to `Write`) |
 | `Basil:Database:WriteConnections` | `Basil:Database:Write:PoolSize` |
@@ -122,7 +120,6 @@ environment variable or command-line argument, where `:` is `__` in variables); 
 | a 256 MB size roll | `Logging:File:Rolling:MaxSize` (default `100MB`; new: `Interval`) |
 | `Basil:Logging:QueueCapacity` | `Logging:QueueCapacity` |
 | `Basil:Telemetry:*` | `OpenTelemetry:*` |
-| (new) | `Basil:Updates:Channel` |
 
 Levels are now the .NET names (`Trace`, `Debug`, `Information`, `Warning`, `Error`, `Critical`, `None`).
 
@@ -135,9 +132,8 @@ Every client must resolve the domain and each served subdomain to the server:
 osu.<domain>   b.<domain>   a.<domain>   api.<domain>   assets.<domain>
 ```
 
-With `Basil:Server:Multicast:Enabled`, the server answers multicast DNS for exactly these names. Most operating systems only
-consult multicast DNS for `.local` names; other domains need a hosts-file entry or real DNS. The `ppy.sh` hosts are
-served for redirected clients but never advertised. Leave `Multicast:Enabled` at `false` to keep the advertisement off.
+Basil does not advertise these names: add them to the hosts file of each client (below) or to your DNS. The `ppy.sh`
+hosts are served for redirected clients but never advertised.
 
 For the hosts file, add one line per name on each client and on the server, for example:
 

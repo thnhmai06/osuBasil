@@ -27,7 +27,7 @@ public static class HostApplication
 		var mode = CliModes.Choose(args, Console.IsInputRedirected, Console.IsOutputRedirected,
 			CliModes.TermIsDumb(), CliModes.NoColorIsSet());
 		args = CliModes.Strip(args);
-		// Relative paths in the settings, such as the certificate of Kestrel, are relative to the executable.
+		// Relative paths in the settings are relative to the executable.
 		var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 		{
 			Args = args, ContentRootPath = AppContext.BaseDirectory
@@ -38,7 +38,7 @@ public static class HostApplication
 		builder.Services.AddOptions<UpdateOptions>().Bind(builder.Configuration.GetSection("Basil:Updates"));
 		builder.Services.AddSingleton<ConfigurationWatcher>();
 		builder.Services.AddHostedService(provider => provider.GetRequiredService<ConfigurationWatcher>());
-		builder.Services.AddHostedService<LanAdvertiser>();
+		builder.Services.AddHttpClient();
 		builder.Services.AddSingleton<UpdateChecker>();
 		builder.Services.AddHostedService(provider => provider.GetRequiredService<UpdateChecker>());
 		builder.Services.AddSingleton<IUpdateStatus>(provider => provider.GetRequiredService<UpdateChecker>());
@@ -70,12 +70,6 @@ public static class HostApplication
 		app.Services.GetRequiredService<RuntimeSampler>().LogsDropped = () => drops.Dropped;
 		app.UseRequestMetrics();
 		app.UseTrustedProxies();
-		if (KestrelSetup.UsesHttps(app.Configuration))
-			app.UseHsts();
-		if (KestrelSetup.UsesPublishedCertificate(app.Configuration))
-			app.Logger.LogWarning(
-				"HTTPS uses the certificate that ships with Basil, whose private key and password are public. " +
-				"Replace it with your own certificate before exposing the server");
 		app.UseRestImages();
 		app.UseStable();
 		app.UseRest();

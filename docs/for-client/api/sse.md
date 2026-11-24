@@ -85,8 +85,7 @@ event: server
 data: {"state":"shuttingDown"}
 ```
 
-`state` is `restarting` when the server comes back. There is nothing to resume; reconnect after the wait in `retry` or
-after the server is back.
+There is nothing to resume; reconnect after the wait in `retry` or after the server is back.
 
 ## What is not streamed
 

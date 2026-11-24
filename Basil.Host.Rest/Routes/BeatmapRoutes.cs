@@ -1,3 +1,4 @@
+using Basil.Host.Shared.Http;
 using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Persistence;
@@ -96,7 +97,7 @@ internal static class BeatmapRoutes
 			? known
 			: OpaqueType;
 		context.Response.Headers.XContentTypeOptions = "nosniff";
-		return Results.Stream(file.Content, contentType, enableRangeProcessing: true);
+		return StoredFile.Send(context, file.Content, contentType, enableRangeProcessing: true);
 	}
 
 	private static IResult NoSniff(HttpContext context, IResult result)
@@ -194,7 +195,7 @@ internal static class BeatmapRoutes
 			context.RequestAborted);
 		return archive is null
 			? Api.NotFound("No such file.")
-			: NoSniff(context, Results.Stream(archive, "application/x-osu-beatmap-archive", $"{id}.osz"));
+			: NoSniff(context, StoredFile.Send(context, archive, "application/x-osu-beatmap-archive", $"{id}.osz"));
 	}
 
 	private static async Task<IResult> RedirectToLowestAsync(HttpContext context, int id, string name,

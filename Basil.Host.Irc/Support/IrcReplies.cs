@@ -38,11 +38,7 @@ public static class IrcReplies
 
 	public const string ShuttingDownNotice = "Server is shutting down";
 
-	public const string RestartingNotice = "Server is restarting";
-
 	public const string ShuttingDown = "Server shutting down";
-
-	public const string Restarting = "Server restarting";
 
 	public const string NoManagement = "Channels are managed through the API or BasilBot, not through IRC";
 

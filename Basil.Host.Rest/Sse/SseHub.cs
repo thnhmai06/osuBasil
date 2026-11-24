@@ -1,6 +1,5 @@
 using Basil.Application.Sessions.Registry;
 using System.Collections.Concurrent;
-using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
@@ -27,19 +26,16 @@ public sealed class SseStream
 	private int _lag;
 	private int _released;
 
-	internal SseStream(string key, ApiSession? connection, string addressKey, string? userKey)
+	internal SseStream(string key, ApiSession? connection, string? userKey)
 	{
 		Key = key;
 		Session = connection;
-		AddressKey = addressKey;
 		UserKey = userKey;
 	}
 
 	public string Key { get; }
 
 	public ApiSession? Session { get; }
-
-	internal string AddressKey { get; }
 
 	internal string? UserKey { get; }
 
@@ -93,7 +89,7 @@ public sealed class SseHub(TimeProvider clock, SessionRegistry registry, ISender
 
 	public Task StopAsync(CancellationToken ct)
 	{
-		Announce(false);
+		Announce();
 		return Task.CompletedTask;
 	}
 
@@ -102,13 +98,12 @@ public sealed class SseHub(TimeProvider clock, SessionRegistry registry, ISender
 		_stopping = true;
 	}
 
-	public void Announce(bool restarting)
+	public void Announce()
 	{
 		_stopping = true;
 		_timer?.Dispose();
 		Root[] roots = [.. _roots.Values];
-		var state = restarting ? "restarting" : "shuttingDown";
-		var final = Frame("server", null, Encoding.UTF8.GetBytes($"{{\"state\":\"{state}\"}}"));
+		var final = Frame("server", null, Encoding.UTF8.GetBytes("{\"state\":\"shuttingDown\"}"));
 		foreach (var root in roots)
 		foreach (var stream in root.Snapshot())
 		{
@@ -138,25 +133,17 @@ public sealed class SseHub(TimeProvider clock, SessionRegistry registry, ISender
 	}
 
 	public async Task<(SseStream? Stream, byte[]? Snapshot, IResult? Refusal)> OpenAsync(string key,
-		ApiSession? connection, IPAddress ip, Func<CancellationToken, Task<(object Data, string? Id)>> snapshot,
+		ApiSession? connection, Func<CancellationToken, Task<(object Data, string? Id)>> snapshot,
 		CancellationToken ct, Func<CancellationToken, Task<SsePoll>>? poll = null)
 	{
 		if (_stopping) return (null, null, ShuttingDown());
 
 		var current = await sender.Send(new ReadSettings(), ct);
 		var limit = current.RateLimits.Connections.PerIp;
-		var addressKey = "ip:" + ip;
 		var userKey = connection is null ? null : "user:" + connection.Record.Id;
-		if (!TryCount(addressKey, limit)) return (null, null, TooManyStreams());
+		if (userKey is not null && !TryCount(userKey, limit)) return (null, null, TooManyStreams());
 
-		// A signed-in caller also has a ceiling of its own, the same as one address has.
-		if (userKey is not null && !TryCount(userKey, limit))
-		{
-			Uncount(addressKey);
-			return (null, null, TooManyStreams());
-		}
-
-		var stream = new SseStream(key, connection, addressKey, userKey);
+		var stream = new SseStream(key, connection, userKey);
 		Root root;
 		do
 		{
@@ -184,7 +171,6 @@ public sealed class SseHub(TimeProvider clock, SessionRegistry registry, ISender
 		if (_roots.TryGetValue(stream.Key, out var root) && root.Remove(stream) && root.TryRetire())
 			_roots.TryRemove(new KeyValuePair<string, Root>(stream.Key, root));
 
-		Uncount(stream.AddressKey);
 		if (stream.UserKey is not null) Uncount(stream.UserKey);
 	}
 

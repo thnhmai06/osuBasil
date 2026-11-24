@@ -4,10 +4,20 @@ Basil publishes its container image to Docker Hub: [thanhmai06/osubasil](https:/
 
 Each release is published with a version tag.
 
-The image contains the Basil application, .NET runtime, and `ffmpeg`. A Docker deployment therefore does not require a
-separate .NET installation, a source checkout, or a manual `ffmpeg` installation on the host. It does not contain the
-database: Basil keeps its records in PostgreSQL, which the Compose file runs as a second container and which you
-provide yourself when you run the image directly.
+The image contains the Basil application, .NET runtime, and `ffmpeg`. It does not contain the database (Basil keeps its
+records in PostgreSQL) or the web front: Basil only speaks plain HTTP and plain IRC, on ports that only the Compose
+network reaches. The Compose file runs three services: `nginx`, which ends TLS and is the only one that publishes ports,
+`basil`, and `postgres`.
+
+```text
+client ──TLS──► nginx (80, 443, 6697) ──HTTP :8080 / IRC :6667 + PROXY header──► basil ──► postgres
+                  │                                                              │
+                  └── reads Data/ (read-only) and serves stored files ◄─── names the file (X-Accel-Redirect)
+```
+
+nginx holds the per-address protection (request and connection rates, body sizes, timeouts), the certificate and the
+delivery of stored files; Basil trusts the client address only from the nginx container. The nginx configuration is in
+[`docker/nginx/`](../../docker/nginx/).
 
 Docker Compose configuration is provided in the repository's root [`docker-compose.yml`](../../docker-compose.yml).
 
@@ -17,23 +27,20 @@ Use Docker Compose when the Basil repository is available on the deployment mach
 
 ### 1. Configure Basil
 
-Before the first run, edit:
+Before the first run:
 
-```text
-Basil/Configurations/appsettings.json
-```
+1. Copy [`.env.example`](../../.env.example) to `.env` and set `POSTGRES_PASSWORD`. Compose builds both database
+   connection strings from it (`ConnectionStrings__Write` and `ConnectionStrings__Read`); no password is kept in
+   `appsettings.json`, and `.env` is never committed.
+2. Edit `Basil/Configurations/appsettings.json` for the deployment, above all `Basil:Server:Domain`. The default
+   certificate of nginx covers `basil.local` and its subdomains; for another domain, mount your own certificate (see
+   [`https.md`](https.md)).
+3. Give the `basil` container's user (`app`, id `1654`) the data directories:
+   `mkdir -p docker-data/{Data,Logs,Templates} && chown -R 1654:1654 docker-data/Data docker-data/Logs docker-data/Templates`.
 
-Configure the settings required by the deployment, especially:
+See [`configuration.md`](configuration.md) for the complete configuration reference and [`https.md`](https.md) for TLS.
 
-* `Basil:Server:Domain`
-* `Kestrel:Certificates:Default:Path`
-* `Kestrel:Certificates:Default:Password`
-* `ConnectionStrings:Write` (and `Read`)
-
-See [`configuration.md`](configuration.md) for the complete configuration reference and [`https.md`](https.md) for TLS
-requirements.
-
-The Compose setup bind-mounts this file into the container as read-only:
+The Compose setup bind-mounts the settings file into the container as read-only:
 
 ```text
 Basil/Configurations/appsettings.json
@@ -41,13 +48,8 @@ Basil/Configurations/appsettings.json
         └──► /app/Configurations/appsettings.json
 ```
 
-The image already holds the bundled development TLS certificate (`/app/Configurations/basil.local.pfx`), so the default
-configuration works as it is for a LAN. For a real certificate, mount it as a file and point
-`Kestrel:Certificates:Default:Path` at it.
-
-The database password appears twice: `POSTGRES_PASSWORD` of the `postgres` service and the connection strings in the
-`command` of the `basil` service (a command-line setting wins over `appsettings.json`, and so does an environment
-variable such as `ConnectionStrings__Write`). Change both before the first run.
+The `basil` container has `tty` and `stdin_open` on, so `docker attach` shows the console dashboard; detach with
+`Ctrl+P` then `Ctrl+Q`.
 
 ### 2. Start Basil
 
@@ -100,68 +102,19 @@ docker compose down
 
 `docker compose down` does not remove the `docker-data/` directory, so persistent data remains on the host.
 
-The container receives `SIGTERM` when it stops, which starts the graceful shutdown. The exit code `75` that the
-`restart` command uses asks the container runtime to start the server again, and the Compose file's
-`restart: unless-stopped` does so; see [`console.md`](console.md).
+The container receives `SIGTERM` when it stops, which starts the graceful shutdown. Basil has no restart command: the
+Compose file's `restart: on-failure` restarts a container that crashed, and an operator restarts a deployment with
+`docker compose restart basil`. A setting marked "applies after the server restarts" needs that restart.
 
 ---
 
-## Using the Docker image directly
+## Running the image without Compose
 
-A machine that only runs Basil does not need a source checkout. Pull the release image directly from Docker Hub.
-
-Pull a specific version:
-
-```bash
-docker pull thanhmai06/osubasil:<version>
-```
-
-You need a reachable PostgreSQL database and a `Configurations/` directory on the host. Extract the image's copy of
-`Configurations/` once, then edit its `appsettings.json` (domain, certificate, and the database connection strings):
-
-```bash
-container=$(docker create thanhmai06/osubasil:<version>)
-docker cp "$container:/app/Configurations" ./Configurations
-docker rm "$container"
-```
-
-```text
-./
-├── Configurations/
-│   ├── appsettings.json
-│   ├── appsettings.schema.json
-│   ├── basil.local.pfx
-│   └── Templates/
-└── docker-data/
-    ├── Data/
-    └── Logs/
-```
-
-Run the container:
-
-```bash
-docker run -d --name basil -p 443:443 -p 6667:6667 \
-  -v "$PWD/Configurations:/app/Configurations" \
-  -v "$PWD/docker-data/Data:/app/Data" \
-  -v "$PWD/docker-data/Logs:/app/Logs" \
-  thanhmai06/osubasil:<version>
-```
-
-The published image is a `linux-x64` build. The container expects the application files and persistent directories in
-the same layout as the normal executable deployment:
-
-```text
-/app/
-├── Basil
-├── Configurations/
-├── Data/
-└── Logs/
-```
-
-Mount `Configurations/` and `Data/` from the host so that the configuration, the TLS certificate, BasilBot's reply
-template and the stored files survive container replacement. Mount the whole `Configurations/` directory only after
-extracting the image's copy as shown above: an empty mount would hide the settings and the certificate built into the
-image.
+The image alone is not a complete deployment: it needs a PostgreSQL database, an nginx in front of it (HTTP on
+`basil:8080`, IRC on `basil:6667` with the PROXY protocol, as in [`docker/nginx/nginx.conf`](../../docker/nginx/nginx.conf))
+and the environment variables `ConnectionStrings__Write`, `ConnectionStrings__Read`, `Basil__Server__TrustedProxies__0`
+(the address or range nginx connects from) and, for nginx to serve the stored files, `Basil__Server__Files__AccelPrefix`.
+Follow the Compose file as the reference for all of these.
 
 ---
 
@@ -171,41 +124,14 @@ image.
 
 To update a Compose deployment:
 
-1. Stop Basil.
-2. Update the Basil image or repository checkout.
-3. Start the new version.
-4. Check the startup logs.
-5. Verify the server is responding.
-
-For a repository-based deployment:
-
 ```bash
 docker compose down
 docker compose up --build -d
 docker compose logs -f
 ```
 
-Keep the existing `docker-data/` directory.
-
-### Direct Docker image
-
-To update a manually managed container:
-
-```bash
-docker stop basil
-docker rm basil
-
-docker pull thanhmai06/osubasil:<new-version>
-
-docker run -d --name basil -p 443:443 -p 6667:6667 \
-  -v "$PWD/Configurations:/app/Configurations" \
-  -v "$PWD/docker-data/Data:/app/Data" \
-  -v "$PWD/docker-data/Logs:/app/Logs" \
-  thanhmai06/osubasil:<new-version>
-```
-
-The existing `Configurations/` and `docker-data/` are reused. Compare the new image's `Configurations/appsettings.json`
-(`docker cp` as above) with yours when a release adds settings.
+Keep the existing `docker-data/` directory. The server only reports in its logs and dashboard when a newer release
+exists; it never updates itself.
 
 Basil applies database migrations automatically when the new version starts. Take a `pg_dump` backup before the
 upgrade: migrations cannot be rolled back, so the backup is the only way back to the previous schema.
@@ -248,35 +174,8 @@ See [`configuration.md`](configuration.md) for the complete `Data/` directory re
 
 ## TLS certificates
 
-Docker does not change Basil's TLS requirements.
-
-If Basil terminates HTTPS itself, the container must have access to the configured certificate file specified by:
-
-```text
-Kestrel:Certificates:Default:Path
-```
-
-and its corresponding:
-
-```text
-Kestrel:Certificates:Default:Password
-```
-
-The certificate file must therefore be accessible from inside the container, normally through a bind mount.
-
-For example:
-
-```bash
--v "$PWD/certs:/certs:ro"
-```
-
-with:
-
-```text
-Kestrel:Certificates:Default:Path=/certs/basil.pfx
-```
-
-See [`https.md`](https.md) for certificate requirements and the bundled development certificate.
+Basil holds no certificate. nginx ends TLS for HTTPS and for IRC (port `6697`) with the files under
+`docker/nginx/certs/`; see [`https.md`](https.md) for how to mount your own.
 
 ---
 
@@ -289,7 +188,7 @@ The following remain the same as a normal executable deployment:
 * Basil domain and subdomains
 * DNS or hosts-file configuration
 * TLS requirements
-* HTTPS port
+* the HTTPS port (nginx publishes it)
 * firewall configuration
 * account creation
 * osu! client configuration

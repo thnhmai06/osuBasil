@@ -5,6 +5,10 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App"/>
+	</ItemGroup>
+
+	<ItemGroup>
 		<ProjectReference Include="..\Basil.Application.Shared\Basil.Application.Shared.csproj"/>
 		<ProjectReference Include="..\Basil.Gateway\Basil.Gateway.csproj"/>
 		<ProjectReference Include="..\Basil.Application.Beatmaps\Basil.Application.Beatmaps.csproj"/>

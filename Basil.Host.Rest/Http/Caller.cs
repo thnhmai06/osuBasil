@@ -3,6 +3,7 @@ using System.Net;
 using Basil.Application.Sessions.Objects;
 using Basil.Gateway.Admission;
 using Basil.Gateway.Limits;
+using Basil.Host.Shared.Http;
 
 namespace Basil.Host.Rest.Http;
 
@@ -24,17 +25,7 @@ public static class Caller
 
 		public IPAddress Ip()
 		{
-			var headers = context.Request.Headers;
-			foreach (var candidate in new[]
-			         {
-				         headers["CF-Connecting-IP"].ToString(),
-				         headers["X-Forwarded-For"].ToString().Split(',')[0].Trim(),
-				         headers["X-Real-IP"].ToString()
-			         })
-				if (IPAddress.TryParse(candidate, out var address))
-					return address;
-
-			return context.Connection.RemoteIpAddress ?? IPAddress.Loopback;
+			return ClientAddress.Resolve(context);
 		}
 
 		public async Task<bool> AuthenticateAsync(SessionRegistry registry)

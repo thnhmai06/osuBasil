@@ -1,3 +1,4 @@
+using Basil.Host.Shared.Http;
 using Basil.Application.Sessions.Persistence;
 using Basil.Application.Sessions.Registry;
 using Basil.Domain.Users;
@@ -240,7 +241,7 @@ internal static class OsuWebRoutes
 		    await sender.Send(new OpenReplayFrames(id), ct) is not { } stream)
 			return Results.NotFound();
 
-		return Results.File(stream, "application/x-osu-replay");
+		return StoredFile.Send(context, stream, "application/x-osu-replay");
 	}
 
 	private static async Task<IResult> ScreenshotAsync(HttpContext context, WebAuthentication auth, ISender sender,
@@ -382,17 +383,18 @@ internal static class OsuWebRoutes
 		var withVideo = !setId.EndsWith('n');
 		if (!int.TryParse(setId.TrimEnd('n'), out var id)) return Results.NotFound();
 		if (await sender.Send(new OpenBeatmapsetArchive(player, id, withVideo), ct) is { } archive)
-			return Results.File(archive, "application/x-osu-beatmap-archive", $"{id}.osz",
+			return StoredFile.Send(context, archive, "application/x-osu-beatmap-archive", $"{id}.osz",
 				enableRangeProcessing: true);
 		return Results.NotFound();
 	}
 
-	private static async Task<IResult> GetBeatmapFileAsync(string filename, ISender sender, CancellationToken ct)
+	private static async Task<IResult> GetBeatmapFileAsync(HttpContext context, string filename, ISender sender,
+		CancellationToken ct)
 	{
 		if (await sender.Send(new FindBeatmapByFileName(filename), ct) is not { } map ||
 		    await sender.Send(new OpenBeatmapFile(null, map.Id, BeatmapsetFileType.Version), ct) is not { } file)
 			return Results.NotFound();
-		return Results.Stream(file.Content, "application/x-osu-beatmap");
+		return StoredFile.Send(context, file.Content, "application/x-osu-beatmap");
 	}
 
 	private static async Task<IResult> GetDifficultyRatingAsync(HttpContext context, ISender sender,
@@ -495,8 +497,7 @@ internal static class OsuWebRoutes
 			return Results.Json(new { form_error = new { user = new { username = new[] { failure.ToString() } } } },
 				statusCode: 400);
 		if (checkOnly) return Text("ok");
-		if (!limiter.TryAcquire($"register:{ip}", rules.PerIp.Count, rules.PerIp.Window) ||
-		    !limiter.TryAcquire("register:server", rules.PerServer.Count, rules.PerServer.Window))
+		if (!limiter.TryAcquire("register:server", rules.PerServer.Count, rules.PerServer.Window))
 			return Results.Json(
 				new { form_error = new { user = new { username = new[] { "Too many registrations." } } } },
 				statusCode: 429);

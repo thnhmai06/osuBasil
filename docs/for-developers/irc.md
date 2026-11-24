@@ -29,12 +29,11 @@ specifications that are listed below. Where this page and a specification differ
 
 ### Endpoint
 
-`irc.<domain>:6667`, plain TCP, **no TLS**, so that existing IRC software works unchanged. There is no IRCv3 `sts` and
-no SASL `EXTERNAL`. The port is `Basil:Server:Irc:Port`.
-
-Because the connection is not encrypted, **the account password crosses the network in clear text on every
-connection**. Whoever captures it can sign in as the account until its password is changed, so prefer connecting from
-a trusted network or through a tunnel. [`https.md`](../for-technicians/https.md) explains why HTTPS and IRC differ.
+`irc.<domain>:6697`, TLS only. nginx ends TLS and hands Basil plain TCP on `Basil:Server:Irc:Port` (internal, default
+`6667`, never published) behind a PROXY protocol v1 header that carries the real client address. Basil closes, without
+a reply, every connection whose first bytes are not a valid header from a trusted proxy (`Basil:Server:TrustedProxies`)
+within 5 seconds, so there is no plaintext path. Tools that can only speak plaintext IRC cannot connect. There is no
+IRCv3 `sts` and no SASL `EXTERNAL`. [`https.md`](../for-technicians/https.md) covers the certificate.
 
 ### Identity
 
@@ -198,9 +197,8 @@ receives its own `JOIN`, the topic and `NAMES`.
 
 ### Shutdown
 
-On shutdown or restart the server refuses new IRC connections, sends every client a `NOTICE` ("Server is shutting
-down" or "Server is restarting"), then `ERROR :Closing Link: <domain> (Server shutting down)` (or `restarting`) and
-closes the socket.
+On shutdown the server refuses new IRC connections, sends every client a `NOTICE` ("Server is shutting down"), then
+`ERROR :Closing Link: <domain> (Server shutting down)` and closes the socket.
 
 ## Design / Implementation
 
@@ -247,4 +245,4 @@ closes the socket.
 
 * [`multiplayer.md`](multiplayer.md): room authority, seating and the empty-room timer
 * [`../for-client/irc-client.md`](../for-client/irc-client.md): how a user connects an IRC client
-* [`../for-technicians/https.md`](../for-technicians/https.md): why IRC does not use HTTPS/TLS
+* [`../for-technicians/https.md`](../for-technicians/https.md): how TLS is ended for HTTP and IRC

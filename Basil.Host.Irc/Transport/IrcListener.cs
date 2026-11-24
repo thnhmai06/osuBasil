@@ -13,6 +13,8 @@ using Basil.Gateway.Limits;
 using Basil.Host.Irc.Clients;
 using Basil.Host.Irc.Commands;
 using Basil.Host.Irc.Support;
+using Basil.Host.Shared.Http;
+using Basil.Protocol.Irc;
 using Basil.Protocol.Irc.Models;
 using Mediator;
 using Microsoft.Extensions.Hosting;
@@ -33,6 +35,9 @@ internal sealed class IrcListener(
 {
 	private static readonly TimeSpan RegistrationDeadline = TimeSpan.FromSeconds(60);
 	private static readonly TimeSpan KeepAlive = TimeSpan.FromMinutes(2);
+	private static readonly TimeSpan ProxyHeaderDeadline = TimeSpan.FromSeconds(5);
+
+	private readonly TrustedProxyList _trusted = new(options.Value.TrustedProxies);
 
 	private readonly ConcurrentDictionary<IPAddress, int> _perAddress = new();
 	private readonly ConcurrentDictionary<IrcSocket, Task> _sessions = new();
@@ -73,21 +78,66 @@ internal sealed class IrcListener(
 				return;
 			}
 
-			var address = ((IPEndPoint)tcp.Client.RemoteEndPoint!).Address;
+			_ = AdmitAsync(tcp, stoppingToken);
+		}
+	}
+
+	// A connection is served only when a trusted proxy opens it with a valid PROXY header; any other is closed unanswered.
+	private async Task AdmitAsync(TcpClient tcp, CancellationToken stoppingToken)
+	{
+		try
+		{
+			var peer = ((IPEndPoint)tcp.Client.RemoteEndPoint!).Address;
+			var address = _trusted.Contains(peer) ? await ReadProxyHeaderAsync(tcp, stoppingToken) : null;
+			if (address is null)
+			{
+				tcp.Dispose();
+				return;
+			}
+
 			var session = new IrcSocket(tcp, address.IsIPv4MappedToIPv6 ? address.MapToIPv4() : address,
 				options.Value, clock);
 			_sessions[session] = RunAsync(session, tcp, stoppingToken);
 		}
+		catch (Exception ex) when (ex is IOException or SocketException or ObjectDisposedException
+			                           or OperationCanceledException)
+		{
+			tcp.Dispose();
+		}
 	}
 
-	public void Announce(bool restarting)
+	private static async Task<IPAddress?> ReadProxyHeaderAsync(TcpClient tcp, CancellationToken ct)
+	{
+		using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+		deadline.CancelAfter(ProxyHeaderDeadline);
+		var stream = tcp.GetStream();
+		var header = new byte[ProxyProtocol.MaxLength];
+		var length = 0;
+		try
+		{
+			// One byte at a time, so that nothing after the header line is consumed.
+			while (length < header.Length && !ProxyProtocol.IsComplete(header.AsSpan(0, length)))
+			{
+				if (await stream.ReadAsync(header.AsMemory(length, 1), deadline.Token) == 0) return null;
+
+				length++;
+			}
+		}
+		catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+		{
+			return null;
+		}
+
+		return ProxyProtocol.TryParse(header.AsSpan(0, length), out var source) ? source : null;
+	}
+
+	public void Announce()
 	{
 		state.AcceptingLogins = false;
 		foreach (var (session, _) in _sessions)
 		{
-			session.Send(new IrcMessage("NOTICE", session.ServerName, session.Nick,
-				restarting ? IrcReplies.RestartingNotice : IrcReplies.ShuttingDownNotice));
-			session.Close(restarting ? IrcReplies.Restarting : IrcReplies.ShuttingDown);
+			session.Send(new IrcMessage("NOTICE", session.ServerName, session.Nick, IrcReplies.ShuttingDownNotice));
+			session.Close(IrcReplies.ShuttingDown);
 		}
 	}
 
@@ -95,7 +145,7 @@ internal sealed class IrcListener(
 	{
 		state.AcceptingLogins = false;
 		_listener?.Stop();
-		Announce(false);
+		Announce();
 		await Task.WhenAny(Task.WhenAll(_sessions.Select(pair => pair.Value)),
 			Task.Delay(TimeSpan.FromSeconds(5), CancellationToken.None));
 		await base.StopAsync(ct);

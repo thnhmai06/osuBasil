@@ -1,3 +1,4 @@
+using Basil.Host.Shared.Http;
 using Basil.Application.Sessions.Messages;
 using Basil.Application.Sessions.Registry;
 using Basil.Application.Users;

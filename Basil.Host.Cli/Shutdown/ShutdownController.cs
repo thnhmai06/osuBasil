@@ -10,8 +10,6 @@ public static class ProcessExitCodes
 	public const int Normal = 0;
 
 	public const int Error = 1;
-
-	public const int Restart = 75;
 }
 
 public sealed class ShutdownController(
@@ -23,13 +21,10 @@ public sealed class ShutdownController(
 {
 	private readonly Action<int> _exit = exit ?? Environment.Exit;
 
-	public bool RestartRequested { get; private set; }
+	public int ExitCode => ProcessExitCodes.Normal;
 
-	public int ExitCode => RestartRequested ? ProcessExitCodes.Restart : ProcessExitCodes.Normal;
-
-	public void RequestShutdown(bool restart)
+	public void RequestShutdown()
 	{
-		RestartRequested |= restart;
 		Apply(machine.Terminate());
 	}
 

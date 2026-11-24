@@ -1,6 +1,5 @@
 using Basil.Application.Multiplayer.Registry;
 using Basil.Infrastructure.Shared.Events;
-using Basil.Host.Cli.Shutdown;
 using Basil.Host.Irc.Clients;
 using Basil.Host.Irc.Transport;
 using Basil.Host.Rest.Sse;
@@ -30,7 +29,6 @@ public sealed class ShutdownTimings
 
 internal sealed class GracefulShutdown(
 	ShutdownSequence sequence,
-	ShutdownController control,
 	StableShutdown stable,
 	IrcListener irc,
 	IrcState ircState,
@@ -47,9 +45,8 @@ internal sealed class GracefulShutdown(
 
 	public async Task StoppingAsync(CancellationToken ct)
 	{
-		var restarting = control.RestartRequested;
-		logger.LogInformation("{Msg}", restarting ? "Restarting the server" : "Shutting down the server");
-		Results = await sequence.RunAsync(Steps(restarting), ct);
+		logger.LogInformation("Shutting down the server");
+		Results = await sequence.RunAsync(Steps(), ct);
 	}
 
 	public Task StartingAsync(CancellationToken ct)
@@ -77,7 +74,7 @@ internal sealed class GracefulShutdown(
 		return Task.CompletedTask;
 	}
 
-	internal IReadOnlyList<ShutdownStep> Steps(bool restarting)
+	internal IReadOnlyList<ShutdownStep> Steps()
 	{
 		return
 		[
@@ -92,8 +89,8 @@ internal sealed class GracefulShutdown(
 				async token => await stable.AnnounceAsync(TimeSpan.Zero, _timings.OsuPollWindow, token)),
 			new ShutdownStep("tell the IRC and HTTP clients", _timings.AnnouncePush, _ =>
 			{
-				irc.Announce(restarting);
-				sse.Announce(restarting);
+				irc.Announce();
+				sse.Announce();
 				return Task.CompletedTask;
 			}),
 			new ShutdownStep("close the rooms", _timings.CloseRooms, _ =>

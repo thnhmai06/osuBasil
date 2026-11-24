@@ -433,7 +433,7 @@ Every project is a folder at the repository root named after its project: `Basil
 `tests/Hosts/`). The repository has no test projects yet, so these are the places new tests belong.
 
 The project that defines an options type binds it (`Add<Module>...(IConfiguration)`) **(target)**; the composition root
-only chooses what to run (Kestrel, ports, TLS, the database provider, logging, lifecycle). Until the migration reaches a
+only chooses what to run (Kestrel, ports, the database provider, logging, lifecycle). Until the migration reaches a
 project, `Basil` still binds its configuration and hands it over as `IOptions<T>`. Application reads no configuration.
 
 `Application.Shared` owns `IActor`, `ScopedPrivileges`, shared query values and event contracts/queue; it depends
@@ -466,10 +466,10 @@ the three stores, Objects) is direct dependency injection; a call between peers 
 
 ### Hosts, Gateway and Server
 
-The transports are `Basil.Host.Stable` (osu! packets, polling and legacy web endpoints), `Basil.Host.Irc` (plain TCP),
+The transports are `Basil.Host.Stable` (osu! packets, polling and legacy web endpoints), `Basil.Host.Irc` (plain TCP behind nginx, which ends TLS; every connection must open with a PROXY protocol header from a trusted proxy),
 `Basil.Host.Rest` (`api.`, images on `a.`/`assets.`, SSE, diagnostics) and `Basil.Host.Cli` (terminal dashboard and
 command box). The composition root is the project `Basil`: the one
-`AddMediator` call, logging, shutdown/restart, host and subdomain routing, and the choice of Kestrel, ports, TLS and the
+`AddMediator` call, logging, shutdown, host and subdomain routing, and the choice of Kestrel, ports and the
 database provider. It holds no business rule, no recovery logic and no admission policy. It is "the way to run" the
 system; no host or gateway knows it exists.
 

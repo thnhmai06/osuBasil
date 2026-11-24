@@ -151,7 +151,7 @@ Both use the same parser, print the same output and return the same exit code.
 * The protocol is one request and one streamed reply: the client sends the argument list as one UTF-8 line (a JSON array
   of strings); the server runs it as the operator and streams the plain text output framed per line: every output line
   is sent as `o <text>` and the reply ends with `x <exit code>`, so output can never be mistaken for the exit code.
-  The socket has no interactive questions: the confirmation of `shutdown` and `restart` is asked in the calling terminal
+  The socket has no interactive questions: the confirmation of `shutdown` is asked in the calling terminal
   before the request is sent.
 * The command runs on the machine of the server only. Calling from another machine or container is not supported; in
   Docker use `docker exec <container> Basil <command>`.
@@ -185,15 +185,9 @@ The refusal is printed as `error: <code>: <message>`, with the same camelCase co
 |------|----------------------------------------------------------------------|
 | 0    | the server shut down normally                                        |
 | 1    | the server stopped because of an error                               |
-| 75   | the server asks its manager to start it again (`restart`)            |
 
-The server is under a manager when the environment variable `INVOCATION_ID` (systemd) is set or
-`DOTNET_RUNNING_IN_CONTAINER` is `true`. Under a manager `restart` exits with 75 and does not start a second instance
-itself. Docker's restart policy
-`always` and `unless-stopped` start the container again after any exit code; `on-failure` only after a non-zero one, so
-75 restarts it and a normal shutdown (0) does not. Outside a manager, `restart` starts the same executable with the same
-arguments after the shutdown finishes; the new process retries to bind its ports for a few seconds, because the old one
-may still hold them.
+Basil has no restart command: in Docker the restart policy (`on-failure`) restarts a container that exited with an error,
+and `docker compose restart basil` restarts it on purpose.
 
 ## The mapping rule
 
@@ -317,7 +311,6 @@ HTTP diagnostics. Per-core CPU is shown on Linux only.
 | `help [<command>]`           | Lists the commands; with a command name shows its syntax, options and the API route it mirrors.        | yes |
 | `status`                     | Version, uptime, online connections by kind, rooms and rounds in progress.                             | no  |
 | `shutdown [--now]`           | Graceful shutdown. Without `--now` it asks for confirmation (in the calling terminal from a shell).    | no  |
-| `restart [--now]`            | Graceful shutdown that ends with the restart exit code. Asks for confirmation like `shutdown`.         | no  |
 | `theme ["<scheme>"]`         | Lists the colour schemes or changes the dashboard theme and saves it. Dashboard only. A name with spaces is written in quotes. | no  |
 
 ### users
@@ -451,7 +444,7 @@ There is no command that shows diagnostics; the dashboard shows them. There are 
 
 ## Shutdown and restart
 
-`shutdown` and `restart` have no HTTP route and no chat command. Both run the graceful shutdown of the server. Typed in
+`shutdown` has no HTTP route and no chat command. It runs the graceful shutdown of the server. Typed in
 the dashboard without `--now` they ask `y/N` in the command box. Given on the command line of a running server without
 `--now` the question is asked in the calling terminal before anything is sent; declining ends with code 4.
 

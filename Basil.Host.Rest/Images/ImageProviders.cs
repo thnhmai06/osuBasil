@@ -1,3 +1,4 @@
+using Basil.Host.Shared.Http;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Basil.Application.Beatmaps.Messages;
@@ -98,7 +99,8 @@ internal sealed partial class ImageServingMiddleware(RequestDelegate next)
 		context.Response.Headers.CacheControl = label == "a" ? "public,max-age=300" : "public,max-age=604800";
 		context.Response.Headers.XContentTypeOptions = "nosniff";
 		var tag = new EntityTagHeaderValue($"\"{image.LastModified.UtcTicks:x}-{image.Content.Length:x}\"");
-		return Results.File(image.Content, image.ContentType, lastModified: image.LastModified, entityTag: tag)
+		return StoredFile.Send(context, image.Content, image.ContentType, lastModified: image.LastModified,
+				entityTag: tag)
 			.ExecuteAsync(context);
 	}
 

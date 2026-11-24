@@ -201,8 +201,6 @@ public sealed record ServerSettings
 
 	public sealed record RegistrationLimitSettings
 	{
-		public Limit PerIp { get; init; } = new(1, TimeSpan.FromHours(24));
-
 		public Limit PerServer { get; init; } = new(100, TimeSpan.FromHours(1));
 	}
 
@@ -218,13 +216,6 @@ public sealed record ServerSettings
 	public sealed record RestLimitSettings
 	{
 		public Limit Mutations { get; init; } = new(60, TimeSpan.FromMinutes(1));
-
-		public AnonymousLimitSettings Anonymous { get; init; } = new();
-	}
-
-	public sealed record AnonymousLimitSettings
-	{
-		public Limit PerIp { get; init; } = new(120, TimeSpan.FromMinutes(1));
 	}
 
 	public sealed record UploadSettings

@@ -65,13 +65,7 @@ internal sealed class RestPipeline(RequestDelegate next)
 			return true;
 		}
 
-		if (authenticated ||
-		    limiter.TryAcquire($"rest-anonymous:{context.Ip()}", limits.Anonymous.PerIp.Count,
-			    limits.Anonymous.PerIp.Window))
-			return false;
-
-		await TooManyAsync(context, limits.Anonymous.PerIp.Window);
-		return true;
+		return false;
 	}
 
 	private static Task RefuseAsync(HttpContext context, Exception ex)

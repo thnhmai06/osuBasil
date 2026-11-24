@@ -1,14 +1,14 @@
 using Basil.Application.Rulesets.Services;
 using Basil.Host.Shared.Info;
+using System.Text.Json;
 using Microsoft.Extensions.Options;
-using Velopack;
-using Velopack.Sources;
 
 namespace Basil.Configuration;
 
 internal sealed class UpdateChecker(
 	IOptionsMonitor<UpdateOptions> options,
 	IRulesetUpdater rulesets,
+	IHttpClientFactory http,
 	ILogger<UpdateChecker> logger,
 	TimeProvider clock)
 	: BackgroundService, IUpdateStatus
@@ -101,31 +101,19 @@ internal sealed class UpdateChecker(
 	{
 		try
 		{
-			// A GitHub repository address is read as a list of releases; any other address is a plain feed folder.
-			IUpdateSource source = Uri.TryCreate(update.Source, UriKind.Absolute, out var address) &&
-			                       address.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase)
-				? new GithubSource(update.Source, null, false)
-				: new SimpleWebSource(update.Source);
-			var manager = new UpdateManager(source, update.Channel == UpdateOptions.StableChannel
-				? null
-				: new Velopack.UpdateOptions { ExplicitChannel = update.Channel });
-			if (!manager.IsInstalled)
-			{
-				logger.LogInformation("Skipped checking for updates because Basil was not installed by the updater");
-				Set(status => status with { Basil = UpdateState.Skipped, BasilVersion = null });
-				return;
-			}
-
 			using var timeout = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
 			timeout.CancelAfter(Timeout);
-			var found = await manager.CheckForUpdatesAsync().WaitAsync(timeout.Token);
+			var latest = await LatestReleaseAsync(update.Source, timeout.Token);
+			var available = Version.TryParse(latest.TrimStart('v'), out var tag) &&
+			                Version.TryParse(AppVersion.Current, out var current) &&
+			                Normalize(tag) > Normalize(current);
 			Set(status => status with
 			{
-				Basil = found is null ? UpdateState.UpToDate : UpdateState.Available,
-				BasilVersion = found?.TargetFullRelease.Version.ToString()
+				Basil = available ? UpdateState.Available : UpdateState.UpToDate,
+				BasilVersion = available ? latest.TrimStart('v') : null
 			});
-			if (found is null) logger.LogInformation("Basil is up to date");
-			else logger.LogWarning("A new version of Basil is available: {Version}", found.TargetFullRelease.Version);
+			if (available) logger.LogWarning("A new version of Basil is available: {Version}", latest);
+			else logger.LogInformation("Basil is up to date");
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException ||
 		                                  !stoppingToken.IsCancellationRequested)
@@ -133,5 +121,23 @@ internal sealed class UpdateChecker(
 			Set(status => status with { Basil = UpdateState.Failed, BasilVersion = null });
 			logger.LogWarning(exception, "Skipped checking for updates because the release feed could not be reached:");
 		}
+	}
+
+	private async Task<string> LatestReleaseAsync(string repository, CancellationToken ct)
+	{
+		var path = new Uri(repository).AbsolutePath.Trim('/');
+		using var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{path}/releases/latest");
+		request.Headers.UserAgent.ParseAdd("Basil-update-check");
+		request.Headers.Accept.ParseAdd("application/vnd.github+json");
+		using var response = await http.CreateClient().SendAsync(request, ct);
+		response.EnsureSuccessStatusCode();
+		using var body = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+		return body.RootElement.GetProperty("tag_name").GetString() ?? string.Empty;
+	}
+
+	// A four-part assembly version and a three-part release tag compare equal when they name the same release.
+	private static Version Normalize(Version version)
+	{
+		return new Version(version.Major, version.Minor, Math.Max(version.Build, 0));
 	}
 }

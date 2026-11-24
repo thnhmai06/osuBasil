@@ -1,3 +1,4 @@
+using Basil.Host.Shared.Http;
 using Basil.Application.Sessions.Objects;
 using Basil.Application.Sessions.Persistence;
 using Basil.Application.Sessions.Registry;

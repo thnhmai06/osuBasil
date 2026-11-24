@@ -42,7 +42,7 @@ internal static class SseRoutes
 		Func<CancellationToken, Task<SsePoll>>? poll = null)
 	{
 		var hub = context.RequestServices.GetRequiredService<SseHub>();
-		var (stream, first, refusal) = await hub.OpenAsync(key, context.ConnectionOrNull(), context.Ip(), snapshot,
+		var (stream, first, refusal) = await hub.OpenAsync(key, context.ConnectionOrNull(), snapshot,
 			context.RequestAborted, poll);
 		if (refusal is not null)
 		{

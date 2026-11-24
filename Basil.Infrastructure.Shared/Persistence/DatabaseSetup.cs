@@ -2,6 +2,9 @@ using Microsoft.Extensions.Configuration;
 
 namespace Basil.Infrastructure.Shared.Persistence;
 
+/// <summary>A required deployment value is missing; the message names the setting to provide.</summary>
+public sealed class MissingConfigurationException(string message) : Exception(message);
+
 public static class DatabaseSetup
 {
 	public static DatabaseOptions Read(IConfiguration configuration)
@@ -9,7 +12,8 @@ public static class DatabaseSetup
 		var settings = configuration.GetSection("Basil:Database").Get<DatabaseSettings>() ?? new DatabaseSettings();
 		var write = configuration.GetConnectionString("Write");
 		if (string.IsNullOrWhiteSpace(write))
-			throw new InvalidOperationException("ConnectionStrings:Write is not set.");
+			throw new MissingConfigurationException(
+				"The database is not configured: set the environment variable ConnectionStrings__Write to the Npgsql connection string.");
 
 		return new DatabaseOptions
 		{

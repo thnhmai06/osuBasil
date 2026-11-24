@@ -8,7 +8,7 @@ namespace Basil.Host.Cli.Commands;
 
 public interface IServerControl
 {
-	void RequestShutdown(bool restart);
+	void RequestShutdown();
 }
 
 public interface IThemeControl
@@ -48,19 +48,12 @@ internal static class MetaCommands
 			Pattern = "status", Summary = "Shows the version, the uptime, the connections online and the rooms.",
 			Run = StatusAsync
 		};
-		foreach (var restart in new[] { false, true })
+		yield return new CommandDef
 		{
-			var again = restart;
-			yield return new CommandDef
-			{
-				Pattern = again ? "restart" : "shutdown",
-				Summary = again
-					? "Shuts the server down gracefully and asks to be started again."
-					: "Shuts the server down gracefully.",
-				Options = [new OptionDef("now", "Do not ask for confirmation.", OptionKind.Bool)],
-				Run = call => ShutdownAsync(call, again)
-			};
-		}
+			Pattern = "shutdown", Summary = "Shuts the server down gracefully.",
+			Options = [new OptionDef("now", "Do not ask for confirmation.", OptionKind.Bool)],
+			Run = ShutdownAsync
+		};
 
 		yield return new CommandDef
 		{
@@ -137,23 +130,22 @@ internal static class MetaCommands
 		return Task.FromResult(ExitCodes.Success);
 	}
 
-	private static async Task<int> ShutdownAsync(CommandCall call, bool restart)
+	private static async Task<int> ShutdownAsync(CommandCall call)
 	{
-		var verb = restart ? "restart" : "shut down";
 		if (call.Bool("now") != true)
 		{
 			if (call.Session.Confirm is null)
-				throw CommandException.Invalid($"Confirmation is needed to {verb} the server; add --now.");
+				throw CommandException.Invalid("Confirmation is needed to shut down the server; add --now.");
 
-			if (!await call.Session.Confirm($"Really {verb} the server?", call.CancellationToken))
+			if (!await call.Session.Confirm("Really shut down the server?", call.CancellationToken))
 			{
 				call.Output.Line("Cancelled.");
 				return ExitCodes.Declined;
 			}
 		}
 
-		call.Get<IServerControl>().RequestShutdown(restart);
-		call.Output.Ok(restart ? "Restarting: the server is shutting down." : "The server is shutting down.");
+		call.Get<IServerControl>().RequestShutdown();
+		call.Output.Ok("The server is shutting down.");
 		return ExitCodes.Success;
 	}
 

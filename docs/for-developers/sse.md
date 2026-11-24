@@ -72,8 +72,8 @@ category.
 
 Each stream has a bounded queue of 8 ready-to-send chunks. A stream that falls more than 3 ticks behind is closed
 instead of slowing the bundle for everyone else; the client reconnects and gets a fresh snapshot. The number of open
-streams per user, or per IP for a public stream, is limited by `ServerSettings.RateLimits.Connections.PerIp`; beyond it
-the route answers `429` in the JSON envelope.
+streams per signed-in user is limited by `ServerSettings.RateLimits.Connections.PerIp`; beyond it the route answers
+`429` in the JSON envelope. The reverse proxy limits the connections per address.
 
 ## Errors before streaming
 
@@ -91,8 +91,7 @@ event: server
 data: {"state":"shuttingDown"}
 ```
 
-`state` is `restarting` when the server is coming back. The hub then ends the streams. The final event is not delayed to
-the next tick.
+The hub then ends the streams. The final event is not delayed to the next tick.
 
 ## Invariants
 

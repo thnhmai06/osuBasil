@@ -1,40 +1,35 @@
-using System.Net;
+using Basil.Host.Shared.Http;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Http;
 
 internal sealed class TrustedProxiesMiddleware(RequestDelegate next, IOptions<ServerOptions> options)
 {
-	private static readonly string[] ForwardingHeaders =
-	[
-		"CF-Connecting-IP",
-		"X-Forwarded-For",
-		"X-Real-IP",
-		"CF-IPCountry",
-		"X-Country-Code"
-	];
+	private static bool IsForwardingHeader(string name)
+	{
+		return name.StartsWith("CF-", StringComparison.OrdinalIgnoreCase) ||
+		       name.StartsWith("X-Forwarded-", StringComparison.OrdinalIgnoreCase) ||
+		       name.Equals("X-Real-IP", StringComparison.OrdinalIgnoreCase) ||
+		       name.Equals("X-Country-Code", StringComparison.OrdinalIgnoreCase);
+	}
 
-	private readonly IPNetwork[] _trusted = [.. options.Value.TrustedProxies.Select(ParseNetwork)];
+	private readonly TrustedProxyList _trusted = new(options.Value.TrustedProxies);
 
 	public Task InvokeAsync(HttpContext context)
 	{
-		// A dual-stack socket reports an IPv4 peer as an IPv4-mapped IPv6 address.
-		var remoteIp = context.Connection.RemoteIpAddress is { IsIPv4MappedToIPv6: true } mapped
-			? mapped.MapToIPv4()
-			: context.Connection.RemoteIpAddress;
-		if (remoteIp is null || !_trusted.Any(network => network.Contains(remoteIp)))
-			foreach (var header in ForwardingHeaders)
+		if (!_trusted.Contains(context.Connection.RemoteIpAddress))
+		{
+			foreach (var header in context.Request.Headers.Keys.Where(IsForwardingHeader).ToList())
 				context.Request.Headers.Remove(header);
+		}
+		else
+		{
+			// The proxy ends TLS, so the scheme of every absolute URL Basil builds is the one the client used.
+			var scheme = context.Request.Headers["X-Forwarded-Proto"].ToString();
+			if (scheme is "http" or "https") context.Request.Scheme = scheme;
+		}
 
 		return next(context);
-	}
-
-	private static IPNetwork ParseNetwork(string proxy)
-	{
-		if (proxy.Contains('/')) return IPNetwork.Parse(proxy);
-
-		var prefixLength = proxy.Contains(':') ? 128 : 32;
-		return IPNetwork.Parse($"{proxy}/{prefixLength}");
 	}
 }
 

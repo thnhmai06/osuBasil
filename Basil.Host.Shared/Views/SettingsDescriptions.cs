@@ -24,10 +24,6 @@ public static class SettingsDescriptions
 			"How long failed login attempts are counted over. Duration as [d.]hh:mm:ss. Default: 00:15:00 (15 minutes).",
 		["rateLimits.login.lockout"] =
 			"How long a source is refused after too many failed login attempts. Duration as [d.]hh:mm:ss. Default: 00:15:00 (15 minutes).",
-		["rateLimits.registration.perIp.count"] =
-			"How many accounts one IP address may register within the window. Whole number, at least 1. Default: 1.",
-		["rateLimits.registration.perIp.window"] =
-			"The window of the per-address registration limit. Duration as [d.]hh:mm:ss. Default: 1.00:00:00 (24 hours).",
 		["rateLimits.registration.perServer.count"] =
 			"How many accounts may be registered on the whole server within the window. Whole number, at least 1. Default: 100.",
 		["rateLimits.registration.perServer.window"] =
@@ -38,10 +34,6 @@ public static class SettingsDescriptions
 			"How many changes one user may make through the HTTP API within the window. Whole number, at least 1. Default: 60.",
 		["rateLimits.rest.mutations.window"] =
 			"The window of the HTTP API change limit. Duration as [d.]hh:mm:ss. Default: 00:01:00 (1 minute).",
-		["rateLimits.rest.anonymous.perIp.count"] =
-			"How many HTTP API requests without a token one IP address may make within the window. Whole number, at least 1. Default: 120.",
-		["rateLimits.rest.anonymous.perIp.window"] =
-			"The window of the limit on requests without a token. Duration as [d.]hh:mm:ss. Default: 00:01:00 (1 minute).",
 		["rateLimits.chat.count"] =
 			"How many chat messages one user may send within the window before it counts as flooding. Whole number, at least 1. Default: 10.",
 		["rateLimits.chat.window"] =

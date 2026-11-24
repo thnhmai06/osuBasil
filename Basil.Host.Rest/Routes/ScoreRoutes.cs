@@ -1,3 +1,4 @@
+using Basil.Host.Shared.Http;
 using Basil.Application.Scores.Messages;
 using Basil.Application.Scores.Objects;
 using Basil.Application.Shared.Paging;
@@ -66,6 +67,6 @@ internal static class ScoreRoutes
 		var stream = await sender.Send(new OpenReplay(id), context.RequestAborted);
 		return stream is null
 			? Api.NotFound("The score has no replay.")
-			: Results.Stream(stream, "application/octet-stream", $"{id}.osr");
+			: StoredFile.Send(context, stream, "application/octet-stream", $"{id}.osr");
 	}
 }

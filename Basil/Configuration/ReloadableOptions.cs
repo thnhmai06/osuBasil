@@ -49,11 +49,7 @@ public sealed class TelemetryOptions
 
 public sealed class UpdateOptions
 {
-	public const string StableChannel = "stable";
-
 	public bool CheckOnStartup { get; set; } = true;
 
 	public string Source { get; set; } = "https://github.com/thnhmai06/osuBasil";
-
-	public string Channel { get; set; } = StableChannel;
 }
