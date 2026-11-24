@@ -43,7 +43,7 @@ internal sealed class UpdateChecker(
 	public async Task CheckNowAsync(CancellationToken ct = default)
 	{
 		await CheckAppAsync(options.CurrentValue, ct);
-		await CheckRulesetsAsync(ct);
+		CheckRulesets();
 		lock (_gate)
 		{
 			_lastCheck = clock.GetUtcNow();
@@ -71,30 +71,18 @@ internal sealed class UpdateChecker(
 		await CheckNowAsync(stoppingToken);
 	}
 
-	private async Task CheckRulesetsAsync(CancellationToken stoppingToken)
+	private void CheckRulesets()
 	{
-		try
+		var stack = rulesets.Version();
+		var installed = stack.State == RulesetState.Installed;
+		Set(status => status with
 		{
-			using var timeout = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
-			timeout.CancelAfter(Timeout);
-			var check = await rulesets.CheckAsync(timeout.Token);
-			Set(status => status with
-			{
-				Rulesets = check.UpdateAvailable ? UpdateState.Available : UpdateState.UpToDate,
-				RulesetsVersion = check.UpdateAvailable ? check.Latest : null
-			});
-			if (check.UpdateAvailable)
-				logger.LogWarning(
-					"A new version of the osu! rulesets is available: {Version}. Run `ruleset update`, restart the server, then run `beatmapsets reload`",
-					check.Latest);
-			else logger.LogInformation("The osu! rulesets are up to date");
-		}
-		catch (Exception exception) when (exception is not OperationCanceledException ||
-		                                  !stoppingToken.IsCancellationRequested)
-		{
-			Set(status => status with { Rulesets = UpdateState.Failed, RulesetsVersion = null });
-			logger.LogWarning(exception, "Skipped checking for ruleset updates:");
-		}
+			Rulesets = installed ? UpdateState.UpToDate : UpdateState.Available,
+			RulesetsVersion = installed ? null : stack.Version
+		});
+		if (!installed)
+			logger.LogWarning("The osu! calculation stack {Version} is {State}. Run `ruleset update` to install it",
+				stack.Version, stack.State);
 	}
 
 	private async Task CheckAppAsync(UpdateOptions update, CancellationToken stoppingToken)

@@ -7,7 +7,12 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App"/>
+	</ItemGroup>
+
+	<ItemGroup>
 		<InternalsVisibleTo Include="Basil"/>
+		<InternalsVisibleTo Include="RulesetManifest"/>
 		<InternalsVisibleTo Include="Basil.Infrastructure.Rulesets.Tests"/>
 	</ItemGroup>
 
@@ -20,12 +25,13 @@
 
 	<ItemGroup>
 		<PackageReference Include="Mediator.Abstractions"/>
-		<PackageReference Include="ppy.osu.Game.Rulesets.Osu"/>
-		<PackageReference Include="ppy.osu.Game.Rulesets.Taiko"/>
-		<PackageReference Include="ppy.osu.Game.Rulesets.Catch"/>
-		<PackageReference Include="ppy.osu.Game.Rulesets.Mania"/>
-		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions"/>
-		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
-		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
+		<PackageReference Include="ppy.osu.Game.Rulesets.Osu" PrivateAssets="all"/>
+		<PackageReference Include="ppy.osu.Game.Rulesets.Taiko" PrivateAssets="all"/>
+		<PackageReference Include="ppy.osu.Game.Rulesets.Catch" PrivateAssets="all"/>
+		<PackageReference Include="ppy.osu.Game.Rulesets.Mania" PrivateAssets="all"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<EmbeddedResource Include="rulesets.manifest.json" LogicalName="rulesets.manifest.json"/>
 	</ItemGroup>
 </Project>

@@ -135,8 +135,10 @@ Basil calculates beatmap difficulty with osu!'s ruleset calculation libraries, i
 stored first, with no difficulty (`null`, "not calculated yet"); the import then asks the rulesets for every beatmap
 that has none and waits, for one deadline of `beatmaps.beatmapWait` for the whole set, for the answers. What arrived is
 stored, and the rest stays `null` until its late answer is stored. The osu! client gets zeros for a difficulty that is
-`null`. At start-up, and when a new ruleset version becomes active or the `reload` command runs, the beatmaps without
-a difficulty (or all of them) are asked for again.
+`null`. At start-up, and when the calculation stack is installed or the `reload` command runs, the beatmaps without
+a difficulty (or all of them) are asked for again. Without the stack (see [architecture.md](architecture.md)) the answer
+is nothing and the difficulty stays `null`; an import is refused with `rulesetsMissing`, and the storage scans leave
+everything as it is, so a waiting `.osz` is taken in by the scan that follows the installation.
 
 The difficulty attributes of a beatmap file under a mode and a set of difficulty-affecting mods are kept as files in
 `<Data>/Rulesets/Attributes`, one per combination: the first request for a combination calculates and writes it, later
@@ -217,7 +219,7 @@ Derived media must therefore be treated as disposable cache data, not as another
 * [`BeatmapsetPlanner.cs`](../../Basil.Infrastructure.Beatmaps/Logic/BeatmapsetPlanner.cs): decides what a changed archive means for the stored records
 * [`BeatmapsetStorageWatcher.cs`](../../Basil.Infrastructure.Beatmaps/Workers/BeatmapsetStorageWatcher.cs): startup scan and filesystem change detection
 * [`FileBeatmapsetStorage.cs`](../../Basil.Infrastructure.Beatmaps/Storage/FileBeatmapsetStorage.cs): the `Beatmapsets/` directory as storage
-* [`OsuBeatmapAnalyser.cs`](../../Basil.Infrastructure.Beatmaps/Adapters/OsuBeatmapAnalyser.cs): osu! ruleset difficulty calculations
+* [`OsuBeatmapAnalyser.cs`](../../Basil.Infrastructure.Rulesets/Adapters/OsuBeatmapAnalyser.cs): osu! ruleset difficulty calculations
 * [`BeatmapPreviewMaker.cs`](../../Basil.Infrastructure.Beatmaps/Adapters/BeatmapPreviewMaker.cs): audio previews with `ffmpeg`
 * [`BeatmapRoutes.cs`](../../Basil.Host.Rest/Routes/BeatmapRoutes.cs): beatmapset routes of the API host
 

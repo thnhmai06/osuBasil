@@ -172,6 +172,7 @@ Basil creates these beside the executable (in the container, under `/app`). Only
 | `Data/appsettings.json`, `appsettings.schema.json`, `tuisettings.json` | deployment configuration and the dashboard colours | **No**: a deleted shipped file is written again with its default content |
 | `Data/metadata.json` | the layout version of `Data/` | **No** |
 | `Data/Localizations/` | BasilBot's wording | Optional: the default wording returns |
+| `Data/Rulesets/<version>/` | the osu! calculation stack (installed with `ruleset update`, checked at every start) | Optional: install it again, or copy it from another install |
 | `Data/Replays/` | submitted replays | **No**, unless you mean to lose them |
 | `Data/Avatars/` | user avatars | **No**, unless you mean to lose them |
 | `Data/Beatmapsets/` | one folder per set: archive, difficulties, derived files | **No**, unless you mean to remove beatmaps |

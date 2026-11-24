@@ -9,10 +9,13 @@ namespace Basil.Host.Cli.Commands;
 
 public static class RulesetReplies
 {
-	public const string Staged =
-		"Staged the osu! rulesets {0}. Restart the server for them to take effect, then run `beatmapsets reload` to recompute the stored star ratings.";
+	public const string Installed =
+		"Installed the osu! calculation stack {0}. Waiting beatmapsets are being imported and missing star ratings calculated. Run `scores recalculate` for the pp of stored scores.";
 
-	public const string UpToDate = "The osu! rulesets are up to date ({0}).";
+	public const string InstalledRestart =
+		"Repaired the osu! calculation stack {0}. Restart the server to use the repaired files.";
+
+	public const string UpToDate = "The osu! calculation stack is already installed ({0}).";
 
 	public const string UpdateFailedCode = "rulesetUpdateFailed";
 
@@ -26,20 +29,20 @@ internal static class RulesetCommands
 		yield return new CommandDef
 		{
 			Pattern = "version", Route = "GET /v1/version", Offline = true, NeedsStorage = false,
-			Summary = "Shows the application version and the active ruleset version.", Run = VersionAsync
+			Summary = "Shows the application version and the state of the osu! calculation stack.", Run = VersionAsync
 		};
 		yield return new CommandDef
 		{
 			Pattern = "ruleset version", Route = "GET /v1/settings/ruleset/version", Offline = true,
 			NeedsStorage = false,
-			Summary = "Shows the active ruleset version and the version waiting for a restart.",
+			Summary = "Shows the version of the osu! calculation stack and whether it is installed.",
 			Run = RulesetVersionAsync
 		};
 		yield return new CommandDef
 		{
 			Pattern = "ruleset update", Route = "POST /v1/settings/ruleset/update", Offline = true,
 			NeedsStorage = false,
-			Summary = "Downloads the newest osu! rulesets and stages them for the next restart.",
+			Summary = "Downloads and installs the osu! calculation stack when it is missing or damaged.",
 			Run = UpdateAsync
 		};
 	}
@@ -48,9 +51,14 @@ internal static class RulesetCommands
 	{
 		call.Output.Fields([
 			("version", AppVersion.Current),
-			("ruleset", call.Get<IRulesetUpdater>().Version().Active)
+			("ruleset", RulesetOf(call.Get<IRulesetUpdater>().Version()))
 		]);
 		return Task.FromResult(ExitCodes.Success);
+	}
+
+	private static string RulesetOf(RulesetVersions versions)
+	{
+		return $"{versions.Version} ({versions.State})";
 	}
 
 	private static async Task<int> RulesetVersionAsync(CommandCall call)
@@ -59,7 +67,7 @@ internal static class RulesetCommands
 			call.CancellationToken);
 		if (result != RulesetUpdateResult.Ok) return call.Refuse(result);
 
-		call.Output.Fields([("active", versions!.Active), ("staged", versions.Staged ?? "none")]);
+		call.Output.Fields([("version", versions!.Version), ("state", versions.State.ToString())]);
 		return ExitCodes.Success;
 	}
 
@@ -67,12 +75,14 @@ internal static class RulesetCommands
 	{
 		try
 		{
-			var (result, stage) = await call.Get<ISender>().Send(new UpdateRulesets(await call.ByAsync()),
+			var (result, install) = await call.Get<ISender>().Send(new UpdateRulesets(await call.ByAsync()),
 				call.CancellationToken);
 			if (result != RulesetUpdateResult.Ok) return call.Refuse(result);
 
-			call.Output.Ok(string.Format(stage!.Staged ? RulesetReplies.Staged : RulesetReplies.UpToDate,
-				stage.Version));
+			call.Output.Ok(string.Format(
+				!install!.Downloaded ? RulesetReplies.UpToDate :
+				install.RestartRequired ? RulesetReplies.InstalledRestart : RulesetReplies.Installed,
+				install.Version));
 			return ExitCodes.Success;
 		}
 		catch (RulesetUpdateException e)

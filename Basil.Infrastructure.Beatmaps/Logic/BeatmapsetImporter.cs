@@ -1,6 +1,7 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Beatmaps.Storage;
+using Basil.Application.Rulesets.Services;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Beatmaps.Logic;
@@ -9,11 +10,15 @@ internal sealed class BeatmapsetImporter(
 	IBeatmapsetStorage storage,
 	BeatmapsetPlanner planner,
 	BeatmapsetStorer storer,
+	IRulesetUpdater rulesets,
 	ILogger<BeatmapsetImporter> logger) : IBeatmapsetImporter
 {
 	public async Task<(BeatmapsetImportResult Result, BeatmapsetIndexed? Imported)> ImportAsync(Stream archive,
 		bool replaceExisting, CancellationToken ct = default)
 	{
+		if (rulesets.Version().State != RulesetState.Installed)
+			return (new BeatmapsetImportResult(null, [], BeatmapsetImportFailure.RulesetsMissing), null);
+
 		var uploaded = await storage.SaveAsync(archive, ct);
 		try
 		{

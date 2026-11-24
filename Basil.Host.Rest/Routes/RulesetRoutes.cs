@@ -16,16 +16,16 @@ internal static class RulesetRoutes
 
 		var ruleset = v1.MapGroup("/settings/ruleset").WithTags("Settings").RequireToken();
 		ruleset.MapGet("/version", RulesetVersionAsync)
-			.WithSummary("Get the ruleset versions.")
-			.WithDescription("Reports the active version and the one waiting for a restart.");
+			.WithSummary("Get the state of the osu! calculation stack.")
+			.WithDescription("Reports the version the server needs and whether it is `installed`, `missing` or `damaged`. Without it, star ratings and pp stay empty and beatmapset imports are refused.");
 		ruleset.MapPost("/update", UpdateAsync)
-			.WithSummary("Update the ruleset version.")
+			.WithSummary("Install the osu! calculation stack.")
 			.WithDescription("""
-			                 Stages the newest stable version for the next restart once it has been verified; nothing is kept when verification fails. The star ratings already stored stay as they were until the beatmaps are reloaded with `POST /v1/beatmapsets/reload`.
+			                 Downloads the files the server needs for star ratings, pp and beatmapset imports, and keeps them only when every file checks out. When the stack is already installed, `downloaded` is `false` and nothing is done.
 
-			                 When no newer version exists, `staged` is `false` and nothing needs to be done.
+			                 Right after a first installation the calculations start on their own and the beatmapset files waiting to be imported are taken in. Star ratings missing from stored beatmaps are calculated in the background; recalculate the pp of stored scores with `POST /v1/scores/performance/recalculate`. When the stack was damaged while the server was running, `restartRequired` is `true`: restart the server to use the repaired files.
 
-			                 An unreachable feed, or a package that fails the check, is answered with 502.
+			                 Another installation in progress is refused with 409. An unreachable feed, or a package that fails its check, is answered with 502 and names the package.
 			                 """);
 
 		v1.MapPost("/beatmapsets/reload", ReloadAsync).RequireToken().WithTags("Beatmapsets")
@@ -37,7 +37,7 @@ internal static class RulesetRoutes
 
 	private static IResult VersionAsync(IRulesetUpdater rulesets)
 	{
-		return Api.Ok(new VersionBody(AppVersion.Current, rulesets.Version().Active));
+		return Api.Ok(new VersionBody(AppVersion.Current, rulesets.Version().Version, rulesets.Version().State));
 	}
 
 	private static async Task<IResult> RulesetVersionAsync(HttpContext context, ISender sender)
@@ -50,9 +50,9 @@ internal static class RulesetRoutes
 	{
 		try
 		{
-			var (result, stage) = await sender.Send(new UpdateRulesets(context.Session()), context.RequestAborted);
+			var (result, install) = await sender.Send(new UpdateRulesets(context.Session()), context.RequestAborted);
 			return result == RulesetUpdateResult.Ok
-				? Api.Ok(new UpdateBody(stage!.Version, stage.Staged, stage.Staged, stage.Staged))
+				? Api.Ok(new UpdateBody(install!.Version, install.Downloaded, install.RestartRequired))
 				: result.Refusal();
 		}
 		catch (RulesetUpdateException e)
@@ -67,7 +67,7 @@ internal static class RulesetRoutes
 		return result == RulesetUpdateResult.Ok ? Api.Accepted("Reload started") : result.Refusal();
 	}
 
-	internal sealed record VersionBody(string App, string Ruleset);
+	internal sealed record VersionBody(string App, string Ruleset, RulesetState RulesetState);
 
-	internal sealed record UpdateBody(string Version, bool Staged, bool RestartRequired, bool ReloadRequired);
+	internal sealed record UpdateBody(string Version, bool Downloaded, bool RestartRequired);
 }

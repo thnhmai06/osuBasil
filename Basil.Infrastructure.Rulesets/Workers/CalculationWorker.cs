@@ -37,14 +37,14 @@ internal sealed class CalculationWorker(
 				break;
 			case CalculateScorePerformance score:
 				library.ScorePerformanceCalculated(score.Key,
-					await TryAsync($"a score on beatmap {score.BeatmapId}", async token => (double?)
+					await TryAsync($"a score on beatmap {score.BeatmapId}", async token =>
 						await calculator.GetPerformanceAsync(score.BeatmapId, score.Checksum, score.Mode, score.Mods,
 							score.Hits, score.MaxCombo, token), ct));
 				break;
 		}
 	}
 
-	private async Task<BeatmapAnalysis> AnalyseAsync(CalculateBeatmap request, CancellationToken ct)
+	private async Task<BeatmapAnalysis?> AnalyseAsync(CalculateBeatmap request, CancellationToken ct)
 	{
 		var content = await files.OpenAsync(request.BeatmapId, request.Checksum, ct) ??
 		              throw new InvalidOperationException("The server has no file for the beatmap.");

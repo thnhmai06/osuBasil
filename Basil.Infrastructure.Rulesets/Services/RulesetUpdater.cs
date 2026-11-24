@@ -1,145 +1,112 @@
 using System.IO.Compression;
-using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
 using Basil.Application.Rulesets.Services;
 using Basil.Infrastructure.Rulesets.Storage;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Rulesets.Services;
 
-internal sealed class RulesetUpdater(RulesetStore store, HttpClient http, ILogger<RulesetUpdater> logger)
+internal sealed class RulesetUpdater(RulesetStore store, IHttpClientFactory clients, ILogger<RulesetUpdater> logger)
 	: IRulesetUpdater
 {
-	private const string Feed = "https://api.nuget.org/v3";
+	private const string Feed = "https://api.nuget.org/v3-flatcontainer";
+
+	// Larger than any file of the stack; a package that claims more is not what the manifest names.
+	private const long MaxFileBytes = 256L * 1024 * 1024;
+
+	private static readonly TimeSpan Timeout = TimeSpan.FromMinutes(10);
+
+	private readonly SemaphoreSlim _busy = new(1, 1);
 
 	public RulesetVersions Version()
 	{
-		return new RulesetVersions(store.Active, store.Staged());
+		return new RulesetVersions(store.Version, store.State);
 	}
 
-	public async Task<RulesetCheck> CheckAsync(CancellationToken ct = default)
+	public async Task<RulesetInstallResult?> InstallAsync(CancellationToken ct = default)
 	{
-		return new RulesetCheck(Version(), await LatestAsync(ct));
-	}
-
-	public async Task<RulesetStageResult> StageAsync(CancellationToken ct = default)
-	{
-		var check = await CheckAsync(ct);
-		if (!check.UpdateAvailable) return new RulesetStageResult(check.Latest, false);
-
-		var version = check.Latest;
-		Directory.CreateDirectory(store.Root);
-		var work = Path.Combine(store.Root, ".staging-" + Guid.NewGuid().ToString("N"));
-		Directory.CreateDirectory(work);
+		if (!await _busy.WaitAsync(0, ct)) return null;
 		try
 		{
-			var packages = new List<(string Ruleset, string File)>();
-			foreach (var ruleset in RulesetStore.Rulesets)
-			{
-				var id = (RulesetStore.PackagePrefix + ruleset).ToLowerInvariant();
-				var expected = await ExpectedHashAsync(id, version, ct);
-				var file = Path.Combine(work, id + ".nupkg");
-				await DownloadAsync($"{Feed}-flatcontainer/{id}/{version}/{id}.{version}.nupkg", file,
-					ct);
-				if (!await HashMatchesAsync(file, expected, ct))
-					throw new RulesetUpdateException(
-						$"The package {id} {version} does not match the hash the feed publishes.");
+			if (store.Check() == RulesetState.Installed) return new RulesetInstallResult(store.Version, false, false);
 
-				packages.Add((ruleset, file));
+			// Once an osu! type was asked for, the process keeps what it has; the repair takes effect after a restart.
+			var restart = store.InUse;
+			Directory.CreateDirectory(store.Root);
+			var work = Path.Combine(store.Root, ".staging-" + Guid.NewGuid().ToString("N"));
+			var files = Path.Combine(work, "files");
+			Directory.CreateDirectory(files);
+			try
+			{
+				using var http = clients.CreateClient();
+				http.Timeout = Timeout;
+				foreach (var package in store.Manifest.Packages) await FetchAsync(http, package, work, files, ct);
+
+				if (Directory.Exists(store.Folder)) Directory.Move(store.Folder, Path.Combine(work, "replaced"));
+				Directory.Move(files, store.Folder);
+			}
+			finally
+			{
+				Directory.Delete(work, true);
 			}
 
-			var folder = Path.Combine(work, "files");
-			Directory.CreateDirectory(folder);
-			foreach (var (ruleset, file) in packages) Extract(ruleset, file, folder);
+			if (store.Check() != RulesetState.Installed)
+				throw new RulesetUpdateException("The installed files do not match the build.");
 
-			var target = store.FolderOf(version);
-			if (Directory.Exists(target)) Directory.Delete(target, true);
-			Directory.Move(folder, target);
-			store.Stage(version);
-			logger.LogInformation("Staged the osu! rulesets {Version}; they take effect after a restart", version);
-			return new RulesetStageResult(version, true);
-		}
-		catch (Exception e) when (e is HttpRequestException or JsonException or IOException or InvalidDataException)
-		{
-			throw new RulesetUpdateException("The osu! rulesets could not be downloaded: " + e.Message, e);
+			logger.LogInformation("Installed the osu! calculation stack {Version}", store.Version);
+			return new RulesetInstallResult(store.Version, true, restart);
 		}
 		finally
 		{
-			Directory.Delete(work, true);
+			_busy.Release();
 		}
 	}
 
-	private async Task<string> LatestAsync(CancellationToken ct)
+	private static async Task FetchAsync(HttpClient http, ManifestPackage package, string work, string files,
+		CancellationToken ct)
 	{
+		var id = package.Id.ToLowerInvariant();
+		var version = package.Version.ToLowerInvariant();
+		var archive = Path.Combine(work, id + ".nupkg");
 		try
 		{
-			var id = (RulesetStore.PackagePrefix + RulesetStore.Rulesets[0]).ToLowerInvariant();
-			var index = await http.GetFromJsonAsync<VersionIndex>($"{Feed}-flatcontainer/{id}/index.json",
-				ct);
-			return index?.Versions.LastOrDefault(version => !version.Contains('-'))
-			       ?? throw new RulesetUpdateException("The feed lists no stable version of the osu! rulesets.");
+			using (var response = await http.GetAsync($"{Feed}/{id}/{version}/{id}.{version}.nupkg",
+				       HttpCompletionOption.ResponseHeadersRead, ct))
+			{
+				response.EnsureSuccessStatusCode();
+				await using var target = File.Create(archive);
+				await response.Content.CopyToAsync(target, ct);
+			}
+
+			await using (var stream = File.OpenRead(archive))
+			{
+				var actual = Convert.ToBase64String(await SHA512.HashDataAsync(stream, ct));
+				if (!CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(actual),
+					    Encoding.ASCII.GetBytes(package.Sha512)))
+					throw new RulesetUpdateException($"{package.Id} {package.Version}: the package does not match its hash.");
+			}
+
+			using var zip = ZipFile.OpenRead(archive);
+			foreach (var file in package.Files)
+			{
+				var entry = zip.GetEntry(file.Path) ?? throw new RulesetUpdateException(
+					$"{package.Id} {package.Version}: the package holds no {file.Path}.");
+				if (entry.Length > MaxFileBytes)
+					throw new RulesetUpdateException($"{package.Id} {package.Version}: {file.Name} is too large.");
+
+				var target = Path.Combine(files, file.Name);
+				entry.ExtractToFile(target);
+				await using var extracted = File.OpenRead(target);
+				if (Convert.ToHexStringLower(await SHA256.HashDataAsync(extracted, ct)) != file.Sha256)
+					throw new RulesetUpdateException(
+						$"{package.Id} {package.Version}: {file.Name} does not match its hash.");
+			}
 		}
-		catch (Exception e) when (e is HttpRequestException or JsonException)
+		catch (Exception e) when (e is HttpRequestException or IOException or InvalidDataException
+			                          or TaskCanceledException && !ct.IsCancellationRequested)
 		{
-			throw new RulesetUpdateException("The osu! ruleset feed could not be read: " + e.Message, e);
+			throw new RulesetUpdateException($"{package.Id} {package.Version} could not be downloaded: {e.Message}", e);
 		}
 	}
-
-	private async Task<string> ExpectedHashAsync(string id, string version, CancellationToken ct)
-	{
-		var leaf = await http.GetFromJsonAsync<RegistrationLeaf>($"{Feed}/registration5-gz-semver2/{id}/{version}.json",
-			ct);
-		var entry = leaf is null
-			? null
-			: await http.GetFromJsonAsync<CatalogEntry>(leaf.CatalogEntry, ct);
-		return entry is { PackageHash: { Length: > 0 } hash, PackageHashAlgorithm: "SHA512" }
-			? hash
-			: throw new RulesetUpdateException($"The feed publishes no SHA-512 hash for {id} {version}.");
-	}
-
-	private async Task DownloadAsync(string address, string file, CancellationToken ct)
-	{
-		using var response = await http.GetAsync(address, HttpCompletionOption.ResponseHeadersRead, ct);
-		response.EnsureSuccessStatusCode();
-		await using var target = File.Create(file);
-		await response.Content.CopyToAsync(target, ct);
-	}
-
-	private static async Task<bool> HashMatchesAsync(string file, string expected, CancellationToken ct)
-	{
-		await using var stream = File.OpenRead(file);
-		var actual = Convert.ToBase64String(await SHA512.HashDataAsync(stream, ct));
-		return CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(actual),
-			Encoding.ASCII.GetBytes(expected));
-	}
-
-	private static void Extract(string ruleset, string package, string folder)
-	{
-		using var archive = ZipFile.OpenRead(package);
-		var name = RulesetStore.LibraryName(ruleset);
-		var entry = archive.Entries
-			            .Where(e => e.FullName.EndsWith("/" + name, StringComparison.Ordinal))
-			            .Select(e => (Entry: e, Framework: FrameworkOf(e.FullName)))
-			            .Where(candidate => candidate.Framework is not null)
-			            .MaxBy(candidate => candidate.Framework).Entry
-		            ?? throw new RulesetUpdateException($"The package of {ruleset} holds no {name}.");
-		entry.ExtractToFile(Path.Combine(folder, name));
-	}
-
-	private static Version? FrameworkOf(string entryName)
-	{
-		var parts = entryName.Split('/');
-		return parts is ["lib", var folder, _] && folder.StartsWith("net", StringComparison.Ordinal) &&
-		       System.Version.TryParse(folder[3..], out var version)
-			? version
-			: null;
-	}
-
-	private sealed record VersionIndex(string[] Versions);
-
-	private sealed record RegistrationLeaf(string CatalogEntry);
-
-	private sealed record CatalogEntry(string? PackageHash, string? PackageHashAlgorithm);
 }

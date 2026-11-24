@@ -6,9 +6,9 @@ using Mediator;
 namespace Basil.Infrastructure.Rulesets.Handlers;
 
 internal sealed class UpdateRulesetsHandler(RulesetLibrary rulesets)
-	: IRequestHandler<UpdateRulesets, (RulesetUpdateResult Result, RulesetStageResult? Stage)>
+	: IRequestHandler<UpdateRulesets, (RulesetUpdateResult Result, RulesetInstallResult? Install)>
 {
-	public async ValueTask<(RulesetUpdateResult Result, RulesetStageResult? Stage)> Handle(UpdateRulesets request,
+	public async ValueTask<(RulesetUpdateResult Result, RulesetInstallResult? Install)> Handle(UpdateRulesets request,
 		CancellationToken ct)
 	{
 		return await rulesets.ScopeTo(request.Actor).UpdateAsync(ct);

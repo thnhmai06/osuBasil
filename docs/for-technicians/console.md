@@ -382,9 +382,9 @@ Rooms exist only while the server runs. The room search syntax: free text matche
 | `beatmapsets reload`                                                             | `POST /v1/beatmapsets/reload`       | no  |
 | `beatmaps <id>`                                                                  | `GET /v1/beatmaps/{id}`             | yes |
 
-`beatmapsets reload` recomputes the metadata of every stored beatmap, star rating included, with the rulesets in use. It
-runs in the background, one at a time, and logs its progress. Run it after `ruleset update` and a restart, because the
-star ratings stored before are those of the old rulesets. Changing a set's status can change how clients submit scores and replays; prefer a status that has a
+`beatmapsets reload` recomputes the metadata of every stored beatmap, star rating included. It runs in the background,
+one at a time, and logs its progress. Run it after a new image brings a new osu! version, because the star ratings stored
+before are those of the old one. Changing a set's status can change how clients submit scores and replays; prefer a status that has a
 leaderboard (ranked, approved, qualified, loved).
 
 ### version and rulesets
@@ -395,11 +395,16 @@ leaderboard (ranked, approved, qualified, loved).
 | `ruleset version`| `GET /v1/settings/ruleset/version`   | yes |
 | `ruleset update` | `POST /v1/settings/ruleset/update`   | yes |
 
-The four osu! ruleset libraries compute the star rating. `ruleset update` downloads the newest stable version from the
-NuGet feed, checks it against the hash the feed publishes, and stages it under `<Storage>/Rulesets/<version>/`; nothing
-is kept when the check fails. A staged version takes effect after the next start (also when the command ran while the
-server was running); then run `beatmapsets reload`. The osu! game library that the rulesets build on is not updated. With
-`Basil:Updates:CheckOnStartup` on, the server logs a warning at startup when a newer ruleset version exists.
+Star ratings, pp and beatmapset imports need the osu! calculation stack: the osu! libraries the server was built
+against, kept in `Data/Rulesets/<version>/`. The image does not carry them. `ruleset version` shows the version the
+build needs and the state: `Installed`, `Missing` or `Damaged`. Without the stack the server runs, star ratings and pp
+stay empty and imports are refused; a `.osz` left in `Data/Beatmapsets/` waits there.
+
+`ruleset update` downloads the stack from the NuGet feed, checks every package and file against the hashes the build
+carries, and keeps nothing when a check fails; the answer names the package. On a first install the stack is used at
+once: waiting `.osz` files are imported, missing star ratings are calculated in the background, and `scores recalculate`
+fills the pp of stored scores. When the stack was damaged while the server ran, restart the server after the update.
+The files are checked at every start; a damaged file turns the stack off without stopping the server.
 
 ### scores
 

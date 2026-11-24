@@ -1,6 +1,8 @@
+using System.Runtime.CompilerServices;
 using Basil.Application.Rulesets.Ports;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Game;
+using Basil.Infrastructure.Rulesets.Storage;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Formats;
 using osu.Game.Beatmaps.Legacy;
@@ -18,12 +20,20 @@ using osu.Game.Rulesets.Taiko.Objects;
 using osu.Game.Utils;
 using BeatmapDifficulty = Basil.Domain.Beatmaps.BeatmapDifficulty;
 using LazerBeatmap = osu.Game.Beatmaps.Beatmap;
+using RulesetStore = Basil.Infrastructure.Rulesets.Storage.RulesetStore;
 
 namespace Basil.Infrastructure.Rulesets.Adapters;
 
-internal sealed class OsuBeatmapAnalyser : IBeatmapAnalyser
+internal sealed class OsuBeatmapAnalyser(RulesetStore rulesets) : IBeatmapAnalyser
 {
-	public BeatmapAnalysis Analyze(Stream content, GameMode mode, GameMods mods)
+	public BeatmapAnalysis? Analyze(Stream content, GameMode mode, GameMods mods)
+	{
+		return rulesets.Installed ? AnalyzeInstalled(content, mode, mods) : null;
+	}
+
+	// Kept apart: a method that names an osu! type needs the stack as soon as it is compiled, before any check in it runs.
+	[MethodImpl(MethodImplOptions.NoInlining)]
+	internal static BeatmapAnalysis AnalyzeInstalled(Stream content, GameMode mode, GameMods mods)
 	{
 		return Analyze(new StreamlessWorkingBeatmap(Decode(content)), mode, mods);
 	}

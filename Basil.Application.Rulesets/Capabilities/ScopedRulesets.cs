@@ -29,11 +29,15 @@ public readonly struct ScopedRulesets
 			: (RulesetUpdateResult.Ok, _rulesets.Updater.Version());
 	}
 
-	public async Task<(RulesetUpdateResult Result, RulesetStageResult? Stage)> UpdateAsync(
+	public async Task<(RulesetUpdateResult Result, RulesetInstallResult? Install)> UpdateAsync(
 		CancellationToken ct = default)
 	{
-		return Lacks()
-			? (RulesetUpdateResult.Denied, null)
-			: (RulesetUpdateResult.Ok, await _rulesets.Updater.StageAsync(ct));
+		if (Lacks()) return (RulesetUpdateResult.Denied, null);
+
+		var install = await _rulesets.Updater.InstallAsync(ct);
+		if (install is null) return (RulesetUpdateResult.Busy, null);
+
+		if (install is { Downloaded: true, RestartRequired: false }) _rulesets.Updated(install.Version);
+		return (RulesetUpdateResult.Ok, install);
 	}
 }

@@ -112,6 +112,31 @@ A message is a Mediator **request**: a `record` in the owning module's Applicati
 * Notifications are published by the event dispatcher, one handler after another; a handler that throws is logged and
   the others still run (see below).
 
+## The osu! calculation stack
+
+Star ratings, pp and beatmapset reading use osu!'s own libraries (`osu.Game`, the four rulesets, `osu.Framework` and the
+few managed assemblies the calculation loads). The image carries none of them: the projects compile against the packages
+with `PrivateAssets="all"` (so nothing reaches the publish output) and the program resolves the assemblies at run time
+from `Data/Rulesets/<version>/`. `ExcludeAssets="runtime"` does not restore, because the language packs of `Humanizer`
+that `osu.Game` pulls hold only resources.
+
+* **Manifest.** `Basil.Infrastructure.Rulesets/rulesets.manifest.json`, embedded in the program, lists the packages, the
+  version, the SHA-512 of each package file and the SHA-256 of each file taken from it. `tools/RulesetManifest` writes it:
+  it runs the calculators and the beatmapset reader over the sample beatmaps, records every assembly loaded, then proves the
+  list by running again with only those files reachable and once more with none. Run it when the `ppy.*` version changes;
+  `--check` fails when the committed file differs.
+* **Store.** `RulesetStore` registers the assembly resolution before any osu! type is used, checks the folder against the
+  manifest on every start (`Installed`, `Missing`, `Damaged`) and checks a file again when it is loaded. Anything but
+  `Installed` turns the feature off; the server keeps running.
+* **Feature off.** The analyser and calculator answer `null`, the importer refuses with `rulesetsMissing`, and both beatmapset
+  scans change nothing, so an unread archive is never taken for a broken one. The guard sits in a method that names no
+  osu! type: the runtime needs an assembly when a method is compiled, not when its line runs.
+* **Install.** `ruleset update` downloads each package from the feed, checks it and every file, and moves the folder into
+  place in one step. A first install turns the feature on at once and publishes `RulesetsUpdated`, which starts the scan of
+  the waiting archives; a repair of a stack already in use answers `restartRequired`.
+
+Related code: `Basil.Infrastructure.Rulesets/Storage/RulesetStore.cs`, `Services/RulesetUpdater.cs`, `tools/RulesetManifest/`.
+
 ## Events and locks
 
 An object publishes an event while it holds its own lock (a `Room` changes state and announces it in one transition).

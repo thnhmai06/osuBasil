@@ -10,9 +10,9 @@
 
 	<ItemGroup>
 		<!--
-   			AutoMapper 13.0.1 is brought in transitively by ppy.osu.Rulesets.
-   			GHSA-rvv3-g6hj-g44x requires untrusted mapping configuration, which Basil
-   			does not expose. Remove this suppression once upstream updates AutoMapper.
+   			AutoMapper 13.0.1 is brought in transitively by ppy.osu.Rulesets, which Basil compiles against but does not ship
+   			(it runs from Data/Rulesets, which holds only hash-checked files). GHSA-rvv3-g6hj-g44x requires untrusted
+   			mapping configuration, which Basil does not expose. Remove this suppression once upstream updates AutoMapper.
  		-->
 		<NuGetAuditSuppress Include="https://github.com/advisories/GHSA-rvv3-g6hj-g44x"/>
 
@@ -32,8 +32,8 @@
 		<NuGetAuditSuppress Include="https://github.com/advisories/GHSA-wmxv-xphr-5c9g"/>
 
 		<!--
-			MessagePack and the SignalR packages are brought in transitively by ppy.osu.Game (through the rulesets).
-			Basil hosts no SignalR hub and never deserializes MessagePack from a client, so the vulnerable code
+			MessagePack and the SignalR packages are brought in transitively by ppy.osu.Game (through the rulesets), which
+			Basil compiles against but does not ship. Basil hosts no SignalR hub and never deserializes MessagePack from a client, so the vulnerable code
 			paths are not reachable. Remove these suppressions once upstream updates them.
 		-->
 		<NuGetAuditSuppress Include="https://github.com/advisories/GHSA-qhrr-8q5h-9q3h"/>

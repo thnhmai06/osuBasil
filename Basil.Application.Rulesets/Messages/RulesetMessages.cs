@@ -9,4 +9,4 @@ public sealed record GetRulesetVersion(IActor Actor)
 	: IRequest<(RulesetUpdateResult Result, RulesetVersions? Versions)>;
 
 public sealed record UpdateRulesets(IActor Actor)
-	: IRequest<(RulesetUpdateResult Result, RulesetStageResult? Stage)>;
+	: IRequest<(RulesetUpdateResult Result, RulesetInstallResult? Install)>;

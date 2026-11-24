@@ -70,7 +70,20 @@ docker-data/
 These directories are bind-mounted into the containers. They survive container recreation and should be included in
 backups as appropriate.
 
-### 3. Create the first account
+### 3. Install the calculation stack
+
+The image carries no osu! library. Without them the server runs, but star ratings and pp stay empty and beatmapset
+imports are refused. Install them once; they are kept in `Data/Rulesets/`:
+
+```bash
+docker compose exec basil ./Basil ruleset update
+```
+
+The command needs the network (it downloads about 100 MB from nuget.org). On a machine with no network, copy the
+`Data/Rulesets/` folder of another install of the same Basil version into the volume and restart. Each file is checked
+against the build at every start, so a wrong or damaged copy is refused, not loaded.
+
+### 4. Create the first account
 
 The server never creates an account by itself. Create the first administrator with the console command inside the
 running container:
@@ -82,7 +95,7 @@ docker compose exec basil ./Basil users create --username admin --password chang
 The command is forwarded to the running server. See [`console.md`](console.md) for the commands. The same command also
 works against a stopped server, with `docker compose run --rm basil ./Basil users create ...`.
 
-### 4. Check the logs
+### 5. Check the logs
 
 Follow the container logs:
 

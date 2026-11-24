@@ -133,6 +133,10 @@ internal static class BeatmapScoreCommands
 			case BeatmapsetImportFailure.Locked:
 				call.Output.Error("locked", "The beatmapset is locked.");
 				return ExitCodes.Refused;
+			case BeatmapsetImportFailure.RulesetsMissing:
+				call.Output.Error("rulesetsMissing",
+					"The osu! calculation stack is not installed. Install it with `ruleset update` first.");
+				return ExitCodes.Refused;
 			default:
 				call.Output.Error("unreadable", "The archive is not a readable beatmapset.");
 				return ExitCodes.Invalid;

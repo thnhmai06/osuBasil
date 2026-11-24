@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using Basil.Application.Rulesets.Ports;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Game;
@@ -38,14 +39,31 @@ internal sealed class OsuBeatmapCalculator(
 
 	private readonly SemaphoreSlim _gate = new(Environment.ProcessorCount);
 
-	public async Task<double> GetStarsAsync(int beatmapId, Md5Hash checksum, GameMode mode, GameMods mods,
+	public Task<double?> GetStarsAsync(int beatmapId, Md5Hash checksum, GameMode mode, GameMods mods,
 		CancellationToken ct = default)
+	{
+		return rulesets.Installed ? StarsAsync(beatmapId, checksum, mode, mods, ct) : Task.FromResult<double?>(null);
+	}
+
+	public Task<double?> GetPerformanceAsync(int beatmapId, Md5Hash checksum, GameMode mode, GameMods mods,
+		HitCounts hits, int combo, CancellationToken ct = default)
+	{
+		return rulesets.Installed
+			? PerformanceAsync(beatmapId, checksum, mode, mods, hits, combo, ct)
+			: Task.FromResult<double?>(null);
+	}
+
+	// Kept apart from the checks above: a method that names an osu! type needs the stack as soon as it is compiled.
+	[MethodImpl(MethodImplOptions.NoInlining)]
+	internal async Task<double?> StarsAsync(int beatmapId, Md5Hash checksum, GameMode mode, GameMods mods,
+		CancellationToken ct)
 	{
 		return (await CalculatedAsync(beatmapId, checksum, mode, mods, ct)).Attributes.StarRating;
 	}
 
-	public async Task<double> GetPerformanceAsync(int beatmapId, Md5Hash checksum, GameMode mode, GameMods mods,
-		HitCounts hits, int combo, CancellationToken ct = default)
+	[MethodImpl(MethodImplOptions.NoInlining)]
+	internal async Task<double?> PerformanceAsync(int beatmapId, Md5Hash checksum, GameMode mode, GameMods mods,
+		HitCounts hits, int combo, CancellationToken ct)
 	{
 		var (attributes, snapshot) = await CalculatedAsync(beatmapId, checksum, mode, mods, ct);
 		var ruleset = OsuBeatmapAnalyser.CreateRuleset(mode);
@@ -68,10 +86,10 @@ internal sealed class OsuBeatmapCalculator(
 			       ct);
 	}
 
-	// Built once per mode and active ruleset set: the calculator's version only changes with the ruleset set.
+	// Built once per mode: the calculator's version only changes with the stack the server was built against.
 	private string VersionOf(GameMode mode)
 	{
-		return _versions.GetOrAdd((mode, rulesets.Active), static (key, _) =>
+		return _versions.GetOrAdd((mode, rulesets.Version), static (key, _) =>
 		{
 			var ruleset = OsuBeatmapAnalyser.CreateRuleset(key.Item1);
 			var empty = new LazerBeatmap { BeatmapInfo = { Ruleset = ruleset.RulesetInfo } };

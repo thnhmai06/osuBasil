@@ -67,8 +67,8 @@ public static class HostApplication
 		KestrelSetup.Configure(builder);
 
 		var app = builder.Build();
-		// Before any ruleset type is used: a staged version replaces the one shipped with Basil.
-		app.Services.GetRequiredService<RulesetStore>().LoadStaged();
+		// Before any osu! type is used: the calculation stack is checked and made loadable from Data/Rulesets.
+		app.Services.GetRequiredService<RulesetStore>().Initialize();
 		app.Services.GetRequiredService<RuntimeSampler>().LogsDropped = () => drops.Dropped;
 		app.UseRequestMetrics();
 		app.UseTrustedProxies();

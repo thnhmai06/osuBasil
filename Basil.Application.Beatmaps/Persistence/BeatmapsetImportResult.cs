@@ -13,5 +13,8 @@ public enum BeatmapsetImportFailure : byte
 
 	Locked,
 
-	AlreadyExists
+	AlreadyExists,
+
+	/// <summary>The osu! calculation stack is not installed, so no beatmapset can be read.</summary>
+	RulesetsMissing
 }

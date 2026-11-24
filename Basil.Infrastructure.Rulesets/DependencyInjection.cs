@@ -5,7 +5,6 @@ using Basil.Infrastructure.Rulesets.Services;
 using Basil.Infrastructure.Rulesets.Storage;
 using Basil.Infrastructure.Rulesets.Workers;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Rulesets;
 
@@ -19,9 +18,7 @@ public static class DependencyInjection
 			services.AddSingleton<IBeatmapCalculator, OsuBeatmapCalculator>();
 			services.AddSingleton<RulesetStore>();
 			services.AddSingleton<AttributeStorage>();
-			services.AddSingleton<IRulesetUpdater>(provider => new RulesetUpdater(
-				provider.GetRequiredService<RulesetStore>(), new HttpClient { Timeout = TimeSpan.FromMinutes(5) },
-				provider.GetRequiredService<ILogger<RulesetUpdater>>()));
+			services.AddSingleton<IRulesetUpdater, RulesetUpdater>();
 			services.AddSingleton<CalculationQueue>();
 			return services;
 		}
@@ -29,7 +26,6 @@ public static class DependencyInjection
 		public IServiceCollection AddRulesetsBackgroundWork()
 		{
 			services.AddHostedService<CalculationWorker>();
-			services.AddHostedService<RulesetsAnnouncer>();
 			return services;
 		}
 	}

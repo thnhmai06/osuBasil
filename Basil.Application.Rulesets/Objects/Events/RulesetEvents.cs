@@ -11,5 +11,5 @@ public sealed record BeatmapCalculated(int BeatmapId, BeatmapAnalysis? Analysis)
 /// <summary>The pp of a score was calculated; <paramref name="Pp"/> is null when it could not be.</summary>
 public sealed record ScorePerformanceCalculated(Guid Key, double? Pp) : RulesetEvent;
 
-/// <summary>Another version of the rulesets became active.</summary>
+/// <summary>The calculation stack was installed and is available without a restart.</summary>
 public sealed record RulesetsUpdated(string Version) : RulesetEvent;

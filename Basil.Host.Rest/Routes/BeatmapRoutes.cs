@@ -167,6 +167,8 @@ internal static class BeatmapRoutes
 					"The beatmapset already exists."),
 				BeatmapsetImportFailure.Locked => Api.Error(StatusCodes.Status409Conflict, "locked",
 					"The beatmapset is locked."),
+				BeatmapsetImportFailure.RulesetsMissing => Api.Error(StatusCodes.Status503ServiceUnavailable,
+					"rulesetsMissing", "The osu! calculation stack is not installed. Install it with the ruleset update first."),
 				_ => Api.Invalid("The archive is not a readable beatmapset.", "unreadable")
 			};
 		});

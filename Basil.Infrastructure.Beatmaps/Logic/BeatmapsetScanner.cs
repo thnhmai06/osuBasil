@@ -1,6 +1,7 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Beatmaps.Storage;
+using Basil.Application.Rulesets.Services;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
 
@@ -13,10 +14,17 @@ internal sealed class BeatmapsetScanner(
 	BeatmapsetPlanner planner,
 	BeatmapsetStorer storer,
 	BeatmapsetFileWriter files,
-	BeatmapsetFileAudit audit) : IBeatmapsetScanner
+	BeatmapsetFileAudit audit,
+	IRulesetUpdater rulesets) : IBeatmapsetScanner
 {
+	// Without the calculation stack no archive can be read, and an unread archive must not be taken for a broken one:
+	// the scan leaves everything, the waiting archives included, where it is until the stack is installed.
+	private bool CannotRead => rulesets.Version().State != RulesetState.Installed;
+
 	public async Task<BeatmapsetScanOutcome> ScanAsync(CancellationToken ct = default)
 	{
+		if (CannotRead) return BeatmapsetScanOutcome.NoChange;
+
 		var packed = new List<BeatmapsetArchive>();
 		try
 		{
@@ -33,6 +41,8 @@ internal sealed class BeatmapsetScanner(
 	public async Task<BeatmapsetScanOutcome> ScanAsync(BeatmapsetSource entry,
 		CancellationToken ct = default)
 	{
+		if (CannotRead) return BeatmapsetScanOutcome.NoChange;
+
 		return entry switch
 		{
 			BeatmapsetArchive archive => await ScanArchiveAsync(archive, null, ct),
