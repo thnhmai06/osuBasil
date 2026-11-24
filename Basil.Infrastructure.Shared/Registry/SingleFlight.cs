@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
 
-namespace Basil.Infrastructure.Rulesets.Adapters;
+namespace Basil.Infrastructure.Shared.Registry;
 
-internal sealed class SingleFlight<TKey, TValue> where TKey : notnull
+public sealed class SingleFlight<TKey, TValue> where TKey : notnull
 {
 	private readonly ConcurrentDictionary<TKey, Lazy<Task<TValue>>> _flights = new();
 

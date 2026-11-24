@@ -4,6 +4,8 @@ namespace Basil.Infrastructure.Shared.Registry;
 
 public sealed class CacheAside<TKey, TValue>(IMemoryCache cache) where TKey : notnull where TValue : class
 {
+	private static readonly TimeSpan IdleLifetime = TimeSpan.FromHours(1);
+
 	private readonly Lock _gate = new();
 	private long _removals;
 
@@ -21,7 +23,7 @@ public sealed class CacheAside<TKey, TValue>(IMemoryCache cache) where TKey : no
 
 		lock (_gate)
 		{
-			if (_removals == removalsBefore) cache.Set(Slot(key), loaded);
+			if (_removals == removalsBefore) cache.Set(Slot(key), loaded, new MemoryCacheEntryOptions { SlidingExpiration = IdleLifetime });
 		}
 
 		return loaded;

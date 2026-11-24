@@ -47,7 +47,6 @@
 		<PackageReference Include="Microsoft.AspNetCore.OpenApi"/>
 		<PackageReference Include="Microsoft.OpenApi"/>
 		<PackageReference Include="Scalar.AspNetCore"/>
-		<PackageReference Include="SixLabors.ImageSharp.Web"/>
 	</ItemGroup>
 
 	<ItemGroup>

@@ -102,6 +102,11 @@ Handler ──► scoped Application operation ──► state change, event pub
   watching the lobby.
 * Connections that are not osu! clients (API, IRC) are skipped by the `Outbox`; they get the same events through their own
   transports.
+* The deliveries run on the event queue, after the poll's packets are handled. Before it drains the `Outbox`, the poll waits
+  (at most 200 ms) until the events its own packets published have been delivered, so the client sees the result of its
+  action in the same response, as bancho.py answers. Events published by the handlers of those events are not awaited, and
+  nothing is awaited when the poll published nothing. See [`architecture.md`](architecture.md#events-and-locks).
+* The poll of an open client is not counted against the request rate (see [`gateway.md`](gateway.md)).
 
 ---
 

@@ -1,4 +1,5 @@
 using Basil.Application.Shared;
+using Basil.Application.Shared.Events;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Shared.Storage;
 using Basil.Infrastructure.Shared.Events;
@@ -27,6 +28,7 @@ public static class DependencyInjection
 			services.AddSharedApplication();
 			services.TryAddSingleton(TimeProvider.System);
 			services.TryAddSingleton<EventQueue>();
+			services.TryAddSingleton<IPublishedEvents>(sp => sp.GetRequiredService<EventQueue>());
 			services.TryAddSingleton(sp => new EventPublisher(
 				new Lazy<IPublisher>(sp.GetRequiredService<IPublisher>),
 				sp.GetRequiredService<TimeProvider>()));

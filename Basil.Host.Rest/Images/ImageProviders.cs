@@ -3,109 +3,124 @@ using System.Text.RegularExpressions;
 using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Application.Content.Messages;
+using Basil.Application.Shared.Storage;
 using Basil.Application.Users.Messages;
 using Mediator;
 using Microsoft.Extensions.Options;
+using Microsoft.Net.Http.Headers;
 
 namespace Basil.Host.Rest.Images;
 
-public sealed partial class AvatarProvider(ISender sender)
-	: StreamImageProvider("a", path => AvatarPath().IsMatch(path.Value ?? ""))
+/// <summary>Serves the stored pictures of the image hosts; a request it cannot serve goes on to the routes of the host.</summary>
+internal sealed partial class ImageServingMiddleware(RequestDelegate next)
 {
-	protected override async Task<Stream?> OpenAsync(PathString path, CancellationToken ct)
+	private static readonly Lazy<byte[]> DefaultAvatar = new(() =>
 	{
-		var id = int.Parse(AvatarPath().Match(path.Value!).Groups[1].Value);
-		return await sender.Send(new OpenUserAvatar(id), ct) ??
-		       typeof(AvatarProvider).Assembly.GetManifestResourceStream("Avatars.default.png");
-	}
+		using var stream = typeof(ImageServingMiddleware).Assembly.GetManifestResourceStream("Avatars.default.png")!;
+		using var memory = new MemoryStream();
+		stream.CopyTo(memory);
+		return memory.ToArray();
+	});
 
-	[GeneratedRegex(@"^/(\d+)$")]
-	private static partial Regex AvatarPath();
-}
+	private static readonly DateTimeOffset DefaultAvatarModified = File.GetLastWriteTimeUtc(
+		typeof(ImageServingMiddleware).Assembly.Location);
 
-public sealed partial class MenuImageProvider(ISender sender)
-	: StreamImageProvider("assets", path => MenuPath().IsMatch(path.Value ?? ""))
-{
-	protected override async Task<Stream?> OpenAsync(PathString path, CancellationToken ct)
+	private static readonly Dictionary<string, BeatmapsetCoverVariant> CoverVariants = new()
 	{
-		var match = MenuPath().Match(path.Value!);
-		var name = match.Groups["name"].Value;
-		var kind = match.Groups["kind"].Value switch
+		["cover"] = BeatmapsetCoverVariant.Cover, ["card"] = BeatmapsetCoverVariant.Card,
+		["list"] = BeatmapsetCoverVariant.List, ["slimcover"] = BeatmapsetCoverVariant.SlimCover
+	};
+
+	private static readonly ImageRoute[] Routes =
+	[
+		new("a", AvatarPath(), async (match, sender, ct) =>
+			await sender.Send(new OpenUserAvatar(int.Parse(match.Groups[1].Value)), ct) ??
+			new ImageFile(new MemoryStream(DefaultAvatar.Value, false), "image/png", DefaultAvatarModified)),
+		new("assets", MenuPath(), (match, sender, ct) =>
 		{
-			"icon" => ContentImageKind.Icon,
-			"banners" => ContentImageKind.Banner,
-			_ => ContentImageKind.Seasonal
-		};
-		return await sender.Send(new OpenContentImage(kind, name), ct);
+			var kind = match.Groups["kind"].Value switch
+			{
+				"icon" => ContentImageKind.Icon,
+				"banners" => ContentImageKind.Banner,
+				_ => ContentImageKind.Seasonal
+			};
+			return sender.Send(new OpenContentImage(kind, match.Groups["name"].Value), ct).AsTask();
+		}),
+		new("osu", ScreenshotPath(), (match, sender, ct) =>
+			sender.Send(new OpenContentImage(ContentImageKind.Screenshot, match.Groups["name"].Value), ct).AsTask()),
+		new("assets", CoverPath(), (match, sender, ct) =>
+			OpenCover(match, sender, ct, CoverVariants[match.Groups["variant"].Value])),
+		new("b", ThumbPath(), (match, sender, ct) =>
+			OpenCover(match, sender, ct,
+				match.Groups["large"].Success
+					? BeatmapsetCoverVariant.ThumbnailLarge
+					: BeatmapsetCoverVariant.Thumbnail))
+	];
+
+	public async Task InvokeAsync(HttpContext context, ISender sender)
+	{
+		if (HttpMethods.IsGet(context.Request.Method) || HttpMethods.IsHead(context.Request.Method))
+		{
+			var host = context.Request.Host.Host;
+			var path = context.Request.Path.Value ?? "";
+			foreach (var route in Routes)
+			{
+				if (!host.StartsWith(route.Label + ".", StringComparison.OrdinalIgnoreCase)) continue;
+				var match = route.Path.Match(path);
+				if (!match.Success) continue;
+
+				var image = await route.Open(match, sender, context.RequestAborted);
+				if (image is null) break;
+
+				await using (image)
+				{
+					await Serve(context, image, route.Label);
+				}
+
+				return;
+			}
+		}
+
+		await next(context);
 	}
+
+	private static async Task<ImageFile?> OpenCover(Match match, ISender sender, CancellationToken ct,
+		BeatmapsetCoverVariant variant)
+	{
+		return int.TryParse(match.Groups["id"].ValueSpan, out var id)
+			? await sender.Send(new OpenBeatmapsetCover(id, variant), ct)
+			: null;
+	}
+
+	private static Task Serve(HttpContext context, ImageFile image, string label)
+	{
+		// Avatars change when users upload again, so they are cached for a shorter time.
+		context.Response.Headers.CacheControl = label == "a" ? "public,max-age=300" : "public,max-age=604800";
+		context.Response.Headers.XContentTypeOptions = "nosniff";
+		var tag = new EntityTagHeaderValue($"\"{image.LastModified.UtcTicks:x}-{image.Content.Length:x}\"");
+		return Results.File(image.Content, image.ContentType, lastModified: image.LastModified, entityTag: tag)
+			.ExecuteAsync(context);
+	}
+
+	[GeneratedRegex(@"^/(\d{1,9})$")]
+	private static partial Regex AvatarPath();
 
 	[GeneratedRegex(@"^/menu/(?:(?<kind>banners|seasonals)/(?<name>[^/]+)|(?<kind>icon))$")]
 	private static partial Regex MenuPath();
-}
-
-public sealed partial class ScreenshotProvider(ISender sender)
-	: StreamImageProvider("osu", path => ScreenshotPath().IsMatch(path.Value ?? ""))
-{
-	protected override async Task<Stream?> OpenAsync(PathString path, CancellationToken ct)
-	{
-		var name = ScreenshotPath().Match(path.Value!).Groups["name"].Value;
-		return await sender.Send(new OpenContentImage(ContentImageKind.Screenshot, name), ct);
-	}
 
 	[GeneratedRegex(@"^/ss/(?<name>[0-9a-fA-F-]+\.[A-Za-z0-9]{1,8})$")]
 	private static partial Regex ScreenshotPath();
-}
 
-public sealed partial class BeatmapImageProvider(ISender sender)
-	: StreamImageProvider("assets", path => CoverPath().IsMatch(path.Value ?? ""))
-{
-	private static readonly Dictionary<string, (int Width, int Height)> Variants = new()
-	{
-		["cover"] = (900, 250), ["card"] = (400, 140), ["list"] = (150, 150), ["slimcover"] = (1920, 360)
-	};
-
-	public static bool TryGetSize(PathString path, out int width, out int height)
-	{
-		var match = CoverPath().Match(path.Value ?? "");
-		if (match.Success && Variants.TryGetValue(match.Groups["variant"].Value, out var size))
-		{
-			(width, height) = size;
-			return true;
-		}
-
-		(width, height) = (0, 0);
-		return false;
-	}
-
-	protected override async Task<Stream?> OpenAsync(PathString path, CancellationToken ct)
-	{
-		var match = CoverPath().Match(path.Value!);
-		if (!Variants.ContainsKey(match.Groups["variant"].Value)) return null;
-		return await sender.Send(new OpenBeatmapsetCover(int.Parse(match.Groups["id"].Value)), ct);
-	}
-
-	[GeneratedRegex(@"^/beatmapsets/(?<id>\d+)/covers/(?<variant>[a-z]+)\.jpg$")]
+	[GeneratedRegex(@"^/beatmapsets/(?<id>\d+)/covers/(?<variant>cover|card|list|slimcover)\.jpg$")]
 	private static partial Regex CoverPath();
-}
-
-public sealed partial class BeatmapThumbnailProvider(ISender sender)
-	: StreamImageProvider("b", path => ThumbPath().IsMatch(path.Value ?? ""))
-{
-	public static bool TryGetSize(PathString path, out int width, out int height)
-	{
-		var match = ThumbPath().Match(path.Value ?? "");
-		(width, height) = !match.Success ? (0, 0) : match.Groups["large"].Success ? (160, 120) : (80, 60);
-		return match.Success;
-	}
-
-	protected override async Task<Stream?> OpenAsync(PathString path, CancellationToken ct)
-	{
-		var id = int.Parse(ThumbPath().Match(path.Value!).Groups["id"].Value);
-		return await sender.Send(new OpenBeatmapsetCover(id), ct);
-	}
 
 	[GeneratedRegex(@"^/thumb/(?<id>\d+)(?<large>l)?\.jpg$")]
 	private static partial Regex ThumbPath();
+
+	private sealed record ImageRoute(
+		string Label,
+		Regex Path,
+		Func<Match, ISender, CancellationToken, Task<ImageFile?>> Open);
 }
 
 internal sealed partial class BeatmapPreviewMiddleware(RequestDelegate next)

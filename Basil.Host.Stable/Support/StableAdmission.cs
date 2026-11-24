@@ -1,5 +1,7 @@
 using Basil.Application.Sessions.Registry;
+using Basil.Domain.Sessions;
 using Basil.Gateway.Admission;
+using Basil.Gateway.Limits;
 
 namespace Basil.Host.Stable.Support;
 
@@ -11,9 +13,15 @@ internal sealed class StableAdmission(Admission admission, SessionRegistry regis
 		var context = invocation.HttpContext;
 		var workClass = AdmissionRefusals.ClassOf(context.GetEndpoint()?.Metadata ?? []);
 		var token = context.Request.Headers["osu-token"].ToString();
-		var subject = token.Length > 0 && registry.Find(token) is { } connection
+		var connection = token.Length > 0 ? registry.Find(token) : null;
+		var subject = connection is not null
 			? AdmissionRefusals.SubjectOf(connection)
 			: AdmissionRefusals.SubjectOf(ClientAddress.Resolve(context).ToString());
+		// The bancho poll of an open client is its own traffic, so a multiplayer round cannot lock it out;
+		// the sign-in (no or unknown token) and the osu-web endpoints keep the rate limit.
+		if (HttpMethods.IsPost(context.Request.Method) && context.Request.Path == "/" &&
+		    connection is { IsOpen: true, Type: SessionType.Stable or SessionType.StableTourney })
+			workClass = WorkClass.Poll;
 		var decision = admission.Admit(subject, workClass);
 		if (!decision.Allowed)
 		{

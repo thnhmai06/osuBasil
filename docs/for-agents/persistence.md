@@ -70,7 +70,7 @@ Repository contracts, byte storages and the Registry / Repository / Storage mode
     miss read the database and fill the cache, and a write goes to the database first and then updates or drops the cache
     entry. Large or streamed data never passes through the cache (`beatmaps.objects`, images, replays, `.osz` archives).
   * **Storage** (`Storage/`): files and media (beatmapsets, replays, avatars, banners). The file system is the index.
-    Images are served through ImageSharp.Web ([`assets.md`](../for-developers/assets.md)).
+    Images are served as stored files, the covers of a beatmapset in a few fixed sizes ([`assets.md`](../for-developers/assets.md)).
 * **A write is awaited, and a failure reaches the caller.** There is no queue of pending writes and no copy that is
   "sent later"; a refused write leaves the cache unchanged and throws or returns its failure to the caller. A value that is
   unique across a table is checked by the insert: a unique violation (`exception.IsUniqueViolation()`) becomes

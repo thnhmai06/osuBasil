@@ -17,7 +17,6 @@ using Basil.Infrastructure.Diagnostics.Services;
 using Basil.Infrastructure.Shared;
 using Basil.Infrastructure.Shared.Storage;
 using Basil.Logging;
-using SixLabors.ImageSharp.Web.Caching;
 
 namespace Basil.Lifetime;
 
@@ -48,13 +47,6 @@ public static class HostApplication
 		builder.Services.AddSingleton<IDocumentPage, BotReferencePage>();
 		builder.Services.AddIrcListener(builder.Configuration);
 		builder.Services.AddRestApi(builder.Configuration);
-		builder.Services.AddRestImages();
-		builder.Services.AddOptions<PhysicalFileSystemCacheOptions>()
-			.Configure<DataPaths>((cache, paths) =>
-			{
-				cache.CacheRootPath = paths.Cache.Path;
-				cache.CacheFolder = "imagesharp";
-			});
 		builder.Services.AddCli(mode,
 			provider => ControlSocket.PathIn(
 				provider.GetRequiredService<DataPaths>().Root),

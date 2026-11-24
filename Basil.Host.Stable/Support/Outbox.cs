@@ -31,6 +31,8 @@ internal sealed class Outbox(SessionRegistry registry)
 			bytes ??= Build(write);
 			var pending = _queues.GetOrAdd(recipient, _ => new Pending());
 			pending.Queue.Enqueue(bytes);
+			// The connection may have closed (and had its queue removed) since Receives: drop what was just added.
+			if (!recipient.IsOpen) _queues.TryRemove(recipient, out _);
 			if (Interlocked.Add(ref pending.Bytes, bytes.Length) > MaxQueuedBytes ||
 			    pending.Queue.Count > MaxQueuedPackets)
 				(tooSlow ??= []).Add(recipient);

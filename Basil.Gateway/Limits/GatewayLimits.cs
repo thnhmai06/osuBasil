@@ -43,6 +43,7 @@ public sealed record GatewayLimits
 			WorkClass.Upload => UploadConcurrency,
 			WorkClass.Live => LiveConcurrency,
 			WorkClass.Asset => AssetConcurrency,
+			// A poll shares the cap of interactive work; the two are counted apart.
 			_ => InteractiveConcurrency
 		};
 	}

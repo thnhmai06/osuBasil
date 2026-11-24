@@ -2,14 +2,10 @@
 
 ## Why
 
-Previously, Basil served every image directly from `api.<domain>` using hand-written `Results.File` handlers. Beatmap
-thumbnails on `b.<domain>` had a separate, custom resize-and-cache implementation, so adding another image size required
-another bespoke code path.
-
-`assets.<domain>` centralizes image serving
-around [ImageSharp.Web](https://docs.sixlabors.com/articles/imagesharp.web/gettingstarted.html). Image resizing,
-cropping, and caching now share a single middleware pipeline and on-disk cache, with transformations controlled by
-request commands instead of custom logic for each image type.
+`assets.<domain>` centralizes image serving in one middleware. Every image is a stored file served as it is, with a
+fixed content type, conditional-request support and a cache lifetime. The query string is ignored: a client cannot ask
+for another size or format, so a request never costs more than reading a file, and the only extra work on the disk is
+the fixed set of beatmapset cover sizes, each made once.
 
 The host also owns the main-menu banner feature: `GET /menu-content.json`, the JSON manifest that the osu! stable client
 fetches during startup. This endpoint naturally belongs with the menu assets it describes.
@@ -31,8 +27,7 @@ moved to `assets.<domain>`, a corresponding `GET` on `api.<domain>` redirects to
 
 * `GET /menu/icon` — the menu icon.
 
-  Menu images are processed by ImageSharp.Web and support its usual query-string commands such as `?width=`, `?height=`,
-  and `?rmode=`.
+  Menu images are served as stored; a query string changes nothing.
 
 * `GET /menu/seasonals` — lists seasonal files by bare filename. `osu.<domain>/web/osu-getseasonal.php` uses this
   listing to construct its URLs. The list is the content of the seasonals folder, so an image placed there is served
@@ -51,12 +46,16 @@ with the banner's record.
 
 * `GET /beatmapsets/{beatmapsetId}/{audio,video,download,storyboard,audiopreview,...}` — non-image beatmapset files.
 
-  These files bypass ImageSharp.Web and are served directly with `Results.File` and `enableRangeProcessing: true`,
-  allowing HTTP Range requests and `206 Partial Content` responses for large downloads.
+  These files are served directly with `Results.File` and `enableRangeProcessing: true`, allowing HTTP Range requests
+  and `206 Partial Content` responses for large downloads.
 
-`b.<domain>` and `a.<domain>` also use ImageSharp.Web for beatmap thumbnails and avatars respectively. Their URLs remain
-unchanged because the real osu! stable client hardcodes these hosts and paths as part of the osu! (stable) protocol. Only the
-serving mechanism changed.
+`b.<domain>` and `a.<domain>` serve beatmap thumbnails and avatars the same way. Their URLs remain unchanged because
+the real osu! stable client hardcodes these hosts and paths as part of the osu! (stable) protocol.
+
+Every served image carries `Content-Type` (detected from the first bytes of the stored file, never from its name),
+`ETag` and `Last-Modified` (a conditional request answers `304`), `X-Content-Type-Options: nosniff` and
+`Cache-Control: public,max-age=604800` (7 days; avatars on `a.<domain>` use `public,max-age=300`, since users replace
+them). A stored file that is not a PNG, JPEG, GIF, WebP or BMP picture is a `404`.
 
 ### Not covered
 
@@ -68,72 +67,53 @@ This follows the project's scope rules documented in [`working-scopes.md`](worki
 
 ## How
 
-### Host gating
+### Serving
 
-`UseRestImages()`, which calls `UseImageSharp()`, runs as normal middleware before the host-based endpoint routing.
+`UseRestImages()` adds `ImageAdmissionMiddleware` (the `Asset` admission class), the preview and menu-manifest
+middlewares and `ImageServingMiddleware`. They run as normal middleware before the host-based endpoint routing.
 
-This means an `IImageProvider` cannot rely on the request path alone. The same path may exist on multiple hosts—for
-example, `/beatmapsets/{beatmapsetId}/background` exists both as a real asset route on `assets.<domain>` and as a redirect
-on `api.<domain>`.
+The same path may exist on several hosts (`/beatmapsets/{beatmapsetId}/background` is a real asset route on
+`assets.<domain>` and a redirect on `api.<domain>`), so `ImageServingMiddleware` checks the host label before the path:
 
-Every provider therefore checks the host before matching the path, using the host helpers in
-`Basil.Host.Rest/Images/ImageHosts.cs`.
+| Host        | Path                                                            | Serves                                       |
+|-------------|-----------------------------------------------------------------|----------------------------------------------|
+| `assets.`   | `/menu/banners/{file}`, `/menu/seasonals/{file}`, `/menu/icon`  | menu images                                  |
+| `assets.`   | `/beatmapsets/{id}/covers/{cover,card,list,slimcover}.jpg`      | beatmapset cover variants                    |
+| `b.`        | `/thumb/{setId}.jpg`, `/thumb/{setId}l.jpg`                     | beatmapset thumbnails                        |
+| `a.`        | `/{userId}`                                                     | the user's avatar, or the default avatar     |
+| `osu.`      | `/ss/{name}`                                                    | uploaded screenshots                         |
 
-### Providers
+The middleware only routes: it sends a message (`OpenContentImage`, `OpenUserAvatar`, `OpenBeatmapsetCover`) and
+writes the `ImageFile` that comes back. It returns no result when the image cannot be served (a private beatmapset, a
+missing file, an icon that points to an external URL); the request then falls through to the minimal-API route of the
+same host, which keeps the private-resource checks. The routes are in `Basil.Host.Rest/Routes/` (`MenuRoutes`,
+`BeatmapRoutes`, `UserRoutes`) and `Basil.Host.Stable/Web/OsuWebRoutes.cs`.
 
-| Provider                  | Host                | Serves                                                         |
-|---------------------------|---------------------|----------------------------------------------------------------|
-| `MenuImageProvider`       | `assets.`           | `/menu/banners/{file}`, `/menu/seasonals/{file}`, `/menu/icon` |
-| `BeatmapThumbnailProvider`| `b.`                | `/thumb/{setId}.jpg`, `/thumb/{setId}l.jpg`                    |
-| `AvatarProvider`          | `a.`                | `/{userId}`, when the user has uploaded an avatar              |
-| `ScreenshotProvider`      | `osu.`              | uploaded screenshots                                           |
-| `BeatmapImageProvider`    | `assets.`           | beatmap/beatmapset backgrounds and `covers/{variant}.jpg`      |
+The default avatar is an embedded resource, read once.
 
-Providers return no result when they cannot serve a request—for example, when a beatmapset is private, a local file does
-not exist, an icon points to an external URL, or a user has no uploaded avatar.
+### Beatmapset cover variants
 
-The request then falls through to the corresponding minimal-API route on the same host. These routes keep the
-private-resource checks.
+The osu! client requests some images using bare paths. The sizes are fixed, and each is cropped to fill:
 
-The routes are in `Basil.Host.Rest/Routes/` (`MenuRoutes`, `BeatmapRoutes`, `UserRoutes`) and `Basil.Host.Stable/Web/OsuWebRoutes.cs`.
+| Variant                 | Size       |
+|-------------------------|------------|
+| `cover`                 | 900 x 250  |
+| `card`                  | 400 x 140  |
+| `list`                  | 150 x 150  |
+| `slimcover`             | 1920 x 360 |
+| thumbnail (`/thumb/{id}.jpg`)  | 80 x 60    |
+| large thumbnail (`/thumb/{id}l.jpg`) | 160 x 120 |
 
-### Fixed-size crops without query strings
+The sizes are best-effort approximations; no verified osu! web dimensions were available.
 
-The real osu! client requests some images using bare paths with no query string:
+The Beatmaps module makes a variant from the set's background on its first request, as a JPEG in the `covers` folder
+of the set's own folder. One request makes it while the others wait for it; the file is written under a temporary name
+and moved into place. Only PNG and JPEG backgrounds up to 8192 pixels per side are decoded (backgrounds come from
+uploaded archives); any other background has no cover (`404`). The `covers` folder goes away with the set's folder
+(delete, reimport) and is cleared when the set's files are cleared or a background is saved; a variant older than the
+background it was made from is made again.
 
-* `b.<domain>/thumb/{id}.jpg`
-* `assets.<domain>/beatmapsets/{id}/covers/{variant}.jpg`
-
-`AddRestImages` in `Basil.Host.Rest/Images/ImageHosts.cs` injects the required `width`, `height`, and `rmode=crop` commands through
-`ImageSharpMiddlewareOptions.OnParseCommandsAsync`.
-
-The dimensions are selected from the request path using:
-
-* `BeatmapThumbnailProvider.TryGetSize`
-* `BeatmapImageProvider.TryGetSize`
-
-This works because `OnParseCommandsAsync` executes before ImageSharp.Web checks whether any commands were supplied.
-Injecting commands there therefore causes ImageSharp.Web to process the request even though the original URL contains no
-query string.
-
-Cover dimensions are currently best-effort approximations because no verified primary-source dimensions from osu! web
-were available when this was implemented. `BeatmapImageProvider.TryGetSize` should be updated if the actual dimensions are confirmed
-later.
-
-### Cache
-
-ImageSharp.Web stores its cache under:
-
-`Data/Cache/imagesharp/`
-
-It uses `PhysicalFileSystemCacheOptions` alongside Basil's existing `Data/Cache/` directory. The rest of `Data/Cache/`
-is still used for transcoded audio previews, which are unrelated to ImageSharp.Web.
-
-`BrowserMaxAge` and `CacheMaxAge` are configured with long lifetimes because ImageSharp.Web invalidates cached images
-when the source file's last-write time changes.
-
-Avatars use a shorter browser `Cache-Control` lifetime through `OnPrepareResponseAsync`, since users may replace their
-avatars. Menu and beatmap images are comparatively static.
+The osu! client never sends a size: there is no command for it, so there is no cost a client can multiply.
 
 ### Asset references
 
@@ -182,7 +162,8 @@ See [`configuration.md`](../for-technicians/configuration.md) for the complete `
 
 ## Related code
 
-* `Basil.Host.Rest/Images/` — `ImageHosts` (the `a.` and `assets.` hosts, ImageSharp.Web pipeline) and the image providers.
+* `Basil.Host.Rest/Images/` — `ImageHosts` (admission) and `ImageServingMiddleware` (the image hosts).
+* `Basil.Infrastructure.Beatmaps/Storage/BeatmapsetCovers.cs` — the cover variants.
 * `Basil.Host.Rest/Routes/MenuRoutes.cs` — menu banner, icon and seasonal routes.
 * `Basil.Application.Content/Storage/` — the storage ports for avatars, menu assets, screenshots and the FAQ.
 * `Basil.Infrastructure.Content/Storage/` — their file implementations.

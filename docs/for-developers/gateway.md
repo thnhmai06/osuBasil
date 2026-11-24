@@ -64,7 +64,12 @@ Taken from well-known cloud design patterns, limited to what this single process
   is `Interactive`. A saturated class is denied (`ClassSaturated`) without touching the others, and every allowed request
   must be matched by one `Admission.Release(class)` when it ends. A route declares its class with
   `AdmissionPolicyAttribute` (the most specific declaration wins): list and search routes are `Listing`, uploads are
-  `Upload`, `/live` streams are `Live`; everything else, packets and IRC lines included, is `Interactive`. Pictures are middleware, not routes: the image
+  `Upload`, `/live` streams are `Live`; everything else, packets and IRC lines included, is `Interactive`. The one
+  exception is chosen by the host at request time: the bancho poll of an open osu! client (`POST /` on `c.` with the token
+  of a Stable or StableTourney session) is `Poll`. A `Poll` still counts for concurrency and load (it shares the cap of
+  `Interactive`, counted apart, and is shed with it) but never against `requests`, because a multiplayer round makes
+  more than 120 polls a minute and would lock the client out; the sign-in (no or unknown token) and the osu-web
+  endpoints stay `Interactive` and keep the limit. Pictures are middleware, not routes: the image
   middleware admits each request as `Asset` per address. `Asset` has an allowance of its own (`assetRequests`, 1200 per
   window) kept apart from `requests`, so fetching many pictures never spends the API budget; a `304` counts like any request.
 * **Priority shedding** under overload drops the least valuable work first. The decision is a pure function of the
@@ -79,6 +84,7 @@ Taken from well-known cloud design patterns, limited to what this single process
 | `Listing` | rankings, searches, listings | 32 | 0.70 (first) |
 | `Upload` | replays, screenshots, avatars, beatmapsets | 8 | 0.90 |
 | `Interactive` | gameplay, chat, rooms, accounts | 256 | 0.90 |
+| `Poll` | the bancho poll of an open osu! client | 256 (shared with `Interactive`) | 0.90 |
 | `Live` | SSE streams | 1024 | 0.90 |
 | `Asset` | pictures on `a.`, `assets.`, `b.` and `osu.` `/ss` | 64 | 0.70 (with `Listing`) |
 

@@ -1,3 +1,4 @@
+using Basil.Application.Shared.Storage;
 using Basil.Domain.Content;
 using Mediator;
 
@@ -11,7 +12,7 @@ public sealed record ListFaqs : IRequest<IReadOnlyList<string>>;
 
 public sealed record ReadFaq(string Entry) : IRequest<string?>;
 
-public sealed record OpenContentImage(ContentImageKind Kind, string? Name) : IRequest<Stream?>;
+public sealed record OpenContentImage(ContentImageKind Kind, string? Name) : IRequest<ImageFile?>;
 
 public enum ContentImageKind
 {

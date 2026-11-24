@@ -26,6 +26,9 @@ public interface IBeatmapsetStorage
 	Task<Stream?> OpenAsync(BeatmapsetRecord set, BeatmapsetFileType type, string name,
 		CancellationToken ct = default);
 
+	Task<Stream?> OpenCoverAsync(BeatmapsetRecord set, string backgroundName, BeatmapsetCoverVariant variant,
+		CancellationToken ct = default);
+
 	Task<Stream?> OpenArchiveAsync(BeatmapsetRecord set, bool withVideo, CancellationToken ct = default);
 
 	Task<IEnumerable<BeatmapsetSource>> ListAsync(CancellationToken ct = default);
@@ -35,6 +38,22 @@ public interface IBeatmapsetStorage
 	Task DeleteAsync(BeatmapsetRecord set);
 
 	Task DeleteAsync(BeatmapsetArchive archive);
+}
+
+/// <summary>The fixed picture sizes a beatmapset's background is served in, each cropped to fill its size.</summary>
+public enum BeatmapsetCoverVariant : byte
+{
+	Cover,
+
+	Card,
+
+	List,
+
+	SlimCover,
+
+	Thumbnail,
+
+	ThumbnailLarge
 }
 
 public enum BeatmapsetFileType : byte

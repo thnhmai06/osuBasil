@@ -7,6 +7,7 @@ using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 
 namespace Basil.Application.Multiplayer.Objects.Events;
 
+[EventLane(EventLane.Multiplayer)]
 public abstract record LobbyEvent : Event;
 
 public sealed record LobbyMatchRecovered(MatchRecord Match, IReadOnlyList<Round> AbortedRounds) : LobbyEvent;

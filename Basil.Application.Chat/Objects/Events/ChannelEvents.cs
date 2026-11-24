@@ -4,6 +4,7 @@ using Basil.Domain.Chat;
 
 namespace Basil.Application.Chat.Objects.Events;
 
+[EventLane(EventLane.Chat)]
 public abstract record ChannelEvent(Channel Channel) : Event;
 
 public sealed record ChannelOpened(Channel Channel) : ChannelEvent(Channel);

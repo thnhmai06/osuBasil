@@ -5,7 +5,7 @@ namespace Basil.Gateway.Admission;
 
 public sealed class Admission(TimeProvider clock, Func<GatewayLimits> source, LoadSignal? load = null)
 {
-	private static readonly WorkClass[] MustServe = [WorkClass.Interactive, WorkClass.Upload, WorkClass.Live];
+	private static readonly WorkClass[] MustServe = [WorkClass.Interactive, WorkClass.Upload, WorkClass.Live, WorkClass.Poll];
 	private readonly LoadSignal _load = load ?? new LoadSignal();
 	private readonly RateLimiter _rate = new(clock);
 	private readonly int[] _running = new int[Enum.GetValues<WorkClass>().Length];
@@ -34,6 +34,9 @@ public sealed class Admission(TimeProvider clock, Func<GatewayLimits> source, Lo
 			Release(workClass);
 			return AdmissionDecision.Deny(AdmissionDenial.ClassSaturated, current.BusyRetryAfter);
 		}
+
+		if (workClass == WorkClass.Poll)
+			return AdmissionDecision.Allow;
 
 		var isAsset = workClass == WorkClass.Asset;
 		var key = isAsset ? $"asset:{subject.Key}" : subject.Key;

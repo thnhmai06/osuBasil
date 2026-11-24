@@ -1,6 +1,8 @@
 using Basil.Application.Content.Messages;
 using Basil.Application.Content.Storage;
+using Basil.Application.Shared.Storage;
 using Basil.Domain.Content;
+using Basil.Infrastructure.Shared.Storage;
 using Mediator;
 
 namespace Basil.Infrastructure.Content.Handlers;
@@ -9,12 +11,17 @@ internal sealed class OpenContentImageHandler(
 	IMenuBannerStorage banners,
 	IMenuSeasonalsStorage seasonals,
 	IMenuIconStorage icon,
-	IScreenshotStorage screenshots) : IRequestHandler<OpenContentImage, Stream?>
+	IScreenshotStorage screenshots) : IRequestHandler<OpenContentImage, ImageFile?>
 {
-	public async ValueTask<Stream?> Handle(OpenContentImage request, CancellationToken ct)
+	public async ValueTask<ImageFile?> Handle(OpenContentImage request, CancellationToken ct)
 	{
 		var name = request.Name ?? string.Empty;
-		return request.Kind switch
+		return await ImageFiles.DescribeAsync(await OpenAsync(request.Kind, name, ct), ct);
+	}
+
+	private async Task<Stream?> OpenAsync(ContentImageKind kind, string name, CancellationToken ct)
+	{
+		return kind switch
 		{
 			ContentImageKind.Icon => (await icon.OpenAsync(ct))?.Content,
 			ContentImageKind.Banner => await OpenNamedAsync(await banners.ListAsync(ct), name, banners.OpenAsync, ct),

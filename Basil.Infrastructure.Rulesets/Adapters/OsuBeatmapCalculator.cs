@@ -1,8 +1,10 @@
+using System.Collections.Concurrent;
 using Basil.Application.Rulesets.Ports;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Game;
 using Basil.Domain.Scores;
 using Basil.Infrastructure.Rulesets.Storage;
+using Basil.Infrastructure.Shared.Registry;
 using Basil.Shared.Structures.Cryptography;
 using Microsoft.Extensions.Logging;
 using osu.Game.Beatmaps;
@@ -31,6 +33,8 @@ internal sealed class OsuBeatmapCalculator(
 	ILogger<OsuBeatmapCalculator> logger) : IBeatmapCalculator
 {
 	private readonly SingleFlight<(Md5Hash, GameMode, GameMods), Calculated> _flights = new();
+
+	private readonly ConcurrentDictionary<(GameMode, string), string> _versions = new();
 
 	private readonly SemaphoreSlim _gate = new(Environment.ProcessorCount);
 
@@ -64,12 +68,16 @@ internal sealed class OsuBeatmapCalculator(
 			       ct);
 	}
 
+	// Built once per mode and active ruleset set: the calculator's version only changes with the ruleset set.
 	private string VersionOf(GameMode mode)
 	{
-		var ruleset = OsuBeatmapAnalyser.CreateRuleset(mode);
-		var empty = new LazerBeatmap { BeatmapInfo = { Ruleset = ruleset.RulesetInfo } };
-		var version = ruleset.CreateDifficultyCalculator(new StreamlessWorkingBeatmap(empty)).Version;
-		return $"{rulesets.Active}/{version}";
+		return _versions.GetOrAdd((mode, rulesets.Active), static (key, _) =>
+		{
+			var ruleset = OsuBeatmapAnalyser.CreateRuleset(key.Item1);
+			var empty = new LazerBeatmap { BeatmapInfo = { Ruleset = ruleset.RulesetInfo } };
+			var version = ruleset.CreateDifficultyCalculator(new StreamlessWorkingBeatmap(empty)).Version;
+			return $"{key.Item2}/{version}";
+		}, 0);
 	}
 
 	private async Task<Calculated?> ReadAsync(Md5Hash checksum, GameMode mode, GameMods mask, CancellationToken ct)

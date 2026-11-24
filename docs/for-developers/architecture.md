@@ -81,7 +81,7 @@ Objects      runtime objects that own state, invariants and behaviour (User, Con
 
 * **Registry** keeps live objects in RAM and hands them out. It holds runtime state only.
 * **Repository** awaits the database. Small records may be cached cache-aside; a large or streamed payload never is.
-* **Storage** holds files and media (beatmapsets, replays, avatars). Images are served through ImageSharp.Web
+* **Storage** holds files and media (beatmapsets, replays, avatars). Images are served as stored files
   ([`assets.md`](assets.md)).
 
 ### How layers call each other
@@ -119,6 +119,34 @@ Notifications are therefore **never awaited under a lock**: the object enqueues 
 (`EventQueue`, Infrastructure.Shared) and returns at once, and a dispatcher in Infrastructure.Shared (`EventDispatcher`)
 calls the Mediator handlers outside the lock, in order. No code calls `await mediator.Publish(...)` at the place where it
 emits. The queue is unbounded; rate limiting and the `Outstanding` count in diagnostics watch its size.
+
+### Lanes
+
+The queue has one reader per **lane**, a category of events, so a handler that waits (a database read, a recorder) holds up
+only the events of its own lane. An event type declares its lane with `[EventLane(...)]` on the base record of its
+category, and every derived event inherits it (`EventLaneAttribute`, Application.Shared):
+
+| Lane | Events |
+|---|---|
+| `Chat` | `ChannelEvent`: channels, their members and messages |
+| `Presence` | `SessionEvent` (including spectators) and `UserEvent`: who is connected, their status and standing |
+| `Multiplayer` | `RoomEvent`, `LobbyEvent` and `ScoreEvent` (a submitted score is applied to the room's round) |
+| `General` | everything else (beatmaps, rulesets, anticheat, diagnostics) |
+
+Inside a lane, events are delivered one at a time in the order they were published. **Across lanes no order is promised**:
+a handler must not rely on an event of one lane being delivered before or after an event of another. What needs order
+shares a lane, and the consequence of an event that a handler publishes goes to that event's own lane (a room event's
+handler that opens a channel publishes a chat event, delivered after the chat events already waiting). Handlers of
+different lanes run at the same time, so the objects they call are thread-safe by their own lock. `Outstanding`,
+`Published` and `Failures` count over all lanes, and a drain empties every lane.
+
+### Waiting for the deliveries of one request
+
+A host that must answer with the effect of what it just handled (the osu! poll) opens a scope with
+`IPublishedEvents.Track()` around the dispatch, then awaits `DeliveredAsync(limit)`: it completes when the events
+published from that flow have been delivered, or when the limit passes. Only first-level events are awaited; no
+scope, or nothing published, means no wait. The hosts reach it through the contract in Application.Shared, never through
+`EventQueue`.
 
 ```mermaid
 sequenceDiagram

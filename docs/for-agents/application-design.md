@@ -268,9 +268,10 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   and returns at once. **A notification is never awaited under a lock**: the object enqueues and the dispatcher publishes outside it. A handler is a class implementing `Mediator.INotificationHandler<TEvent>` for one concrete
   event type (`ConnectionHandler`, `SessionEndHandler`, `ScoreHandler`, the `Room*Recorder` handlers in the Handlers folders of their
   modules; `RoomAnnouncer`, `AnticheatAnnouncer`, `ChatHandler` in `Basil.Infrastructure.Bot`). The shared queue (`EventQueue`) is run by
-  `EventDispatcher` in Infrastructure.Shared's Workers folder and delivers the events one at a time in the order they
-  were published,
-  across all event types; a failing handler is logged and the others still run. The mediator resolves handlers at
+  `EventDispatcher` in Infrastructure.Shared's Workers folder and delivers the events of each lane (`Chat`, `Presence`,
+  `Multiplayer`, `General`; declared with `[EventLane]` on the base event of a category) one at a time in the order they
+  were published; across lanes no order is promised ([`architecture.md`](../for-developers/architecture.md#lanes));
+  a failing handler is logged and the others still run. The mediator resolves handlers at
   first publish, not when the publisher is built (a handler reaches objects that publish). Persistence and internal
   capability helpers never publish; a system-facing service publishes only when it is the explicitly declared single
   source of that system event (currently, `IAnticheatReporter`). Other services return what happened and the owning
@@ -278,8 +279,8 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   carrying its whole consequence. Events are `sealed record`s in a category tree (`Event` <- `RoomEvent` <-
   `RoomSlotEvent` <- `RoomSlotTeamChanged`), but a handler serves one concrete type. A handler only reacts to an
   event by calling the owning object's operation; event -> client-notification routing belongs to the hosts.
-* **Handlers are quick; slow work goes to its own queue.** The queue awaits its handlers one after another, so a
-  handler that waits (a lookup, a room, the store) holds up every later event of the server. A handler that may
+* **Handlers are quick; slow work goes to its own queue.** A lane awaits its handlers one after another, so a
+  handler that waits (a lookup, a room, the store) holds up every later event of its lane. A handler that may
   wait only queues the work on a bounded queue of its own, with a cap per user and a timeout per item, and returns
   (`CommandWorker` of the bot). A dropped item is logged, never silent.
 * **A consequence reaches everyone, through every path.** What a change does to the people it concerns it does

@@ -3,6 +3,7 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Objects.Events;
 
+[EventLane(EventLane.Presence)]
 public abstract record UserEvent : Event;
 
 public sealed record UserSilenced(UserRecord User, DateTimeOffset Until) : UserEvent;

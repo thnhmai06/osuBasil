@@ -175,7 +175,7 @@ Basil creates these beside the executable:
 | `Data/Menu/` | banners, seasonals and the main-menu icon | Optional |
 | `Data/Faqs/` | text used by `!faq <entry>` | Optional |
 | `Data/Screenshots/` | uploaded screenshots | Optional |
-| `Data/Cache/` | image crops and other rebuildable files | **Yes**, while the server is stopped |
+| `Data/Cache/` | audio previews and other rebuildable files | **Yes**, while the server is stopped |
 | `Logs/` | operational log files | Optional |
 
 ### Database

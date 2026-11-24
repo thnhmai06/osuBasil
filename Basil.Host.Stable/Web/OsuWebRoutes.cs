@@ -382,7 +382,8 @@ internal static class OsuWebRoutes
 		var withVideo = !setId.EndsWith('n');
 		if (!int.TryParse(setId.TrimEnd('n'), out var id)) return Results.NotFound();
 		if (await sender.Send(new OpenBeatmapsetArchive(player, id, withVideo), ct) is { } archive)
-			return Results.File(archive, "application/x-osu-beatmap-archive", $"{id}.osz");
+			return Results.File(archive, "application/x-osu-beatmap-archive", $"{id}.osz",
+				enableRangeProcessing: true);
 		return Results.NotFound();
 	}
 

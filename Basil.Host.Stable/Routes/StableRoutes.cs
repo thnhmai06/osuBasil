@@ -1,6 +1,7 @@
 using Basil.Application.Sessions.Registry;
 using System.Diagnostics;
 using Basil.Application.Diagnostics.Services;
+using Basil.Application.Shared.Events;
 using Basil.Domain.Sessions;
 using Basil.Gateway.Admission;
 using Basil.Gateway.RateLimiting;
@@ -15,6 +16,8 @@ namespace Basil.Host.Stable.Routes;
 public static class StableRoutes
 {
 	private static readonly string[] StableHosts = ["c", "ce", "c4", "c5", "c6"];
+
+	private static readonly TimeSpan PollDeliveryWait = TimeSpan.FromMilliseconds(200);
 
 	public static IServiceCollection AddStableHost(this IServiceCollection services)
 	{
@@ -62,7 +65,7 @@ public static class StableRoutes
 	}
 
 	private static async Task<IResult> ExchangeAsync(HttpContext context, SessionRegistry registry, StableLogin login,
-		PacketDispatcher dispatcher, Outbox outbox, CancellationToken ct)
+		PacketDispatcher dispatcher, Outbox outbox, IPublishedEvents events, CancellationToken ct)
 	{
 		using var buffer = new MemoryStream();
 		await context.Request.Body.CopyToAsync(buffer, ct);
@@ -87,7 +90,13 @@ public static class StableRoutes
 		// A session silent past its expiry is closed by the heartbeat: the client logs in again, as for a dead token.
 		if (!connection.IsOpen)
 			return Results.Bytes(Outbox.Build(writer => writer.RestartServer(0)), "text/html; charset=UTF-8");
-		await dispatcher.DispatchAsync(connection, body, ct);
+		// The deliveries the packets cause are awaited briefly, so the client sees its own action in this answer.
+		using (var published = events.Track())
+		{
+			await dispatcher.DispatchAsync(connection, body, ct);
+			await published.DeliveredAsync(PollDeliveryWait, ct);
+		}
+
 		var packets = outbox.Drain(connection);
 		DiagnosticsMetrics.StableDuration.Record(Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 		return Results.Bytes(packets, "text/html; charset=UTF-8");

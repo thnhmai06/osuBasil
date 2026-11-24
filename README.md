@@ -66,7 +66,7 @@ For the complete supported and excluded feature set, see
 | Database       | [PostgreSQL](https://www.postgresql.org/), accessed through [Entity Framework Core](https://learn.microsoft.com/ef/core/) (Npgsql) with EF migrations |
 | API            | [OpenAPI](https://spec.openapis.org/oas/latest.html) generation with interactive documentation powered by [Scalar](https://scalar.com/)                       |
 | Star rating    | Official osu! difficulty and performance calculation algorithms from [osu!lazer](https://github.com/ppy/osu)                                                             |
-| Beatmap assets | Thumbnails processed with [ImageSharp](https://sixlabors.com/products/imagesharp/); audio previews generated with [FFMpegCore](https://github.com/rosenbjerg/FFMpegCore) |
+| Beatmap assets | Covers and thumbnails cut to fixed sizes with [ImageSharp](https://sixlabors.com/products/imagesharp/); audio previews generated with [FFMpegCore](https://github.com/rosenbjerg/FFMpegCore) |
 | Security       | Passwords hashed with [BCrypt.Net](https://github.com/BcryptNet/bcrypt.net)                                                                                              |
 | Logging        | Structured logging with [Serilog](https://serilog.net/)                                                                                                                  |
 | Testing        | [xUnit v3](https://xunit.net/), [NSubstitute](https://nsubstitute.github.io/), [NetArchTest](https://github.com/BenMorris/NetArchTest) and [Testcontainers](https://dotnet.testcontainers.org/) for PostgreSQL                                  |

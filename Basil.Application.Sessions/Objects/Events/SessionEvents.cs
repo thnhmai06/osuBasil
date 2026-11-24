@@ -5,6 +5,7 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Sessions.Objects.Events;
 
+[EventLane(EventLane.Presence)]
 public abstract record SessionEvent : Event;
 
 public sealed record SessionOpened(Session Session, bool CameOnline) : SessionEvent;

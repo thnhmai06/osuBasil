@@ -9,7 +9,8 @@ public sealed class QueuedNotificationPublisher(EventQueue queue, ILogger<Queued
 	public ValueTask Publish<TNotification>(NotificationHandlers<TNotification> handlers,
 		TNotification notification, CancellationToken ct) where TNotification : INotification
 	{
-		queue.Enqueue(new Delivery<TNotification>(handlers, notification, logger, queue));
+		queue.Enqueue(new Delivery<TNotification>(handlers, notification, logger, queue),
+			EventQueue.LaneOf<TNotification>());
 		return ValueTask.CompletedTask;
 	}
 

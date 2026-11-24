@@ -19,6 +19,8 @@ internal sealed class FileBeatmapsetStorage(
 {
 	private const int BufferSize = 81920;
 
+	private readonly BeatmapsetCovers _covers = new();
+
 	private readonly Dictionary<int, SetLock> _setLocks = [];
 
 	public async Task<BeatmapsetArchive> SaveAsync(Stream archive, CancellationToken ct = default)
@@ -150,6 +152,7 @@ internal sealed class FileBeatmapsetStorage(
 			DeleteFileIfExists(Path.Combine(folder, StoryboardName));
 			DeleteDirectoryIfExists(Path.Combine(folder, VersionFolder));
 			DeleteDirectoryIfExists(Path.Combine(folder, BackgroundFolder));
+			DeleteDirectoryIfExists(Path.Combine(folder, CoverFolder));
 			DeleteDirectoryIfExists(Path.Combine(folder, AudioFolder));
 			DeleteDirectoryIfExists(Path.Combine(folder, VideoFolder));
 		}
@@ -167,6 +170,7 @@ internal sealed class FileBeatmapsetStorage(
 			var folder = FindFolder(set.Id, FolderName(set)) ??
 			             throw new InvalidOperationException("The beatmapset has no folder.");
 			var path = PathOf(folder, type, name);
+			if (type == BeatmapsetFileType.Background) DeleteDirectoryIfExists(Path.Combine(folder, CoverFolder));
 			var parent = Path.GetDirectoryName(path);
 			if (!string.IsNullOrEmpty(parent)) Directory.CreateDirectory(parent);
 
@@ -274,6 +278,27 @@ internal sealed class FileBeatmapsetStorage(
 		}
 
 		return Task.FromResult<Stream?>(File.Exists(path) ? OpenRead(path) : null);
+	}
+
+	public async Task<Stream?> OpenCoverAsync(BeatmapsetRecord set, string backgroundName,
+		BeatmapsetCoverVariant variant, CancellationToken ct = default)
+	{
+		var folder = FindFolder(set.Id, FolderName(set));
+		if (folder is null) return null;
+
+		string source;
+		try
+		{
+			source = PathOf(folder, BeatmapsetFileType.Background, backgroundName);
+		}
+		catch (ArgumentException)
+		{
+			return null;
+		}
+
+		if (!File.Exists(source)) return null;
+		var cover = await _covers.EnsureAsync(source, Path.Combine(folder, CoverFolder), variant, ct);
+		return cover is null ? null : OpenRead(cover);
 	}
 
 	public Task<Stream?> OpenArchiveAsync(BeatmapsetRecord set, bool withVideo,

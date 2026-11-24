@@ -76,7 +76,7 @@ public sealed class UserProfile
 
 	internal async Task<UserActionResult> RemoveAvatarAsync()
 	{
-		await using (var stored = await _user.Context.Avatars.OpenAsync(_user.Record))
+		await using (var stored = await _user.Context.Avatars.OpenAsync(_user.Record.Id))
 		{
 			if (stored is null)
 				return UserActionResult.NotFound;

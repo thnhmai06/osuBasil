@@ -26,6 +26,7 @@
 		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL"/>
 		<PackageReference Include="FFMpegCore"/>
 		<PackageReference Include="ppy.osu.Game"/>
+		<PackageReference Include="SixLabors.ImageSharp"/>
 		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions"/>
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
 		<PackageReference Include="Microsoft.Extensions.Options"/>

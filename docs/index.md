@@ -113,7 +113,7 @@ When two documents disagree, the authoritative document wins.
 | Migration status (target vs. code)                     | [`for-developers/migration-status.md`](for-developers/migration-status.md) |
 | Module layout (folders of Application and Infrastructure) | [`for-agents/module-layout.md`](for-agents/module-layout.md)           |
 | Working notes (lessons for agents)                     | [`for-agents/working-notes.md`](for-agents/working-notes.md)           |
-| Image/asset serving (`assets.<domain>`, ImageSharp.Web) | [`for-developers/assets.md`](for-developers/assets.md)                 |
+| Image/asset serving (`assets.<domain>`) | [`for-developers/assets.md`](for-developers/assets.md)                 |
 | Diagnostics (intake, feed, live streams, shared per-tick collection) | [`for-developers/diagnostics.md`](for-developers/diagnostics.md) |
 | osu! (stable) protocol (client and server)                     | [`for-developers/osu-stable.md`](for-developers/osu-stable.md)                 |
 | IRC protocol                                           | [`for-developers/irc.md`](for-developers/irc.md)                       |
@@ -164,7 +164,7 @@ This prevents the documentation from developing multiple competing versions of t
 ## See also
 
 * [`for-developers/architecture.md`](for-developers/architecture.md): system architecture and dependency direction
-* [`for-developers/assets.md`](for-developers/assets.md): the `assets.<domain>` host and ImageSharp.Web image serving
+* [`for-developers/assets.md`](for-developers/assets.md): the `assets.<domain>` host and image serving
 * [`for-developers/gateway.md`](for-developers/gateway.md): the admission policies every request passes before it reaches a module
 * [`for-developers/diagnostics.md`](for-developers/diagnostics.md): the diagnostics module's intake and feed, live streams, and shared per-tick collection
 * [`for-developers/working-scopes.md`](for-developers/working-scopes.md): supported and excluded functionality

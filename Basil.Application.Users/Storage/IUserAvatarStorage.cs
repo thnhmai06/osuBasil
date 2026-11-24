@@ -6,7 +6,7 @@ public interface IUserAvatarStorage
 {
 	Task SaveAsync(UserRecord user, Stream content);
 
-	Task<Stream?> OpenAsync(UserRecord user, CancellationToken ct = default);
+	Task<Stream?> OpenAsync(int userId, CancellationToken ct = default);
 
 	Task DeleteAsync(UserRecord user);
 }
