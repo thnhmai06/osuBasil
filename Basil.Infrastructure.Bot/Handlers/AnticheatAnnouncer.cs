@@ -1,3 +1,4 @@
+using Basil.Application.Shared.Replies;
 using Basil.Application.Anticheat.Objects.Events;
 using Basil.Application.Bot.Announcements;
 using Basil.Application.Bot.Replies;
@@ -17,7 +18,7 @@ internal sealed class AnticheatAnnouncer(
 	Lobby lobby,
 	RoomChannels channels,
 	SessionRegistry users,
-	IReplies replies)
+	IReplies<BotReply> replies)
 	: INotificationHandler<AnticheatPlayerFlagged>
 {
 	public async ValueTask Handle(AnticheatPlayerFlagged flagged, CancellationToken ct)
@@ -27,11 +28,11 @@ internal sealed class AnticheatAnnouncer(
 
 		var reason = string.Join(", ", flagged.Signs.SignNames());
 		var playerName = flagged.Player.Record.Value.Name;
-		var channelMessage = replies.Text(AnnouncementReplies.AnticheatFlagRoom,
+		var channelMessage = replies.Text(BotReply.AnnounceAnticheatFlagRoom,
 			new { player = playerName, reason });
 		await server.SayAsync(channels.Of(room), channelMessage, ct: ct);
 
-		var pmMessage = replies.Text(AnnouncementReplies.AnticheatFlagPm,
+		var pmMessage = replies.Text(BotReply.AnnounceAnticheatFlagPm,
 			new { room = room.Id, name = room.Settings.Name, player = playerName, reason });
 		await WhisperStaffAsync(room, pmMessage, ct);
 	}

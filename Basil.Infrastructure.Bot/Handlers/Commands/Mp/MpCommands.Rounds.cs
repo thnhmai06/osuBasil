@@ -1,6 +1,8 @@
+using Basil.Application.Bot.Replies;
 using Basil.Application.Bot.Commands;
 using Basil.Application.Bot.Objects;
 using Basil.Application.Multiplayer.Messages;
+using Basil.Domain.Chat;
 using Basil.Domain.Multiplayer.Room;
 using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 
@@ -23,7 +25,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		await context.Reply(MpReplies.MatchStarted, ct);
+		await context.Reply(BotReply.MpMatchStarted, ct);
 		return true;
 	}
 
@@ -34,7 +36,7 @@ internal sealed partial class MpCommands
 		if (args.Count > 0)
 			if (!int.TryParse(args[0], out seconds) || seconds <= 0)
 			{
-				await context.Reply(MpReplies.TimerUsage, ct);
+				await context.Reply(BotReply.MpTimerUsage, ct);
 				return false;
 			}
 
@@ -48,7 +50,7 @@ internal sealed partial class MpCommands
 		var outcome = await sender.Send(new CancelRoomCountdown(actor, room), ct);
 		if (outcome == RoomActionResult.NotInProgress)
 		{
-			await context.Reply(MpReplies.NoCountdownRunning, ct);
+			await context.Reply(BotReply.MpNoCountdownRunning, ct);
 			return false;
 		}
 
@@ -58,7 +60,8 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		// The room announces the abort itself, whoever cancelled the countdown.
+		// The room channel announces the abort itself; a typist elsewhere is told here.
+		if (!IsRoomChannel(context, room)) await context.Reply(BotReply.AnnounceCountdownCancelled, ct);
 		return true;
 	}
 
@@ -69,7 +72,7 @@ internal sealed partial class MpCommands
 		var actor = context.Actor;
 		if (seconds < 1 || TimeSpan.FromSeconds(seconds) > RoomCountdown.Max)
 		{
-			await context.Reply(MpReplies.CountdownOutOfRange, ct);
+			await context.Reply(BotReply.MpCountdownOutOfRange, ct);
 			return false;
 		}
 
@@ -81,7 +84,16 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
+		// The room channel announces the countdown itself; a typist elsewhere is told here.
+		if (!IsRoomChannel(context, room))
+			await context.Reply(startsRound ? BotReply.AnnounceCountdownStartedForRound : BotReply.AnnounceCountdownStarted,
+				new { seconds }, ct);
 		return true;
+	}
+
+	private static bool IsRoomChannel(CommandContext context, Room room)
+	{
+		return context.Channel == RoomChannelRules.NameFor(room.Id);
 	}
 
 	private async Task<bool> AbortAsync(CommandContext context, Room room, CancellationToken ct)
@@ -93,7 +105,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		await context.Reply(MpReplies.AbortedMatch, ct);
+		await context.Reply(BotReply.MpAbortedMatch, ct);
 		return true;
 	}
 }

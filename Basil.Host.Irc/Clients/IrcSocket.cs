@@ -1,3 +1,4 @@
+using Basil.Application.Shared.Replies;
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Net;
@@ -13,7 +14,8 @@ using Basil.Protocol.Irc.Models;
 
 namespace Basil.Host.Irc.Clients;
 
-internal sealed class IrcSocket(TcpClient tcp, IPAddress address, IrcOptions options, TimeProvider clock)
+internal sealed class IrcSocket(TcpClient tcp, IPAddress address, IrcOptions options, TimeProvider clock,
+	IReplies<IrcReply> replies)
 {
 	public const int MaxQueuedLines = 4096;
 
@@ -137,7 +139,7 @@ internal sealed class IrcSocket(TcpClient tcp, IPAddress address, IrcOptions opt
 
 	public void Close(string reason)
 	{
-		Send(IrcMessage.Error(IrcReplies.ClosingLink(options.Domain, reason)));
+		Send(IrcMessage.Error(replies.Text(IrcReply.ClosingLink, new { domain = options.Domain, reason })));
 		_lines.Writer.TryComplete();
 	}
 

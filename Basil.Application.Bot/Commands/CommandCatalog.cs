@@ -1,54 +1,55 @@
+using Basil.Application.Shared.Replies;
 using Basil.Application.Bot.Replies;
 
 namespace Basil.Application.Bot.Commands;
 
-internal sealed record CommandHelp(string Path, string Usage, Reply Summary);
+internal sealed record CommandHelp(string Path, string Usage, BotReply Summary);
 
 internal static class CommandCatalog
 {
 	public static readonly IReadOnlyList<CommandHelp> All =
 	[
-		Of("help", "", "list the commands"),
-		Of("roll", "[max]", "roll a random number from 0 to max (default 100)"),
-		Of("where", "<username>", "show a user's country"),
-		Of("faq", "<entry>|list", "print a FAQ entry, or list every entry"),
-		Of("mp", "help", "list multiplayer subcommands"),
-		Of("channel", "list|create|set|delete", "manage the general channels (needs privilege)"),
+		Of("help", "", BotReply.BotHelpHelp),
+		Of("roll", "[max]", BotReply.BotHelpRoll),
+		Of("where", "<username>", BotReply.BotHelpWhere),
+		Of("faq", "<entry>|list", BotReply.BotHelpFaq),
+		Of("mp", "help", BotReply.BotHelpMp),
+		Of("channel", "list|create|set|delete", BotReply.BotHelpChannel),
 
-		Of("mp make", "[name]", "create a public match and become its creator"),
-		Of("mp makeprivate", "[name]", "create a private match and become its creator"),
-		Of("mp join", "<id> [password]", "join a match"),
-		Of("mp in", "[match_id]", "target a match from a private message; omit the id to clear the target"),
-		Of("mp settings", "", "show match id, map, team type, win condition, mods, and slots"),
-		Of("mp lock", "", "lock the slots, so players cannot change slot or team"),
-		Of("mp unlock", "", "unlock the room"),
-		Of("mp private", "[0|1]", "show or set the room's private status (hidden from the lobby and the match lists)"),
-		Of("mp size", "<2-16>", "set the number of available slots"),
-		Of("mp move", "<name/id> <slot 1-16>", "move a user to another slot"),
-		Of("mp host", "<name/id>", "transfer host to another user"),
-		Of("mp clearhost", "", "clear the current host"),
-		Of("mp name", "<text>", "rename the match"),
-		Of("mp password", "[text]", "set the room password; omit to clear it"),
-		Of("mp invite", "<name/id>", "invite an online user"),
-		Of("mp addref", "<name/id>", "add a referee (creator only)"),
-		Of("mp removeref", "<name/id>", "remove a referee (creator only)"),
-		Of("mp listrefs", "", "list current referees"),
-		Of("mp banlist", "", "list players banned from this match"),
-		Of("mp team", "<name/id> <red|blue>", "assign a user's team"),
-		Of("mp map", "<beatmap id> [playmode]", "change the selected map"),
-		Of("mp mods", "<mods>|Freemod|None", "set the match mods"),
-		Of("mp set", "<teammode 0-3> [scoremode 0-3] [size 2-16]", "set team type, win condition, and size at once"),
-		Of("mp start", "[seconds]", "start now, or after a countdown"),
-		Of("mp timer", "[seconds]", "start a countdown without auto-starting"),
-		Of("mp aborttimer", "", "cancel a running countdown"),
-		Of("mp abort", "", "abort the match in progress"),
-		Of("mp kick", "<name/id>", "remove a user from the room"),
-		Of("mp ban", "<name/id>", "kick and block a user from rejoining"),
-		Of("mp unban", "<name/id>", "allow a banned user to rejoin"),
-		Of("mp close", "", "close the match immediately")
+		Of("mp make", "[name]", BotReply.MpHelpMake),
+		Of("mp makeprivate", "[name]", BotReply.MpHelpMakeprivate),
+		Of("mp join", "<id> [password]", BotReply.MpHelpJoin),
+		Of("mp in", "[room_id]", BotReply.MpHelpIn),
+		Of("mp settings", "", BotReply.MpHelpSettings),
+		Of("mp lock", "", BotReply.MpHelpLock),
+		Of("mp unlock", "", BotReply.MpHelpUnlock),
+		Of("mp private", "[0|1]", BotReply.MpHelpPrivate),
+		Of("mp size", "<2-16>", BotReply.MpHelpSize),
+		Of("mp move", "<name/id> <slot 1-16>", BotReply.MpHelpMove),
+		Of("mp host", "<name/id>", BotReply.MpHelpHost),
+		Of("mp clearhost", "", BotReply.MpHelpClearhost),
+		Of("mp name", "<text>", BotReply.MpHelpName),
+		Of("mp password", "[text]", BotReply.MpHelpPassword),
+		Of("mp invite", "<name/id>", BotReply.MpHelpInvite),
+		Of("mp addref", "<name/id>", BotReply.MpHelpAddref),
+		Of("mp removeref", "<name/id>", BotReply.MpHelpRemoveref),
+		Of("mp listrefs", "", BotReply.MpHelpListrefs),
+		Of("mp banlist", "", BotReply.MpHelpBanlist),
+		Of("mp team", "<name/id> <red|blue>", BotReply.MpHelpTeam),
+		Of("mp map", "<beatmap id> [playmode]", BotReply.MpHelpMap),
+		Of("mp mods", "<mods>|Freemod|None", BotReply.MpHelpMods),
+		Of("mp set", "<teammode 0-3> [scoremode 0-3] [size 2-16]", BotReply.MpHelpSet),
+		Of("mp start", "[seconds]", BotReply.MpHelpStart),
+		Of("mp timer", "[seconds]", BotReply.MpHelpTimer),
+		Of("mp aborttimer", "", BotReply.MpHelpAborttimer),
+		Of("mp abort", "", BotReply.MpHelpAbort),
+		Of("mp kick", "<name/id>", BotReply.MpHelpKick),
+		Of("mp ban", "<name/id>", BotReply.MpHelpBan),
+		Of("mp unban", "<name/id>", BotReply.MpHelpUnban),
+		Of("mp close", "", BotReply.MpHelpClose)
 	];
 
-	public static string Lines(IReplies replies, string scope)
+	public static string Lines(IReplies<BotReply> replies, string scope)
 	{
 		var depth = scope.Length == 0 ? 0 : scope.Count(c => c == ' ') + 1;
 		return string.Join('\n', All
@@ -58,11 +59,15 @@ internal static class CommandCatalog
 				$"!{command.Path}{(command.Usage.Length == 0 ? "" : " " + command.Usage)} - {replies.Text(command.Summary)}"));
 	}
 
-	private static CommandHelp Of(string path, string usage, string summary)
+	public static string? Line(IReplies<BotReply> replies, string path)
 	{
-		var name = path.Split(' ')[^1];
-		var surface = path.StartsWith("mp ", StringComparison.Ordinal) ? "mp" : "bot";
-		return new CommandHelp(path, usage,
-			new Reply($"{surface}.help{char.ToUpperInvariant(name[0])}{name[1..]}", summary));
+		return All.FirstOrDefault(command => command.Path == path) is { } found
+			? $"!{found.Path}{(found.Usage.Length == 0 ? "" : " " + found.Usage)} - {replies.Text(found.Summary)}"
+			: null;
+	}
+
+	private static CommandHelp Of(string path, string usage, BotReply summary)
+	{
+		return new CommandHelp(path, usage, summary);
 	}
 }

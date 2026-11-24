@@ -354,9 +354,9 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
 
 ### BasilBot replies
 
-* Everything the bot says is text the operator can edit: one JSON file, `Data/Localizations/bot.json`, keys to ICU
+* Everything the bot says is text the operator can edit: one JSON file, `Data/Localizations/bot.json` (the IRC host has `irc.json` the same way), reply names to ICU
   MessageFormat strings with named placeholders (`{room}`, plural selectors). One language. The defaults are embedded
   in the assembly and written to the configuration folder when the file does not exist. The file is watched and reloaded
   while the server runs; an invalid file keeps the last good set and logs a warning; a missing key falls back to its
-  default. Reply keys are typed constants owned by the bot; tests reference the keys, never copy the default text.
-* A reply to a command refused with `Denied` does not name the privileges that were lacking.
+  default. Each surface owns a reply enum (`BotReply`, `IrcReply`) whose members declare their default text and argument names with `[Reply]`; `IReplies<TReply>` (Application.Shared) words them and `ReplyCatalog<TReply>` (Infrastructure.Shared) reads the file. Tests reference the enum members, never copy the default text.
+* A reply to a command refused with `Denied` does not name the privileges that were lacking, but names the role that can act (D4).

@@ -1,3 +1,4 @@
+using Basil.Application.Bot.Replies;
 using Basil.Application.Bot.Commands;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Servers.Messages.Channels;
@@ -25,24 +26,36 @@ internal sealed class ChannelCommands(ISender sender, GeneralChannelRegistry cha
 			case "delete" when args.Count == 2:
 				return await DeleteAsync(context, args[1], ct);
 			default:
-				await context.Reply(ChannelReplies.Usage, ct);
+				await context.Reply(BotReply.ChannelUsage, ct);
 				return false;
 		}
 	}
 
+	private static string YesNo(CommandContext context, bool value)
+	{
+		return context.Replies.Text(value ? BotReply.BotYes : BotReply.BotNo);
+	}
+
+	private static string Names(CommandContext context, UserPrivileges privileges)
+	{
+		return privileges == UserPrivileges.None
+			? context.Replies.Text(BotReply.MpNone)
+			: privileges.ToString().Replace(", ", "+");
+	}
+
 	private async Task<bool> ListAsync(CommandContext context, CancellationToken ct)
 	{
-		var lines = channels.VisibleTo(context.Actor).Select(channel => context.Replies.Text(ChannelReplies.ListEntry,
+		var lines = channels.VisibleTo(context.Actor).Select(channel => context.Replies.Text(BotReply.ChannelListEntry,
 			new
 			{
 				name = channel.Name,
-				read = (byte)channel.Record.Value.ReadPrivileges,
-				write = (byte)channel.Record.Value.WritePrivileges,
-				autoJoin = channel.Record.Value.AutoJoin,
-				visible = channel.Record.Value.Visible,
+				read = Names(context, channel.Record.Value.ReadPrivileges),
+				write = Names(context, channel.Record.Value.WritePrivileges),
+				autoJoin = YesNo(context, channel.Record.Value.AutoJoin),
+				visible = YesNo(context, channel.Record.Value.Visible),
 				topic = channel.Topic
 			})).ToList();
-		if (lines.Count == 0) await context.Reply(ChannelReplies.NoChannels, ct);
+		if (lines.Count == 0) await context.Reply(BotReply.ChannelNoChannels, ct);
 		else await context.Say(string.Join('\n', lines), ct);
 		return true;
 	}
@@ -85,7 +98,7 @@ internal sealed class ChannelCommands(ISender sender, GeneralChannelRegistry cha
 		if (!change.IsValid) return await InvalidAsync(context, ct);
 
 		var (result, channel) = await sender.Send(new ConfigureGeneralChannel(context.Actor, name, change), ct);
-		var (reply, arguments) = ChannelReplies.Of(result, channel?.Name ?? name, ChannelReplies.Updated);
+		var (reply, arguments) = ChannelReplies.Of(result, channel?.Name ?? name, BotReply.ChannelUpdated);
 		await context.Reply(reply, arguments, ct);
 		return result == ChannelJoinResult.Ok;
 	}
@@ -93,14 +106,14 @@ internal sealed class ChannelCommands(ISender sender, GeneralChannelRegistry cha
 	private async Task<bool> DeleteAsync(CommandContext context, string name, CancellationToken ct)
 	{
 		var (result, channel) = await sender.Send(new DeleteGeneralChannel(context.Actor, name), ct);
-		var (reply, arguments) = ChannelReplies.Of(result, channel?.Name ?? name, ChannelReplies.Deleted);
+		var (reply, arguments) = ChannelReplies.Of(result, channel?.Name ?? name, BotReply.ChannelDeleted);
 		await context.Reply(reply, arguments, ct);
 		return result == ChannelJoinResult.Ok;
 	}
 
 	private static async Task<bool> InvalidAsync(CommandContext context, CancellationToken ct)
 	{
-		await context.Reply(ChannelReplies.InvalidArguments, ct);
+		await context.Reply(BotReply.ChannelInvalidArguments, ct);
 		return false;
 	}
 

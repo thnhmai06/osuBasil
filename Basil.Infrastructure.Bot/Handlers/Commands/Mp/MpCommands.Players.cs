@@ -1,3 +1,4 @@
+using Basil.Application.Bot.Replies;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Bot.Commands;
 using Basil.Application.Multiplayer.Messages;
@@ -18,7 +19,7 @@ internal sealed partial class MpCommands
 		var actor = context.Actor;
 		if (args.Count < 2 || !int.TryParse(args[^1], out var slot) || slot is < 1 or > RoomRules.MaxPlayers)
 		{
-			await context.Reply(MpReplies.MoveUsage, ct);
+			await context.Reply(BotReply.MpMoveUsage, ct);
 			return false;
 		}
 
@@ -26,7 +27,7 @@ internal sealed partial class MpCommands
 		var target = await ResolveUserAsync(rawTarget, ct);
 		if (target is null)
 		{
-			await context.Reply(MpReplies.UserNotFound, ct);
+			await context.Reply(BotReply.MpUserNotFound, ct);
 			return false;
 		}
 
@@ -37,7 +38,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		await context.Reply(MpReplies.MovedToSlot, new { player = target.Value.Name, slot }, ct);
+		await context.Reply(BotReply.MpMovedToSlot, new { player = target.Value.Name, slot }, ct);
 		return true;
 	}
 
@@ -49,7 +50,7 @@ internal sealed partial class MpCommands
 		var actor = context.Actor;
 		if (args.Count < 1)
 		{
-			await context.Reply(MpReplies.HostUsage, ct);
+			await context.Reply(BotReply.MpHostUsage, ct);
 			return false;
 		}
 
@@ -57,7 +58,7 @@ internal sealed partial class MpCommands
 		var target = await ResolveUserAsync(rawTarget, ct);
 		if (target is null)
 		{
-			await context.Reply(MpReplies.UserNotFound, ct);
+			await context.Reply(BotReply.MpUserNotFound, ct);
 			return false;
 		}
 
@@ -68,7 +69,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		await context.Reply(MpReplies.ChangedMatchHost, new { player = target.Value.Name }, ct);
+		await context.Reply(BotReply.MpChangedMatchHost, new { player = target.Value.Name }, ct);
 		return true;
 	}
 
@@ -82,7 +83,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		await context.Reply(MpReplies.ClearedMatchHost, ct);
+		await context.Reply(BotReply.MpClearedMatchHost, ct);
 		return true;
 	}
 
@@ -94,7 +95,7 @@ internal sealed partial class MpCommands
 		var actor = context.Actor;
 		if (args.Count < 1)
 		{
-			await context.Reply(MpReplies.InviteUsage, ct);
+			await context.Reply(BotReply.MpInviteUsage, ct);
 			return false;
 		}
 
@@ -102,7 +103,7 @@ internal sealed partial class MpCommands
 		var target = await ResolveUserAsync(rawTarget, ct);
 		if (target is null)
 		{
-			await context.Reply(MpReplies.UserNotFound, ct);
+			await context.Reply(BotReply.MpUserNotFound, ct);
 			return false;
 		}
 
@@ -113,7 +114,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		await context.Reply(MpReplies.InvitedToRoom, new { player = target.Value.Name }, ct);
+		await context.Reply(BotReply.MpInvitedToRoom, new { player = target.Value.Name }, ct);
 		return true;
 	}
 
@@ -125,7 +126,7 @@ internal sealed partial class MpCommands
 		var actor = context.Actor;
 		if (args.Count < 1)
 		{
-			await context.Reply(MpReplies.KickUsage, ct);
+			await context.Reply(BotReply.MpKickUsage, ct);
 			return false;
 		}
 
@@ -133,7 +134,7 @@ internal sealed partial class MpCommands
 		var target = await ResolveUserAsync(rawTarget, ct);
 		if (target is null)
 		{
-			await context.Reply(MpReplies.UserNotRegistered, ct);
+			await context.Reply(BotReply.MpUserNotFound, ct);
 			return false;
 		}
 
@@ -144,7 +145,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		await context.Reply(MpReplies.KickedFromMatch, new { player = target.Value.Name }, ct);
+		await context.Reply(BotReply.MpKickedFromMatch, new { player = target.Value.Name }, ct);
 		return true;
 	}
 
@@ -154,7 +155,7 @@ internal sealed partial class MpCommands
 		var actor = context.Actor;
 		if (args.Count < 1)
 		{
-			await context.Reply(MpReplies.BanUsage, ct);
+			await context.Reply(BotReply.MpBanUsage, ct);
 			return false;
 		}
 
@@ -162,7 +163,7 @@ internal sealed partial class MpCommands
 		var target = await ResolveUserAsync(rawTarget, ct);
 		if (target is null)
 		{
-			await context.Reply(MpReplies.UserNotRegistered, ct);
+			await context.Reply(BotReply.MpUserNotFound, ct);
 			return false;
 		}
 
@@ -173,7 +174,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		await context.Reply(MpReplies.BannedPlayerFromMatch, new { player = target.Value.Name }, ct);
+		await context.Reply(BotReply.MpBannedPlayerFromMatch, new { player = target.Value.Name }, ct);
 		return true;
 	}
 
@@ -183,7 +184,7 @@ internal sealed partial class MpCommands
 		var actor = context.Actor;
 		if (args.Count < 1)
 		{
-			await context.Reply(MpReplies.UnbanUsage, ct);
+			await context.Reply(BotReply.MpUnbanUsage, ct);
 			return false;
 		}
 
@@ -191,7 +192,7 @@ internal sealed partial class MpCommands
 		var target = await ResolveUserAsync(rawTarget, ct);
 		if (target is null)
 		{
-			await context.Reply(MpReplies.UserNotRegistered, ct);
+			await context.Reply(BotReply.MpUserNotFound, ct);
 			return false;
 		}
 
@@ -202,7 +203,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		await context.Reply(MpReplies.UnbannedFromMatch, new { player = target.Value.Name }, ct);
+		await context.Reply(BotReply.MpUnbannedFromMatch, new { player = target.Value.Name }, ct);
 		return true;
 	}
 
@@ -214,14 +215,14 @@ internal sealed partial class MpCommands
 		var actor = context.Actor;
 		if (args.Count < 2)
 		{
-			await context.Reply(MpReplies.TeamUsage, ct);
+			await context.Reply(BotReply.MpTeamUsage, ct);
 			return false;
 		}
 
 		var teamArg = args[^1].ToLowerInvariant();
 		if (teamArg is not ("red" or "blue"))
 		{
-			await context.Reply(MpReplies.TeamUsage, ct);
+			await context.Reply(BotReply.MpTeamUsage, ct);
 			return false;
 		}
 
@@ -229,7 +230,7 @@ internal sealed partial class MpCommands
 		var target = await ResolveUserAsync(rawTarget, ct);
 		if (target is null)
 		{
-			await context.Reply(MpReplies.UserNotFound, ct);
+			await context.Reply(BotReply.MpUserNotFound, ct);
 			return false;
 		}
 
@@ -242,7 +243,7 @@ internal sealed partial class MpCommands
 		}
 
 		var teamDisplay = char.ToUpperInvariant(teamArg[0]) + teamArg[1..];
-		await context.Reply(MpReplies.MovedToTeam, new { player = target.Value.Name, team = teamDisplay },
+		await context.Reply(BotReply.MpMovedToTeam, new { player = target.Value.Name, team = teamDisplay },
 			ct);
 		return true;
 	}

@@ -2,805 +2,849 @@
 	"$schema": "http://json-schema.org/draft-07/schema#",
 	"$id": "./bot.schema.json",
 	"title": "BasilBot replies",
-	"description": "The wording of every BasilBot reply, by reply key. A key left out keeps its default wording.",
+	"description": "The wording of every BasilBot reply, by reply name. A reply left out keeps its default wording.",
 	"type": "object",
 	"properties": {
 		"$schema": {
 			"const": "./bot.schema.json"
 		},
-		"announce.anticheatFlagPm": {
+		"AnnounceAnticheatFlagPm": {
 			"type": "string",
 			"description": "A reply with the arguments {room}, {name}, {player}, {reason}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"announce.anticheatFlagRoom": {
+		"AnnounceAnticheatFlagRoom": {
 			"type": "string",
 			"description": "A reply with the arguments {player}, {reason}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"announce.countdownCancelled": {
+		"AnnounceCountdownCancelled": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"announce.countdownCancelledByRoundAbort": {
+		"AnnounceCountdownCancelledByRoundAbort": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"announce.countdownCancelledByRoundStart": {
+		"AnnounceCountdownCancelledByRoundStart": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"announce.countdownElapsed": {
+		"AnnounceCountdownElapsed": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"announce.countdownElapsedForRound": {
+		"AnnounceCountdownElapsedForRound": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"announce.countdownReplaced": {
+		"AnnounceCountdownReplaced": {
 			"type": "string",
 			"description": "A reply with the arguments {seconds}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"announce.countdownStarted": {
+		"AnnounceCountdownStarted": {
 			"type": "string",
 			"description": "A reply with the arguments {seconds}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"announce.countdownStartedForRound": {
+		"AnnounceCountdownStartedForRound": {
 			"type": "string",
 			"description": "A reply with the arguments {seconds}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"announce.countdownTicked": {
+		"AnnounceCountdownTicked": {
 			"type": "string",
 			"description": "A reply with the arguments {seconds}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"announce.countdownTickedForRound": {
+		"AnnounceCountdownTickedForRound": {
 			"type": "string",
 			"description": "A reply with the arguments {seconds}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"announce.roomClosingAnnounced": {
+		"AnnounceRoomClosingAnnounced": {
 			"type": "string",
 			"description": "A reply with the arguments {minutes}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"announce.roomPlayerJoinedClosing": {
+		"AnnounceRoomPlayerJoinedClosing": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"announce.roundAborted": {
+		"AnnounceRoundAborted": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"announce.roundEnded": {
+		"AnnounceRoundEnded": {
 			"type": "string",
 			"description": "A reply with the arguments {id}, {seconds}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"announce.roundStartedByCountdown": {
+		"AnnounceRoundStartedByCountdown": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"announce.roundStartedNoPlayers": {
+		"AnnounceRoundStartedNoPlayers": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"announce.scoreMissing": {
+		"AnnounceScoreMissing": {
 			"type": "string",
 			"description": "A reply with the arguments {player}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"announce.scoresReceived": {
+		"AnnounceScoresReceived": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"announce.scoresReceivedExcept": {
+		"AnnounceScoresReceivedExcept": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"announce.settingsChangedCountdownCancelled": {
+		"AnnounceSettingsChangedCountdownCancelled": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"bot.availableFaqEntries": {
+		"BotAvailableFaqEntries": {
 			"type": "string",
 			"description": "A reply with the arguments {entries}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"bot.chainNotInLobby": {
+		"BotChainNotInLobby": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"bot.chainOnlyMpAllowed": {
+		"BotChainOnlyMpAllowed": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"bot.faqUsage": {
+		"BotFaqUsage": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"bot.helpChannel": {
+		"BotHelpChannel": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"bot.helpFaq": {
+		"BotHelpFaq": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"bot.helpHelp": {
+		"BotHelpHelp": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"bot.helpMp": {
+		"BotHelpMp": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"bot.helpRoll": {
+		"BotHelpRoll": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"bot.helpWhere": {
+		"BotHelpWhere": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"bot.noFaqEntriesAvailable": {
+		"BotNo": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"bot.noFaqEntryFound": {
+		"BotNoFaqEntriesAvailable": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"BotNoFaqEntryFound": {
 			"type": "string",
 			"description": "A reply with the arguments {entry}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"bot.notRegistered": {
-			"type": "string",
-			"description": "A reply with the arguments {name}. Wording is ICU MessageFormat; use only these arguments."
-		},
-		"bot.rollResult": {
+		"BotRollResult": {
 			"type": "string",
 			"description": "A reply with the arguments {user}, {points}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"bot.whereIsIn": {
+		"BotRollUsage": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"BotUnknownCommand": {
+			"type": "string",
+			"description": "A reply with the arguments {command}. Wording is ICU MessageFormat; use only these arguments."
+		},
+		"BotWhereIsIn": {
 			"type": "string",
 			"description": "A reply with the arguments {name}, {country}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"bot.whereUsage": {
-			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
-		},
-		"channel.created": {
+		"BotWhereUnknownCountry": {
 			"type": "string",
 			"description": "A reply with the arguments {name}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"channel.deleted": {
-			"type": "string",
-			"description": "A reply with the arguments {name}. Wording is ICU MessageFormat; use only these arguments."
-		},
-		"channel.invalidArguments": {
+		"BotWhereUsage": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"channel.listEntry": {
+		"BotYes": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"ChannelCreated": {
+			"type": "string",
+			"description": "A reply with the arguments {name}. Wording is ICU MessageFormat; use only these arguments."
+		},
+		"ChannelDeleted": {
+			"type": "string",
+			"description": "A reply with the arguments {name}. Wording is ICU MessageFormat; use only these arguments."
+		},
+		"ChannelInvalidArguments": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"ChannelListEntry": {
 			"type": "string",
 			"description": "A reply with the arguments {name}, {read}, {write}, {autoJoin}, {visible}, {topic}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"channel.missingPrivileges": {
+		"ChannelMissingPrivileges": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"channel.nameTaken": {
+		"ChannelNameTaken": {
 			"type": "string",
 			"description": "A reply with the arguments {name}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"channel.noChannels": {
+		"ChannelNoChannels": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"channel.notFound": {
+		"ChannelNotFound": {
 			"type": "string",
 			"description": "A reply with the arguments {name}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"channel.refused": {
+		"ChannelRefused": {
 			"type": "string",
 			"description": "A reply with the arguments {outcome}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"channel.updated": {
+		"ChannelUpdated": {
 			"type": "string",
 			"description": "A reply with the arguments {name}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"channel.usage": {
+		"ChannelUsage": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.abortedMatch": {
+		"MpAbortedMatch": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.addRefUsage": {
+		"MpAddRefUsage": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.addedReferee": {
+		"MpAddedReferee": {
 			"type": "string",
 			"description": "A reply with the arguments {player}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.alreadyInThisMatch": {
+		"MpAlreadyInThisMatch": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.banUsage": {
+		"MpBanUsage": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.bannedFromMatch": {
+		"MpBannedFromMatch": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.bannedPlayerFromMatch": {
+		"MpBannedPlayerFromMatch": {
 			"type": "string",
 			"description": "A reply with the arguments {player}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.cannotInvite": {
+		"MpCannotInvite": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.changedBeatmap": {
+		"MpChangedBeatmap": {
 			"type": "string",
 			"description": "A reply with the arguments {artist}, {title}, {version}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.changedMatchHost": {
+		"MpChangedMatchHost": {
 			"type": "string",
 			"description": "A reply with the arguments {player}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.changedMatchPassword": {
+		"MpChangedMatchPassword": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.changedMatchSettings": {
+		"MpChangedMatchSettings": {
 			"type": "string",
 			"description": "A reply with the arguments {teamType}, {winCondition}, {size}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.changedMatchSize": {
+		"MpChangedMatchSize": {
 			"type": "string",
 			"description": "A reply with the arguments {size}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.clearedMatchHost": {
+		"MpClearedMatchHost": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.closedMatch": {
+		"MpClosedMatch": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.countdownOutOfRange": {
+		"MpCountdownOutOfRange": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.createdMatch": {
+		"MpCreatedMatch": {
 			"type": "string",
-			"description": "A reply with the arguments {room}, {name}, {privacy}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "A reply with the arguments {room}, {name}, {privacy}, {channel}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.defaultRoomName": {
+		"MpDefaultRoomName": {
 			"type": "string",
 			"description": "A reply with the arguments {name}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.destinationSlotNotOpen": {
+		"MpDestinationSlotNotOpen": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.disabledFreemod": {
+		"MpDisabledFreemod": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.disabledMods": {
+		"MpDisabledMods": {
 			"type": "string",
 			"description": "A reply with the arguments {mods}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.enabledFreemod": {
+		"MpEnabledFreemod": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.enabledMods": {
+		"MpEnabledMods": {
 			"type": "string",
 			"description": "A reply with the arguments {mods}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.freemod": {
+		"MpFreemod": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.freemodNotEnabled": {
+		"MpFreemodNotEnabled": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.genericFailed": {
+		"MpGenericFailed": {
 			"type": "string",
 			"description": "A reply with the arguments {outcome}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.helpAbort": {
+		"MpHelpAbort": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpAborttimer": {
+		"MpHelpAborttimer": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpAddref": {
+		"MpHelpAddref": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpBan": {
+		"MpHelpBan": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpBanlist": {
+		"MpHelpBanlist": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpClearhost": {
+		"MpHelpClearhost": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpClose": {
+		"MpHelpClose": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpHost": {
+		"MpHelpHost": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpIn": {
+		"MpHelpIn": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpInvite": {
+		"MpHelpInvite": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpJoin": {
+		"MpHelpJoin": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpKick": {
+		"MpHelpKick": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpListrefs": {
+		"MpHelpList": {
+			"type": "string",
+			"description": "A reply with the arguments {commands}. Wording is ICU MessageFormat; use only these arguments."
+		},
+		"MpHelpListrefs": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpLock": {
+		"MpHelpLock": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpMake": {
+		"MpHelpMake": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpMakeprivate": {
+		"MpHelpMakeprivate": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpMap": {
+		"MpHelpMap": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpMods": {
+		"MpHelpMods": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpMove": {
+		"MpHelpMove": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpName": {
+		"MpHelpName": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpPassword": {
+		"MpHelpPassword": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpPrivate": {
+		"MpHelpPrivate": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpRemoveref": {
+		"MpHelpRemoveref": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpSet": {
+		"MpHelpSet": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpSettings": {
+		"MpHelpSettings": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpSize": {
+		"MpHelpSize": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpStart": {
+		"MpHelpStart": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpTeam": {
+		"MpHelpTeam": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpTimer": {
+		"MpHelpTimer": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpUnban": {
+		"MpHelpUnban": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.helpUnlock": {
+		"MpHelpUnlock": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.hostTag": {
+		"MpHostTag": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.hostUsage": {
+		"MpHostUsage": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.inUsage": {
+		"MpInUsage": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.incorrectPassword": {
+		"MpIncorrectPassword": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.invalidMods": {
+		"MpInvalidMods": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.inviteUsage": {
+		"MpInviteUsage": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.invitedToRoom": {
+		"MpInvitedToRoom": {
 			"type": "string",
 			"description": "A reply with the arguments {player}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.joinUsage": {
+		"MpJoinUsage": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.joinedMatch": {
+		"MpJoinedMatch": {
 			"type": "string",
 			"description": "A reply with the arguments {room}, {name}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.kickUsage": {
+		"MpKickUsage": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.kickedFromMatch": {
+		"MpKickedFromMatch": {
 			"type": "string",
 			"description": "A reply with the arguments {player}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.lockedMatch": {
+		"MpLockedMatch": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.mapUsage": {
+		"MpMapUsage": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.matchAlreadyInProgress": {
+		"MpMatchAlreadyInProgress": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.matchBans": {
+		"MpMatchBans": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.matchClosed": {
+		"MpMatchClosed": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.matchHasNoTeams": {
+		"MpMatchHasNoTeams": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.matchIsFull": {
+		"MpMatchIsFull": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.matchIsLocked": {
+		"MpMatchIsLocked": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.matchIsPrivateNow": {
+		"MpMatchIsPrivateNow": {
 			"type": "string",
 			"description": "A reply with the arguments {privacy}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.matchNotInProgress": {
+		"MpMatchNotInProgress": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.matchNowPrivate": {
+		"MpMatchNowPrivate": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.matchNowPublic": {
+		"MpMatchNowPublic": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.matchReferees": {
+		"MpMatchReferees": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.matchStarted": {
+		"MpMatchStarted": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.missingPrivileges": {
+		"MpMissingPrivileges": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.modsUsage": {
+		"MpModsUsage": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.moveUsage": {
+		"MpMoveUsage": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.movedToSlot": {
+		"MpMovedToSlot": {
 			"type": "string",
 			"description": "A reply with the arguments {player}, {slot}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.movedToTeam": {
+		"MpMovedToTeam": {
 			"type": "string",
 			"description": "A reply with the arguments {player}, {team}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.mpInDmOnly": {
+		"MpMpInDmOnly": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.nameUsage": {
+		"MpNameUsage": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.noActiveRoomWithHashId": {
+		"MpNoActiveRoomWithHashId": {
 			"type": "string",
 			"description": "A reply with the arguments {room}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.noActiveRoomWithId": {
+		"MpNoActiveRoomWithId": {
 			"type": "string",
 			"description": "A reply with the arguments {room}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.noBannedPlayers": {
+		"MpNoBannedPlayers": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.noBeatmapSelected": {
+		"MpNoBeatmapSelected": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.noBeatmapWithId": {
+		"MpNoBeatmapWithId": {
 			"type": "string",
 			"description": "A reply with the arguments {beatmap}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.noCountdownRunning": {
+		"MpNoCountdownRunning": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.noMatchesAvailable": {
+		"MpNoMatchesAvailable": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.noModChanges": {
+		"MpNoModChanges": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.noReferees": {
+		"MpNoReferees": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.notInARoom": {
+		"MpNone": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.notScopedToAnyMatch": {
+		"MpNotInARoom": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.nowTargetingMatch": {
+		"MpNotScopedToAnyMatch": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"MpNowTargetingMatch": {
 			"type": "string",
 			"description": "A reply with the arguments {room}, {name}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.ownSlotLocked": {
+		"MpOwnSlotLocked": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.playerReady": {
+		"MpPlayerReady": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.privateUsage": {
+		"MpPlayersOnly": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.removeRefUsage": {
+		"MpPrivateUsage": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.removedMatchPassword": {
+		"MpRemoveRefUsage": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.removedReferee": {
+		"MpRemovedMatchPassword": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"MpRemovedReferee": {
 			"type": "string",
 			"description": "A reply with the arguments {player}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.roomLimitReached": {
+		"MpRoomLimitReached": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.roomNameUpdated": {
+		"MpRoomNameUpdated": {
 			"type": "string",
 			"description": "A reply with the arguments {name}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.roomPrefix": {
+		"MpRoomPrefix": {
 			"type": "string",
 			"description": "A reply with the arguments {room}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.roomsLocked": {
+		"MpRoomsLocked": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.scoreNotCurrentRound": {
+		"MpScoreNotCurrentRound": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.setUsage": {
+		"MpSetUsage": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.settingsActiveMods": {
+		"MpSettingsAccess": {
+			"type": "string",
+			"description": "A reply with the arguments {locked}, {private}, {password}. Wording is ICU MessageFormat; use only these arguments."
+		},
+		"MpSettingsActiveMods": {
 			"type": "string",
 			"description": "A reply with the arguments {mods}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.settingsBeatmap": {
+		"MpSettingsBeatmap": {
 			"type": "string",
 			"description": "A reply with the arguments {beatmap}, {name}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.settingsBeatmapNotSelected": {
+		"MpSettingsBeatmapNotSelected": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.settingsCreator": {
+		"MpSettingsCreator": {
 			"type": "string",
 			"description": "A reply with the arguments {id}, {name}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.settingsInvalid": {
+		"MpSettingsHost": {
+			"type": "string",
+			"description": "A reply with the arguments {host}. Wording is ICU MessageFormat; use only these arguments."
+		},
+		"MpSettingsInvalid": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.settingsPlayers": {
+		"MpSettingsPlayers": {
 			"type": "string",
 			"description": "A reply with the arguments {count}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.settingsRoomName": {
+		"MpSettingsReferees": {
+			"type": "string",
+			"description": "A reply with the arguments {referees}. Wording is ICU MessageFormat; use only these arguments."
+		},
+		"MpSettingsRoomName": {
 			"type": "string",
 			"description": "A reply with the arguments {name}, {room}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.settingsSlot": {
+		"MpSettingsSize": {
+			"type": "string",
+			"description": "A reply with the arguments {size}. Wording is ICU MessageFormat; use only these arguments."
+		},
+		"MpSettingsSlot": {
 			"type": "string",
 			"description": "A reply with the arguments {slot}, {status}, {team}, {id}, {name}, {tags}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.settingsTeamMode": {
+		"MpSettingsTeamMode": {
 			"type": "string",
 			"description": "A reply with the arguments {teamType}, {winCondition}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.sizeUsage": {
+		"MpSizeOutOfRange": {
+			"type": "string",
+			"description": "A reply with the arguments {min}, {max}. Wording is ICU MessageFormat; use only these arguments."
+		},
+		"MpSizeUsage": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.slotStatusNoMap": {
+		"MpSlotStatusNoMap": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.slotStatusNotReady": {
+		"MpSlotStatusNotReady": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.speedModsMatchWide": {
+		"MpSpeedModsMatchWide": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.tagNotAvailable": {
+		"MpTagNotAvailable": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.tags": {
+		"MpTags": {
 			"type": "string",
 			"description": "A reply with the arguments {tags}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.targetAlreadyReferee": {
+		"MpTargetAlreadyReferee": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.targetInAnotherMatch": {
+		"MpTargetInAnotherMatch": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.targetIsBanned": {
+		"MpTargetIsBanned": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.targetIsCreator": {
+		"MpTargetIsCreator": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.targetIsManager": {
+		"MpTargetIsManager": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.targetIsObserver": {
+		"MpTargetIsObserver": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.targetIsPlayer": {
+		"MpTargetIsPlayer": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.targetNotBanned": {
+		"MpTargetNotBanned": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.targetNotInMatch": {
+		"MpTargetNotInMatch": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.targetNotObserver": {
+		"MpTargetNotObserver": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.targetNotOnline": {
+		"MpTargetNotOnline": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.targetNotPlaying": {
+		"MpTargetNotPlaying": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.targetNotReferee": {
+		"MpTargetNotReferee": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.teamUsage": {
+		"MpTeamUsage": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.timerUsage": {
+		"MpTimerUsage": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.unbanUsage": {
+		"MpUnbanUsage": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.unbannedFromMatch": {
+		"MpUnbannedFromMatch": {
 			"type": "string",
 			"description": "A reply with the arguments {player}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.unknownMpSubcommand": {
+		"MpUnknownMpSubcommand": {
 			"type": "string",
 			"description": "A reply with the arguments {subcommand}. Wording is ICU MessageFormat; use only these arguments."
 		},
-		"mp.unlockedMatch": {
+		"MpUnlockedMatch": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.userAlreadyInRoom": {
+		"MpUserAlreadyInRoom": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"mp.userNotFound": {
-			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
-		},
-		"mp.userNotRegistered": {
+		"MpUserNotFound": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		}

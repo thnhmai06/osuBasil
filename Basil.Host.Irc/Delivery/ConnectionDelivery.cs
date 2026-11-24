@@ -1,3 +1,4 @@
+using Basil.Application.Shared.Replies;
 using Basil.Application.Sessions.Objects.Events;
 using Basil.Application.Users.Objects;
 using Basil.Host.Irc.Clients;
@@ -9,19 +10,22 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Host.Irc.Delivery;
 
-internal sealed class ConnectionClosedDelivery(IrcClients clients, IrcPresence presence, IOptions<IrcOptions> options)
+internal sealed class ConnectionClosedDelivery(IrcClients clients,
+	IrcPresence presence,
+	IReplies<IrcReply> replies,
+	IOptions<IrcOptions> options)
 	: INotificationHandler<SessionClosed>
 {
 	public ValueTask Handle(SessionClosed notification, CancellationToken ct)
 	{
 		var connection = notification.Session;
-		if (clients.Find(connection) is { } own) own.Close(IrcReplies.Closing(notification.Reason));
+		if (clients.Find(connection) is { } own) own.Close(replies.Text(IrcReplies.Closing(notification.Reason)));
 		clients.Forget(connection);
 		if (!notification.WentOffline) return ValueTask.CompletedTask;
 
 		var channels = presence.Take(connection.Record);
 		var quit = IrcMessage.Quit(IrcView.Mask(connection.Record, options.Value.Domain),
-			IrcReplies.Closing(notification.Reason));
+			replies.Text(IrcReplies.Closing(notification.Reason)));
 		foreach (var session in clients.All.Where(session => session.Session is { } other &&
 		                                                     !ReferenceEquals(other.User, connection.User) &&
 		                                                     channels.Any(channel => channel.Members.Contains(other))))

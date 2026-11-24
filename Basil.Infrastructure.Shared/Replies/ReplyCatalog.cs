@@ -2,17 +2,17 @@ using System.Collections.Frozen;
 using System.Globalization;
 using System.Text.Encodings.Web;
 using System.Text.Json;
-using Basil.Application.Bot.Replies;
+using Basil.Application.Shared.Replies;
 using Basil.Infrastructure.Shared.Storage;
 using Jeffijoe.MessageFormat;
 using Microsoft.Extensions.Logging;
 
-namespace Basil.Infrastructure.Bot.Services;
+namespace Basil.Infrastructure.Shared.Replies;
 
-internal sealed class ReplyCatalog(
-	IEnumerable<Reply> replies,
-	DataPaths paths,
-	ILogger<ReplyCatalog> logger) : IReplies
+/// <summary>Words the replies of one surface from <c>Data/Localizations/&lt;surface&gt;.json</c>, falling back to the default wording a reply declares.</summary>
+/// <typeparam name="TReply">The reply enum of the surface.</typeparam>
+public sealed class ReplyCatalog<TReply>(string surface, DataPaths paths, ILogger<ReplyCatalog<TReply>> logger)
+	: IReplies<TReply> where TReply : struct, Enum
 {
 	// The editor's link to the schema; it is no reply.
 	private const string SchemaKey = "$schema";
@@ -26,24 +26,26 @@ internal sealed class ReplyCatalog(
 	};
 
 	private readonly MessageFormatter _formatter = new();
-	private readonly ILogger<ReplyCatalog> _logger = logger;
+	private readonly ILogger<ReplyCatalog<TReply>> _logger = logger;
 
-	private readonly FrozenDictionary<string, Reply> _replies =
-		replies.ToFrozenDictionary(reply => reply.Key, StringComparer.Ordinal);
+	private readonly FrozenDictionary<string, ReplyDefinition> _replies = Enum.GetValues<TReply>()
+		.Select(reply => new ReplyDefinition(reply))
+		.ToFrozenDictionary(definition => definition.Key, StringComparer.Ordinal);
 
 	private FrozenDictionary<string, string> _texts = FrozenDictionary<string, string>.Empty;
 
-	public string Path { get; } =
-		System.IO.Path.GetFullPath(System.IO.Path.Combine(paths.Root, "Localizations", "bot.json"));
+	internal string Path { get; } =
+		System.IO.Path.GetFullPath(System.IO.Path.Combine(paths.Root, "Localizations", surface + ".json"));
 
-	public string Text(Reply reply, object? arguments = null)
+	public string Text(TReply reply, object? arguments = null)
 	{
+		var definition = _replies[reply.ToString()];
 		var values = ArgumentsOf(arguments);
-		foreach (var name in reply.Arguments)
+		foreach (var name in definition.Arguments)
 			if (!values.ContainsKey(name))
-				throw new ArgumentException($"The reply {reply.Key} needs the argument {name}.", nameof(arguments));
+				throw new ArgumentException($"The reply {definition.Key} needs the argument {name}.", nameof(arguments));
 
-		if (Volatile.Read(ref _texts).TryGetValue(reply.Key, out var text))
+		if (Volatile.Read(ref _texts).TryGetValue(definition.Key, out var text))
 			try
 			{
 				return Format(text, values);
@@ -51,13 +53,13 @@ internal sealed class ReplyCatalog(
 			catch (Exception exception) when (exception is not OutOfMemoryException)
 			{
 				_logger.LogWarning(exception,
-					"The wording of the reply {Key} cannot be filled in; the default wording is used", reply.Key);
+					"The wording of the reply {Key} cannot be filled in; the default wording is used", definition.Key);
 			}
 
-		return Format(reply.Default, values);
+		return Format(definition.Default, values);
 	}
 
-	public void Load()
+	internal void Load()
 	{
 		if (!File.Exists(Path))
 			WriteDefaults();
@@ -65,7 +67,7 @@ internal sealed class ReplyCatalog(
 		Reload();
 	}
 
-	public bool Reload()
+	internal bool Reload()
 	{
 		Dictionary<string, JsonElement> entries;
 		try
@@ -87,7 +89,7 @@ internal sealed class ReplyCatalog(
 
 			if (!_replies.TryGetValue(key, out var reply))
 			{
-				_logger.LogWarning("The replies file {Path} has the text {Key}, which is no reply of BasilBot", Path,
+				_logger.LogWarning("The replies file {Path} has the text {Key}, which is no reply of this surface", Path,
 					key);
 				continue;
 			}
@@ -130,7 +132,7 @@ internal sealed class ReplyCatalog(
 		}
 	}
 
-	private bool IsValid(Reply reply, string text, out string? problem)
+	private bool IsValid(ReplyDefinition reply, string text, out string? problem)
 	{
 		// A text may use only the arguments its reply declares, so it is filled in with exactly those.
 		var sample = reply.Arguments.ToDictionary(name => name, _ => (object?)1, StringComparer.Ordinal);
@@ -165,4 +167,21 @@ internal sealed class ReplyCatalog(
 				property => property.GetValue(arguments), StringComparer.Ordinal)
 		};
 	}
+}
+
+internal sealed class ReplyDefinition
+{
+	public ReplyDefinition(Enum reply)
+	{
+		Key = reply.ToString();
+		var attribute = ReplyAttribute.Of(reply);
+		Default = attribute.Text;
+		Arguments = attribute.Arguments;
+	}
+
+	public string Key { get; }
+
+	public string Default { get; }
+
+	public string[] Arguments { get; }
 }

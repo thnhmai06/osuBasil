@@ -33,7 +33,7 @@ Data/
 ├── appsettings.schema.json
 ├── tuisettings.json                 the dashboard's colour scheme
 ├── metadata.json                    the layout version of Data/
-└── Localizations/bot.json           BasilBot's wording
+└── Localizations/                   bot.json (BasilBot's wording), irc.json (the IRC server's wording)
 ```
 
 Basil ships a read-only copy of its own files in `Defaults/Data/`. At every start it copies each file that is missing
@@ -158,7 +158,7 @@ restart itself: install a new release the same way the current one was installed
 
 ## Reply text
 
-BasilBot's wording lives in `Data/Localizations/bot.json`, a JSON object that maps a reply key to an ICU MessageFormat
+The wording of BasilBot and of the IRC server lives in `Data/Localizations/bot.json` and `Data/Localizations/irc.json`, JSON objects that map a reply name to an ICU MessageFormat
 string with named placeholders such as `{room}`. The server writes the file with the default wording when it is
 missing and reloads it while running. A missing key keeps its default; an unreadable file leaves the last good wording
 in use; one invalid text falls back to its default. See [`basil-bot.md`](../for-client/basil-bot.md).
@@ -171,7 +171,7 @@ Basil creates these beside the executable (in the container, under `/app`). Only
 |---|---|---|
 | `Data/appsettings.json`, `appsettings.schema.json`, `tuisettings.json` | deployment configuration and the dashboard colours | **No**: a deleted shipped file is written again with its default content |
 | `Data/metadata.json` | the layout version of `Data/` | **No** |
-| `Data/Localizations/` | BasilBot's wording | Optional: the default wording returns |
+| `Data/Localizations/` | the wording of BasilBot and the IRC server | Optional: the default wording returns |
 | `Data/Rulesets/<version>/` | the osu! calculation stack (installed with `ruleset update`, checked at every start) | Optional: install it again, or copy it from another install |
 | `Data/Replays/` | submitted replays | **No**, unless you mean to lose them |
 | `Data/Avatars/` | user avatars | **No**, unless you mean to lose them |

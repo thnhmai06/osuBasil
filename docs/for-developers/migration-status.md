@@ -21,13 +21,14 @@ carrying their own "(target)" notes.
 | Concurrency of the session registry (per-account gate), room countdowns and the SSE hub | Done |
 | XML documentation on every public member (`CS1591` is an error) | Done |
 | Static `IsValidName`/`TryParse` checks instead of catching constructor exceptions | Done for users, MD5 hashes, channels and content names |
+| Options binding (D44): `Basil.Infrastructure.Shared`, `Basil.Infrastructure.Beatmaps`, `Basil.Host.Irc` and `Basil.Host.Rest` bind the options they define in their `Add...(IConfiguration)`; `Basil` binds only what it defines (server, logging, telemetry, updates); key paths are unchanged | Done |
+| Reply catalogs (D43): one `IReplies<TReply>` in `Basil.Application.Shared`, one implementation in `Basil.Infrastructure.Shared` reading `Data/Localizations/<surface>.json`; BasilBot (`BotReply`) and IRC (`IrcReply`) use it, the Stable host keeps its texts as constants | Done |
 
 ## What is still target
 
 | Area | Today | Target |
 |---|---|---|
 | Admission control | `Basil.Gateway` exists and answers `Allow`/`Deny`; the rate limiter and upload limits still sit partly in `Basil.Host.Shared` and the hosts | The hosts only enforce the gateway's answer, and every entry point declares a policy |
-| Options binding | `Basil.Host.Irc`, `Basil.Host.Rest` and `Basil.Infrastructure.Beatmaps` bind their own options; they read single keys (`GetValue`) rather than binding a section; `Basil` binds the options it defines (updates, telemetry) | Every options type bound as a section by the project that defines it |
 | Infrastructure part of "Rest and Cli never reference `Protocol.Game.Stable`" | Enforced for the project references of the hosts | Also for the Infrastructure projects |
 | Tests naming | Most test methods follow `Condition_Result` | All of them |
 

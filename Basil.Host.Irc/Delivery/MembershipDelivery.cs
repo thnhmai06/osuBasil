@@ -1,3 +1,4 @@
+using Basil.Application.Shared.Replies;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Objects.Events;
 using Basil.Host.Irc.Clients;
@@ -9,7 +10,11 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Host.Irc.Delivery;
 
-internal sealed class ChannelJoinedDelivery(IrcClients clients, IrcPresence presence, IOptions<IrcOptions> options)
+internal sealed class ChannelJoinedDelivery(
+	IrcClients clients,
+	IrcPresence presence,
+	IReplies<IrcReply> replies,
+	IOptions<IrcOptions> options)
 	: INotificationHandler<ChannelMemberJoined>
 {
 	public ValueTask Handle(ChannelMemberJoined notification, CancellationToken ct)
@@ -19,7 +24,7 @@ internal sealed class ChannelJoinedDelivery(IrcClients clients, IrcPresence pres
 
 		var member = notification.Member;
 		var firstOfUser = presence.Add(member.Record, channel);
-		clients.DeliverTo(member, own => IrcChannels.SendJoin(own, channel, member.Record));
+		clients.DeliverTo(member, own => IrcChannels.SendJoin(own, channel, member.Record, replies));
 		if (!firstOfUser) return ValueTask.CompletedTask;
 
 		var mask = IrcView.Mask(member.Record, options.Value.Domain);
@@ -31,7 +36,11 @@ internal sealed class ChannelJoinedDelivery(IrcClients clients, IrcPresence pres
 	}
 }
 
-internal sealed class ChannelPartedDelivery(IrcClients clients, IrcPresence presence, IOptions<IrcOptions> options)
+internal sealed class ChannelPartedDelivery(
+	IrcClients clients,
+	IrcPresence presence,
+	IReplies<IrcReply> replies,
+	IOptions<IrcOptions> options)
 	: INotificationHandler<ChannelMemberParted>
 {
 	public ValueTask Handle(ChannelMemberParted notification, CancellationToken ct)
@@ -43,7 +52,7 @@ internal sealed class ChannelPartedDelivery(IrcClients clients, IrcPresence pres
 		var mask = IrcView.Mask(member.Record, domain);
 		if (clients.Find(member) is { } own)
 			own.Deliver(notification.Kicked
-				? Kick(own, channel, IrcReplies.KickRemoved)
+				? Kick(own, channel, replies.Text(IrcReply.KickRemoved))
 				: IrcMessage.Part(mask, channel.Name));
 
 		// A user who still has a connection in the channel, or who went offline (one QUIT says that), shows no PART.
@@ -62,25 +71,25 @@ internal sealed class ChannelPartedDelivery(IrcClients clients, IrcPresence pres
 	}
 }
 
-internal sealed class ChannelClosedDelivery(IrcClients clients, IrcPresence presence)
+internal sealed class ChannelClosedDelivery(IrcClients clients, IrcPresence presence, IReplies<IrcReply> replies)
 	: INotificationHandler<ChannelClosed>
 {
 	public ValueTask Handle(ChannelClosed notification, CancellationToken ct)
 	{
 		presence.Remove(notification.Channel);
 		foreach (var session in clients.Of(notification.Members))
-			session.Deliver(ChannelPartedDelivery.Kick(session, notification.Channel, IrcReplies.KickClosed));
+			session.Deliver(ChannelPartedDelivery.Kick(session, notification.Channel, replies.Text(IrcReply.KickClosed)));
 		return ValueTask.CompletedTask;
 	}
 }
 
-internal sealed class ChannelConfiguredDelivery(IrcClients clients) : INotificationHandler<ChannelConfigured>
+internal sealed class ChannelConfiguredDelivery(IrcClients clients, IReplies<IrcReply> replies) : INotificationHandler<ChannelConfigured>
 {
 	public ValueTask Handle(ChannelConfigured notification, CancellationToken ct)
 	{
 		foreach (var session in clients.Of(notification.Removed))
 			session.Deliver(ChannelPartedDelivery.Kick(session, notification.Channel,
-				IrcReplies.KickNoAccess));
+				replies.Text(IrcReply.KickNoAccess)));
 		return ValueTask.CompletedTask;
 	}
 }

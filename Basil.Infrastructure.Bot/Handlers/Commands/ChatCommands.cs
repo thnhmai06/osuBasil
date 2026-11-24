@@ -1,3 +1,4 @@
+using Basil.Application.Bot.Replies;
 using Basil.Application.Bot.Commands;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Content.Storage;
@@ -45,7 +46,7 @@ internal sealed class ChatCommands(
 	{
 		if (context.Channel == GeneralChannel.LobbyName)
 		{
-			await context.Reply(BotReplies.ChainNotInLobby, ct);
+			await context.Reply(BotReply.BotChainNotInLobby, ct);
 			return false;
 		}
 
@@ -57,7 +58,7 @@ internal sealed class ChatCommands(
 			    && string.Equals(tokens[0], "mp", StringComparison.OrdinalIgnoreCase)
 			    && tokens.Count >= 2 && MpCommands.IsChainable(tokens[1])) continue;
 
-			await context.Reply(BotReplies.ChainOnlyMpAllowed, ct);
+			await context.Reply(BotReply.BotChainOnlyMpAllowed, ct);
 			return false;
 		}
 
@@ -105,19 +106,45 @@ internal sealed class ChatCommands(
 
 		return trigger switch
 		{
-			"help" => await HandleHelpAsync(context, ct),
+			"help" => await HandleHelpAsync(context, args, ct),
 			"roll" => await HandleRollAsync(context, args, ct),
 			"where" => await HandleWhereAsync(context, args, ct),
 			"faq" => await HandleFaqAsync(context, args, ct),
 			"mp" => await mpCommands.ExecuteAsync(context, args, ct),
 			"channel" => await channelCommands.ExecuteAsync(context, args, ct),
-			_ => false
+			_ => await UnknownAsync(context, tokens[0], ct)
 		};
 	}
 
-	private static async Task<bool> HandleHelpAsync(CommandContext context, CancellationToken ct)
+	private static async Task<bool> UnknownAsync(CommandContext context, string command, CancellationToken ct)
 	{
-		await context.SayPrivately(CommandCatalog.Lines(context.Replies, ""), ct);
+		await context.ReplyToUnknownCommand(BotReply.BotUnknownCommand, new { command }, ct);
+		return false;
+	}
+
+	private static async Task<bool> HandleHelpAsync(CommandContext context, IReadOnlyList<string> args,
+		CancellationToken ct)
+	{
+		if (args.Count == 0)
+		{
+			await context.SayPrivately(CommandCatalog.Lines(context.Replies, ""), ct);
+			return true;
+		}
+
+		var topic = args[0].TrimStart('!').ToLowerInvariant();
+		if (topic == "mp")
+		{
+			await context.SayPrivately(CommandCatalog.Lines(context.Replies, "mp"), ct);
+			return true;
+		}
+
+		if (CommandCatalog.Line(context.Replies, topic) is not { } line)
+		{
+			await context.ReplyPrivately(BotReply.BotUnknownCommand, new { command = args[0] }, ct);
+			return false;
+		}
+
+		await context.SayPrivately(line, ct);
 		return true;
 	}
 
@@ -125,11 +152,17 @@ internal sealed class ChatCommands(
 		CancellationToken ct)
 	{
 		var max = 100;
-		if (args.Count > 0 && int.TryParse(args[0], out var parsed) && parsed > 0)
-			max = parsed;
+		if (args.Count > 0)
+		{
+			if (!int.TryParse(args[0], out max) || max <= 0)
+			{
+				await context.Reply(BotReply.BotRollUsage, ct);
+				return false;
+			}
+		}
 
 		var roll = random.NextInt64(0, (long)max + 1);
-		await context.Reply(BotReplies.RollResult, new { user = context.Sender.Value.Name, points = roll },
+		await context.Reply(BotReply.BotRollResult, new { user = context.Sender.Value.Name, points = roll },
 			ct);
 		return true;
 	}
@@ -139,7 +172,7 @@ internal sealed class ChatCommands(
 	{
 		if (args.Count == 0)
 		{
-			await context.Reply(BotReplies.WhereUsage, ct);
+			await context.Reply(BotReply.BotWhereUsage, ct);
 			return false;
 		}
 
@@ -148,11 +181,17 @@ internal sealed class ChatCommands(
 
 		if (user is null)
 		{
-			await context.Reply(BotReplies.NotRegistered, new { name }, ct);
+			await context.Reply(BotReply.MpUserNotFound, ct);
 			return true;
 		}
 
-		await context.Reply(BotReplies.WhereIsIn,
+		if (user.Value.Country == Country.Xx)
+		{
+			await context.Reply(BotReply.BotWhereUnknownCountry, new { name = user.Value.Name }, ct);
+			return true;
+		}
+
+		await context.Reply(BotReply.BotWhereIsIn,
 			new { name = user.Value.Name, country = user.Value.Country.Describe() }, ct);
 		return true;
 	}
@@ -162,7 +201,7 @@ internal sealed class ChatCommands(
 	{
 		if (args.Count == 0)
 		{
-			await context.Reply(BotReplies.FaqUsage, ct);
+			await context.Reply(BotReply.BotFaqUsage, ct);
 			return false;
 		}
 
@@ -173,11 +212,11 @@ internal sealed class ChatCommands(
 			var entries = (await faqs.ListAsync(ct)).ToArray();
 			if (entries.Length == 0)
 			{
-				await context.Reply(BotReplies.NoFaqEntriesAvailable, ct);
+				await context.Reply(BotReply.BotNoFaqEntriesAvailable, ct);
 				return true;
 			}
 
-			await context.Reply(BotReplies.AvailableFaqEntries, new { entries = string.Join(", ", entries) },
+			await context.Reply(BotReply.BotAvailableFaqEntries, new { entries = string.Join(", ", entries) },
 				ct);
 			return true;
 		}
@@ -185,7 +224,7 @@ internal sealed class ChatCommands(
 		var reader = FaqRules.IsValidName(query) ? await faqs.ReadAsync(query, ct) : null;
 		if (reader is null)
 		{
-			await context.Reply(BotReplies.NoFaqEntryFound, new { entry = query }, ct);
+			await context.Reply(BotReply.BotNoFaqEntryFound, new { entry = query }, ct);
 			return true;
 		}
 

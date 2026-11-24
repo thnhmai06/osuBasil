@@ -1,6 +1,8 @@
+using Basil.Application.Bot.Replies;
 using Basil.Application.Bot.Commands;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects;
+using Basil.Domain.Chat;
 using Basil.Domain.Multiplayer.Room;
 using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 
@@ -16,7 +18,7 @@ internal sealed partial class MpCommands
 		var actor = context.Actor;
 		var name = args.Count > 0
 			? string.Join(' ', args)
-			: context.Replies.Text(MpReplies.DefaultRoomName, new { name = context.Sender.Value.Name });
+			: context.Replies.Text(BotReply.MpDefaultRoomName, new { name = context.Sender.Value.Name });
 		if (name.Length > MaxRoomNameLength) name = name[..MaxRoomNameLength];
 
 		var (room, outcome) =
@@ -28,8 +30,12 @@ internal sealed partial class MpCommands
 		}
 
 		targets.Set(context.Sender.Id, room);
-		await context.Reply(MpReplies.CreatedMatch,
-			new { room = room.Id, name = room.Settings.Name, privacy = isPrivate ? "private" : "public" },
+		await context.Reply(BotReply.MpCreatedMatch,
+			new
+			{
+				room = room.Id, name = room.Settings.Name, privacy = isPrivate ? "private" : "public",
+				channel = RoomChannelRules.NameFor(room.Id)
+			},
 			ct);
 		return true;
 	}
@@ -42,14 +48,14 @@ internal sealed partial class MpCommands
 		var actor = context.Actor;
 		if (args.Count < 1 || !int.TryParse(args[0], out var roomId))
 		{
-			await context.Reply(MpReplies.JoinUsage, ct);
+			await context.Reply(BotReply.MpJoinUsage, ct);
 			return false;
 		}
 
 		var room = lobby.Find(roomId);
 		if (room is null)
 		{
-			await context.Reply(MpReplies.NoActiveRoomWithId, new { room = roomId }, ct);
+			await context.Reply(BotReply.MpNoActiveRoomWithId, new { room = roomId }, ct);
 			return false;
 		}
 
@@ -62,7 +68,7 @@ internal sealed partial class MpCommands
 		}
 
 		targets.Set(context.Sender.Id, room);
-		await context.Reply(MpReplies.JoinedMatch, new { room = roomId, name = room.Settings.Name }, ct);
+		await context.Reply(BotReply.MpJoinedMatch, new { room = roomId, name = room.Settings.Name }, ct);
 		return true;
 	}
 
@@ -73,32 +79,32 @@ internal sealed partial class MpCommands
 	{
 		if (context.Channel is not null)
 		{
-			await context.Reply(MpReplies.MpInDmOnly, ct);
+			await context.Reply(BotReply.MpMpInDmOnly, ct);
 			return false;
 		}
 
 		if (args.Count == 0)
 		{
 			targets.Clear(context.Sender.Id);
-			await context.Reply(MpReplies.NotScopedToAnyMatch, ct);
+			await context.Reply(BotReply.MpNotScopedToAnyMatch, ct);
 			return true;
 		}
 
 		if (!int.TryParse(args[0], out var roomId))
 		{
-			await context.Reply(MpReplies.InUsage, ct);
+			await context.Reply(BotReply.MpInUsage, ct);
 			return false;
 		}
 
 		var room = lobby.Find(roomId);
 		if (room is null || !room.CanBeViewedBy(context.Actor))
 		{
-			await context.Reply(MpReplies.NoActiveRoomWithHashId, new { room = roomId }, ct);
+			await context.Reply(BotReply.MpNoActiveRoomWithHashId, new { room = roomId }, ct);
 			return false;
 		}
 
 		targets.Set(context.Sender.Id, room);
-		await context.Reply(MpReplies.NowTargetingMatch, new { room = roomId, name = room.Settings.Name },
+		await context.Reply(BotReply.MpNowTargetingMatch, new { room = roomId, name = room.Settings.Name },
 			ct);
 		return true;
 	}
@@ -114,7 +120,8 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		await context.Reply(MpReplies.ClosedMatch, ct);
+		// The room channel closes with the room, so the typist is told privately.
+		await context.ReplyPrivately(BotReply.MpClosedMatch, ct);
 		return true;
 	}
 }

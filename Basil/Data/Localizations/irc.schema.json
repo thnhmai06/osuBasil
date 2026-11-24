@@ -1,247 +1,297 @@
 {
 	"$schema": "http://json-schema.org/draft-07/schema#",
 	"$id": "./irc.schema.json",
-	"title": "IRC localization catalog",
-	"description": "Defines the structure and text values for this localization catalog.",
+	"title": "IRC replies",
+	"description": "The wording of every text the IRC host sends, by reply name. A reply left out keeps its default wording.",
 	"type": "object",
 	"properties": {
 		"$schema": {
-			"const": "./irc.schema.json",
-			"description": "Relative path to the schema for this catalog."
+			"const": "./irc.schema.json"
 		},
-		"Irc": {
-			"type": "object",
-			"properties": {
-				"Registration": {
-					"type": "object",
-					"properties": {
-						"Welcome": {
-							"type": "string",
-							"description": "Welcome numeric text. {0} is the server name and {1} is the nickname."
-						},
-						"YourHost": {
-							"type": "string",
-							"description": "Your-host numeric text. {0} is the server host and {1} is its version."
-						},
-						"ServerCreated": {
-							"type": "string",
-							"description": "Server-created numeric text. {0} is the server creation time."
-						},
-						"AreSupportedByThisServer": {
-							"type": "string",
-							"description": "Phrase introducing the server's supported IRC features."
-						}
-					},
-					"required": [
-						"Welcome",
-						"YourHost",
-						"ServerCreated",
-						"AreSupportedByThisServer"
-					],
-					"additionalProperties": false,
-					"description": "Messages sent while an IRC connection registers."
-				},
-				"Query": {
-					"type": "object",
-					"properties": {
-						"EndOfNames": {
-							"type": "string",
-							"description": "End marker for a NAMES response."
-						},
-						"EndOfWho": {
-							"type": "string",
-							"description": "End marker for a WHO response."
-						},
-						"EndOfWhoIs": {
-							"type": "string",
-							"description": "End marker for a WHOIS response."
-						},
-						"EndOfList": {
-							"type": "string",
-							"description": "End marker for a LIST response."
-						},
-						"NoTopicIsSet": {
-							"type": "string",
-							"description": "Reply when a channel has no topic."
-						},
-						"NoSuchChannel": {
-							"type": "string",
-							"description": "Reply when the requested channel does not exist."
-						},
-						"NoSuchNickChannel": {
-							"type": "string",
-							"description": "Reply when a nickname or channel cannot be found."
-						},
-						"IrcGateway": {
-							"type": "string",
-							"description": "Server description shown in IRC information replies."
-						},
-						"SecondsIdleSignonTime": {
-							"type": "string",
-							"description": "Labels for the idle duration and sign-on time in a WHOIS response."
-						},
-						"TopicManagedByServer": {
-							"type": "string",
-							"description": "Topic notice explaining that the server controls channel topics."
-						},
-						"ModesManagedByServer": {
-							"type": "string",
-							"description": "Mode notice explaining that the server controls channel modes."
-						}
-					},
-					"required": [
-						"EndOfNames",
-						"EndOfWho",
-						"EndOfWhoIs",
-						"EndOfList",
-						"NoTopicIsSet",
-						"NoSuchChannel",
-						"NoSuchNickChannel",
-						"IrcGateway",
-						"SecondsIdleSignonTime",
-						"TopicManagedByServer",
-						"ModesManagedByServer"
-					],
-					"additionalProperties": false,
-					"description": "Text used by IRC queries and their result headers."
-				},
-				"Motd": {
-					"type": "object",
-					"properties": {
-						"NoMotd": {
-							"type": "string",
-							"description": "Reply when the server has no message of the day."
-						},
-						"MotdStart": {
-							"type": "string",
-							"description": "Opening line for the message of the day. {0} is the server name."
-						},
-						"EndOfMotd": {
-							"type": "string",
-							"description": "Closing line for the message of the day."
-						}
-					},
-					"required": [
-						"NoMotd",
-						"MotdStart",
-						"EndOfMotd"
-					],
-					"additionalProperties": false,
-					"description": "Messages used to report and delimit the message of the day."
-				},
-				"Lusers": {
-					"type": "object",
-					"properties": {
-						"LusersClients": {
-							"type": "string",
-							"description": "Network client-count line. {0} is the connected user count."
-						},
-						"ChannelsFormed": {
-							"type": "string",
-							"description": "Label following the count of channels formed."
-						},
-						"LusersMe": {
-							"type": "string",
-							"description": "Local server client-count line. {0} is the client count."
-						}
-					},
-					"required": [
-						"LusersClients",
-						"ChannelsFormed",
-						"LusersMe"
-					],
-					"additionalProperties": false,
-					"description": "Text used by the LUSERS command to report connection counts."
-				},
-				"List": {
-					"type": "object",
-					"properties": {
-						"ListChannel": {
-							"type": "string",
-							"description": "Heading for the channel-name column."
-						},
-						"ListUsers": {
-							"type": "string",
-							"description": "Heading for the user-count and channel-name columns."
-						}
-					},
-					"required": [
-						"ListChannel",
-						"ListUsers"
-					],
-					"additionalProperties": false,
-					"description": "Column headings in a LIST response."
-				},
-				"Errors": {
-					"type": "object",
-					"properties": {
-						"PasswordIncorrect": {
-							"type": "string",
-							"description": "Reply when the supplied password is incorrect."
-						},
-						"NicknameInUse": {
-							"type": "string",
-							"description": "Reply when the requested nickname is already in use."
-						},
-						"ErroneousNickname": {
-							"type": "string",
-							"description": "Reply when the requested nickname is invalid."
-						},
-						"YouHaveNotRegistered": {
-							"type": "string",
-							"description": "Reply when a command requires registration."
-						},
-						"NotEnoughParameters": {
-							"type": "string",
-							"description": "Reply when a command is missing required parameters."
-						},
-						"CannotJoinChannel": {
-							"type": "string",
-							"description": "Reply when the user is not allowed to join a channel."
-						},
-						"NicknameChangeNotSupported": {
-							"type": "string",
-							"description": "Reply when a nickname change is requested."
-						},
-						"UnknownCommand": {
-							"type": "string",
-							"description": "Reply when the server does not recognize a command."
-						},
-						"CannotSendToChannel": {
-							"type": "string",
-							"description": "Reply when the user cannot send to a channel."
-						}
-					},
-					"required": [
-						"PasswordIncorrect",
-						"NicknameInUse",
-						"ErroneousNickname",
-						"YouHaveNotRegistered",
-						"NotEnoughParameters",
-						"CannotJoinChannel",
-						"NicknameChangeNotSupported",
-						"UnknownCommand",
-						"CannotSendToChannel"
-					],
-					"additionalProperties": false,
-					"description": "Text explaining IRC command and registration errors."
-				}
-			},
-			"required": [
-				"Registration",
-				"Query",
-				"Motd",
-				"Lusers",
-				"List",
-				"Errors"
-			],
-			"additionalProperties": false,
-			"description": "Text used in IRC registration, query, MOTD, and error replies."
+		"AlreadyOnline": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"AlreadyRegistered": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"BadCredentials": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"CannotJoin": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"CannotJoinNoAccess": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"CannotJoinSpectator": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"CannotSend": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"CannotSendNoAccess": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"CannotSendNotMember": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"ChatTooFast": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"ClosingConnectionLost": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"ClosingDeleted": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"ClosingLink": {
+			"type": "string",
+			"description": "A reply with the arguments {domain}, {reason}. Wording is ICU MessageFormat; use only these arguments."
+		},
+		"ClosingOther": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"ClosingQuit": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"ClosingReplaced": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"ClosingRevoked": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"ClosingTimedOut": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"CommandFailed": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"ConnectionClosed": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"Created": {
+			"type": "string",
+			"description": "A reply with the arguments {startedAt}. Wording is ICU MessageFormat; use only these arguments."
+		},
+		"DmBlocked": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"EndOfBanList": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"EndOfList": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"EndOfMotd": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"EndOfNames": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"EndOfWho": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"EndOfWhoIs": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"Flooding": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"InputTooLong": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"IsLoggedInAs": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"KickClosed": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"KickNoAccess": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"KickRemoved": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"ListChannelColumn": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"ListHeader": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"LoggedInAs": {
+			"type": "string",
+			"description": "A reply with the arguments {name}. Wording is ICU MessageFormat; use only these arguments."
+		},
+		"MotdLine": {
+			"type": "string",
+			"description": "A reply with the arguments {line}. Wording is ICU MessageFormat; use only these arguments."
+		},
+		"MotdStart": {
+			"type": "string",
+			"description": "A reply with the arguments {serverName}. Wording is ICU MessageFormat; use only these arguments."
+		},
+		"NeedMoreParams": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"NoLongerAway": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"NoManagement": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"NoMotd": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"NoNicknameGiven": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"NoRecipient": {
+			"type": "string",
+			"description": "A reply with the arguments {command}. Wording is ICU MessageFormat; use only these arguments."
+		},
+		"NoSuchChannel": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"NoSuchNick": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"NoTextToSend": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"NoTopic": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"NotOnChannel": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"NotRegistered": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"NowAway": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"RegistrationTimeout": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"SaslAborted": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"SaslAlready": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"SaslFailed": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"SaslMechanisms": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"SaslSuccess": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"ServerBusy": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"ServerStopping": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"ShuttingDown": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"ShuttingDownNotice": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"Silenced": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"Supported": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"TargetSilenced": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"TooManyAttempts": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"TooManyConnections": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"UnknownCommand": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"UsersDontMatch": {
+			"type": "string",
+			"description": "A reply without arguments. Wording is ICU MessageFormat."
+		},
+		"Welcome": {
+			"type": "string",
+			"description": "A reply with the arguments {network}, {mask}. Wording is ICU MessageFormat; use only these arguments."
+		},
+		"YourHost": {
+			"type": "string",
+			"description": "A reply with the arguments {serverName}, {version}. Wording is ICU MessageFormat; use only these arguments."
 		}
 	},
-	"required": [
-		"$schema",
-		"Irc"
-	],
 	"additionalProperties": false
 }

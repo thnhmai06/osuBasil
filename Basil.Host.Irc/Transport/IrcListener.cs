@@ -1,3 +1,4 @@
+using Basil.Application.Shared.Replies;
 using Basil.Application.Sessions.Messages;
 using Basil.Domain;
 using System.Collections.Concurrent;
@@ -26,6 +27,7 @@ internal sealed class IrcListener(
 	IrcCommands commands,
 	IrcClients clients,
 	IrcState state,
+	IReplies<IrcReply> replies,
 	Admission admission,
 	ISender sender,
 	TimeProvider clock,
@@ -94,7 +96,7 @@ internal sealed class IrcListener(
 			}
 
 			var session = new IrcSocket(tcp, address.IsIPv4MappedToIPv6 ? address.MapToIPv4() : address,
-				options.Value, clock);
+				options.Value, clock, replies);
 			_sessions[session] = RunAsync(session, tcp, stoppingToken);
 		}
 		catch (Exception ex) when (ex is IOException or SocketException or ObjectDisposedException
@@ -134,8 +136,8 @@ internal sealed class IrcListener(
 		state.AcceptingLogins = false;
 		foreach (var (session, _) in _sessions)
 		{
-			session.Send(IrcMessage.ServerNotice(session.ServerName, session.Nick, IrcReplies.ShuttingDownNotice));
-			session.Close(IrcReplies.ShuttingDown);
+			session.Send(IrcMessage.ServerNotice(session.ServerName, session.Nick, replies.Text(IrcReply.ShuttingDownNotice)));
+			session.Close(replies.Text(IrcReply.ShuttingDown));
 		}
 	}
 
@@ -177,9 +179,9 @@ internal sealed class IrcListener(
 		}
 	}
 
-	private static void CloseIfUnregistered(IrcSocket session)
+	private void CloseIfUnregistered(IrcSocket session)
 	{
-		if (!session.Registered) session.Close(IrcReplies.RegistrationTimeout);
+		if (!session.Registered) session.Close(replies.Text(IrcReply.RegistrationTimeout));
 	}
 
 	private static void PingIfRegistered(IrcSocket session)
@@ -189,8 +191,8 @@ internal sealed class IrcListener(
 
 	private void RejectIfOverLimit(IrcSocket session, int counted, int perIp)
 	{
-		if (!state.AcceptingLogins) session.Close(IrcReplies.ServerStopping);
-		else if (counted > perIp) session.Close(IrcReplies.TooManyConnections);
+		if (!state.AcceptingLogins) session.Close(replies.Text(IrcReply.ServerStopping));
+		else if (counted > perIp) session.Close(replies.Text(IrcReply.TooManyConnections));
 	}
 
 	private async Task ReleaseAsync(IrcSocket session, Task writer)
@@ -199,7 +201,7 @@ internal sealed class IrcListener(
 			await sender.Send(new CloseSession(connection,
 				session.Quit ? SessionEndReason.LoggedOut : SessionEndReason.ConnectionLost));
 		clients.Remove(session);
-		session.Close(IrcReplies.ConnectionClosed);
+		session.Close(replies.Text(IrcReply.ConnectionClosed));
 		await writer;
 		var remaining = _perAddress.AddOrUpdate(session.Address, 0, (_, count) => count - 1);
 		if (remaining <= 0) _perAddress.TryRemove(new KeyValuePair<IPAddress, int>(session.Address, remaining));
@@ -210,7 +212,7 @@ internal sealed class IrcListener(
 	{
 		if (text is null || IrcLines.BodyBytes(text) > IrcWire.MaxBodyBytes)
 		{
-			session.Numeric(IrcNumericReply.ErrInputTooLong, IrcReplies.InputTooLong);
+			session.Numeric(IrcNumericReply.ErrInputTooLong, replies.Text(IrcReply.InputTooLong));
 			return;
 		}
 
@@ -223,8 +225,8 @@ internal sealed class IrcListener(
 		if (!decision.Allowed)
 		{
 			session.Send(IrcMessage.ServerNotice(session.ServerName, session.Nick,
-				decision.Reason == AdmissionDenial.RateExceeded ? IrcReplies.Flooding : IrcReplies.ServerBusy));
-			if (decision.Reason == AdmissionDenial.RateExceeded) session.Close(IrcReplies.Flooding);
+				decision.Reason == AdmissionDenial.RateExceeded ? replies.Text(IrcReply.Flooding) : replies.Text(IrcReply.ServerBusy)));
+			if (decision.Reason == AdmissionDenial.RateExceeded) session.Close(replies.Text(IrcReply.Flooding));
 			return;
 		}
 
@@ -236,12 +238,12 @@ internal sealed class IrcListener(
 		catch (BasilException ex)
 		{
 			logger.LogDebug(ex, "IRC command {Command} was not taken in", message.Command);
-			session.Numeric(IrcNumericReply.ErrUnknownError, message.Command, IrcReplies.CommandFailed);
+			session.Numeric(IrcNumericReply.ErrUnknownError, message.Command, replies.Text(IrcReply.CommandFailed));
 		}
 		catch (Exception ex) when (ex is not OperationCanceledException)
 		{
 			logger.LogError(ex, "IRC command {Command} failed", message.Command);
-			session.Numeric(IrcNumericReply.ErrUnknownError, message.Command, IrcReplies.CommandFailed);
+			session.Numeric(IrcNumericReply.ErrUnknownError, message.Command, replies.Text(IrcReply.CommandFailed));
 		}
 		finally
 		{

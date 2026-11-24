@@ -11,7 +11,6 @@ public static class DependencyInjection
 	{
 		services.AddSingleton(Random.Shared);
 		services.TryAddSingleton(TimeProvider.System);
-		services.AddSingleton(_ => ReplyDefinitions.In(typeof(Reply).Assembly).AsEnumerable());
 		services.AddSingleton<MpTargets>();
 		return services;
 	}

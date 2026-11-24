@@ -6,52 +6,25 @@ namespace Basil.Application.Bot.Commands;
 
 internal static class ChannelReplies
 {
-	public static readonly Reply Usage = new("channel.usage",
-		"Usage: !channel list | create <#name> [topic=<text>] [read=<mask>] [write=<mask>] [autojoin=<true|false>] [visible=<true|false>] | set <#name> <option>=<value>... | delete <#name>");
-
-	public static readonly Reply ListEntry = new("channel.listEntry",
-		"{name} read={read} write={write} autojoin={autoJoin} visible={visible} topic={topic}",
-		"name", "read", "write", "autoJoin", "visible", "topic");
-
-	public static readonly Reply NoChannels = new("channel.noChannels", "There are no channels you can see.");
-
-	public static readonly Reply Created = new("channel.created", "Created channel {name}.", "name");
-
-	public static readonly Reply Updated = new("channel.updated", "Updated channel {name}.", "name");
-
-	public static readonly Reply Deleted = new("channel.deleted", "Deleted channel {name}.", "name");
-
-	public static readonly Reply NameTaken = new("channel.nameTaken", "A channel named {name} already exists.", "name");
-
-	public static readonly Reply NotFound = new("channel.notFound", "There is no channel named {name}.", "name");
-
-	public static readonly Reply InvalidArguments = new("channel.invalidArguments",
-		"That is not a valid channel name or option. Type !channel for the usage.");
-
-	public static readonly Reply MissingPrivileges = new("channel.missingPrivileges",
-		"You do not have the privileges needed for that.");
-
-	public static readonly Reply Refused = new("channel.refused", "The server refused that: {outcome}.", "outcome");
-
-	public static (Reply Reply, object Arguments) Of(ServerActionResult result, string name)
+	public static (BotReply Reply, object Arguments) Of(ServerActionResult result, string name)
 	{
 		return result switch
 		{
-			ServerActionResult.Denied => (MissingPrivileges, new { }),
-			ServerActionResult.Ok => (Created, new { name }),
-			ServerActionResult.NameTaken => (NameTaken, new { name }),
-			_ => (Refused, new { outcome = result.ToString() })
+			ServerActionResult.Denied => (BotReply.ChannelMissingPrivileges, new { }),
+			ServerActionResult.Ok => (BotReply.ChannelCreated, new { name }),
+			ServerActionResult.NameTaken => (BotReply.ChannelNameTaken, new { name }),
+			_ => (BotReply.ChannelRefused, new { outcome = result.ToString() })
 		};
 	}
 
-	public static (Reply Reply, object Arguments) Of(ChannelJoinResult result, string name, Reply success)
+	public static (BotReply Reply, object Arguments) Of(ChannelJoinResult result, string name, BotReply success)
 	{
 		return result switch
 		{
-			ChannelJoinResult.Denied => (MissingPrivileges, new { }),
+			ChannelJoinResult.Denied => (BotReply.ChannelMissingPrivileges, new { }),
 			ChannelJoinResult.Ok => (success, new { name }),
-			ChannelJoinResult.NotFound or ChannelJoinResult.Closed => (NotFound, new { name }),
-			_ => (Refused, new { outcome = result.ToString() })
+			ChannelJoinResult.NotFound or ChannelJoinResult.Closed => (BotReply.ChannelNotFound, new { name }),
+			_ => (BotReply.ChannelRefused, new { outcome = result.ToString() })
 		};
 	}
 }

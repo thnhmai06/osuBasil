@@ -19,6 +19,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="Mediator.Abstractions"/>
+		<PackageReference Include="MessageFormat"/>
 		<PackageReference Include="Microsoft.EntityFrameworkCore"/>
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational"/>
 		<PackageReference Include="Microsoft.Extensions.Caching.Memory"/>

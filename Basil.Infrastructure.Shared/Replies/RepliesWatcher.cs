@@ -1,11 +1,13 @@
-using Basil.Infrastructure.Bot.Services;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace Basil.Infrastructure.Bot.Workers;
+namespace Basil.Infrastructure.Shared.Replies;
 
-internal sealed class RepliesWatcher(ReplyCatalog catalog, TimeProvider time, ILogger<RepliesWatcher> logger)
-	: IHostedService, IDisposable
+/// <summary>Loads the replies file of a surface at start-up and reloads it when the operator edits it.</summary>
+internal sealed class RepliesWatcher<TReply>(
+	ReplyCatalog<TReply> catalog,
+	TimeProvider time,
+	ILogger<RepliesWatcher<TReply>> logger) : IHostedService, IDisposable where TReply : struct, Enum
 {
 	private static readonly TimeSpan Settle = TimeSpan.FromMilliseconds(500);
 

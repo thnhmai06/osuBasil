@@ -1,3 +1,4 @@
+using Basil.Application.Shared.Replies;
 using Basil.Domain;
 using Basil.Application.Bot.Commands;
 using Basil.Application.Bot.Replies;
@@ -18,7 +19,7 @@ internal sealed class ChatHandler(
 	Server server,
 	ChatCommands commands,
 	CommandWorker worker,
-	IReplies replies,
+	IReplies<BotReply> replies,
 	ILogger<ChatHandler> logger)
 	: INotificationHandler<ChannelMessagePosted>
 {

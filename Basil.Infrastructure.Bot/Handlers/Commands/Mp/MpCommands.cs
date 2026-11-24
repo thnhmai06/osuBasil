@@ -1,3 +1,5 @@
+using Basil.Application.Bot.Replies;
+using Basil.Application.Shared.Replies;
 using System.Collections.Frozen;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Bot.Commands;
@@ -35,7 +37,7 @@ internal sealed partial class MpCommands(
 
 		if (subcommand.Equals("help", StringComparison.OrdinalIgnoreCase) || subcommand.Length == 0)
 		{
-			await context.SayPrivately(CommandCatalog.Lines(context.Replies, "mp"), ct);
+			await context.SayPrivately(Help(context.Replies, subArgs), ct);
 			return true;
 		}
 
@@ -52,14 +54,30 @@ internal sealed partial class MpCommands(
 		}
 		catch (InvalidModsException)
 		{
-			await context.Reply(MpReplies.InvalidMods, ct);
+			await context.Reply(BotReply.MpInvalidMods, ct);
 			return false;
 		}
 		catch (Basil.Domain.Multiplayer.Room.InvalidRoomSettingsException)
 		{
-			await context.Reply(MpReplies.SettingsInvalid, ct);
+			await context.Reply(BotReply.MpSettingsInvalid, ct);
 			return false;
 		}
+	}
+
+	private static string Help(IReplies<BotReply> replies, IReadOnlyList<string> args)
+	{
+		if (args.Count == 0)
+			return replies.Text(BotReply.MpHelpList,
+				new
+				{
+					commands = string.Join(", ",
+						CommandCatalog.All.Where(command => command.Path.StartsWith("mp ", StringComparison.Ordinal))
+							.Select(command => command.Path[3..]))
+				});
+
+		var subcommand = args[0].ToLowerInvariant();
+		return CommandCatalog.Line(replies, "mp " + subcommand) ??
+		       replies.Text(BotReply.MpUnknownMpSubcommand, new { subcommand = args[0] });
 	}
 
 	public static bool IsChainable(string subcommand)
@@ -73,7 +91,7 @@ internal sealed partial class MpCommands(
 		var room = ResolveRoom(context);
 		if (room is null)
 		{
-			await context.Reply(MpReplies.NotInARoom, ct);
+			await context.Reply(BotReply.MpNotInARoom, ct);
 			return false;
 		}
 
@@ -114,7 +132,7 @@ internal sealed partial class MpCommands(
 
 	private static CommandContext NameRoom(CommandContext context, int roomId)
 	{
-		var prefix = context.Replies.Text(MpReplies.RoomPrefix, new { room = roomId });
+		var prefix = context.Replies.Text(BotReply.MpRoomPrefix, new { room = roomId });
 
 		return context with
 		{
@@ -163,7 +181,7 @@ internal sealed partial class MpCommands(
 	private static async Task<bool> UnknownSubcommandAsync(CommandContext context, string subcommand,
 		CancellationToken ct)
 	{
-		await context.Reply(MpReplies.UnknownMpSubcommand, new { subcommand }, ct);
+		await context.ReplyToUnknownCommand(BotReply.MpUnknownMpSubcommand, new { subcommand }, ct);
 		return false;
 	}
 

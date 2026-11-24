@@ -79,13 +79,13 @@ The exact subcommands and argument syntax are defined by the generated BasilBot 
 BasilBot's replies are part of the client-visible command contract, but their wording belongs to the server operator.
 
 Every reply is a text in the operator-editable file `Data/Localizations/bot.json`, a JSON object that maps a
-reply's key to an
+reply's name (a member of the bot's reply enum, such as `MpCreatedMatch`) to an
 [ICU MessageFormat](https://unicode-org.github.io/icu/userguide/format_parse/messages/) string with named placeholders
 such as `{room}`. The file is written with the default wording when it does not exist, is reloaded while the server
 runs, and a missing key keeps its default wording. If an edit leaves the file unreadable, the last good wording stays
 in use; a single text that is invalid is replaced by its default.
 
-What each command is said to do in `!help` is a reply too (keys such as `bot.helpRoll`, `mp.helpMods`), so the
+What each command is said to do in `!help` is a reply too (names such as `BotHelpRoll`, `MpHelpMods`), so the
 operator can reword it; the published reference shows the default wording.
 
 Because an operator can rewrite any reply, clients, tournament tooling, and automated integrations must not assume that a

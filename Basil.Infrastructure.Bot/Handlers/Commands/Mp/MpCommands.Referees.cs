@@ -1,3 +1,4 @@
+using Basil.Application.Bot.Replies;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Bot.Commands;
 using Basil.Application.Multiplayer.Messages;
@@ -17,7 +18,7 @@ internal sealed partial class MpCommands
 		var actor = context.Actor;
 		if (args.Count < 1)
 		{
-			await context.Reply(MpReplies.AddRefUsage, ct);
+			await context.Reply(BotReply.MpAddRefUsage, ct);
 			return false;
 		}
 
@@ -25,7 +26,7 @@ internal sealed partial class MpCommands
 		var target = await ResolveUserAsync(rawTarget, ct);
 		if (target is null)
 		{
-			await context.Reply(MpReplies.UserNotFound, ct);
+			await context.Reply(BotReply.MpUserNotFound, ct);
 			return false;
 		}
 
@@ -36,7 +37,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		await context.Reply(MpReplies.AddedReferee, new { player = target.Value.Name }, ct);
+		await context.Reply(BotReply.MpAddedReferee, new { player = target.Value.Name }, ct);
 		return true;
 	}
 
@@ -46,7 +47,7 @@ internal sealed partial class MpCommands
 		var actor = context.Actor;
 		if (args.Count < 1)
 		{
-			await context.Reply(MpReplies.RemoveRefUsage, ct);
+			await context.Reply(BotReply.MpRemoveRefUsage, ct);
 			return false;
 		}
 
@@ -54,7 +55,7 @@ internal sealed partial class MpCommands
 		var target = await ResolveUserAsync(rawTarget, ct);
 		if (target is null)
 		{
-			await context.Reply(MpReplies.UserNotFound, ct);
+			await context.Reply(BotReply.MpUserNotFound, ct);
 			return false;
 		}
 
@@ -65,7 +66,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		await context.Reply(MpReplies.RemovedReferee, new { player = target.Value.Name }, ct);
+		await context.Reply(BotReply.MpRemovedReferee, new { player = target.Value.Name }, ct);
 		return true;
 	}
 
@@ -74,13 +75,13 @@ internal sealed partial class MpCommands
 	{
 		if (room.Referees.Count == 0)
 		{
-			await context.Reply(MpReplies.NoReferees, ct);
+			await context.Reply(BotReply.MpNoReferees, ct);
 			return true;
 		}
 
 		var lines = room.Referees
 			.Select(u => $"#{u.Id} {u.Value.Name}");
-		await context.Say(context.Replies.Text(MpReplies.MatchReferees) + "\n" + string.Join('\n', lines),
+		await context.Say(context.Replies.Text(BotReply.MpMatchReferees) + "\n" + string.Join('\n', lines),
 			ct);
 		return true;
 	}
@@ -91,13 +92,13 @@ internal sealed partial class MpCommands
 	{
 		if (room.Members.Banned.Count == 0)
 		{
-			await context.Reply(MpReplies.NoBannedPlayers, ct);
+			await context.Reply(BotReply.MpNoBannedPlayers, ct);
 			return true;
 		}
 
 		var lines = room.Members.Banned
 			.Select(u => $"#{u.Id} {u.Value.Name}");
-		await context.Say(context.Replies.Text(MpReplies.MatchBans) + "\n" + string.Join('\n', lines),
+		await context.Say(context.Replies.Text(BotReply.MpMatchBans) + "\n" + string.Join('\n', lines),
 			ct);
 		return true;
 	}

@@ -1,3 +1,4 @@
+using Basil.Application.Shared.Replies;
 using System.Collections.Concurrent;
 using Basil.Application.Bot.Announcements;
 using Basil.Application.Bot.Objects;
@@ -31,7 +32,7 @@ internal sealed class RoomCountdowns(
 	ISender sender,
 	Server server,
 	RoomChannels channels,
-	IReplies replies,
+	IReplies<BotReply> replies,
 	ILogger<RoomCountdowns> logger)
 {
 	private readonly ConcurrentDictionary<Room, Running> _running = new();
@@ -78,14 +79,14 @@ internal sealed class RoomCountdowns(
 		{
 			replaced.Dispose();
 			var remaining = Math.Max(0, (int)Math.Round((replaced.Countdown.EndsAt - clock.GetUtcNow()).TotalSeconds));
-			await SayAsync(room, replies.Text(AnnouncementReplies.CountdownReplaced, new { seconds = remaining }),
+			await SayAsync(room, replies.Text(BotReply.AnnounceCountdownReplaced, new { seconds = remaining }),
 				ct);
 		}
 
 		var seconds = (int)length.TotalSeconds;
 		await SayAsync(room, startsRound
-			? replies.Text(AnnouncementReplies.CountdownStartedForRound, new { seconds })
-			: replies.Text(AnnouncementReplies.CountdownStarted, new { seconds }), ct);
+			? replies.Text(BotReply.AnnounceCountdownStartedForRound, new { seconds })
+			: replies.Text(BotReply.AnnounceCountdownStarted, new { seconds }), ct);
 		return RoomActionResult.Ok;
 	}
 
@@ -99,13 +100,13 @@ internal sealed class RoomCountdowns(
 		running.Dispose();
 		var reply = reason switch
 		{
-			CountdownCancelReason.Aborted => AnnouncementReplies.CountdownCancelled,
-			CountdownCancelReason.SettingsChanged => AnnouncementReplies.SettingsChangedCountdownCancelled,
-			CountdownCancelReason.RoundStarted => AnnouncementReplies.CountdownCancelledByRoundStart,
-			CountdownCancelReason.RoundAborted => AnnouncementReplies.CountdownCancelledByRoundAbort,
-			_ => null
+			CountdownCancelReason.Aborted => BotReply.AnnounceCountdownCancelled,
+			CountdownCancelReason.SettingsChanged => BotReply.AnnounceSettingsChangedCountdownCancelled,
+			CountdownCancelReason.RoundStarted => BotReply.AnnounceCountdownCancelledByRoundStart,
+			CountdownCancelReason.RoundAborted => BotReply.AnnounceCountdownCancelledByRoundAbort,
+			_ => (BotReply?)null
 		};
-		if (reply is not null) await SayAsync(room, replies.Text(reply), ct);
+		if (reply is { } text) await SayAsync(room, replies.Text(text), ct);
 		return true;
 	}
 
@@ -122,8 +123,8 @@ internal sealed class RoomCountdowns(
 
 			var seconds = (int)Math.Round(remaining.TotalSeconds);
 			await SayAsync(room, running.Countdown.StartsRound
-				? replies.Text(AnnouncementReplies.CountdownTickedForRound, new { seconds })
-				: replies.Text(AnnouncementReplies.CountdownTicked, new { seconds }), CancellationToken.None);
+				? replies.Text(BotReply.AnnounceCountdownTickedForRound, new { seconds })
+				: replies.Text(BotReply.AnnounceCountdownTicked, new { seconds }), CancellationToken.None);
 		}
 		catch (Exception exception)
 		{
@@ -141,26 +142,26 @@ internal sealed class RoomCountdowns(
 			var countdown = running.Countdown;
 			if (!countdown.StartsRound)
 			{
-				await SayAsync(room, replies.Text(AnnouncementReplies.CountdownElapsed), CancellationToken.None);
+				await SayAsync(room, replies.Text(BotReply.AnnounceCountdownElapsed), CancellationToken.None);
 				return;
 			}
 
 			if (!countdown.Actor.IsOpen)
 			{
-				await SayAsync(room, replies.Text(AnnouncementReplies.CountdownCancelled), CancellationToken.None);
+				await SayAsync(room, replies.Text(BotReply.AnnounceCountdownCancelled), CancellationToken.None);
 				return;
 			}
 
 			var started = await sender.Send(new StartRound(countdown.Actor, room), CancellationToken.None);
 			var reply = started == RoomActionResult.Ok
-				? AnnouncementReplies.RoundStartedByCountdown
+				? (BotReply?)BotReply.AnnounceRoundStartedByCountdown
 				: started switch
 				{
-					RoomActionResult.NoBeatmap => AnnouncementReplies.CountdownElapsedForRound,
+					RoomActionResult.NoBeatmap => BotReply.AnnounceCountdownElapsedForRound,
 					RoomActionResult.InProgress or RoomActionResult.RoomClosed => null,
-					_ => AnnouncementReplies.CountdownCancelled
+					_ => BotReply.AnnounceCountdownCancelled
 				};
-			if (reply is not null) await SayAsync(room, replies.Text(reply), CancellationToken.None);
+			if (reply is { } text) await SayAsync(room, replies.Text(text), CancellationToken.None);
 		}
 		catch (Exception exception)
 		{

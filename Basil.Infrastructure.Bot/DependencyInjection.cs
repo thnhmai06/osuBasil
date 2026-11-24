@@ -1,7 +1,9 @@
+using Basil.Application.Shared.Replies;
 using Basil.Application.Bot.Replies;
 using Basil.Infrastructure.Bot.Handlers.Commands;
 using Basil.Infrastructure.Bot.Handlers.Commands.Mp;
 using Basil.Infrastructure.Bot.Services;
+using Basil.Infrastructure.Shared;
 using Basil.Infrastructure.Bot.Workers;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -13,10 +15,7 @@ public static class DependencyInjection
 	{
 		public IServiceCollection AddBotInfrastructure()
 		{
-			services.AddSingleton<ReplyCatalog>();
-			services.AddSingleton<IReplies>(sp => sp.GetRequiredService<ReplyCatalog>());
-			services.AddSingleton<RepliesWatcher>();
-			services.AddHostedService(sp => sp.GetRequiredService<RepliesWatcher>());
+			services.AddReplies<BotReply>("bot");
 			services.AddSingleton<RoomCountdowns>();
 			services.AddSingleton<RoomAnnouncements>();
 			services.AddSingleton<MpCommands>();

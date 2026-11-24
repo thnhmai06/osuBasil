@@ -21,7 +21,6 @@
 
 	<ItemGroup>
 		<PackageReference Include="Mediator.Abstractions"/>
-		<PackageReference Include="MessageFormat"/>
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
 		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions"/>
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>

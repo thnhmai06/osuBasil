@@ -37,6 +37,7 @@ using Basil.Infrastructure.Content;
 using Basil.Infrastructure.Diagnostics;
 using Basil.Infrastructure.Diagnostics.Pipeline;
 using Basil.Infrastructure.Multiplayer;
+using Basil.Host.Irc.Support;
 using Basil.Infrastructure.Persistence;
 using Basil.Infrastructure.Rulesets;
 using Basil.Infrastructure.Scores;
@@ -58,6 +59,7 @@ public static class DependencyInjection
 			services.AddSessionsBackgroundWork();
 			services.AddMultiplayerBackgroundWork();
 			services.AddBotInfrastructure();
+			services.AddReplies<IrcReply>("irc");
 			// Before the work that waits for it: a scan at start-up waits for the difficulty of what it finds.
 			services.AddRulesetsBackgroundWork();
 			services.AddBeatmapsBackgroundWork();

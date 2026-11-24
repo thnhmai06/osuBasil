@@ -29,14 +29,14 @@ internal sealed partial class IrcCommands
 		foreach (var name in names)
 			if (Resolve(name) is { } channel &&
 			    (channel.Members.Contains(actor) || VisibleChannels(actor, session.Now).Contains(channel)))
-				IrcChannels.SendNames(session, channel);
+				IrcChannels.SendNames(session, channel, replies);
 			else
-				session.Numeric(IrcNumericReply.RplEndOfNames, name, IrcReplies.EndOfNames);
+				session.Numeric(IrcNumericReply.RplEndOfNames, name, replies.Text(IrcReply.EndOfNames));
 	}
 
 	private void List(IrcSocket session, Session actor, IrcMessage message)
 	{
-		session.Numeric(IrcNumericReply.RplListStart, IrcReplies.ListChannelColumn, IrcReplies.ListHeader);
+		session.Numeric(IrcNumericReply.RplListStart, replies.Text(IrcReply.ListChannelColumn), replies.Text(IrcReply.ListHeader));
 		var filter = message.Parameters.Count > 0
 			? message.Parameters[0].Split(',', StringSplitOptions.RemoveEmptyEntries)
 			: null;
@@ -45,7 +45,7 @@ internal sealed partial class IrcCommands
 				         filter is null || filter.Contains(channel.Name, StringComparer.OrdinalIgnoreCase)))
 			session.Numeric(IrcNumericReply.RplList, channel.Name, IrcView.UserCount(channel).ToString(),
 				channel.Topic.ReplaceLineEndings(" "));
-		session.Numeric(IrcNumericReply.RplListEnd, IrcReplies.EndOfList);
+		session.Numeric(IrcNumericReply.RplListEnd, replies.Text(IrcReply.EndOfList));
 	}
 
 	private void Who(IrcSocket session, Session actor, IrcMessage message)
@@ -66,7 +66,7 @@ internal sealed partial class IrcCommands
 			WhoReply(session, "*", user, string.Empty);
 		}
 
-		session.Numeric(IrcNumericReply.RplEndOfWho, mask, IrcReplies.EndOfWho);
+		session.Numeric(IrcNumericReply.RplEndOfWho, mask, replies.Text(IrcReply.EndOfWho));
 	}
 
 	private static void WhoReply(IrcSocket session, string channel, User user, string prefix)
@@ -80,15 +80,15 @@ internal sealed partial class IrcCommands
 	{
 		if (message.Parameters.Count == 0)
 		{
-			session.Numeric(IrcNumericReply.ErrNoNicknameGiven, IrcReplies.NoNicknameGiven);
+			session.Numeric(IrcNumericReply.ErrNoNicknameGiven, replies.Text(IrcReply.NoNicknameGiven));
 			return;
 		}
 
 		var nick = message.Parameters[^1];
 		if (FindUser(nick) is not { } user)
 		{
-			session.Numeric(IrcNumericReply.ErrNoSuchNick, nick, IrcReplies.NoSuchNick);
-			session.Numeric(IrcNumericReply.RplEndOfWhoIs, nick, IrcReplies.EndOfWhoIs);
+			session.Numeric(IrcNumericReply.ErrNoSuchNick, nick, replies.Text(IrcReply.NoSuchNick));
+			session.Numeric(IrcNumericReply.RplEndOfWhoIs, nick, replies.Text(IrcReply.EndOfWhoIs));
 			return;
 		}
 
@@ -96,7 +96,7 @@ internal sealed partial class IrcCommands
 		session.Numeric(IrcNumericReply.RplWhoIsUser, shown, shown, session.Domain, "*", shown);
 		session.Numeric(IrcNumericReply.RplWhoIsServer, shown, session.ServerName, IrcReplies.Network);
 		if (user.AwayMessage is { } away) session.Numeric(IrcNumericReply.RplAway, shown, away.ReplaceLineEndings(" "));
-		session.Numeric(IrcNumericReply.RplWhoIsAccount, shown, shown, IrcReplies.IsLoggedInAs);
+		session.Numeric(IrcNumericReply.RplWhoIsAccount, shown, shown, replies.Text(IrcReply.IsLoggedInAs));
 		var now = session.Now;
 		var visible = VisibleChannels(actor, now).ToHashSet();
 		var channels = general.All.Values
@@ -106,7 +106,7 @@ internal sealed partial class IrcCommands
 				channel.Members.First(member => ReferenceEquals(member.User, user)),
 				now, false) + channel.Name).ToList();
 		if (channels.Count > 0) session.Numeric(IrcNumericReply.RplWhoIsChannels, shown, string.Join(' ', channels));
-		session.Numeric(IrcNumericReply.RplEndOfWhoIs, shown, IrcReplies.EndOfWhoIs);
+		session.Numeric(IrcNumericReply.RplEndOfWhoIs, shown, replies.Text(IrcReply.EndOfWhoIs));
 	}
 
 	private void Ison(IrcSocket session, IrcMessage message)
