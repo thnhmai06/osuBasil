@@ -36,7 +36,7 @@ public static class ShellRunner
 			return ExitCodes.Invalid;
 		}
 
-		var path = ControlSocket.PathIn(app.Services.GetRequiredService<DataPaths>().Root);
+		var path = ControlSocket.PathIn(app.Services.GetRequiredService<DataPaths>().Temp);
 		using (var running = await ControlClient.ConnectAsync(path, ct))
 		{
 			if (running is not null) return await ForwardAsync(running, parsed, args, output, input, ct);

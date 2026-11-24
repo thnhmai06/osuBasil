@@ -4,9 +4,7 @@ namespace Basil.Configuration;
 
 public static class ConfigurationSetup
 {
-	public static string Directory => Path.Combine(AppContext.BaseDirectory, "Configurations");
-
-	public static string Templates => Path.Combine(Directory, "Templates");
+	public static string Directory => Path.Combine(AppContext.BaseDirectory, "Data");
 
 	public static void Add(WebApplicationBuilder builder, string[] args)
 	{

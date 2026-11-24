@@ -485,7 +485,7 @@ system; no host or gateway knows it exists.
   `AdmissionSubject` that `Host.Shared` maps from the `Session`). It has no user types and no business facts. Every
   entry point declares a policy. See [`docs/for-developers/gateway.md`](docs/for-developers/gateway.md).
 * The project that defines an options type binds it **(target)**; BasilBot's reply file is bound with the bot
-  (`Configurations/Templates/replies.json`, written with the defaults when missing).
+  (`Data/Localizations/bot.json`, written with the defaults when missing).
 * Live HTTP streams use the one hub in `Basil.Host.Rest`; see [`docs/for-developers/sse.md`](docs/for-developers/sse.md).
 * The console is the one entry point that skips privilege checks (`OperatorSession`); a chat command still uses the
   typist's privileges. See [`docs/for-agents/identity-privileges.md`](docs/for-agents/identity-privileges.md).

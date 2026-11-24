@@ -23,7 +23,7 @@ dotnet run --project Basil -- --console 0
 ```
 
 The default connection string in
-[`appsettings.json`](../../Basil/Configurations/appsettings.json) is
+[`appsettings.json`](../../Basil/Data/appsettings.json) is
 `Host=localhost;Port=5432;Database=basil;Username=basil;Password=basil`; create that role, or override the
 setting as described below. Database migrations run when the server starts.
 
@@ -41,12 +41,12 @@ the terminal dashboard; when stdin or stdout is redirected it falls back to `--c
 ## Development configuration
 
 Basil uses the same configuration model in development and production. There is no separate development-only file.
-The files live in `Configurations/` beside the executable (in a checkout, `Basil/Configurations/` is copied to
-the build output):
+The files live in `Data/` beside the executable (in a checkout, `Basil/Data/` is copied to `Defaults/Data/` in the
+build output, and from there into `Data/` at start where a file is missing):
 
 ```text
-Configurations/appsettings.json
-Configurations/appsettings.{Environment}.json   optional overlay, selected by ASPNETCORE_ENVIRONMENT
+Data/appsettings.json
+Data/appsettings.{Environment}.json   optional overlay, selected by ASPNETCORE_ENVIRONMENT
 ```
 
 A setting can also be overridden for one run on the command line of the server, for example

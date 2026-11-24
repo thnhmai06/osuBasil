@@ -7,6 +7,7 @@ using Serilog.Configuration;
 using Serilog.Core;
 using Serilog.Events;
 using Serilog.Extensions.Logging;
+using Serilog.Formatting.Display;
 using Serilog.Sinks.Async;
 using Serilog.Sinks.SystemConsole.Themes;
 
@@ -35,6 +36,8 @@ public sealed class LogDrops : IAsyncLogEventSinkMonitor
 
 public static class ServerLogging
 {
+	public const string SessionsFolder = "Sessions";
+
 	private const string Template =
 		"{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}";
 
@@ -57,6 +60,9 @@ public static class ServerLogging
 					outputTemplate: Template, rollingInterval: file.Rolling.Interval,
 					fileSizeLimitBytes: rollingBytes > 0 ? rollingBytes : null, rollOnFileSizeLimit: rollingBytes > 0,
 					retainedFileCountLimit: null, encoding: Encoding.UTF8).CreateLogger()));
+			if (file.Enabled)
+				configuration.Sink(new SessionLogSink(Path.Combine(directory, SessionsFolder),
+					new MessageTemplateTextFormatter(Template)));
 			if (mode.Console == ConsoleLevel.Log)
 				configuration.Console(outputTemplate: Template, theme: ConsoleTheme.None);
 			if (telemetry is { Logs: true, OtlpEndpoint: { Length: > 0 } endpoint })

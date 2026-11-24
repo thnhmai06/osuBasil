@@ -60,17 +60,15 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<Content Include="..\assets\menu-banner.png" Link="Data\Menu\Banners\default-banner@2x.png">
+		<Content Include="..\assets\menu-banner.png" Link="Defaults\Data\Menu\Banners\default-banner@2x.png">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
-		<Content Include="..\assets\github-banner.png" Link="Data\Menu\Seasonals\github-banner.png">
+		<Content Include="..\assets\github-banner.png" Link="Defaults\Data\Menu\Seasonals\github-banner.png">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
-		<!-- The operator's files live in Configurations/ beside the executable (settings, schema, templates). -->
-		<Content Update="Configurations\**" CopyToOutputDirectory="PreserveNewest"/>
-		<Content Update="Data\Localizations\*.json">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</Content>
+		<!-- The shipped files of Data/ go to Defaults/Data/; at start they are copied into Data/ where missing. -->
+		<Content Update="Data\**" Link="Defaults\%(RecursiveDir)%(Filename)%(Extension)"
+		         CopyToOutputDirectory="PreserveNewest"/>
 	</ItemGroup>
 
 	<ItemGroup>

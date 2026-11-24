@@ -9,7 +9,7 @@ using SixLabors.ImageSharp.Processing;
 
 namespace Basil.Infrastructure.Beatmaps.Storage;
 
-/// <summary>Makes each fixed-size variant of a background once, on its first request, and keeps it beside the set.</summary>
+/// <summary>Makes each fixed-size variant of a background once, on its first request, and keeps it in the cache, from where it is rebuilt when missing.</summary>
 internal sealed class BeatmapsetCovers
 {
 	private const int MaxSourceSide = 8192;

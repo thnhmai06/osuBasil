@@ -1,11 +1,12 @@
 using System.Globalization;
 using Basil.Domain.Game;
+using Basil.Infrastructure.Shared.Storage;
 using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Infrastructure.Rulesets.Storage;
 
 /// <summary>Keeps the calculated difficulty attributes of beatmap files, by checksum, mode and mods.</summary>
-internal sealed class AttributeStorage(RulesetStore rulesets)
+internal sealed class AttributeStorage(DataPaths paths)
 {
 	public async Task<string?> ReadAsync(Md5Hash checksum, GameMode mode, GameMods mask, CancellationToken ct)
 	{
@@ -37,7 +38,7 @@ internal sealed class AttributeStorage(RulesetStore rulesets)
 
 	private string PathOf(Md5Hash checksum, GameMode mode, GameMods mask)
 	{
-		return Path.Combine(rulesets.Root, "Attributes", checksum.HashValue,
+		return Path.Combine(paths.Cache.Path, "Attributes", checksum.HashValue,
 			((int)mode).ToString(CultureInfo.InvariantCulture), $"{(int)mask}.json");
 	}
 }

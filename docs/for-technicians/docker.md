@@ -12,7 +12,7 @@ network reaches. The Compose file runs three services: `nginx`, which ends TLS a
 ```text
 client ──TLS──► nginx (80, 443, 6697) ──HTTP :8080 / IRC :6667 + PROXY header──► basil ──► postgres
                   │                                                              │
-                  └── reads Data/ (read-only) and serves stored files ◄─── names the file (X-Accel-Redirect)
+                  └── reads Data/ and Cache/ (read-only) and serves stored files ◄─── names the file (X-Accel-Redirect)
 ```
 
 nginx holds the per-address protection (request and connection rates, body sizes, timeouts), the certificate and the
@@ -32,21 +32,17 @@ Before the first run:
 1. Copy [`.env.example`](../../.env.example) to `.env` and set `POSTGRES_PASSWORD`. Compose builds both database
    connection strings from it (`ConnectionStrings__Write` and `ConnectionStrings__Read`); no password is kept in
    `appsettings.json`, and `.env` is never committed.
-2. Edit `Basil/Configurations/appsettings.json` for the deployment, above all `Basil:Server:Domain`. The default
-   certificate of nginx covers `basil.local` and its subdomains; for another domain, mount your own certificate (see
+2. Start once so Basil writes `docker-data/Data/appsettings.json`, then edit that file for the deployment, above all
+   `Basil:Server:Domain`. The default certificate of nginx covers `basil.local` and its subdomains; for another domain, mount your own certificate (see
    [`https.md`](https.md)).
 3. Give the `basil` container's user (`app`, id `1654`) the data directories:
-   `mkdir -p docker-data/{Data,Logs,Templates} && chown -R 1654:1654 docker-data/Data docker-data/Logs docker-data/Templates`.
+   `mkdir -p docker-data/{Data,Cache,Logs} && chown -R 1654:1654 docker-data/Data docker-data/Cache docker-data/Logs`.
+   Basil creates its files readable by others, which nginx needs for `Data` and `Cache`.
 
 See [`configuration.md`](configuration.md) for the complete configuration reference and [`https.md`](https.md) for TLS.
 
-The Compose setup bind-mounts the settings file into the container as read-only:
-
-```text
-Basil/Configurations/appsettings.json
-        │
-        └──► /app/Configurations/appsettings.json
-```
+The image carries the shipped files in `/app/Defaults/Data`. At every start Basil copies each one that is missing from
+the `Data` volume and never overwrites a file, so the settings in the volume are the operator's own.
 
 The `basil` container has `tty` and `stdin_open` on, so `docker attach` shows the console dashboard; detach with
 `Ctrl+P` then `Ctrl+Q`.
@@ -67,7 +63,7 @@ Persistent data is stored on the host under:
 docker-data/
 ├── Postgres/
 ├── Data/
-├── Templates/
+├── Cache/
 └── Logs/
 ```
 
@@ -130,11 +126,12 @@ docker compose up --build -d
 docker compose logs -f
 ```
 
-Keep the existing `docker-data/` directory. The server only reports in its logs and dashboard when a newer release
+Keep the existing `docker-data/` directory. Back up first (see below). The server only reports in its logs and dashboard when a newer release
 exists; it never updates itself.
 
-Basil applies database migrations automatically when the new version starts. Take a `pg_dump` backup before the
-upgrade: migrations cannot be rolled back, so the backup is the only way back to the previous schema.
+Basil applies database migrations and the `Data/` layout steps automatically when the new version starts. Before each
+`docker compose pull`, take a `pg_dump` backup and copy `docker-data/Data`: migrations cannot be rolled back, so the
+backup is the only way back. An older Basil refuses to start on the data of a newer one.
 
 **Never replace `docker-data/Data/` or the database volume with an empty one during an upgrade.** They hold the stored
 files and every record of the server.
@@ -148,12 +145,11 @@ The container filesystem should be treated as disposable.
 At minimum, persist:
 
 ```text
-Configurations/
 Data/
 the PostgreSQL data directory
 ```
 
-`Data/` holds the stored files:
+`Data/` holds the configuration files, the reply wording, and the stored files:
 
 * beatmaps;
 * avatars;
@@ -163,10 +159,12 @@ the PostgreSQL data directory
 Users, rooms, scores and the server policy settings are records in the PostgreSQL database. Back up the database with
 `pg_dump` and `Data/` together, because records and files refer to each other.
 
-`Logs/` contains operational history. Persist it if logs need to survive container recreation; it is not required to
-preserve Basil's application state.
+`Logs/` contains operational history, including one file per connection session in `Logs/Sessions/`. Persist it if logs
+need to survive container recreation; it is not required to preserve Basil's application state. The system log also goes
+to standard output, so `docker compose logs` shows it.
 
-The cache under `Data/Cache/` can be deleted when Basil is stopped. It is regenerated when required.
+`Cache/` (covers, difficulty attributes, audio previews) can be deleted when Basil is stopped. It is regenerated when
+required. It is mounted so that nginx can serve covers from it.
 
 See [`configuration.md`](configuration.md) for the complete `Data/` directory reference.
 

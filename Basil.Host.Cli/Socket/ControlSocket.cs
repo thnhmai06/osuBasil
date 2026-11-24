@@ -16,9 +16,9 @@ public static class ControlSocket
 	private const string OutputPrefix = "o ";
 	private const string ExitPrefix = "x ";
 
-	public static string PathIn(string dataDirectory)
+	public static string PathIn(string directory)
 	{
-		return Path.Combine(Path.GetFullPath(dataDirectory), FileName);
+		return Path.Combine(Path.GetFullPath(directory), FileName);
 	}
 
 	public static IEnumerable<string> FrameOutput(string text)
@@ -111,6 +111,7 @@ public sealed class ControlServer(CommandRunner runner, string path, ILogger<Con
 			throw new InvalidOperationException($"Another Basil server is running: it answers on {path}.");
 		}
 
+		Directory.CreateDirectory(Path.GetDirectoryName(path)!);
 		if (File.Exists(path)) File.Delete(path);
 
 		_listener = new System.Net.Sockets.Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);

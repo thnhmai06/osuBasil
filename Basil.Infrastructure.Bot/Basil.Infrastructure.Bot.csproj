@@ -14,6 +14,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\Basil.Application.Shared\Basil.Application.Shared.csproj"/>
+		<ProjectReference Include="..\Basil.Infrastructure.Shared\Basil.Infrastructure.Shared.csproj"/>
 		<ProjectReference Include="..\Basil.Domain\Basil.Domain.csproj"/>
 		<ProjectReference Include="..\Basil.Application.Bot\Basil.Application.Bot.csproj"/>
 	</ItemGroup>

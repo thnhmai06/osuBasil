@@ -11,8 +11,8 @@ internal sealed class LoginLog(ILogger<LoginLog> logger) : INotificationHandler<
 	public ValueTask Handle(SessionOpened notification, CancellationToken ct)
 	{
 		var connection = notification.Session;
-		logger.LogInformation("{Type} login of {User} ({UserId})", connection.Type, connection.Record.Value.Name,
-			connection.Record.Id);
+		logger.LogInformation("{Type} login of {User} ({UserId}), session {SessionId}", connection.Type,
+			connection.Record.Value.Name, connection.Record.Id, connection.State.Record.Id);
 		return ValueTask.CompletedTask;
 	}
 }
@@ -22,9 +22,8 @@ internal sealed class LogoutLog(ILogger<LogoutLog> logger) : INotificationHandle
 	public ValueTask Handle(SessionClosed notification, CancellationToken ct)
 	{
 		var connection = notification.Session;
-		logger.LogInformation("{Type} logout of {User} ({UserId}): {Reason}", connection.Type,
-			connection.Record.Value.Name,
-			connection.Record.Id, notification.Reason);
+		logger.LogInformation("{Type} logout of {User} ({UserId}), session {SessionId}: {Reason}", connection.Type,
+			connection.Record.Value.Name, connection.Record.Id, connection.State.Record.Id, notification.Reason);
 		return ValueTask.CompletedTask;
 	}
 }

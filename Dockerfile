@@ -14,8 +14,9 @@ RUN apt-get update \
 
 WORKDIR /app
 COPY --from=build /app/publish .
-# Basil runs as the image's non-root user and may write only its data and logs; nginx's read-only mount serves the files.
-RUN mkdir -p Data Logs && chown app:app Data Logs
+# Basil runs as the image's non-root user and may write only Data, Cache, Logs and Temp; nginx's read-only mounts of
+# Data and Cache serve the files. The shipped files of Data are in Defaults/Data and are copied into Data where missing.
+RUN mkdir -p Data Cache Logs Temp && chown app:app Data Cache Logs Temp
 USER app
 
 # Plain HTTP and plain IRC, reachable only inside the compose network; nginx in front ends TLS.

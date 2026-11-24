@@ -4,8 +4,9 @@ public sealed class DataPaths
 {
 	public DataPaths()
 	{
-		// Stored files always live in Data beside the executable.
-		Root = Path.Combine(AppContext.BaseDirectory, "Data");
+		// Stored files always live in Data beside the executable; what is rebuilt or transient sits beside it.
+		var install = AppContext.BaseDirectory;
+		Root = Path.Combine(install, "Data");
 		Beatmapsets = new DataStorage(Root, "Beatmapsets");
 		Replays = new DataStorage(Root, "Replays");
 		Avatars = new DataStorage(Root, "Avatars");
@@ -14,10 +15,16 @@ public sealed class DataPaths
 		MenuIcon = new DataStorage(Root, "Menu/Icon");
 		Faqs = new DataStorage(Root, "Faqs");
 		Screenshots = new DataStorage(Root, "Screenshots");
-		Cache = new DataStorage(Root, "Cache");
+		Cache = new DataStorage(install, "Cache");
+		Logs = Path.Combine(install, "Logs");
+		Temp = Path.Combine(install, "Temp");
 	}
 
 	public string Root { get; }
+
+	public string Logs { get; }
+
+	public string Temp { get; }
 
 	public string Spool => Path.Combine(Root, "Spool");
 
@@ -44,6 +51,8 @@ public sealed class DataPaths
 	public void CreateDirectories()
 	{
 		Directory.CreateDirectory(Root);
+		Directory.CreateDirectory(Logs);
+		Directory.CreateDirectory(Temp);
 		Directory.CreateDirectory(Spool);
 		Directory.CreateDirectory(Quarantine);
 		foreach (var storage in new[]

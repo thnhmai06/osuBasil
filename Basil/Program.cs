@@ -1,3 +1,4 @@
+using Basil.Configuration;
 using Basil.Host.Cli;
 using Basil.Host.Cli.Commands;
 using Basil.Host.Cli.Shutdown;
@@ -18,6 +19,11 @@ public static class Program
 			app = HostApplication.Create(args);
 		}
 		catch (CliOptionException exception)
+		{
+			await Console.Error.WriteLineAsync($"error: invalid: {exception.Message}");
+			return ExitCodes.Invalid;
+		}
+		catch (DataLayoutException exception)
 		{
 			await Console.Error.WriteLineAsync($"error: invalid: {exception.Message}");
 			return ExitCodes.Invalid;

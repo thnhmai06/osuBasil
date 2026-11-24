@@ -27,6 +27,9 @@ public static class HostApplication
 		var mode = CliModes.Choose(args, Console.IsInputRedirected, Console.IsOutputRedirected,
 			CliModes.TermIsDumb(), CliModes.NoColorIsSet());
 		args = CliModes.Strip(args);
+		// Before the settings are read: the shipped files are in place, and the layout is the one this program knows.
+		ShippedFiles.CopyMissing();
+		DataLayout.Ensure();
 		// Relative paths in the settings are relative to the executable.
 		var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 		{
@@ -43,14 +46,13 @@ public static class HostApplication
 		builder.Services.AddHostedService(provider => provider.GetRequiredService<UpdateChecker>());
 		builder.Services.AddSingleton<IUpdateStatus>(provider => provider.GetRequiredService<UpdateChecker>());
 		builder.Services.AddBasil();
-		builder.Services.AddBotInfrastructureOptions(builder.Configuration);
 		builder.Services.AddSingleton<IDocumentPage, BotReferencePage>();
 		builder.Services.AddIrcListener(builder.Configuration);
 		builder.Services.AddRestApi(builder.Configuration);
 		builder.Services.AddCli(mode,
 			provider => ControlSocket.PathIn(
-				provider.GetRequiredService<DataPaths>().Root),
-			Path.Combine(AppContext.BaseDirectory, "Configurations"));
+				provider.GetRequiredService<DataPaths>().Temp),
+			ConfigurationSetup.Directory);
 		builder.Services.AddSingleton<ShutdownSequence>();
 		// Registered last, so that it stops first: the other services are told and the rooms closed while they still run.
 		builder.Services.AddHostedService<GracefulShutdown>();

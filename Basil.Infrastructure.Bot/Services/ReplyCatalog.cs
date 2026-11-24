@@ -3,17 +3,20 @@ using System.Globalization;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using Basil.Application.Bot.Replies;
+using Basil.Infrastructure.Shared.Storage;
 using Jeffijoe.MessageFormat;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Bot.Services;
 
 internal sealed class ReplyCatalog(
 	IEnumerable<Reply> replies,
-	IOptions<RepliesOptions> options,
+	DataPaths paths,
 	ILogger<ReplyCatalog> logger) : IReplies
 {
+	// The editor's link to the schema; it is no reply.
+	private const string SchemaKey = "$schema";
+
 	private static readonly CultureInfo Culture = CultureInfo.GetCultureInfo("en");
 
 	private static readonly JsonSerializerOptions FileFormat = new()
@@ -30,7 +33,8 @@ internal sealed class ReplyCatalog(
 
 	private FrozenDictionary<string, string> _texts = FrozenDictionary<string, string>.Empty;
 
-	public string Path { get; } = System.IO.Path.GetFullPath(options.Value.Path);
+	public string Path { get; } =
+		System.IO.Path.GetFullPath(System.IO.Path.Combine(paths.Root, "Localizations", "bot.json"));
 
 	public string Text(Reply reply, object? arguments = null)
 	{
@@ -79,6 +83,8 @@ internal sealed class ReplyCatalog(
 		var texts = new Dictionary<string, string>(StringComparer.Ordinal);
 		foreach (var (key, value) in entries)
 		{
+			if (key == SchemaKey) continue;
+
 			if (!_replies.TryGetValue(key, out var reply))
 			{
 				_logger.LogWarning("The replies file {Path} has the text {Key}, which is no reply of BasilBot", Path,

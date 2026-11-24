@@ -15,7 +15,6 @@ internal static class FileBeatmapsetNames
 
 	internal const string VersionFolder = "versions";
 	internal const string BackgroundFolder = "backgrounds";
-	internal const string CoverFolder = "covers";
 	internal const string AudioFolder = "audio";
 	internal const string VideoFolder = "video";
 

@@ -76,7 +76,14 @@ reply wording change, tests.
 8. **Compose and Dockerfile.** One `Data` volume at `/app/Data`; `Cache/`, `Logs/` may be mounted (Logs and Cache
    read-only into nginx where it serves files); remove the `Templates` and `appsettings.json` mounts. Data and Cache
    group-readable for nginx.
-9. **Docs.** `docs/for-technicians/configuration.md` (layout table, metadata, refuse-to-start rules, backup before
+9. **Left over from W1.** `Basil.Host.Shared/Http/StoredFile.cs` hard-codes `AppContext.BaseDirectory/Data` as the
+   X-Accel root: make it hand off any file under `Data/` or `Cache/` with a prefix per root (`/_files/` for `Data/`,
+   `/_cache/` for `Cache/`; one setting each or one prefix with the root name, your choice, keep it minimal) and add the
+   matching `internal` location and read-only `Cache` mount to `docker/nginx/nginx.conf` and compose. Remove
+   `Basil__Bot__Replies__Path` from `.github/workflows/ci.yml`. `Basil/Configurations/appsettings.json` has the git
+   skip-worktree flag (the owner keeps local log levels): `git mv` it as part of step 1, and report it so the reviewer
+   restores the flag on the new path.
+10. **Docs.** `docs/for-technicians/configuration.md` (layout table, metadata, refuse-to-start rules, backup before
    `docker compose pull`: `pg_dump` and the `Data/` volume), `docker.md`, `logging.md` (both), `AGENTS.md` lines that
    name `Configurations/Templates/replies.json` or `Configurations/`.
 

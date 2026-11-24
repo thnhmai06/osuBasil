@@ -46,6 +46,8 @@ internal sealed class LogRetentionJob(
 	ILogger<LogRetentionJob> logger)
 	: BackgroundService
 {
+	private static readonly TimeSpan SessionLogAge = TimeSpan.FromDays(7);
+
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
 		using var timer = new PeriodicTimer(TimeSpan.FromHours(6), time);
@@ -57,6 +59,10 @@ internal sealed class LogRetentionJob(
 				var deleted = LogRetention.Sweep(ConfigurationSetup.Resolve(file.Location), file.Retention.MaxAge,
 					file.Retention.MaxFiles, ByteSize.Parse(file.Retention.MaxSize, "Logging:File:Retention:MaxSize"),
 					time.GetUtcNow());
+				// Session logs are small and of use only for a short while.
+				deleted += LogRetention.Sweep(
+					Path.Combine(ConfigurationSetup.Resolve(file.Location), ServerLogging.SessionsFolder),
+					SessionLogAge, 0, 0, time.GetUtcNow());
 				if (deleted > 0) logger.LogInformation("Deleted {FileCount} log files past their retention", deleted);
 			}
 			catch (Exception exception) when (exception is not OperationCanceledException)

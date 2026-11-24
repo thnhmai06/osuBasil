@@ -3,7 +3,8 @@
 ## Overview
 
 Basil writes operational log files to `Logs/` next to the executable and shows the same events in the dashboard (or on
-stdout with `--console 0`). In Docker, stdout is also available through `docker compose logs`.
+stdout, as plain text without colour, with `--console 0`, which is what a container without a terminal runs). There,
+`docker compose logs` shows the system log.
 
 The folder is created when the server starts.
 
@@ -13,6 +14,7 @@ The folder is created when the server starts.
 |---|---|
 | `Logs/basil-YYYYMMDD.log` | the log written on that day, or the next file of that day after a size roll |
 | `Logs/basil-*.log` | older files kept for the retention period |
+| `Logs/Sessions/<Type>-<id>.log` | one file per connection session (osu!, tournament osu!, IRC, API): the lines about that session's start and end, kept 7 days |
 
 A file rolls at the next day or at **100 MB** (`Logging:File:Rolling`), whichever comes first, so a busy server may produce several files in one
 day. There is no separate error file and no `latest.log` link: search the files of the day.
@@ -23,7 +25,7 @@ every six hours. `Logging:File:Enabled` set to `false` writes no files.
 
 ## Log levels
 
-The levels are the standard `Logging:LogLevel` settings in `Configurations/appsettings.json`:
+The levels are the standard `Logging:LogLevel` settings in `Data/appsettings.json`:
 
 ```json
 {
@@ -31,7 +33,8 @@ The levels are the standard `Logging:LogLevel` settings in `Configurations/appse
 		"LogLevel": {
 			"Default": "Information",
 			"Microsoft": "Warning",
-			"Microsoft.Hosting.Lifetime": "Information"
+			"Microsoft.Hosting.Lifetime": "Information",
+			"System": "Warning"
 		}
 	}
 }
@@ -74,7 +77,7 @@ A non-zero count means the log is incomplete for that period.
 
 1. The server can create and write `Logs/` next to the executable.
 2. You are looking beside the executable, not in the source tree.
-3. In Docker, `Logs/` is bind-mounted if you need the files after the container is removed.
+3. In Docker, `Logs/` is bind-mounted (the Compose file does it) if you need the files after the container is removed.
 4. `docker compose logs -f` shows stdout.
 
 ### There is not enough detail

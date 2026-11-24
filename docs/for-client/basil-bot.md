@@ -78,7 +78,7 @@ The exact subcommands and argument syntax are defined by the generated BasilBot 
 
 BasilBot's replies are part of the client-visible command contract, but their wording belongs to the server operator.
 
-Every reply is a text in the operator-editable file `Configurations/Templates/replies.json`, a JSON object that maps a
+Every reply is a text in the operator-editable file `Data/Localizations/bot.json`, a JSON object that maps a
 reply's key to an
 [ICU MessageFormat](https://unicode-org.github.io/icu/userguide/format_parse/messages/) string with named placeholders
 such as `{room}`. The file is written with the default wording when it does not exist, is reloaded while the server

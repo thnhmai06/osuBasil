@@ -56,7 +56,6 @@ jobs:
       ConnectionStrings__Read: Host=127.0.0.1;Port=5432;Username=postgres;Password=pw;Database=basil
       Basil__Server__Domain: basil.local
       Basil__Server__Irc__Port: "0"
-      Basil__Bot__Replies__Path: ${{ github.workspace }}/ci-data/replies.json
       Kestrel__Endpoints__Http__Url: http://127.0.0.1:5099
 
     steps:

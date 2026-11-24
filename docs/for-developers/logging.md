@@ -26,7 +26,11 @@ Nothing logs each osu! (stable) packet, IRC line or REST request. Those are coun
 * one rolling file, `Logs/basil-*.log`, UTF-8, rolled by `Logging:File:Rolling` (interval and size) and limited by `Logging:File:Retention`
   (age, count and total size; swept at startup and every six hours; the newest file is always kept); `Logging:File:Enabled`
   switches the file off;
-* a console sink only with `--console 0`, plain text without colour;
+* one file per connection session, `Logs/Sessions/<Type>-<id>.log`, kept 7 days: the lifecycle lines that name a session
+  (`Type` and `SessionId` properties), sent to its file by `SessionLogSink`; a refusal before a session exists has no
+  file and stays in the system log;
+* a console sink only with `--console 0` (what a container without a terminal runs), plain text without colour, so
+  `docker logs` shows the system log;
 * a dashboard log panel, a fixed ring buffer, in the full mode (`--console 1`);
 * optional OpenTelemetry log export when `OpenTelemetry:Logs` is on and an endpoint is set.
 

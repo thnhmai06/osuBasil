@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO.Compression;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Storage;
@@ -98,6 +99,7 @@ internal sealed class FileBeatmapsetStorage(
 			foreach (var other in FoldersOf(set.Id).Where(folder =>
 				         IsSetFolder(folder) && !string.Equals(folder, target, StringComparison.Ordinal)))
 				Directory.Delete(other, true);
+			DeleteDirectoryIfExists(CoversOf(set.Id));
 		}
 		finally
 		{
@@ -152,7 +154,7 @@ internal sealed class FileBeatmapsetStorage(
 			DeleteFileIfExists(Path.Combine(folder, StoryboardName));
 			DeleteDirectoryIfExists(Path.Combine(folder, VersionFolder));
 			DeleteDirectoryIfExists(Path.Combine(folder, BackgroundFolder));
-			DeleteDirectoryIfExists(Path.Combine(folder, CoverFolder));
+			DeleteDirectoryIfExists(CoversOf(set.Id));
 			DeleteDirectoryIfExists(Path.Combine(folder, AudioFolder));
 			DeleteDirectoryIfExists(Path.Combine(folder, VideoFolder));
 		}
@@ -170,7 +172,7 @@ internal sealed class FileBeatmapsetStorage(
 			var folder = FindFolder(set.Id, FolderName(set)) ??
 			             throw new InvalidOperationException("The beatmapset has no folder.");
 			var path = PathOf(folder, type, name);
-			if (type == BeatmapsetFileType.Background) DeleteDirectoryIfExists(Path.Combine(folder, CoverFolder));
+			if (type == BeatmapsetFileType.Background) DeleteDirectoryIfExists(CoversOf(set.Id));
 			var parent = Path.GetDirectoryName(path);
 			if (!string.IsNullOrEmpty(parent)) Directory.CreateDirectory(parent);
 
@@ -297,7 +299,7 @@ internal sealed class FileBeatmapsetStorage(
 		}
 
 		if (!File.Exists(source)) return null;
-		var cover = await _covers.EnsureAsync(source, Path.Combine(folder, CoverFolder), variant, ct);
+		var cover = await _covers.EnsureAsync(source, CoversOf(set.Id), variant, ct);
 		return cover is null ? null : OpenRead(cover);
 	}
 
@@ -331,6 +333,7 @@ internal sealed class FileBeatmapsetStorage(
 		{
 			foreach (var folder in FoldersOf(set.Id).Where(IsSetFolder))
 				Directory.Delete(folder, true);
+			DeleteDirectoryIfExists(CoversOf(set.Id));
 		}
 		finally
 		{
@@ -473,6 +476,11 @@ internal sealed class FileBeatmapsetStorage(
 				}
 			}
 		}
+	}
+
+	private string CoversOf(int setId)
+	{
+		return Path.Combine(paths.Cache.Path, "Covers", setId.ToString(CultureInfo.InvariantCulture));
 	}
 
 	private string Incoming(string extension = "")

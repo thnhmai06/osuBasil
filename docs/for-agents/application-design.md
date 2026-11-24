@@ -354,7 +354,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
 
 ### BasilBot replies
 
-* Everything the bot says is text the operator can edit: one JSON file, `Configurations/Templates/replies.json`, keys to ICU
+* Everything the bot says is text the operator can edit: one JSON file, `Data/Localizations/bot.json`, keys to ICU
   MessageFormat strings with named placeholders (`{room}`, plural selectors). One language. The defaults are embedded
   in the assembly and written to the configuration folder when the file does not exist. The file is watched and reloaded
   while the server runs; an invalid file keeps the last good set and logs a warning; a missing key falls back to its

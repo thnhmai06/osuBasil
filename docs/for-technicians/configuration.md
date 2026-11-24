@@ -1,7 +1,7 @@
 # Configuration
 
 This page is the authoritative reference for configuring and maintaining a Basil server. It covers the two
-configuration planes, the files and directories beside the executable, and how to move an installation.
+configuration planes, the folders beside the executable, and how to move an installation.
 
 If this document conflicts with another document, **this document takes precedence**.
 
@@ -11,7 +11,7 @@ Basil separates settings by who owns them and when they may change:
 
 | Plane | Lives in | Changed by | Applies |
 |---|---|---|---|
-| Deployment | `Configurations/appsettings*.json` | the operator, on the machine | at start, or at once for `Logging:LogLevel` and `Basil:Updates` |
+| Deployment | `Data/appsettings*.json` | the operator, on the machine | at start, or at once for `Logging:LogLevel` and `Basil:Updates` |
 | Policy | `ServerSettings` in the database | the API, the console | at once |
 
 Deployment settings describe this machine: the domain, ports, certificate, database and log files. Policy describes
@@ -24,22 +24,28 @@ no restart.
 
 ### Files and precedence
 
-The files sit next to the executable, not in `Data/`, so they travel with the binary:
+The files sit in `Data/`, the one folder a backup needs besides the database:
 
 ```text
-Configurations/
+Data/
 ├── appsettings.json
 ├── appsettings.{Environment}.json   optional overlay
 ├── appsettings.schema.json
-└── Templates/replies.json           BasilBot's wording; written with defaults when absent
+├── tuisettings.json                 the dashboard's colour scheme
+├── metadata.json                    the layout version of Data/
+└── Localizations/bot.json           BasilBot's wording
 ```
+
+Basil ships a read-only copy of its own files in `Defaults/Data/`. At every start it copies each file that is missing
+from `Data/` and never overwrites one, so an operator's edit survives an upgrade and a deleted file comes back with its
+default content.
 
 Sources, later winning over earlier: `appsettings.json`, `appsettings.{Environment}.json` (selected by
 `ASPNETCORE_ENVIRONMENT`), environment variables (`ConnectionStrings__Write`, `Basil__Server__Domain`: a double
 underscore stands for `:`), command-line arguments (`--Basil:Server:Domain=...`). The file is strict JSON: no comments and
 no trailing commas. `appsettings.schema.json` describes every key.
 
-Relative paths (`Logging:File:Location`) are relative to the executable. Stored files (replays, avatars, beatmapsets, menu images, the cache) always live in `Data` beside the executable; it is not configurable.
+Relative paths (`Logging:File:Location`) are relative to the executable. The folders below always sit beside the executable and are not configurable.
 
 ### Available settings
 
@@ -50,7 +56,7 @@ under `Basil`.
 |---|---|
 | `Kestrel:Endpoints:<name>:Url` | where the web server listens, default `http://0.0.0.0:8080`: plain HTTP behind nginx, which ends TLS (Basil holds no certificate); port `0` picks a free port |
 | `Logging:LogLevel` | lowest level written: `Default`, and one entry per source prefix (the longest prefix wins) |
-| `Logging:File:Enabled`, `Location` | write log files, and the folder (default `Logs`) |
+| `Logging:File:Enabled`, `Location` | write log files, and the folder (default `Logs`); the system log also goes to standard output when the dashboard is off |
 | `Logging:File:Rolling:Interval`, `MaxSize` | a new file starts after this interval (default `Day`) or at this size (default `100MB`) |
 | `Logging:File:Retention:MaxAge`, `MaxFiles`, `MaxSize` | delete log files older than 14 days, beyond the newest 30, or beyond 1 GB in total; `0` or empty switches a limit off |
 | `Logging:QueueCapacity` | events waiting for the writer before the newest are dropped, default 10000 |
@@ -61,11 +67,10 @@ under `Basil`.
 | `Basil:Server:Domain` | the public domain; every subdomain is derived from it |
 | `Basil:Server:TrustedProxies` | IPs and CIDR ranges of the reverse proxy: only these may tell Basil the client address (`X-Real-IP`), country and scheme, and open IRC connections (with a PROXY protocol header); defaults to loopback, the Compose file sets the compose network |
 | `Basil:Server:Irc:Port` | internal plain TCP port of IRC, default `6667`, reached only through nginx on `6697`; `0` picks a free port |
-| `Basil:Server:Files:AccelPrefix` | the nginx location that serves the `Data` folder (the Compose file sets `/_files/`); when set, stored files are sent by nginx through `X-Accel-Redirect`, when empty Basil sends them itself (for `dotnet run` without nginx) |
-| `Basil:Assets:CacheDirectory`, `FfmpegFolder` | the directory for the temporary files made while audio previews are built (default `Data/Cache/Previews` beside the executable), and the folder of the ffmpeg executable (default: found on the PATH) |
+| `Basil:Server:Files:AccelPrefix` | the nginx location that serves the `Data` and `Cache` folders, each below it under its own name (the Compose file sets `/_files/`, so `/_files/Data/` and `/_files/Cache/`); when set, stored files are sent by nginx through `X-Accel-Redirect`, when empty Basil sends them itself (for `dotnet run` without nginx) |
+| `Basil:Assets:CacheDirectory`, `FfmpegFolder` | the directory for the temporary files made while audio previews are built (default `Cache/Previews` beside the executable), and the folder of the ffmpeg executable (default: found on the PATH) |
 | `Basil:Database:Read:PoolSize`, `Write:PoolSize` | PostgreSQL is the only database; the connection strings are in `ConnectionStrings:Read` and `Write`; migrations run against the write endpoint; `Read:PoolSize` caps the reading pool (`0` keeps the driver's default), `Write:PoolSize` is the number of simultaneous writing connections, default `8` |
 | `Basil:Updates:CheckOnStartup`, `Source` | startup check of the latest release of the GitHub repository in `Source`; it only reports a newer version |
-| `Basil:Bot:Replies:Path` | path of the replies file, default `Configurations/Templates/replies.json` |
 
 The connection strings are deployment values and secrets, so the shipped file has none: set the environment variables
 `ConnectionStrings__Write` and, to read from a replica, `ConnectionStrings__Read` (the Compose file builds both from
@@ -98,7 +103,7 @@ When stdin or stdout is redirected, the server falls back to `--console 0`. A se
 
 ## Upgrading from v1.0.0-alpha.1
 
-The settings moved to the standard .NET sections. Rename these keys in `Configurations/appsettings.json` (and in any
+The settings moved to the standard .NET sections. Rename these keys in `Data/appsettings.json` (and in any
 environment variable or command-line argument, where `:` is `__` in variables); the old keys are no longer read.
 
 | Old | New |
@@ -109,7 +114,7 @@ environment variable or command-line argument, where `:` is `__` in variables); 
 | `Basil:Server:Ports:Irc` | `Basil:Server:Irc:Port` |
 | `Basil:Server:LanAdvertise`, `Basil:Server:Multicast:*` | removed: Basil no longer advertises the domain over multicast DNS |
 | (new) | `Basil:Server:Name` |
-| `Basil:Storage:DataDirectory`, `Basil:Storage:Location` | removed: stored files are always in `Data` beside the executable |
+| `Basil:Storage:DataDirectory`, `Basil:Storage:Location` | removed: `Data` is always beside the executable |
 | `Basil:Database:ConnectionString` | `ConnectionStrings:Write` (and `ConnectionStrings:Read`, which falls back to `Write`) |
 | `Basil:Database:WriteConnections` | `Basil:Database:Write:PoolSize` |
 | (new) | `Basil:Database:Read:PoolSize` |
@@ -151,28 +156,43 @@ The startup check reports whether a newer release exists. It never downloads or 
 seconds, and does not delay the server. A feed that cannot be reached is a warning, not a failure. Basil does not
 restart itself: install a new release the same way the current one was installed.
 
-## Templates and reply text
+## Reply text
 
-BasilBot's wording lives in `Configurations/Templates/replies.json`, a JSON object that maps a reply key to an ICU
-MessageFormat string with named placeholders such as `{room}`. The server writes the file with the default wording when
-it is missing and reloads it while running. A missing key keeps its default; an unreadable file leaves the last good
-wording in use; one invalid text falls back to its default. See [`basil-bot.md`](../for-client/basil-bot.md).
+BasilBot's wording lives in `Data/Localizations/bot.json`, a JSON object that maps a reply key to an ICU MessageFormat
+string with named placeholders such as `{room}`. The server writes the file with the default wording when it is
+missing and reloads it while running. A missing key keeps its default; an unreadable file leaves the last good wording
+in use; one invalid text falls back to its default. See [`basil-bot.md`](../for-client/basil-bot.md).
 
-## Persistent data
+## Folders
 
-Basil creates these beside the executable:
+Basil creates these beside the executable (in the container, under `/app`). Only `Data/` needs a backup.
 
 | Path | Contents | Safe to delete? |
 |---|---|---|
-| `Configurations/` | deployment configuration, certificate, templates | **No** |
+| `Data/appsettings.json`, `appsettings.schema.json`, `tuisettings.json` | deployment configuration and the dashboard colours | **No**: a deleted shipped file is written again with its default content |
+| `Data/metadata.json` | the layout version of `Data/` | **No** |
+| `Data/Localizations/` | BasilBot's wording | Optional: the default wording returns |
 | `Data/Replays/` | submitted replays | **No**, unless you mean to lose them |
 | `Data/Avatars/` | user avatars | **No**, unless you mean to lose them |
 | `Data/Beatmapsets/` | one folder per set: archive, difficulties, derived files | **No**, unless you mean to remove beatmaps |
 | `Data/Menu/` | banners, seasonals and the main-menu icon | Optional |
 | `Data/Faqs/` | text used by `!faq <entry>` | Optional |
 | `Data/Screenshots/` | uploaded screenshots | Optional |
-| `Data/Cache/` | audio previews and other rebuildable files | **Yes**, while the server is stopped |
-| `Logs/` | operational log files | Optional |
+| `Cache/` | covers, difficulty attributes, audio previews: everything rebuilt on demand | **Yes**, while the server is stopped |
+| `Logs/` | the system log and `Sessions/`, one file per connection session | Optional |
+| `Temp/` | the control socket | Not by hand |
+
+### Layout version and refusing to start
+
+`Data/metadata.json` holds `{ "layout": 1 }`. At start, before the settings are read, Basil reads it. A `Data/` without
+the file is taken as layout 0 and brought forward by the steps in order; each step can run again without harm, and the
+version is written only after the steps succeed. A failed step stops the start and names the step; the file keeps the old
+version. Layout 0 to 1 deletes what moved to `Cache/` (the covers in the set folders, `Data/Rulesets/Attributes`,
+`Data/Cache`), because it is rebuilt.
+
+Basil refuses to start, with one sentence saying why, when `Data/` has a layout newer than the program knows, or when the
+database has applied a migration the program does not know (the sentence names the module and the migration). Both mean
+an older Basil was started on the data of a newer one; start the newer image again, or restore the backup.
 
 ### Database
 
@@ -187,19 +207,20 @@ within about two seconds, and a full reconciliation runs at startup. Deleting a 
 A standalone `.osu` file is not imported. Uploads go through `POST /v1/beatmapsets`. See
 [`beatmap-ingestion.md`](../for-developers/beatmap-ingestion.md).
 
-## Moving or upgrading a server
+## Upgrading a server
 
-Treat the executable, `Configurations/`, `Data/` and `Logs/` as separate:
+Basil migrates the database and `Data/` forward at start and does not back them up first. Before each
+`docker compose pull`:
 
-1. Stop Basil.
-2. Copy the executable directory, including `Configurations/` and `Data/`.
-3. Do not copy `Logs/` unless you need the history.
-4. Verify the domain, certificate and ports on the target.
-5. Start Basil and check the startup log.
+1. Dump the database: `docker compose exec postgres pg_dump -U basil basil > basil.sql`.
+2. Copy the `Data/` volume (`docker-data/Data`) while Basil is stopped.
+3. Pull the new image and start it, then check the startup log.
 
-**Never replace `Data/` with an empty directory during an upgrade.** It holds the stored files, and `Configurations/`
-holds the configuration. A development database that already applied an older `InitialCreate` must be dropped: the
-project edits migrations in place while it is not deployed.
+To go back, stop Basil, restore both, and start the previous image. `Cache/` and `Logs/` need no backup.
+
+**Never replace `Data/` with an empty folder during an upgrade.** It holds the stored files and the configuration. A
+development database that already applied an older `InitialCreate` must be dropped: the project edits migrations in place
+while it is not deployed.
 
 ## See also
 
