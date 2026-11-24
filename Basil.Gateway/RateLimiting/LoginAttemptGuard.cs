@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Sockets;
 
 namespace Basil.Gateway.RateLimiting;
 
@@ -41,8 +42,9 @@ public sealed class LoginAttemptGuard(TimeProvider clock)
 		lock (_lock)
 		{
 			SweepExpired(now);
-			var pair = Current($"{address}|{account}", window, now);
-			var total = Current(address.ToString(), window, now);
+			var source = SourceOf(address);
+			var pair = Current($"{source}|{account}", window, now);
+			var total = Current(source, window, now);
 			if (pair.Failed + pair.InFlight >= maxAttempts ||
 			    total.Failed + total.InFlight >= maxAttempts * AddressFactor)
 				return null;
@@ -51,6 +53,17 @@ public sealed class LoginAttemptGuard(TimeProvider clock)
 			total.InFlight++;
 			return new Attempt(this, pair, total);
 		}
+	}
+
+	// One IPv6 subscriber holds a whole /64, so the /64 is one source; an IPv4-mapped address is its IPv4 address.
+	private static string SourceOf(IPAddress address)
+	{
+		if (address.IsIPv4MappedToIPv6) return address.MapToIPv4().ToString();
+		if (address.AddressFamily != AddressFamily.InterNetworkV6) return address.ToString();
+
+		var bytes = address.GetAddressBytes();
+		Array.Clear(bytes, 8, 8);
+		return $"{new IPAddress(bytes)}/64";
 	}
 
 	private Counter Current(string key, TimeSpan window, DateTimeOffset now)
