@@ -14,16 +14,21 @@ public readonly struct ScopedServerBeatmapsets
 		_scoped = scoped;
 	}
 
+	public async Task<ServerActionResult> MayUploadAsync(CancellationToken ct = default)
+	{
+		if (await _scoped.Server.Beatmapsets.IsLockedAsync(Locks.Beatmapsets, ct) &&
+		    _scoped.Lacks(UserPrivileges.Tournament))
+			return ServerActionResult.Locked;
+
+		return _scoped.Lacks(UserPrivileges.Player) ? ServerActionResult.Denied : ServerActionResult.Ok;
+	}
+
 	public async Task<(ServerActionResult Result, BeatmapsetImportResult? Import)> UploadAsync(Stream archive,
 		CancellationToken ct = default)
 	{
-		var server = _scoped.Server;
-		if (await server.Beatmapsets.IsLockedAsync(Locks.Beatmapsets, ct) &&
-		    _scoped.Lacks(UserPrivileges.Tournament))
-			return (ServerActionResult.Locked, null);
-		if (_scoped.Lacks(UserPrivileges.Player))
-			return (ServerActionResult.Denied, null);
+		var refusal = await MayUploadAsync(ct);
+		if (refusal != ServerActionResult.Ok) return (refusal, null);
 
-		return await server.Beatmapsets.UploadAsync(archive, ct);
+		return await _scoped.Server.Beatmapsets.UploadAsync(archive, ct);
 	}
 }

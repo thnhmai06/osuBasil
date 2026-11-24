@@ -9,8 +9,6 @@ public interface IBeatmapsetStorage
 
 	Task SaveAsync(BeatmapsetRecord set, BeatmapsetArchive archive);
 
-	Task QuarantineAsync(BeatmapsetArchive archive);
-
 	Task<BeatmapsetArchive?> PackAsync(BeatmapsetFolder folder,
 		CancellationToken ct = default);
 

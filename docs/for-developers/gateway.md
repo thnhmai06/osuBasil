@@ -138,7 +138,7 @@ runtime-configurable.
 
 * [`RateLimiter.cs`](../../Basil.Gateway/RateLimiting/RateLimiter.cs) and [`LoginAttemptGuard.cs`](../../Basil.Gateway/RateLimiting/LoginAttemptGuard.cs) — the limiter and login guard.
 * [`Admission.cs`](../../Basil.Gateway/Admission/Admission.cs) and [`GatewayLimits.cs`](../../Basil.Gateway/Limits/GatewayLimits.cs) — tier 2 and its swappable limits snapshot.
-* [`UploadLimit.cs`](../../Basil.Host.Rest/Http/UploadLimit.cs) and [`UploadLimit.cs`](../../Basil.Host.Stable/Support/UploadLimit.cs) — the two upload limits. They stay in the hosts: they differ and depend on ASP.NET and the stored settings, so they do not move to the gateway.
+* [`UploadRequest.cs`](../../Basil.Host.Shared/Http/UploadRequest.cs) and [`UploadForm.cs`](../../Basil.Host.Shared/Http/UploadForm.cs) — the limit, minimum data rate and streaming read of an upload, set per route by its kind. They stay in the hosts: they depend on ASP.NET and the stored settings, so they do not move to the gateway.
 
 ## See also
 

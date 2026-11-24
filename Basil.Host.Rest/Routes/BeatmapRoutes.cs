@@ -6,6 +6,7 @@ using Basil.Application.Beatmaps.Storage;
 using Basil.Application.Servers.Messages.Content;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Shared.Paging;
+using Basil.Application.Shared.Settings;
 using Basil.Domain.Beatmaps;
 using Basil.Gateway.Limits;
 using Basil.Host.Rest.Http;
@@ -17,6 +18,8 @@ namespace Basil.Host.Rest.Routes;
 internal static class BeatmapRoutes
 {
 	private const string OpaqueType = "application/octet-stream";
+
+	private const string UploadRoute = "POST /v1/beatmapsets";
 
 	private static readonly Dictionary<BeatmapsetFileType, Dictionary<string, string>> AllowedTypes = new()
 	{
@@ -46,6 +49,8 @@ internal static class BeatmapRoutes
 			.WithSummary("Upload a beatmapset.")
 			.WithDescription("""
 			                 The multipart form carries the `.osz` archive in `file`. The content of a set is never replaced: a set that already exists is refused with 409, and an archive that is not a readable beatmapset with 422.
+
+			                 An archive over the configured size is refused with 413 and the error code `tooLarge` when its size is declared, and by closing the connection otherwise; content that is not a ZIP archive closes the connection.
 
 			                 While the beatmapsets area is locked only managers can upload.
 			                 """);
@@ -136,26 +141,35 @@ internal static class BeatmapRoutes
 	{
 		if (!context.Request.HasFormContentType) return Api.Invalid("A multipart form with a file field is required.");
 
-		await UploadLimit.AllowAsync(context, sender);
+		var ct = context.RequestAborted;
+		var session = context.Session();
+		var limit = (await sender.Send(new ReadSettings(), ct)).Uploads.OszMaxSize;
+		if (!UploadRequest.Accept(context, limit))
+			return Api.Error(StatusCodes.Status413PayloadTooLarge, "tooLarge", "The archive is too large.");
 
-		var form = await context.Request.ReadFormAsync(context.RequestAborted);
-		if (form.Files.GetFile("file") is not { } file) return Api.Invalid("The file field is missing.");
+		var early = await sender.Send(new MayUploadBeatmapset(session), ct);
+		if (early != ServerActionResult.Ok) return early.Refusal();
 
-		await using var stream = file.OpenReadStream();
-		var (result, import) = await sender.Send(new UploadBeatmapset(context.Session(), stream),
-			context.RequestAborted);
-		if (result != ServerActionResult.Ok) return result.Refusal();
-
-		return import!.Failure switch
+		return await UploadRequest.GuardAsync(context, UploadRoute, $"user {session.Record.Id}", async () =>
 		{
-			null => Api.Created(new SetDetailView(SetView.Of(import.Set!),
-				[.. import.Beatmaps.Select(b => BeatmapView.Of(b, false))])),
-			BeatmapsetImportFailure.AlreadyExists => Api.Error(StatusCodes.Status409Conflict, "alreadyExists",
-				"The beatmapset already exists."),
-			BeatmapsetImportFailure.Locked => Api.Error(StatusCodes.Status409Conflict, "locked",
-				"The beatmapset is locked."),
-			_ => Api.Invalid("The archive is not a readable beatmapset.", "unreadable")
-		};
+			await using var form = await UploadForm.ReadAsync(context, "file", UploadSignature.Archive, limit, [],
+				false, ct);
+			if (form.File is null) return Api.Invalid("The file field is missing.");
+
+			var (result, import) = await sender.Send(new UploadBeatmapset(session, form.File), ct);
+			if (result != ServerActionResult.Ok) return result.Refusal();
+
+			return import!.Failure switch
+			{
+				null => Api.Created(new SetDetailView(SetView.Of(import.Set!),
+					[.. import.Beatmaps.Select(b => BeatmapView.Of(b, false))])),
+				BeatmapsetImportFailure.AlreadyExists => Api.Error(StatusCodes.Status409Conflict, "alreadyExists",
+					"The beatmapset already exists."),
+				BeatmapsetImportFailure.Locked => Api.Error(StatusCodes.Status409Conflict, "locked",
+					"The beatmapset is locked."),
+				_ => Api.Invalid("The archive is not a readable beatmapset.", "unreadable")
+			};
+		});
 	}
 
 	private static async Task<IResult> DeleteAsync(HttpContext context, int id, ISender sender)

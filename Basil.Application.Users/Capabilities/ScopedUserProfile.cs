@@ -36,6 +36,12 @@ public readonly struct ScopedUserProfile(ScopedUser scoped)
 		return user is null ? refusal : await user.Profile.SetCountryAsync(country);
 	}
 
+	public async Task<UserActionResult> MaySetAvatarAsync()
+	{
+		var (user, refusal) = await GuardAsync();
+		return user is null ? refusal : UserActionResult.Ok;
+	}
+
 	public async Task<UserActionResult> SetAvatarAsync(Stream image, CancellationToken ct = default)
 	{
 		var (user, refusal) = await GuardAsync();

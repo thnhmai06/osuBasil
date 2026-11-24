@@ -1,13 +1,15 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Beatmaps.Storage;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Beatmaps.Logic;
 
 internal sealed class BeatmapsetImporter(
 	IBeatmapsetStorage storage,
 	BeatmapsetPlanner planner,
-	BeatmapsetStorer storer) : IBeatmapsetImporter
+	BeatmapsetStorer storer,
+	ILogger<BeatmapsetImporter> logger) : IBeatmapsetImporter
 {
 	public async Task<(BeatmapsetImportResult Result, BeatmapsetIndexed? Imported)> ImportAsync(Stream archive,
 		bool replaceExisting, CancellationToken ct = default)
@@ -18,7 +20,7 @@ internal sealed class BeatmapsetImporter(
 			var (content, stream) = await planner.ReadAsync(uploaded, ct);
 			if (content is null)
 			{
-				await storage.QuarantineAsync(uploaded);
+				logger.LogWarning("Upload refused: the archive is not a readable beatmapset.");
 				return (new BeatmapsetImportResult(null, [], BeatmapsetImportFailure.Unreadable), null);
 			}
 

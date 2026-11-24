@@ -8,9 +8,14 @@ internal sealed class FileUserAvatarStorage(DataPaths paths) : IUserAvatarStorag
 {
 	private DataStorage Files => paths.Avatars;
 
-	public Task SaveAsync(UserRecord user, Stream content)
+	public Task SaveAsync(UserRecord user, Stream content, Func<Stream, CancellationToken, Task> accept,
+		CancellationToken ct = default)
 	{
-		return Files.SaveAsync($"{user.Id}", content, CancellationToken.None);
+		return Files.SaveCheckedAsync(content, async (stored, token) =>
+		{
+			await accept(stored, token);
+			return $"{user.Id}";
+		}, ct);
 	}
 
 	public Task<Stream?> OpenAsync(int userId, CancellationToken ct = default)

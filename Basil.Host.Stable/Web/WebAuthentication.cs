@@ -25,6 +25,14 @@ internal sealed class WebAuthentication(
 	// The digest that passed the password check, per connection: later requests skip the slow hash check.
 	private readonly ConditionalWeakTable<StableSession, string> _verified = new();
 
+	/// <summary>Tells whether the request comes from an address that has an open osu! session.</summary>
+	public bool HasOpenClientAt(HttpContext context)
+	{
+		var address = ClientAddress.Resolve(context);
+		// shortcut: scans the online users, like AuthenticateAsync; add an index by address if the online count grows large.
+		return registry.OpenStableClients().Any(client => client.State.Record.Value.Fingerprint.Ip.Equals(address));
+	}
+
 	public bool MayUseDirect(StableSession client)
 	{
 		return Effective(client).Allows(UserPrivileges.Supporter);

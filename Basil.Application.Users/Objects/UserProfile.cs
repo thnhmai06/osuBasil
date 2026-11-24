@@ -53,24 +53,15 @@ public sealed class UserProfile
 		var context = _user.Context;
 		var limits = (await context.Settings.GetAsync(ct)).Uploads;
 
-		await using var upload = await context.Spool.SpoolAsync(image, limits.AvatarMaxSize, ct);
-		if (upload.TooLarge) throw new UploadTooLargeException(limits.AvatarMaxSize);
-
-		var info = await context.Inspector.InspectAsync(upload.Content);
-		if (info is null || info.Width < 1 || info.Height < 1)
+		await context.Avatars.SaveAsync(_user.Record, image, async (stored, token) =>
 		{
-			await upload.QuarantineAsync();
-			throw new InvalidImageException();
-		}
+			if (stored.Length > limits.AvatarMaxSize) throw new UploadTooLargeException(limits.AvatarMaxSize);
 
-		if (info.Width > limits.AvatarMaxSide || info.Height > limits.AvatarMaxSide)
-		{
-			await upload.QuarantineAsync();
-			throw new ImageDimensionsTooLargeException(limits.AvatarMaxSide);
-		}
-
-		upload.Content.Position = 0;
-		await context.Avatars.SaveAsync(_user.Record, upload.Content);
+			var info = await context.Inspector.InspectAsync(stored, token);
+			if (info is null || info.Width < 1 || info.Height < 1) throw new InvalidImageException();
+			if (info.Width > limits.AvatarMaxSide || info.Height > limits.AvatarMaxSide)
+				throw new ImageDimensionsTooLargeException(limits.AvatarMaxSide);
+		}, ct);
 		return UserActionResult.Ok;
 	}
 

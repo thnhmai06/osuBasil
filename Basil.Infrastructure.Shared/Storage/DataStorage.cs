@@ -140,6 +140,41 @@ public sealed class DataStorage : IReadOnlyDictionary<string, FileInfo>
 		}
 	}
 
+	/// <summary>Writes a stream into a temporary file, lets <paramref name="accept" /> judge that file, and moves it under the name it returns; a refusal (an exception) leaves nothing behind.</summary>
+	public async Task<string> SaveCheckedAsync(Stream content, Func<Stream, CancellationToken, Task<string>> accept,
+		CancellationToken ct)
+	{
+		Directory.CreateDirectory(Path);
+		var temporary = TempFiles.Name(System.IO.Path.Combine(Path, "x"));
+
+		try
+		{
+			string name;
+			await using (var stream = new FileStream(temporary, new FileStreamOptions
+			             {
+				             Mode = FileMode.CreateNew,
+				             Access = FileAccess.ReadWrite,
+				             Share = FileShare.None,
+				             Options = FileOptions.Asynchronous,
+				             BufferSize = BufferSize
+			             }))
+			{
+				await content.CopyToAsync(stream, ct);
+				stream.Position = 0;
+				name = await accept(stream, ct);
+			}
+
+			var target = Resolve(name);
+			Directory.CreateDirectory(System.IO.Path.GetDirectoryName(target)!);
+			File.Move(temporary, target, true);
+			return name;
+		}
+		finally
+		{
+			if (File.Exists(temporary)) File.Delete(temporary);
+		}
+	}
+
 	public FileStream? Open(string name)
 	{
 		if (!TryResolve(name, out var path) || !File.Exists(path)) return null;

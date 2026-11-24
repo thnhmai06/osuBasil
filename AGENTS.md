@@ -580,7 +580,7 @@ Data reaches its consumer directly.
 * Every accepted upload is written into its target storage's temporary file, validated, then moved atomically into
   place; no part of an uploaded name becomes a path.
 * Application does not buffer a payload in a `MemoryStream` or a `byte[]` copy. An upload is judged before its bytes
-  are taken (owner decision 2026-11-24; **target**, today it still goes through `IUploadSpool` and `Quarantine`): the
+  are taken (owner decision 2026-11-24): the
   caller is authorized before the body is read, a declared length above the limit of that kind of upload is refused at
   once, the body is read as a stream, its first bytes are checked and the connection is cut on a mismatch, on too many
   bytes or on a too slow sender. Accepted bytes go straight into the target storage. A refused upload is logged, never

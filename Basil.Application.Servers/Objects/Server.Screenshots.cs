@@ -19,26 +19,20 @@ public readonly struct ServerScreenshots
 	internal async Task<(ContentReference? Screenshot, ServerActionResult Outcome)> UploadAsync(Stream content,
 		CancellationToken ct)
 	{
-		var limits = (await _server.Context.Settings.GetAsync(ct)).Uploads;
+		var context = _server.Context;
+		var limits = (await context.Settings.GetAsync(ct)).Uploads;
 
-		await using var upload = await _server.Context.Spool.SpoolAsync(content, limits.ScreenshotMaxSize, ct);
-		if (upload.TooLarge) throw new UploadTooLargeException(limits.ScreenshotMaxSize);
-
-		var info = await _server.Context.Inspector.InspectAsync(upload.Content);
-		if (info is null || info.Width < 1 || info.Height < 1)
+		var reference = await context.Screenshots.SaveAsync(content, async (stored, token) =>
 		{
-			await upload.QuarantineAsync();
-			throw new InvalidImageException();
-		}
+			if (stored.Length > limits.ScreenshotMaxSize) throw new UploadTooLargeException(limits.ScreenshotMaxSize);
 
-		if (info.Width > limits.ScreenshotMaxSide || info.Height > limits.ScreenshotMaxSide)
-		{
-			await upload.QuarantineAsync();
-			throw new ImageDimensionsTooLargeException(limits.ScreenshotMaxSide);
-		}
+			var info = await context.Inspector.InspectAsync(stored, token);
+			if (info is null || info.Width < 1 || info.Height < 1) throw new InvalidImageException();
+			if (info.Width > limits.ScreenshotMaxSide || info.Height > limits.ScreenshotMaxSide)
+				throw new ImageDimensionsTooLargeException(limits.ScreenshotMaxSide);
 
-		upload.Content.Position = 0;
-		var reference = await _server.Context.Screenshots.SaveAsync(upload.Content, info.Extension);
+			return info.Extension;
+		}, ct);
 		return (reference, ServerActionResult.Ok);
 	}
 

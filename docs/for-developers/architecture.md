@@ -269,7 +269,7 @@ to user id 1 that holds exactly one Stable and one Irc session and has no sessio
 ## Streaming
 
 Data reaches its consumer directly. A database read is bounded, loaded, the connection released, and only then sent. Every
-upload is spooled to a temporary file, validated, then moved atomically into place. Application code does not buffer a
+upload is written into its storage's temporary file, validated, then moved atomically into place. Application code does not buffer a
 payload in a `MemoryStream`. The mandatory rule is in [`../../AGENTS.md`](../../AGENTS.md).
 
 ## Live updates

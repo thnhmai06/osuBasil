@@ -176,38 +176,49 @@ internal static class OsuWebRoutes
 		CancellationToken ct)
 	{
 		// A score submission carries a replay, which is far below the screenshot limit.
-		await UploadLimit.AllowAsync(context, sender, uploads => uploads.ScreenshotMaxSize);
-		try
-		{
-			var form = await context.Request.ReadFormAsync(ct);
-			var version = form["osuver"].ToString();
-			var iv = form["iv"].ToString();
-			var data = ScoreSubmission.Parse(ScoreSubmissionCipher.Decrypt(form["score"].First()!, iv, version));
-			if (await auth.AuthenticateAsync(context, data.Username.TrimEnd(), form["pass"], ct) is not { } client)
-				return Text("error: no");
-			var clientHashText = ScoreSubmissionCipher.Decrypt(form["s"].ToString(), iv, version);
-			var fingerprint = OsuFingerprintExtensions.Parse(clientHashText);
-			var ids = form["c1"].ToString().Split('|');
-			var beatmapHash = new Md5Hash(data.BeatmapHash);
-			var submittedClient = new SubmittedClient(clientHashText, fingerprint, ids[0],
-				ids.ElementAtOrDefault(1) ?? string.Empty,
-				version[..8], beatmapHash);
-			var known = await sender.Send(new FindBeatmapByHash(beatmapHash), ct);
-			var storyboard = Md5Text.TryParse(form["sbk"], out var sb) ? sb : (Md5Hash?)null;
-			var submission = ToSubmission(data, beatmapHash);
-			anticheat.Report(client, submission.Flags);
-			await using var replay = OpenReplay(context);
-			var (result, _, receipt) = await sender.Send(new SubmitScore(client, submission,
-				known is null ? null : new BeatmapChecksums(known.Hash, storyboard), submittedClient, replay), ct);
-			return Text(result == ScoreSubmissionResult.Ok && submission.Score.IsPassed
-				? SubmissionCharts.Build(receipt!, known, $"{context.Request.Scheme}://{context.Request.Host}")
-				: OsuWebReplies.SubmissionRefused);
-		}
-		catch (Exception ex) when (ex is FormatException or ArgumentException or InvalidDataException
-			                           or OverflowException or InvalidOperationException or BasilException)
-		{
-			return Text("error: no");
-		}
+		var limit = (await sender.Send(new ReadSettings(), ct)).Uploads.ScreenshotMaxSize;
+		if (!UploadRequest.Accept(context, limit)) return Text(string.Empty, StatusCodes.Status413PayloadTooLarge);
+		if (!auth.HasOpenClientAt(context)) return Text("error: no");
+
+		return await UploadRequest.GuardAsync(context, "POST /web/osu-submit-modular-selector.php",
+			ClientAddress.Resolve(context).ToString(), async () =>
+			{
+				try
+				{
+					// The scores module needs the replay as a file of known length, so it is kept in a bounded
+					// temporary file while the rest of the form is read.
+					await using var form = await UploadForm.ReadAsync(context, "score", UploadSignature.None, limit,
+						[], true, ct);
+					var version = form.Field("osuver");
+					var iv = form.Field("iv");
+					var data = ScoreSubmission.Parse(ScoreSubmissionCipher.Decrypt(form.Field("score"), iv, version));
+					if (await auth.AuthenticateAsync(context, data.Username.TrimEnd(), form.Field("pass"), ct) is not
+					    { } client)
+						return Text("error: no");
+					var clientHashText = ScoreSubmissionCipher.Decrypt(form.Field("s"), iv, version);
+					var fingerprint = OsuFingerprintExtensions.Parse(clientHashText);
+					var ids = form.Field("c1").Split('|');
+					var beatmapHash = new Md5Hash(data.BeatmapHash);
+					var submittedClient = new SubmittedClient(clientHashText, fingerprint, ids[0],
+						ids.ElementAtOrDefault(1) ?? string.Empty,
+						version[..8], beatmapHash);
+					var known = await sender.Send(new FindBeatmapByHash(beatmapHash), ct);
+					var storyboard = Md5Text.TryParse(form.Field("sbk"), out var sb) ? sb : (Md5Hash?)null;
+					var submission = ToSubmission(data, beatmapHash);
+					anticheat.Report(client, submission.Flags);
+					var (result, _, receipt) = await sender.Send(new SubmitScore(client, submission,
+						known is null ? null : new BeatmapChecksums(known.Hash, storyboard), submittedClient,
+						form.File), ct);
+					return Text(result == ScoreSubmissionResult.Ok && submission.Score.IsPassed
+						? SubmissionCharts.Build(receipt!, known, $"{context.Request.Scheme}://{context.Request.Host}")
+						: OsuWebReplies.SubmissionRefused);
+				}
+				catch (Exception ex) when (ex is FormatException or ArgumentException or InvalidDataException
+					                           or OverflowException or InvalidOperationException or BasilException)
+				{
+					return Text("error: no");
+				}
+			});
 	}
 
 	private static Submission ToSubmission(ScoreSubmission data, Md5Hash beatmapHash)
@@ -220,11 +231,6 @@ internal static class OsuWebRoutes
 			ParseGrade(data.Grade), data.IsPassed, data.Timestamp);
 		return new Submission
 			{ Score = score, Flags = data.ClientFlags, HashByClient = new Md5Hash(data.Checksum) };
-	}
-
-	private static Stream? OpenReplay(HttpContext context)
-	{
-		return context.Request.Form.Files.GetFile("score") is { } file ? file.OpenReadStream() : null;
 	}
 
 	private static Grade ParseGrade(string grade)
@@ -247,36 +253,34 @@ internal static class OsuWebRoutes
 	private static async Task<IResult> ScreenshotAsync(HttpContext context, WebAuthentication auth, ISender sender,
 		CancellationToken ct)
 	{
-		await UploadLimit.AllowAsync(context, sender, uploads => uploads.ScreenshotMaxSize);
-		IFormCollection form;
-		try
-		{
-			form = await context.Request.ReadFormAsync(ct);
-		}
-		catch (Exception ex) when (ex is InvalidDataException or InvalidOperationException)
-		{
-			return Results.BadRequest();
-		}
+		var limit = (await sender.Send(new ReadSettings(), ct)).Uploads.ScreenshotMaxSize;
+		if (!UploadRequest.Accept(context, limit)) return Text(string.Empty, StatusCodes.Status413PayloadTooLarge);
+		if (!auth.HasOpenClientAt(context)) return Results.Unauthorized();
 
-		if (await auth.AuthenticateAsync(context, form["u"], form["p"], ct) is not { } player)
-			return Results.Unauthorized();
-		if (form.Files.GetFile("ss") is not { } file) return Results.BadRequest();
-		await using var stream = file.OpenReadStream();
-		try
-		{
-			var (reference, result) = await sender.Send(new UploadScreenshot(player, stream), ct);
-			return result == ServerActionResult.Ok
-				? Text(reference?.ToString() ?? string.Empty)
-				: Text(string.Empty, 400);
-		}
-		catch (ImageDimensionsTooLargeException)
-		{
-			return Text(string.Empty, 413);
-		}
-		catch (BasilException)
-		{
-			return Text(string.Empty, 400);
-		}
+		return await UploadRequest.GuardAsync(context, "POST /web/osu-screenshot.php",
+			ClientAddress.Resolve(context).ToString(), async () =>
+			{
+				await using var form = await UploadForm.ReadAsync(context, "ss", UploadSignature.Image, limit,
+					["u", "p"], false, ct);
+				if (await auth.AuthenticateAsync(context, form.Field("u"), form.Field("p"), ct) is not { } player)
+					return Results.Unauthorized();
+				if (form.File is null) return Results.BadRequest();
+				try
+				{
+					var (reference, result) = await sender.Send(new UploadScreenshot(player, form.File), ct);
+					return result == ServerActionResult.Ok
+						? Text(reference?.ToString() ?? string.Empty)
+						: Text(string.Empty, 400);
+				}
+				catch (ImageDimensionsTooLargeException)
+				{
+					return Text(string.Empty, 413);
+				}
+				catch (BasilException)
+				{
+					return Text(string.Empty, 400);
+				}
+			});
 	}
 
 	private static async Task<IResult> LastFmAsync(HttpContext context, WebAuthentication auth,

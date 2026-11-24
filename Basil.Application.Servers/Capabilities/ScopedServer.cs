@@ -41,6 +41,11 @@ public readonly struct ScopedServer
 
 	public ScopedServerBeatmapsets Beatmapsets => new(this);
 
+	public ServerActionResult MayChangeMenu()
+	{
+		return Lacks(UserPrivileges.Owner) ? ServerActionResult.Denied : ServerActionResult.Ok;
+	}
+
 	public (ServerActionResult Result, int Sent) Notify(string text, UserRecord to)
 	{
 		return Denied() is { } denied ? (denied, 0) : (ServerActionResult.Ok, Server.Notify(text, to));

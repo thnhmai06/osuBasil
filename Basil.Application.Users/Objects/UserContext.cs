@@ -18,7 +18,6 @@ internal sealed record UserContext(
 	IRelationshipRepository Relationships,
 	IUserAvatarStorage Avatars,
 	IScreenshotInspector Inspector,
-	IUploadSpool Spool,
 	ISettingsRepository Settings)
 {
 	public UserRegistry Registry => RegistryOf.Value;

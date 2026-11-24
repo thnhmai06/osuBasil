@@ -12,6 +12,7 @@ using Basil.Domain.Users;
 using Basil.Gateway.Limits;
 using Basil.Host.Rest.Http;
 using Basil.Host.Rest.Sse;
+using Basil.Host.Shared.Http;
 using Basil.Host.Shared.Views;
 using Basil.Shared.Structures.Cryptography;
 using Mediator;
@@ -50,7 +51,7 @@ internal static class UserRoutes
 		token.MapPut("/{id:int}/avatar", PutAvatarAsync).Admitted(WorkClass.Upload).DisableAntiforgery()
 			.WithSummary("Upload the avatar of an account.")
 			.WithDescription("""
-			                 The multipart form carries the picture in `file`: a PNG or JPEG within the configured size and pixel limits. A file over the size limit is refused with 422 and the error code `tooLarge`; content that is not such a picture, or exceeds a pixel limit, is refused with 422.
+			                 The multipart form carries the picture in `file`: a PNG or JPEG within the configured size and pixel limits. A file over the size limit is refused with 413 and the error code `tooLarge` when its size is declared, and by closing the connection otherwise; content that is not a PNG, JPEG, GIF or WebP picture closes the connection, and a picture that is unreadable or exceeds a pixel limit is refused with 422.
 
 			                 While the profiles area is locked only staff can change an avatar.
 			                 """);
@@ -215,16 +216,24 @@ internal static class UserRoutes
 	{
 		if (!context.Request.HasFormContentType) return Api.Invalid("A multipart form with a file field is required.");
 
-		await UploadLimit.AllowAsync(context, sender);
-		var form = await context.Request.ReadFormAsync(context.RequestAborted);
-		if (form.Files.GetFile("file") is not { } file) return Api.Invalid("The file field is missing.");
-		if (file.Length > (await sender.Send(new ReadSettings(), context.RequestAborted)).Uploads.AvatarMaxSize)
-			return Api.Invalid("The avatar is too large.", "tooLarge");
-		var target = id;
+		var ct = context.RequestAborted;
+		var session = context.Session();
+		var limit = (await sender.Send(new ReadSettings(), ct)).Uploads.AvatarMaxSize;
+		if (!UploadRequest.Accept(context, limit))
+			return Api.Error(StatusCodes.Status413PayloadTooLarge, "tooLarge", "The avatar is too large.");
 
-		await using var stream = file.OpenReadStream();
-		return (await context.Sender()
-			.Send(new SetUserAvatar(context.Session(), target, stream), context.RequestAborted)).Answer();
+		var early = await sender.Send(new MaySetUserAvatar(session, id), ct);
+		if (early != UserActionResult.Ok) return early.Refusal();
+
+		return await UploadRequest.GuardAsync(context, "PUT /v1/users/{id}/avatar", $"user {session.Record.Id}",
+			async () =>
+			{
+				await using var form = await UploadForm.ReadAsync(context, "file", UploadSignature.Image, limit, [],
+					false, ct);
+				if (form.File is null) return Api.Invalid("The file field is missing.");
+
+				return (await sender.Send(new SetUserAvatar(session, id, form.File), ct)).Answer();
+			});
 	}
 
 	private static async Task<IResult> DeleteAvatarAsync(HttpContext context, int id)

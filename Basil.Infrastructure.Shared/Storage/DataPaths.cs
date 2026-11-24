@@ -26,10 +26,6 @@ public sealed class DataPaths
 
 	public string Temp { get; }
 
-	public string Spool => Path.Combine(Root, "Spool");
-
-	public string Quarantine => Path.Combine(Root, "Quarantine");
-
 	public DataStorage Beatmapsets { get; }
 
 	public DataStorage Replays { get; }
@@ -53,8 +49,6 @@ public sealed class DataPaths
 		Directory.CreateDirectory(Root);
 		Directory.CreateDirectory(Logs);
 		Directory.CreateDirectory(Temp);
-		Directory.CreateDirectory(Spool);
-		Directory.CreateDirectory(Quarantine);
 		foreach (var storage in new[]
 		         {
 			         Beatmapsets, Replays, Avatars, MenuBanners, MenuSeasonals, MenuIcon, Faqs, Screenshots, Cache

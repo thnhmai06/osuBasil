@@ -25,7 +25,6 @@ public static class DependencyInjection
 			sp.GetRequiredService<IRelationshipRepository>(),
 			sp.GetRequiredService<IUserAvatarStorage>(),
 			sp.GetRequiredService<IScreenshotInspector>(),
-			sp.GetRequiredService<IUploadSpool>(),
 			sp.GetRequiredService<ISettingsRepository>()));
 		services.AddSingleton<UserRegistry>(sp => new UserRegistry(sp.GetRequiredService<UserContext>()));
 		return services;

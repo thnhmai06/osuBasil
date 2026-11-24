@@ -14,13 +14,17 @@ internal sealed class FileScreenshotStorage(DataPaths paths) : IScreenshotStorag
 			Files.Keys.Order(StringComparer.OrdinalIgnoreCase).Select(Files.ReferenceOf));
 	}
 
-	public async Task<ContentReference> SaveAsync(Stream content, string extension)
+	public async Task<ContentReference> SaveAsync(Stream content,
+		Func<Stream, CancellationToken, Task<string>> accept, CancellationToken ct = default)
 	{
-		if (extension.Length is < 1 or > 8 || !extension.All(char.IsAsciiLetterOrDigit))
-			throw new ArgumentException("The extension must be 1 to 8 ASCII letters or digits.", nameof(extension));
+		var name = await Files.SaveCheckedAsync(content, async (stored, token) =>
+		{
+			var extension = await accept(stored, token);
+			if (extension.Length is < 1 or > 8 || !extension.All(char.IsAsciiLetterOrDigit))
+				throw new ArgumentException("The extension must be 1 to 8 ASCII letters or digits.", nameof(extension));
 
-		var name = $"{Guid.CreateVersion7():D}.{extension.ToLowerInvariant()}";
-		await Files.SaveAsync(name, content, CancellationToken.None);
+			return $"{Guid.CreateVersion7():D}.{extension.ToLowerInvariant()}";
+		}, ct);
 		return Files.ReferenceOf(name);
 	}
 

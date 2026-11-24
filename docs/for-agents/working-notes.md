@@ -102,7 +102,7 @@ Proposals from the modular-monolith redesign, for the owner to merge into the sk
   with an opaque subject for the second; every entry point must declare a policy and a test fails when one does not.
 * **Persistence is awaited.** Prefer cache-aside over write-behind; reads are bounded, a listing never instantiates live
   objects, and a large payload never passes through a cache.
-* **Streaming is a rule, not an optimization.** Spool uploads to a temporary file, validate, move atomically; no
+* **Streaming is a rule, not an optimization.** Write uploads into the storage's temporary file, validate, move atomically; no
   `MemoryStream` in the application layer.
 * **An architecture test over source text needs a positive control.** The ban on `MemoryStream` in Application scans
   `src/Application/**/*.cs` (reflection cannot see a local variable) and a temporary file that contains it proves the

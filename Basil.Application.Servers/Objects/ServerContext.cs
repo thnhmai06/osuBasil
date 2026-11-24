@@ -19,7 +19,6 @@ internal sealed record ServerContext(
 	RoomChannels RoomChannels,
 	PmChannels PmChannels,
 	IScreenshotInspector Inspector,
-	IUploadSpool Spool,
 	IScreenshotStorage Screenshots,
 	Lobby Lobby,
 	IChannelRepository Channels,

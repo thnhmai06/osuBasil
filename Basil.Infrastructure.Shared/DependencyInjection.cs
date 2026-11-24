@@ -34,7 +34,6 @@ public static class DependencyInjection
 				sp.GetRequiredService<TimeProvider>()));
 			services.AddMemoryCache();
 			services.AddSingleton<DataPaths>();
-			services.AddSingleton<IUploadSpool, FileUploadSpool>();
 			services.AddSingleton<EfSettingsRepository>();
 			services.AddSingleton<ISettingsRepository>(provider => provider.GetRequiredService<EfSettingsRepository>());
 			services.AddSingleton<IResident>(provider => provider.GetRequiredService<EfSettingsRepository>());
