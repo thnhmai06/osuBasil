@@ -14,6 +14,7 @@ using Basil.Domain.Users;
 using Basil.Gateway.Admission;
 using Basil.Gateway.RateLimiting;
 using Basil.Host.Stable.Support;
+using Basil.Host.Stable.Web;
 using Basil.Protocol.Game.Stable.Models.Beatmaps;
 using Basil.Protocol.Game.Stable.Wire.Packets;
 using Basil.Shared.Structures.Cryptography;
@@ -30,7 +31,8 @@ internal sealed partial class PacketHandlers(
 	ISender sender,
 	Outbox outbox,
 	RateLimiter limiter,
-	TimeProvider clock)
+	TimeProvider clock,
+	ILogger<PacketHandlers> logger)
 {
 	internal const int MaxRequestedIds = 256;
 
@@ -48,6 +50,7 @@ internal sealed partial class PacketHandlers(
 		return packet.Type switch
 		{
 			ClientPacketType.Logout => Run(() => registry.Close(actor, SessionEndReason.LoggedOut)),
+			ClientPacketType.ErrorReport => Run(() => LogErrorReport(actor, reader)),
 			ClientPacketType.UserStatsRequest => StatsRequestAsync(actor, reader.ReadInt32List().Take(MaxRequestedIds),
 				ct),
 			ClientPacketType.UserPresenceRequest => PresenceRequestAsync(actor,
@@ -98,6 +101,13 @@ internal sealed partial class PacketHandlers(
 	private async Task ReceiveUpdatesAsync(StableSession osu, int wire, CancellationToken ct)
 	{
 		if (WireMap.Known<PresenceFilter>(wire) is { } filter) await sender.Send(new SetPresenceFilter(osu, filter), ct);
+	}
+
+	private void LogErrorReport(Session actor, PacketReader reader)
+	{
+		var report = reader.ReadOsuString();
+		if (report.Length > OsuWebReplies.MaxErrorFieldLength) report = report[..OsuWebReplies.MaxErrorFieldLength];
+		logger.LogInformation("osu! client error report of user {UserId}: {Report}", actor.Record.Id, report);
 	}
 
 	private static Task Run(Action action)

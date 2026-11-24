@@ -31,8 +31,11 @@ using Basil.Gateway.Limits;
 using Basil.Gateway.RateLimiting;
 using Basil.Host.Stable.Packets;
 using Basil.Host.Stable.Support;
+using Basil.Protocol.Game.Stable.Models.Beatmaps;
 using Basil.Protocol.Game.Stable.Models.Client;
 using Basil.Protocol.Game.Stable.Models.Scores;
+using Basil.Protocol.Game.Stable.Models.Web;
+using Basil.Protocol.Game.Stable.Wire.Web;
 using Basil.Protocol.Game.Stable.Wire.Security;
 using Basil.Shared.Structures.Cryptography;
 using Mediator;
@@ -63,6 +66,7 @@ internal static class OsuWebRoutes
 		web.MapGet("/", () => Results.Redirect("https://github.com/thnhmai06/osuBasil"));
 		web.MapGet("/web/osu-osz2-getscores.php", GetScoresAsync)
 			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Listing });
+		web.MapPost("/web/osu-error.php", ErrorReportAsync);
 		web.MapGet("/web/osu-getfriends.php", GetFriendsAsync);
 		web.MapPost("/web/osu-getbeatmapinfo.php", GetBeatmapInfoAsync);
 		web.MapPost("/web/osu-submit-modular-selector.php", SubmitAsync)
@@ -89,6 +93,36 @@ internal static class OsuWebRoutes
 			web.MapGet("/web/" + stub, () => Results.Text(string.Empty));
 	}
 
+	private static async Task<IResult> ErrorReportAsync(HttpContext context, ILoggerFactory loggers,
+		CancellationToken ct)
+	{
+		try
+		{
+			if (context.Request.HasFormContentType)
+			{
+				var form = await context.Request.ReadFormAsync(ct);
+				string Field(string name)
+				{
+					var text = form[name].ToString();
+					return text.Length > OsuWebReplies.MaxErrorFieldLength
+						? text[..OsuWebReplies.MaxErrorFieldLength]
+						: text;
+				}
+
+				loggers.CreateLogger(typeof(OsuWebRoutes).FullName!).LogInformation(
+					"osu! client error report: user {User}, version {Version}, mode {Mode}, beatmap {BeatmapId} {BeatmapChecksum}, exception {Exception}, feedback {Feedback}, stack trace {StackTrace}",
+					Field("u"), Field("version"), Field("gamemode"), Field("beatmap_id"), Field("beatmap_checksum"),
+					Field("exception"), Field("feedback"), Field("stacktrace"));
+			}
+		}
+		catch (Exception ex) when (ex is InvalidDataException or IOException or BadHttpRequestException)
+		{
+			// A report that cannot be read is dropped; the client is answered all the same.
+		}
+
+		return Text(string.Empty);
+	}
+
 	// The client takes absolute URLs; the images are served by the assets host of the domain it called.
 	private static async Task<IResult> GetSeasonalsAsync(HttpContext context, ISender sender, CancellationToken ct)
 	{
@@ -109,23 +143,17 @@ internal static class OsuWebRoutes
 		var query = context.Request.Query;
 		if (await auth.AuthenticateAsync(context, query["us"], query["ha"], ct) is null)
 			return Results.Unauthorized();
-		if (!Md5Text.TryParse(query["c"], out var hash)) return Text("-1|false");
+		if (!Md5Text.TryParse(query["c"], out var hash)) return Text(OsuWebWriter.LeaderboardNotFound);
 		_ = int.TryParse(query["mods"], out var mods);
 		var mode = ParseMode(query["m"]);
 		var rankedType = int.TryParse(query["v"], out var v) ? v : 1;
 		if (await sender.Send(new GetLeaderboard(hash, mode, rankedType == 3 ? WireMap.Mods(mods) : null), ct) is not
 		    { } board)
-			return Text("-1|false");
+			return Text(OsuWebWriter.LeaderboardNotFound);
 		var map = board.Beatmap;
 		var rows = board.Entries.Select((entry, index) => ScoreRow(entry.Score, entry.PlayerName, index)).ToList();
-
-		var lines = new List<string>
-		{
-			$"{(int)map.Beatmapset.Status}|false|{map.Id}|{map.Beatmapset.Id}|{rows.Count}|0",
-			"0", map.FullName, "10.0", string.Empty
-		};
-		lines.AddRange(rows);
-		return Text(string.Join('\n', lines));
+		return Text(OsuWebWriter.Leaderboard(new LeaderboardReply((int)map.Beatmapset.Status, map.Id,
+			map.Beatmapset.Id, map.FullName, rows)));
 	}
 
 	private static GameMode ParseMode(string? text)
@@ -135,11 +163,13 @@ internal static class OsuWebRoutes
 			: GameMode.Standard;
 	}
 
-	private static string ScoreRow(ScoreRecord score, string name, int index)
+	private static LeaderboardRow ScoreRow(ScoreRecord score, string name, int index)
 	{
 		var hits = score.Value.LastState.HitCounts;
-		return string.Create(CultureInfo.InvariantCulture,
-			$"{score.Id}|{name}|{score.Value.LastState.TotalScore}|{score.Value.LastState.MaxCombo}|{hits.Num50}|{hits.Num100}|{hits.Num300}|{hits.NumMiss}|{hits.NumKatu}|{hits.NumGeki}|{(score.Value.LastState.IsFullCombo ? 1 : 0)}|{(int)score.Value.Mods}|{score.Value.UserId}|{index + 1}|{score.Value.Timestamp.ToUnixTimeSeconds()}|1");
+		return new LeaderboardRow(score.Id, name, score.Value.LastState.TotalScore, score.Value.LastState.MaxCombo,
+			hits.Num50, hits.Num100, hits.Num300, hits.NumMiss, hits.NumKatu, hits.NumGeki,
+			score.Value.LastState.IsFullCombo, (int)score.Value.Mods, score.Value.UserId ?? 0, index + 1,
+			score.Value.Timestamp.ToUnixTimeSeconds());
 	}
 
 	private static async Task<IResult> GetFriendsAsync(HttpContext context, WebAuthentication auth, ISender sender,
@@ -149,7 +179,7 @@ internal static class OsuWebRoutes
 		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is not { } player)
 			return Results.Unauthorized();
 		var (_, friends) = await sender.Send(new GetFriends(player), ct);
-		return Text(string.Join('\n', friends.Select(friend => friend.Id)));
+		return Text(OsuWebWriter.Friends(friends.Select(friend => friend.Id)));
 	}
 
 	private static async Task<IResult> GetBeatmapInfoAsync(HttpContext context, WebAuthentication auth,
@@ -160,15 +190,15 @@ internal static class OsuWebRoutes
 		var request =
 			await JsonSerializer.DeserializeAsync<BeatmapInfoBody>(context.Request.Body, cancellationToken: ct)
 			?? new BeatmapInfoBody();
-		var lines = new List<string>();
 		var maps = await sender.Send(
 			new FindBeatmapsByFileNames([.. request.Filenames.Take(PacketHandlers.MaxRequestedFilenames)]), ct);
+		var entries = new List<BeatmapInfoResponse>();
 		for (var index = 0; index < maps.Count; index++)
 			if (maps[index] is { } map)
-				lines.Add(
-					$"{index}|{map.Id}|{map.Beatmapset.Id}|0|{(int)map.Beatmapset.Status}|N|N|N|N|{map.Hash}");
+				entries.Add(new BeatmapInfoResponse((short)index, map.Id, map.Beatmapset.Id, 0,
+					(byte)map.Beatmapset.Status, -1, -1, -1, -1, map.Hash.ToString()));
 
-		return Text(string.Join('\n', lines));
+		return Text(OsuWebWriter.BeatmapInfo(entries));
 	}
 
 	private static async Task<IResult> SubmitAsync(HttpContext context, SessionRegistry registry, ISender sender,
@@ -210,7 +240,7 @@ internal static class OsuWebRoutes
 						known is null ? null : new BeatmapChecksums(known.Hash, storyboard), submittedClient,
 						form.File), ct);
 					return Text(result == ScoreSubmissionResult.Ok && submission.Score.IsPassed
-						? SubmissionCharts.Build(receipt!, known, $"{context.Request.Scheme}://{context.Request.Host}")
+						? OsuWebWriter.Submission(SubmissionCharts.Build(receipt!, known))
 						: OsuWebReplies.SubmissionRefused);
 				}
 				catch (Exception ex) when (ex is FormatException or ArgumentException or InvalidDataException
@@ -325,43 +355,25 @@ internal static class OsuWebRoutes
 			new SearchBeatmapsets(player,
 				filter,
 				new PageRequest(pageNumber * OsuWebReplies.DirectPageSize, OsuWebReplies.DirectPageSize)), ct);
-		var lines = new List<string>
-		{
-			(page.Items.Count == OsuWebReplies.DirectPageSize
-				? OsuWebReplies.DirectMorePages
-				: page.Items.Count).ToString(CultureInfo.InvariantCulture)
-		};
 		var details = await sender.Send(new GetBeatmapsets(player, [.. page.Items.Select(set => set.Id)]), ct);
-		lines.AddRange(details.Select(SearchLine));
-		return Text(string.Join('\n', lines));
+		var header = page.Items.Count == OsuWebReplies.DirectPageSize
+			? OsuWebReplies.DirectMorePages
+			: page.Items.Count;
+		return Text(OsuWebWriter.DirectList(header, details.Select(detail => DirectSetOf(detail.Set, detail))));
 	}
 
-	private static string SearchLine(BeatmapsetDetail detail)
+	private static DirectSet DirectSetOf(BeatmapsetRecord set, BeatmapsetDetail? detail = null)
 	{
-		var meta = detail.Set.Metadata;
-		var diffs = string.Join(',', detail.Beatmaps.OrderBy(map => map.Metadata.Difficulty?.Star ?? 0).Select(map =>
-		{
-			// The client has no "not calculated yet": it shows zeros.
-			var d = map.Metadata.Difficulty ?? default;
-			return string.Create(CultureInfo.InvariantCulture,
-				$"[{d.Star:0.00}\u2b50] {DirectText(map.Metadata.VersionName)} {{cs: {Decimal(d.Cs)} / od: {Decimal(d.Od)} / ar: {Decimal(d.Ar)} / hp: {Decimal(d.Hp)}}}@{(int)map.Metadata.Mode}");
-		}));
-		var hasVideo = detail.Beatmaps.Any(map => map.Assets.VideoFile is not null) ? 1 : 0;
-		return
-			$"{detail.Set.Id}.osz|{DirectText(meta.Artist)}|{DirectText(meta.Title)}|{meta.Creator}|{(int)detail.Set.Status}|10.0|{detail.Set.UpdatedAt:yyyy-MM-dd HH:mm:ss}|{detail.Set.Id}|0|{hasVideo}|0|0|0|{diffs}";
-	}
-
-	// The client splits the line at '|', so a difficulty or title cannot carry one; bancho.py writes 'I' instead.
-	private static string DirectText(string value)
-	{
-		return value.Replace('|', 'I');
-	}
-
-	// The client shows a stat with a decimal point even when it is whole: 4.0, not 4.
-	private static string Decimal(double value)
-	{
-		var text = value.ToString("R", CultureInfo.InvariantCulture);
-		return text.Contains('.') ? text : text + ".0";
+		var meta = set.Metadata;
+		return new DirectSet(set.Id, meta.Artist, meta.Title, meta.Creator, (int)set.Status, set.UpdatedAt,
+			detail?.Beatmaps.Any(map => map.Assets.VideoFile is not null) ?? false,
+			detail?.Beatmaps.OrderBy(map => map.Metadata.Difficulty?.Star ?? 0).Select(map =>
+			{
+				// The client has no "not calculated yet": it shows zeros.
+				var d = map.Metadata.Difficulty ?? default;
+				return new DirectDifficulty(d.Star, map.Metadata.VersionName, d.Cs, d.Od, d.Ar, d.Hp,
+					(int)map.Metadata.Mode);
+			}).ToList());
 	}
 
 	private static async Task<IResult> SearchSetAsync(HttpContext context, WebAuthentication auth, ISender sender,
@@ -374,7 +386,7 @@ internal static class OsuWebRoutes
 		if (!int.TryParse(query["s"], out var id) ||
 		    await sender.Send(new GetBeatmapset(player, id), ct) is not { } detail)
 			return Text(string.Empty);
-		return Text(DirectLine(detail.Set));
+		return Text(OsuWebWriter.DirectLine(DirectSetOf(detail.Set)));
 	}
 
 	private static async Task<IResult> DownloadAsync(HttpContext context, string setId, WebAuthentication auth,
@@ -453,13 +465,6 @@ internal static class OsuWebRoutes
 		return await auth.AuthenticateAsync(context, form["u"], form["p"], ct) is null
 			? Results.Unauthorized()
 			: Text(string.Empty);
-	}
-
-	private static string DirectLine(BeatmapsetRecord set)
-	{
-		var meta = set.Metadata;
-		return
-			$"{set.Id}.osz|{meta.Artist}|{meta.Title}|{meta.Creator}|{(int)set.Status}|10.0|{set.UpdatedAt:yyyy-MM-dd HH:mm:ss}|{set.Id}|0|0|0|0|0";
 	}
 
 	private static async Task<IResult> RegisterAsync(HttpContext context, SessionRegistry registry,

@@ -65,10 +65,10 @@ public abstract class Channel
 	}
 
 	public void PostMessage(UserRecord author, string text, bool notice, DateTimeOffset now, Session? actor,
-		bool bypassesBlocks = false)
+		bool bypassesBlocks = false, bool action = false)
 	{
 		var (content, truncated) = Message.Truncate(text);
-		var message = new Message { Author = author, Content = content, Timestamp = now, IsNotice = notice };
+		var message = new Message { Author = author, Content = content, Timestamp = now, IsNotice = notice, IsAction = action };
 
 		Message? awayReply = null;
 		if (actor is not null
@@ -114,7 +114,7 @@ public abstract class Channel
 	}
 
 	internal async Task<ChannelJoinResult> PostAsync(Session actor, UserPrivileges privileges,
-		bool? recipientSilenced, string text, bool notice, CancellationToken ct)
+		bool? recipientSilenced, string text, bool notice, bool action, CancellationToken ct)
 	{
 		if (IsClosed) return ChannelJoinResult.Closed;
 		if (string.IsNullOrEmpty(text)) throw new EmptyMessageException();
@@ -132,7 +132,7 @@ public abstract class Channel
 
 		if (IsClosed) return ChannelJoinResult.Closed;
 
-		PostMessage(actor.Record, text, notice, now, actor, mayMessageAnyone);
+		PostMessage(actor.Record, text, notice, now, actor, mayMessageAnyone, action);
 		return ChannelJoinResult.Ok;
 	}
 

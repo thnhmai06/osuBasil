@@ -32,10 +32,10 @@ internal sealed partial class PacketHandlers
 		return type switch
 		{
 			ClientPacketType.PartMatch => Ask(new LeaveRoom(osu, room), ct),
-			ClientPacketType.MatchChangeSlot => Ask(new ChangeSlot(osu, room, reader.ReadInt32()), ct),
+			ClientPacketType.MatchChangeSlot => Ask(new ChangeSlot(osu, room, WireMap.SlotFromWire(reader.ReadInt32())), ct),
 			ClientPacketType.MatchReady => Ask(new SetReady(osu, room, true), ct),
 			ClientPacketType.MatchNotReady => Ask(new SetReady(osu, room, false), ct),
-			ClientPacketType.MatchLock => Ask(new ToggleSlotLock(osu, room, reader.ReadInt32()), ct),
+			ClientPacketType.MatchLock => Ask(new ToggleSlotLock(osu, room, WireMap.SlotFromWire(reader.ReadInt32())), ct),
 			ClientPacketType.MatchChangeMods => Ask(new SetMods(osu, room, WireMap.Mods(reader.ReadInt32())),
 				ct),
 			ClientPacketType.MatchChangeTeam => Ask(new ToggleTeam(osu, room), ct),
@@ -142,7 +142,7 @@ internal sealed partial class PacketHandlers
 
 	private Task TransferHostAsync(StableSession osu, Room room, int slot, CancellationToken ct)
 	{
-		return room.Slots.FirstOrDefault(candidate => candidate.Index == slot) is { } target && room.PlayerAt(target) is { } player
+		return room.Slots.FirstOrDefault(candidate => candidate.Index == WireMap.SlotFromWire(slot)) is { } target && room.PlayerAt(target) is { } player
 			? Ask(new SetRoomHost(osu, room, player.Record.Id), ct)
 			: Task.CompletedTask;
 	}
@@ -155,7 +155,7 @@ internal sealed partial class PacketHandlers
 	private void ForwardScore(StableSession osu, Room room, PacketReader reader)
 	{
 		if (room.SlotOf(osu) is not { } slot || !room.Rounds.InProgress) return;
-		var frame = reader.ReadScoreFrame() with { Id = slot.Index };
+		var frame = reader.ReadScoreFrame() with { Id = WireMap.SlotToWire(slot.Index) };
 		outbox.Send(room.Players.Cast<Session>()
 			.Concat(room.Members.Observers), writer => writer.MatchScoreUpdate(frame));
 	}

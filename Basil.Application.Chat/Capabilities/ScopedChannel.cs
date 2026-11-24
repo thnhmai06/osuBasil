@@ -38,7 +38,7 @@ public readonly struct ScopedChannel
 		return Channel.Part(Actor);
 	}
 
-	public async Task<ChannelJoinResult> PostAsync(string text, bool notice = false,
+	public async Task<ChannelJoinResult> PostAsync(string text, bool notice = false, bool action = false,
 		CancellationToken ct = default)
 	{
 		if (Channel.IsClosed) return ChannelJoinResult.Closed;
@@ -49,6 +49,6 @@ public readonly struct ScopedChannel
 		var recipientSilenced = Channel is PmChannel pm
 			? pm.Owner.Record.Value.IsSilenced(Channel.Context.Clock.GetUtcNow())
 			: (bool?)null;
-		return await Channel.PostAsync(Actor, Privileges, recipientSilenced, text, notice, ct);
+		return await Channel.PostAsync(Actor, Privileges, recipientSilenced, text, notice, action, ct);
 	}
 }

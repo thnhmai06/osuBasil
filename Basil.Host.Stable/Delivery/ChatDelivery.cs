@@ -2,6 +2,7 @@ using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Objects.Events;
 using Basil.Domain.Sessions;
 using Basil.Host.Stable.Support;
+using Basil.Protocol.Game.Stable.Wire.Chat;
 using Mediator;
 
 namespace Basil.Host.Stable.Delivery;
@@ -53,7 +54,8 @@ internal sealed class MessageDelivery(Outbox outbox) : INotificationHandler<Chan
 		var recipients = (await channel.RecipientsAsync(notification, ct))
 			.Where(recipient => !(recipient.Type is SessionType.Stable && recipient.Record.Equals(author)));
 		outbox.Send(recipients, writer =>
-			writer.SendMessage(author.Value.Name, message.Content, target, author.Id));
+			writer.SendMessage(author.Value.Name, message.IsAction ? ChatAction.Write(message.Content) : message.Content,
+				target, author.Id));
 		if (notification is { AwayReply: { } away, Actor: { } actor })
 			outbox.Send(actor, writer => writer.SendMessage(away.Author.Value.Name, away.Content,
 				author.Value.Name, away.Author.Id));

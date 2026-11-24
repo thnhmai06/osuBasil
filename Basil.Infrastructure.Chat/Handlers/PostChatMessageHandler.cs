@@ -13,6 +13,6 @@ internal sealed class PostChatMessageHandler(ChannelDirectory directory)
 		CancellationToken ct)
 	{
 		if (directory.Find(request.Target, request.Actor) is not { } channel) return ChannelJoinResult.NotFound;
-		return await channel.ScopeTo(request.Actor).PostAsync(request.Text, request.Notice, ct);
+		return await channel.ScopeTo(request.Actor).PostAsync(request.Text, request.Notice, request.Action, ct);
 	}
 }

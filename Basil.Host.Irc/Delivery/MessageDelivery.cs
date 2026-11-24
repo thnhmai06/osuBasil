@@ -4,6 +4,7 @@ using Basil.Domain.Users;
 using Basil.Host.Irc.Clients;
 using Basil.Host.Irc.Support;
 using Basil.Host.Irc.Transport;
+using Basil.Protocol.Irc;
 using Basil.Protocol.Irc.Models;
 using Mediator;
 using Microsoft.Extensions.Options;
@@ -33,7 +34,7 @@ internal sealed class MessageDelivery(IrcClients clients, IOptions<IrcOptions> o
 			if (ReferenceEquals(connection, notification.Actor) && !session.Has("echo-message")) continue;
 
 			var target = channel is PmChannel pm ? IrcView.Nick(pm.Owner.Record) : channel.Name;
-			Send(session, command, prefix, target, message.Content, message.Timestamp, message.Author);
+			Send(session, command, prefix, target, message.IsAction ? CtcpAction.Write(message.Content) : message.Content, message.Timestamp, message.Author);
 		}
 	}
 
@@ -44,7 +45,8 @@ internal sealed class MessageDelivery(IrcClients clients, IOptions<IrcOptions> o
 		if (notification is { Channel: PmChannel owner, Actor: { } actor } &&
 		    !ReferenceEquals(actor.User, owner.Owner) &&
 		    clients.Find(actor) is { } own && own.Has("echo-message"))
-			Send(own, command, prefix, IrcView.Nick(owner.Owner.Record), message.Content, message.Timestamp,
+			Send(own, command, prefix, IrcView.Nick(owner.Owner.Record),
+				message.IsAction ? CtcpAction.Write(message.Content) : message.Content, message.Timestamp,
 				message.Author);
 	}
 

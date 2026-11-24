@@ -14,6 +14,18 @@ internal static class WireMap
 		return Convert.ToInt64(value) == wire && Enum.IsDefined(value) ? value : null;
 	}
 
+	/// <summary>Converts a Basil slot number (1-based) to the client's slot id (0-based, as bancho.py numbers them).</summary>
+	public static int SlotToWire(int slot)
+	{
+		return slot - 1;
+	}
+
+	/// <summary>Converts the client's slot id (0-based) to a Basil slot number; an id outside the room gives a number the rules refuse.</summary>
+	public static int SlotFromWire(int wire)
+	{
+		return wire == int.MaxValue ? 0 : wire + 1;
+	}
+
 	public static GameMods Mods(long wire)
 	{
 		return (GameMods)(wire & AllMods);

@@ -42,7 +42,6 @@ internal sealed partial class PacketHandlers
 			return; // A malformed bundle never breaks the relay.
 		}
 
-		if (bundle.Action != SpectatorAction.Standard) return;
 		await sender.Send(new PublishSpectatorFrames(osu, bundle), ct);
 	}
 }

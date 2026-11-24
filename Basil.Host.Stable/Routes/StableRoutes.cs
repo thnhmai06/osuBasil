@@ -32,6 +32,7 @@ public static class StableRoutes
 		services.AddSingleton<PacketDispatcher>();
 		services.AddSingleton<WebAuthentication>();
 		services.AddSingleton<RoomAudience>();
+		services.AddSingleton<PresenceAudience>();
 		return services;
 	}
 

@@ -4,6 +4,7 @@ using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Sessions.Objects;
 using Basil.Application.Sessions.Registry;
 using Basil.Host.Stable.Support;
+using Basil.Protocol.Game.Stable.Wire.Multiplayer;
 using Basil.Protocol.Game.Stable.Wire.Packets;
 using Mediator;
 
@@ -134,7 +135,7 @@ internal sealed class RoomInviteDelivery(SessionRegistry registry, Outbox outbox
 	{
 		if (registry.OpenStableClient(notification.Player) is { } target)
 			outbox.Send(target, writer => writer.MatchInvite(notification.Actor.Id, notification.Actor.Value.Name,
-				$"Come join my game: {notification.Room.UrlEmbed}", notification.Player.Value.Name));
+				$"Come join my game: {RoomLink.Embed(notification.Room.Settings.Name, notification.Room.WireId, notification.Room.Settings.Password)}", notification.Player.Value.Name));
 
 		return ValueTask.CompletedTask;
 	}
@@ -175,12 +176,16 @@ internal sealed class LobbyWatcherDelivery(Lobby lobby, Outbox outbox) : INotifi
 	}
 }
 
-internal sealed class RoundStartedDelivery(RoomAudience audience) : INotificationHandler<RoomRoundStarted>
+internal sealed class RoundStartedDelivery(RoomAudience audience, Outbox outbox) : INotificationHandler<RoomRoundStarted>
 {
 	public ValueTask Handle(RoomRoundStarted notification, CancellationToken ct)
 	{
 		var match = StableView.Match(notification.Room);
-		audience.ToRoom(notification.Room, writer => writer.MatchStart(match));
+		// bancho.py leaves out the players without the beatmap (they do not play).
+		var room = notification.Room;
+		var started = room.Slots.Where(slot => slot.Status is not Basil.Domain.Multiplayer.Room.RoomSlotStatus.NoMap)
+			.Select(room.PlayerAt).OfType<Session>().Concat(room.Members.Observers);
+		outbox.Send(started, writer => writer.MatchStart(match));
 		audience.Refresh(notification.Room);
 		return ValueTask.CompletedTask;
 	}
@@ -221,7 +226,7 @@ internal sealed class RoundPlayerFailedDelivery(RoomAudience audience) : INotifi
 {
 	public ValueTask Handle(RoomRoundPlayerFailed notification, CancellationToken ct)
 	{
-		audience.ToRoom(notification.Room, writer => writer.MatchPlayerFailed(notification.Slot));
+		audience.ToRoom(notification.Room, writer => writer.MatchPlayerFailed(WireMap.SlotToWire(notification.Slot)));
 		return ValueTask.CompletedTask;
 	}
 }

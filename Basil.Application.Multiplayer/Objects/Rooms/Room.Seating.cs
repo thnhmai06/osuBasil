@@ -44,11 +44,13 @@ public sealed partial class Room
 	{
 		if (Seated(actor) is not { } record) return RoomActionResult.NotInRoom;
 
+		var wasHost = ReferenceEquals(Host, actor);
 		var (outcome, slot, progress) = State.Slots.Leave(record, Now);
 		if (outcome is not RoomActionResult.Ok) return outcome;
 
 		Unseat(record);
 		Emit(new RoomPlayerLeft(this, actor, slot, Host, progress));
+		if (wasHost && Host is { } next) Emit(new RoomHostChanged(this, record, next));
 		if (progress is { Completed: true }) SettleRound();
 		ReportIfEmpty();
 		return RoomActionResult.Ok;

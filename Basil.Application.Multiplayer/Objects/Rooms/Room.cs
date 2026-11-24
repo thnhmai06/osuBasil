@@ -60,10 +60,6 @@ public sealed partial class Room : IEquatable<Room>
 
 	internal bool ClosingWarned { get; set; }
 
-	public string Url => $"osump://{WireId}/{Settings.Password}";
-
-	public string UrlEmbed => $"({Settings.Name})[{Url}]";
-
 	private DateTimeOffset Now => Context.Clock.GetUtcNow();
 
 	public bool Equals(Room? other)

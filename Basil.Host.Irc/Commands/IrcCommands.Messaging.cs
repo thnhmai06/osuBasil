@@ -7,6 +7,7 @@ using Basil.Application.Sessions.Objects;
 using Basil.Domain.Chat;
 using Basil.Host.Irc.Clients;
 using Basil.Host.Irc.Support;
+using Basil.Protocol.Irc;
 using Basil.Protocol.Irc.Models;
 
 namespace Basil.Host.Irc.Commands;
@@ -29,6 +30,7 @@ internal sealed partial class IrcCommands
 			return;
 		}
 
+		var action = CtcpAction.TryRead(message.Parameters[1], out var body);
 		var target = message.Parameters[0];
 		ChatTarget destination;
 		if (target.StartsWith('#'))
@@ -59,7 +61,7 @@ internal sealed partial class IrcCommands
 		try
 		{
 			var result = await sender.Send(
-				new PostChatMessage(actor, destination, IrcText.Limit(message.Parameters[1]), notice), ct);
+				new PostChatMessage(actor, destination, IrcText.Limit(body), notice, action), ct);
 			ReplyToPost(session, target, result);
 		}
 		catch (EmptyMessageException)

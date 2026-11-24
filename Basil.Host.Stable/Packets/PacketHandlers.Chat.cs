@@ -1,3 +1,4 @@
+using Basil.Protocol.Game.Stable.Wire.Chat;
 using Basil.Application.Chat.Messages;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users;
@@ -34,6 +35,12 @@ internal sealed partial class PacketHandlers
 		return false;
 	}
 
+	private static (string Text, bool Action) ChatText(string wire)
+	{
+		var action = ChatAction.TryRead(wire, out var body);
+		return (Limit(body), action);
+	}
+
 	private static string Limit(string text)
 	{
 		return text.Length > StableReplies.MaxMessageLength ? text[..StableReplies.MaxMessageLength] : text;
@@ -54,8 +61,8 @@ internal sealed partial class PacketHandlers
 		CancellationToken ct)
 	{
 		if (!await MayChatAsync(osu, ct)) return;
-		await sender.Send(new PostChatMessage(osu, TargetOf(message.Recipient), Limit(message.Text)),
-			ct);
+		var (text, action) = ChatText(message.Text);
+		await sender.Send(new PostChatMessage(osu, TargetOf(message.Recipient), text, Action: action), ct);
 	}
 
 	private async Task PrivateMessageAsync(StableSession osu, StableMessage message,
@@ -66,7 +73,8 @@ internal sealed partial class PacketHandlers
 		    registry.Online.Keys.FirstOrDefault(user => user.Value.NormalizedName == name) is not { } record)
 			return;
 		if (!await MayChatAsync(osu, ct)) return;
-		var result = await sender.Send(new PostChatMessage(osu, new ChatTarget.Private(record.Id), Limit(message.Text)),
+		var (text, action) = ChatText(message.Text);
+		var result = await sender.Send(new PostChatMessage(osu, new ChatTarget.Private(record.Id), text, Action: action),
 			ct);
 		switch (result)
 		{

@@ -11,7 +11,7 @@ using Mediator;
 namespace Basil.Host.Stable.Delivery;
 
 internal sealed class UserOnlineDelivery(
-	SessionRegistry registry,
+	PresenceAudience audience,
 	Outbox outbox,
 	ISender sender,
 	TimeProvider clock) : INotificationHandler<SessionOpened>
@@ -22,7 +22,7 @@ internal sealed class UserOnlineDelivery(
 		var user = notification.Session.Siblings;
 		var stats = await sender.Send(new GetUserStats(user.User, user.Stable?.Status.Detail?.Mode ?? GameMode.Standard), ct);
 		var now = clock.GetUtcNow();
-		outbox.Send(registry.OpenStableClients(), writer =>
+		outbox.Send(await audience.ForAsync(user, ct), writer =>
 		{
 			StableView.WritePresence(writer, user, stats, now);
 			StableView.WriteStats(writer, user, stats);
@@ -44,14 +44,14 @@ internal sealed class UserOfflineDelivery(SessionRegistry registry, Outbox outbo
 	}
 }
 
-internal sealed class UserStatusDelivery(SessionRegistry registry, Outbox outbox, ISender sender)
+internal sealed class UserStatusDelivery(PresenceAudience audience, Outbox outbox, ISender sender)
 	: INotificationHandler<SessionStatusChanged>
 {
 	public async ValueTask Handle(SessionStatusChanged notification, CancellationToken ct)
 	{
 		var user = notification.Session.Siblings;
 		var stats = await sender.Send(new GetUserStats(user.User, notification.Status.Detail?.Mode ?? GameMode.Standard), ct);
-		outbox.Send(registry.OpenStableClients(), writer => StableView.WriteStats(writer, user, stats));
+		outbox.Send(await audience.ForAsync(user, ct), writer => StableView.WriteStats(writer, user, stats));
 	}
 }
 

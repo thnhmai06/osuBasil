@@ -12,9 +12,9 @@ internal static class OsuWebReplies
 
 	public const string OverallChartName = "Overall Ranking";
 
-	public const string NewAchievements = "achievements-new:";
-
 	public const string NotRanked = "not ranked";
+
+	public const int MaxErrorFieldLength = 4000;
 
 	public const int DirectPageSize = 100;
 
