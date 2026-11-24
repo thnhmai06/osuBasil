@@ -90,12 +90,11 @@ internal sealed class CommandActions(
 		changes.Raise();
 	}
 
-	// "error: notFound: No such session." is shown as "No such session."
+	// "error: No such session." is shown as "No such session."
 	private static string Message(string text)
 	{
 		var line = First(text);
-		var parts = line.Split(": ", 3);
-		return parts is ["error", _, _] ? parts[2] : line;
+		return line.StartsWith("error: ", StringComparison.Ordinal) ? line["error: ".Length..] : line;
 	}
 
 	private static string First(string text)

@@ -115,7 +115,8 @@ internal sealed class ScoresTab : ITabView, ISearchable
 		_page = new ListPage<ScoreItem>("Scores", Help, Columns(users),
 			s => s.Id.ToString(CultureInfo.InvariantCulture), new ScoresSource(services),
 			s => Detail(s, users, beatmaps),
-			glyphs, kit, options.NoColor, clock, post, logger);
+			glyphs, kit, options.NoColor, clock, post, logger,
+			empty: "There are no scores yet. Scores appear here when players submit them.");
 	}
 
 	public void FocusSearch()

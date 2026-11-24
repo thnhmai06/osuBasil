@@ -10,5 +10,9 @@ internal enum SettingsFieldKind : byte
 
 	List,
 
-	Optional
+	Optional,
+
+	Size,
+
+	Duration
 }

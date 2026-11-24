@@ -210,7 +210,7 @@ internal static class ContentCommands
 			throw CommandException.Invalid("--begins and --expires must be ISO 8601 times.");
 
 		var path = call.Required("image");
-		await using var stream = File.OpenRead(path);
+		await using var stream = CommandHelpers.OpenFile(path);
 		var (result, banner) = await SendAsync(call,
 			actor => new AddMenuBanner(actor, Path.GetFileName(path), stream, url, begins, expires));
 		if (result != ServerActionResult.Ok) return call.Refuse(result);
@@ -240,7 +240,7 @@ internal static class ContentCommands
 	private static async Task<int> AddSeasonalAsync(CommandCall call)
 	{
 		var path = call.Required("image");
-		await using var stream = File.OpenRead(path);
+		await using var stream = CommandHelpers.OpenFile(path);
 		var (result, image) =
 			await SendAsync(call, actor => new AddMenuSeasonal(actor, Path.GetFileName(path), stream));
 		if (result != ServerActionResult.Ok) return call.Refuse(result);
@@ -277,7 +277,7 @@ internal static class ContentCommands
 			throw CommandException.Invalid("--url is not valid.");
 
 		var path = call.Text("image");
-		await using var stream = path is null ? null : File.OpenRead(path);
+		await using var stream = path is null ? null : CommandHelpers.OpenFile(path);
 		var result = await SendAsync(call,
 			actor => new SetMenuIcon(actor, path is null ? null : Path.GetFileName(path), stream, url));
 		return call.Report(result, "Icon set.");
@@ -303,7 +303,8 @@ internal static class ContentCommands
 	private static async Task<int> SetFaqAsync(CommandCall call)
 	{
 		var entry = call.Word("entry");
-		var text = await File.ReadAllTextAsync(call.Required("file"), call.CancellationToken);
+		await using var file = CommandHelpers.OpenFile(call.Required("file"));
+		var text = await new StreamReader(file).ReadToEndAsync(call.CancellationToken);
 		return call.Report(
 			await SendAsync(call, actor => new SaveFaq(actor, entry, text)),
 			"Entry saved.");
@@ -328,6 +329,15 @@ internal static class ContentCommands
 				break;
 			case null:
 				lines.Add((prefix, "-"));
+				break;
+			case JsonValue number when number.GetValueKind() == JsonValueKind.Number &&
+			                           prefix.EndsWith("MaxSize", StringComparison.OrdinalIgnoreCase) &&
+			                           number.TryGetValue<long>(out var bytes):
+				lines.Add((prefix, Units.Size(bytes)));
+				break;
+			case JsonValue text when text.GetValueKind() == JsonValueKind.String && text.ToString().Contains(':') &&
+			                         TimeSpan.TryParse(text.ToString(), CultureInfo.InvariantCulture, out var span):
+				lines.Add((prefix, Units.Duration(span)));
 				break;
 			default:
 				lines.Add((prefix, node.ToJsonString().Trim('"')));
@@ -368,6 +378,11 @@ internal static class ContentCommands
 		if (!SettingsCategories.Exists(category)) return call.NotFound("settings category");
 		if (call.Options.Count == 0) throw CommandException.Invalid("Give at least one --field value.");
 
+		var (read, current) = await SendAsync(call, actor => new GetSettings(actor));
+		if (read != ServerActionResult.Ok) return call.Refuse(read);
+
+		// A size is given in KB, MB or GB and a duration as 30m, 12h or 7d, as the console shows them.
+		var existing = JsonSerializer.SerializeToNode(SettingsCategories.Get(category, current!), ApiJson.Options);
 		var patch = new JsonObject();
 		foreach (var (path, text) in call.Options)
 		{
@@ -376,22 +391,35 @@ internal static class ContentCommands
 			foreach (var part in parts[..^1])
 				target = (target[part] ??= new JsonObject()) as JsonObject ??
 				         throw CommandException.Invalid($"--{path} is not valid.");
-			target[parts[^1]] = ValueOf(text);
+			target[parts[^1]] = InUnits(existing, path, text) ?? ValueOf(text);
 		}
-
-		var (read, current) = await SendAsync(call, actor => new GetSettings(actor));
-		if (read != ServerActionResult.Ok) return call.Refuse(read);
 
 		try
 		{
 			var changed = SettingsCategories.Patch(category, current!, patch);
-			return call.Report(await SendAsync(call, actor => new UpdateSettings(actor, changed)), "Updated.");
+			return call.Report(await SendAsync(call, actor => new UpdateSettings(actor, changed)),
+				$"Updated the {category} settings: {string.Join(", ", call.Options.Keys)}.");
 		}
 		catch (Exception ex) when (ex is ArgumentException or JsonException or InvalidOperationException
 			                           or FormatException)
 		{
 			throw CommandException.Invalid("The settings are not valid.");
 		}
+	}
+
+	private static JsonNode? InUnits(JsonNode? existing, string path, string text)
+	{
+		var at = existing;
+		foreach (var part in path.Split('.')) at = (at as JsonObject)?[part];
+		if (at is not JsonValue current) return null;
+
+		return current.GetValueKind() == JsonValueKind.Number &&
+		       path.EndsWith("MaxSize", StringComparison.OrdinalIgnoreCase) && Units.TryParseSize(text, out var bytes)
+			? JsonValue.Create(bytes)
+			: current.GetValueKind() == JsonValueKind.String && current.ToString().Contains(':') &&
+			  Units.TryParseDuration(text, out var span)
+				? JsonValue.Create(span.ToString("c", CultureInfo.InvariantCulture))
+				: null;
 	}
 
 	private static JsonNode? ValueOf(string text)

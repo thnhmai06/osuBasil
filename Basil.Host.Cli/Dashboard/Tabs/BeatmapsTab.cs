@@ -98,7 +98,8 @@ internal sealed class BeatmapsTab : ITabView, ISelectable, ISearchable
 				new Column<BeatmapItem>("HP", 5, b => Number(b.Hp)) { Right = true },
 				new Column<BeatmapItem>("SR", 6, b => Number(b.Stars), _ => Ink.Accent) { Right = true }
 			], b => b.Id.ToString(), new BeatmapsSource(services), details.Of, glyphs,
-			kit, options.NoColor, clock, post, logger);
+			kit, options.NoColor, clock, post, logger,
+			empty: "There are no beatmapsets yet. Add them by copying .osz files into the data directory, with the beatmapsets create command, or with POST /v1/beatmapsets.");
 	}
 
 	public void FocusSearch()

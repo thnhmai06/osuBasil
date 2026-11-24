@@ -23,7 +23,8 @@ public sealed record OptionDef(
 	OptionKind Kind = OptionKind.Text,
 	bool Required = false,
 	string? Alias = null,
-	bool Secret = false);
+	bool Secret = false,
+	IReadOnlyList<string>? Choices = null);
 
 public sealed class CommandDef
 {

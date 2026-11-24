@@ -1,4 +1,5 @@
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Basil.Host.Cli.Commands;
@@ -16,9 +17,18 @@ public static class ControlSocket
 	private const string OutputPrefix = "o ";
 	private const string ExitPrefix = "x ";
 
+	// Beside the data when that path fits a socket name; a deep data directory gets a short path in the temporary
+	// directory instead, named after the data directory, so the server and the shell still agree on it.
 	public static string PathIn(string directory)
 	{
-		return Path.Combine(Path.GetFullPath(directory), FileName);
+		var full = Path.GetFullPath(directory);
+		var beside = Path.Combine(full, FileName);
+		if (beside.Length <= MaxPathLength) return beside;
+
+		var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(full)))[..12].ToLowerInvariant();
+		// The user's own runtime directory first: a shared temporary directory lets another account answer in the server's place.
+		var runtime = Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR");
+		return Path.Combine(string.IsNullOrEmpty(runtime) ? Path.GetTempPath() : runtime, $"basil-{hash}.sock");
 	}
 
 	public static IEnumerable<string> FrameOutput(string text)

@@ -59,6 +59,7 @@ internal sealed class IrcListener(
 		}
 
 		state.Port = Port;
+		logger.LogInformation("IRC is listening on port {Port}", Port);
 		return base.StartAsync(ct);
 	}
 

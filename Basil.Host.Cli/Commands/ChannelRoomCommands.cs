@@ -19,8 +19,10 @@ internal static class ChannelRoomCommands
 {
 	private static readonly OptionDef[] ChannelFields =
 	[
-		new("topic", "The topic."), new("readPrivileges", "Who may read, as a bitmask.", OptionKind.Mask),
-		new("writePrivileges", "Who may write, as a bitmask.", OptionKind.Mask),
+		new("topic", "The topic."), new("readPrivileges", "Who may read, as privilege names joined by commas.", OptionKind.Mask,
+			Choices: FlagNames.Of(typeof(UserPrivileges)).Select(flag => flag.Name).ToList()),
+		new("writePrivileges", "Who may write, as privilege names joined by commas.", OptionKind.Mask,
+			Choices: FlagNames.Of(typeof(UserPrivileges)).Select(flag => flag.Name).ToList()),
 		new("autoJoin", "Whether clients join it at login.", OptionKind.Bool),
 		new("visible", "Whether it is listed.", OptionKind.Bool)
 	];
@@ -160,12 +162,8 @@ internal static class ChannelRoomCommands
 		return new GeneralChannelData
 		{
 			Topic = call.Text("topic") ?? current?.Topic ?? string.Empty,
-			ReadPrivileges = call.Mask("readPrivileges") is { } read
-				? (UserPrivileges)read
-				: current?.ReadPrivileges ?? 0,
-			WritePrivileges = call.Mask("writePrivileges") is { } write
-				? (UserPrivileges)write
-				: current?.WritePrivileges ?? 0,
+			ReadPrivileges = call.Flags<UserPrivileges>("readPrivileges") ?? current?.ReadPrivileges ?? 0,
+			WritePrivileges = call.Flags<UserPrivileges>("writePrivileges") ?? current?.WritePrivileges ?? 0,
 			AutoJoin = call.Bool("autoJoin") ?? current?.AutoJoin ?? false,
 			Visible = call.Bool("visible") ?? current?.Visible ?? true
 		};
@@ -186,9 +184,9 @@ internal static class ChannelRoomCommands
 
 		var (result, _) = await call.Get<ISender>().Send(new ConfigureGeneralChannel(await call.ByAsync(), channel.Name,
 			new GeneralChannelChange(call.Text("topic"),
-				(UserPrivileges?)call.Mask("readPrivileges"), (UserPrivileges?)call.Mask("writePrivileges"),
+				call.Flags<UserPrivileges>("readPrivileges"), call.Flags<UserPrivileges>("writePrivileges"),
 				call.Bool("autoJoin"), call.Bool("visible"))), call.CancellationToken);
-		return call.Report(result, "Updated.");
+		return call.Report(result, $"Updated channel {channel.Name}: {string.Join(", ", call.Options.Keys)}.");
 	}
 
 	private static async Task<int> DeleteChannelAsync(CommandCall call)
@@ -196,7 +194,7 @@ internal static class ChannelRoomCommands
 		return call.Get<GeneralChannelRegistry>().Find(call.Word("name")) is not { } channel
 			? call.NotFound("channel")
 			: call.Report((await call.Get<ISender>().Send(new DeleteGeneralChannel(await call.ByAsync(), channel.Name),
-				call.CancellationToken)).Result, "Channel deleted.");
+				call.CancellationToken)).Result, $"Deleted channel {channel.Name}.");
 	}
 
 	private static async Task<int> ListRoomsAsync(CommandCall call)
@@ -235,7 +233,7 @@ internal static class ChannelRoomCommands
 		var body = BodyOf(call, command.Body);
 		var result = await command.Run(new RoomCall(call.Get<ISender>(), await call.ByAsync(), room), body,
 			call.Services, call.CancellationToken);
-		return call.Report(result, $"Done: {command.Name}.");
+		return call.Report(result, $"Room {call.Id("id")}: {command.Name} done.");
 	}
 
 	private static async Task<int> ListMatchesAsync(CommandCall call)

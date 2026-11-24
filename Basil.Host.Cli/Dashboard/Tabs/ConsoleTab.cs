@@ -233,7 +233,7 @@ internal sealed class ConsoleTab
 
 			dialog.Content(Dialogs.EscapeCloses(dialog, new VStack(new TextBlock(question + " (y/n)"),
 					Dialogs.Buttons(new Button("Yes").Click(() => Answer(true)),
-						new Button("No").Click(() => Answer(false))))
+						new Button("No").Click(() => Answer(false)).AutoFocus(true)))
 				.KeyDown((_, e) =>
 				{
 					if (e.Char is not ('y' or 'Y' or 'n' or 'N')) return;
@@ -305,7 +305,7 @@ internal sealed class ConsoleTab
 			}
 
 			var (word, description) = _items[_top + i];
-			var cell = Palette.Plain(word.Length > WordWidth ? word[..(WordWidth - 1)] + "…" : word).PadRight(width);
+			var cell = Palette.Plain(word.Length > WordWidth ? word[..(WordWidth - 1)] + _glyphs.Cut : word).PadRight(width);
 			var row = Palette.Escape($" {cell}  ") + _tokens.Wrap(Ink.Muted, description);
 			_popupText[i].Value = _top + i == _selected
 				? $"[invert]{Palette.Escape($" {cell}  ")}[/]{_tokens.Wrap(Ink.Muted, description)}"

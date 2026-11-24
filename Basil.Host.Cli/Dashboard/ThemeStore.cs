@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Basil.Host.Cli.Commands;
 using XenoAtom.Terminal.UI.Styling;
 
@@ -5,6 +6,7 @@ namespace Basil.Host.Cli.Dashboard;
 
 public sealed class ThemeStore : IThemeControl
 {
+	public const string FileName = "tuisettings.json";
 	public const string MonochromeName = "monochrome";
 	public static readonly string DefaultScheme = ColorScheme.RootLoopsDark.Name;
 
@@ -23,7 +25,7 @@ public sealed class ThemeStore : IThemeControl
 			return;
 		}
 
-		_file = Path.Combine(directory, "dashboard-theme.txt");
+		_file = Path.Combine(directory, FileName);
 		_schemes = ColorScheme.GetPredefinedSchemes().Append(ColorScheme.RootLoopsDark)
 			.GroupBy(scheme => scheme.Name, StringComparer.OrdinalIgnoreCase).ToDictionary(group => group.Key,
 				group => group.First(), StringComparer.OrdinalIgnoreCase);
@@ -31,6 +33,10 @@ public sealed class ThemeStore : IThemeControl
 		Current = saved is not null && _schemes.TryGetValue(saved, out var s) ? s.Name : DefaultScheme;
 		Theme = Theme.FromScheme(_schemes.GetValueOrDefault(Current) ?? ColorScheme.RootLoopsDark);
 	}
+
+	private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web) { WriteIndented = true };
+
+	private sealed record Saved(string? Theme);
 
 	public Theme Theme { get; private set; }
 
@@ -51,7 +57,7 @@ public sealed class ThemeStore : IThemeControl
 		try
 		{
 			Directory.CreateDirectory(Path.GetDirectoryName(_file)!);
-			File.WriteAllText(_file, Current);
+			File.WriteAllText(_file, JsonSerializer.Serialize(new Saved(Current), Options));
 		}
 		catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
 		{
@@ -68,7 +74,12 @@ public sealed class ThemeStore : IThemeControl
 	{
 		try
 		{
-			return File.Exists(_file) ? File.ReadAllText(_file).Trim() : null;
+			return File.Exists(_file) ? JsonSerializer.Deserialize<Saved>(File.ReadAllText(_file), Options)?.Theme : null;
+		}
+		catch (JsonException)
+		{
+			// A file that cannot be read is as good as none: the default theme shows.
+			return null;
 		}
 		catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
 		{

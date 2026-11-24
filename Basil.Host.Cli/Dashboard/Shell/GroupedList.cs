@@ -67,6 +67,9 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 
 	public Func<KeyEventArgs, bool>? KeyHook { get; set; }
 
+	// What to say in the frame when there is nothing to list: how the list gets filled.
+	public string EmptyText { get; set; } = string.Empty;
+
 	private HashSet<string> Folded => _searching ? _searchClosed : _closed;
 
 	private bool OnTitle => _selected >= 0 && _selected < _rows.Count && _rows[_selected].IsHeader;
@@ -78,8 +81,10 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 		var first = 0;
 		var last = 0;
 		var number = 0;
-		var from = Scroll.OffsetY;
-		var to = from + Math.Max(_bodyHeight, 1);
+		var from = Math.Clamp(Scroll.OffsetY, 0, Math.Max(_rows.Count - 1, 0));
+		// The column header takes one row, and a group title stuck at the top takes another.
+		var stuck = from < _rows.Count && !_rows[from].IsHeader ? 1 : 0;
+		var to = from + Math.Max(Bounds.Height - 1 - stuck, 1);
 		for (var i = 0; i < _rows.Count; i++)
 		{
 			if (_rows[i].IsHeader) continue;
@@ -202,7 +207,13 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 		var widths = Widths(rect.Width);
 		buffer.WriteText(rect.X, rect.Y, Line(widths, column => column.Header),
 			Muted(theme).WithTextStyle(TextStyle.Bold));
-		if (_rows.Count == 0) return;
+		if (_rows.Count == 0)
+		{
+			var line = 0;
+			foreach (var text in Dialogs.WrapText(_glyphs.Text(EmptyText), Math.Max(rect.Width - 2, 10)))
+				buffer.WriteText(rect.X + 1, rect.Y + 2 + line++, text, Muted(theme));
+			return;
+		}
 
 		var offset = Math.Clamp(Scroll.OffsetY, 0, _rows.Count - 1);
 		var y0 = rect.Y + 1;
@@ -439,12 +450,12 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 		return InkStyles.Of(theme, kind, _noColor);
 	}
 
-	private static string Fit(string text, int width, bool right = false)
+	private string Fit(string text, int width, bool right = false)
 	{
-		text = Palette.Plain(text);
+		text = _glyphs.Text(Palette.Plain(text));
 		if (width <= 0) return string.Empty;
 
-		if (text.Length > width) return text[..Math.Max(width - 1, 0)] + "…";
+		if (text.Length > width) return text[..Math.Max(width - 1, 0)] + _glyphs.Cut;
 
 		return right ? text.PadLeft(width) : text.PadRight(width);
 	}

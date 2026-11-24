@@ -60,7 +60,7 @@ public static class OutputExtensions
 
 		public void Error(string code, string message)
 		{
-			output.Write(new OutputLine(OutputKind.Error, $"error: {code}: {message}"));
+			output.Write(new OutputLine(OutputKind.Error, $"error: {message}"));
 		}
 
 		public void Fields(IReadOnlyList<(string Label, string Value)> fields,

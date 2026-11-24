@@ -1,5 +1,7 @@
 using System.Globalization;
 using Basil.Application.Chat.Registry;
+using Basil.Domain.Users;
+using Basil.Host.Cli.Commands;
 using Basil.Host.Cli.Dashboard.Shell;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -29,9 +31,9 @@ internal sealed class ChannelDetails(IServiceProvider services, CommandActions a
 			new("Edit topic", () => dialogs.Form("Topic", [new FormField("Topic", data.Topic)],
 				values => actions.Run($"channels {quoted} set --topic {CommandActions.Quote(values[0])}"))),
 			new("Who can read", () => dialogs.Privileges("Privileges to read", data.ReadPrivileges,
-				granted => actions.Run($"channels {quoted} set --readPrivileges {(byte)granted}"))),
+				granted => actions.Run($"channels {quoted} set --readPrivileges {FlagNames.Join(typeof(UserPrivileges), (ulong)granted)}"))),
 			new("Who can write", () => dialogs.Privileges("Privileges to write", data.WritePrivileges,
-				granted => actions.Run($"channels {quoted} set --writePrivileges {(byte)granted}"))),
+				granted => actions.Run($"channels {quoted} set --writePrivileges {FlagNames.Join(typeof(UserPrivileges), (ulong)granted)}"))),
 			new(data.AutoJoin ? "Stop auto join" : "Auto join",
 				() => actions.Run($"channels {quoted} set --autoJoin {(data.AutoJoin ? "false" : "true")}")),
 			new(data.Visible ? "Hide" : "Show",

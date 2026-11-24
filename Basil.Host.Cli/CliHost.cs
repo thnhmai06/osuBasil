@@ -66,7 +66,8 @@ public static class CliHost
 	}
 }
 
-internal sealed class LiveSuggestions(SessionRegistry registry, Lobby lobby, GeneralChannelRegistry channels)
+internal sealed class LiveSuggestions(SessionRegistry registry, Lobby lobby, GeneralChannelRegistry channels,
+	IThemeControl themes)
 	: ISuggestionSource
 {
 	public IEnumerable<string> Ids(string resource)
@@ -76,6 +77,7 @@ internal sealed class LiveSuggestions(SessionRegistry registry, Lobby lobby, Gen
 			"users" => registry.Online.Values.Select(user => user.Record.Id.ToString()).Order(),
 			"rooms" => lobby.Rooms.Keys.Order().Select(id => id.ToString()),
 			"channels" => channels.All.Values.Select(channel => channel.Name).Order(),
+			"theme" => themes.Names,
 			_ => []
 		};
 	}
@@ -115,6 +117,8 @@ internal sealed class DisplayService(
 		}
 
 		var dashboard = services.GetRequiredService<DashboardApp>();
+		// Any way the process ends (a forced exit or a signal too) gives the shell its screen back.
+		AppDomain.CurrentDomain.ProcessExit += RestoreOnExit;
 		_thread = new Thread(() =>
 		{
 			try
@@ -127,6 +131,7 @@ internal sealed class DisplayService(
 			}
 			finally
 			{
+				RestoreTerminal();
 				// Closing the dashboard window of a server that keeps running would leave nothing to control it.
 				if (!_stopped.IsCancellationRequested) lifetime.StopApplication();
 			}
@@ -141,6 +146,27 @@ internal sealed class DisplayService(
 		_stopped.Cancel();
 		_thread?.Join(TimeSpan.FromSeconds(5));
 		return Task.CompletedTask;
+	}
+
+	// Leaves the alternate screen and gives back the cursor, the mouse, pasting and the colours; safe to repeat.
+	private const string RestoreSequence = "\e[?1049l\e[?25h\e[?1000l\e[?1002l\e[?1003l\e[?1006l\e[?2004l\e[0m";
+
+	private static void RestoreOnExit(object? sender, EventArgs e)
+	{
+		RestoreTerminal();
+	}
+
+	private static void RestoreTerminal()
+	{
+		try
+		{
+			Console.Out.Write(RestoreSequence);
+			Console.Out.Flush();
+		}
+		catch (IOException)
+		{
+			// The terminal is already gone; there is nothing to give back.
+		}
 	}
 
 	private void Log(ShutdownMessage message)

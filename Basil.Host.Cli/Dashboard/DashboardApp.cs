@@ -20,7 +20,7 @@ public sealed class DashboardApp
 	private readonly TimeProvider _clock;
 	private readonly State<int> _columns = new(120);
 	private readonly ConsoleTab _console;
-	private readonly Dialogs _dialogs = new();
+	private readonly Dialogs _dialogs;
 	private readonly Glyphs _glyphs;
 	private readonly ILogger<DashboardApp> _logger;
 	private readonly CliOptions _mode;
@@ -52,6 +52,7 @@ public sealed class DashboardApp
 		_clock = clock;
 		_logger = logger;
 		_glyphs = new Glyphs(mode.Ascii);
+		_dialogs = new Dialogs(_glyphs);
 		_palette = new Palette(mode.NoColor);
 		_toasts = new ToastTray(_glyphs, _palette, clock, Post);
 		var kit = new ShellKit(_dialogs, _toasts, new Changes());
@@ -73,7 +74,7 @@ public sealed class DashboardApp
 		_views[DashboardTab.Monitor] =
 			new MonitorTab(model, themes, _glyphs, mode, () => (_columns.Value, _rows.Value), clock);
 		_views[DashboardTab.Sessions] = new SessionsTab(services, users, mode, _glyphs, kit, clock, Post, logger);
-		_views[DashboardTab.Chat] = new ChatTab(services, users, new ChannelDetails(services, actions, _dialogs),
+		_views[DashboardTab.Chat] = new ChatTab(services, new ChannelDetails(services, actions, _dialogs),
 			model.Chat, mode, _glyphs, kit,
 			new Palette(mode.NoColor), () => (_columns.Value, _rows.Value), clock, Post, logger);
 		_views[DashboardTab.Settings] = new SettingsTab(services, _console, mode, _glyphs, kit, clock, Post, logger);
@@ -103,7 +104,7 @@ public sealed class DashboardApp
 			.Rows(new RowDefinition { Height = GridLength.Star() }, new RowDefinition { Height = GridLength.Auto })
 			.Cell(_toasts.Over(_tabs), 0, 0)
 			.Cell(status, 1, 0);
-		var small = new Center(new Group("Terminal too small").Style(GroupStyle.Rounded).Padding(1)
+		var small = new Center(new Group("Terminal too small").Style(_glyphs.Frame).Padding(1)
 			.Content(new VStack(new Markup(() => SmallLine(0)), new Markup(() => SmallLine(1)),
 				new TextBlock("Enlarge the window or zoom out."))));
 		return _dialogs.Dim(new Padder(() => TooSmall() ? small : main).Stretch());
@@ -113,6 +114,7 @@ public sealed class DashboardApp
 	{
 		var root = Build();
 		ButtonHover.Apply(root, _themes.Theme);
+		if (_mode.Ascii) AsciiStyles.Apply(root);
 		_themes.Changed += theme => _app?.Post(() => ButtonHover.Apply(_app.Root, theme));
 		_shutdown.Message += OnShutdownMessage;
 		terminal.Run(root, context =>
@@ -129,6 +131,9 @@ public sealed class DashboardApp
 			if (_lastActive != _selected.Value)
 			{
 				_lastActive = _selected.Value;
+				// A question left open must not outlive the tab it was asked on.
+				_console.Decline();
+				_dialogs.CloseAll();
 				ActiveView()?.Activate();
 				if (Tab == DashboardTab.Console) _console.Activate();
 			}
@@ -189,9 +194,9 @@ public sealed class DashboardApp
 		var (needWidth, needHeight) = Layout.Needed(Tab);
 		var currentWidth = _palette.Wrap(_columns.Value < needWidth ? Ink.Error : Ink.Success, _columns.Value.ToString());
 		var currentHeight = _palette.Wrap(_rows.Value < needHeight ? Ink.Error : Ink.Success, _rows.Value.ToString());
-		return line == 0
+		return _glyphs.Text(line == 0
 			? $"Current : {currentWidth} × {currentHeight}"
-			: $"Needed  : {needWidth} × {needHeight}  ({Tab})";
+			: $"Needed  : {needWidth} × {needHeight}  ({Tab})");
 	}
 
 	// The key reminders of the tab in view; the ones with an action can be clicked.
@@ -203,7 +208,7 @@ public sealed class DashboardApp
 		{
 			case DashboardTab.Chat:
 				items.Add(("Enter send", null));
-				items.AddRange([("Tab pane", null), ("Ctrl+B members", null), ("Esc/Alt+← back", null)]);
+				items.AddRange([("Tab pane", null), ("Ctrl+B members", null), ("Ctrl+D channel", null), ("Esc/Alt+← back", null)]);
 				break;
 			case DashboardTab.Settings:
 				items.AddRange([
@@ -223,12 +228,15 @@ public sealed class DashboardApp
 				break;
 		}
 
+		// In an attached container a Ctrl+C stops the server; this is the way out that leaves it running.
+		if (CliModes.InContainer()) items.Add((ShutdownReplies.Detach, null));
+
 		var bar = new HStack().Spacing(0);
 		bar.Add(new HoverLabel(" ", null));
 		for (var i = 0; i < items.Count; i++)
 		{
 			if (i > 0) bar.Add(new HoverLabel($" {_glyphs.Dot} ", null));
-			bar.Add(new HoverLabel(items[i].Text, items[i].Click));
+			bar.Add(new HoverLabel(_glyphs.Text(items[i].Text), items[i].Click));
 		}
 
 		return bar;
@@ -317,6 +325,11 @@ public sealed class DashboardApp
 		{
 			Id = "decline", LabelMarkup = "Decline", Gesture = new KeyGesture(TerminalKey.Escape),
 			CanExecute = _ => _console.Asking, Execute = _ => _console.Decline()
+		});
+		app.AddGlobalCommand(new Command
+		{
+			Id = "dialog.close", LabelMarkup = "Close", Gesture = new KeyGesture(TerminalKey.Escape),
+			CanExecute = _ => _dialogs.Any, Execute = _ => _dialogs.CloseTop()
 		});
 		var refresh = new Command
 		{

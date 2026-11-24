@@ -111,13 +111,25 @@ public sealed class CommandCall(
 			: null;
 	}
 
-	public ulong? Mask(string name)
+	// A set of flags written as names joined by commas: player,supporter.
+	public T? Flags<T>(string name) where T : struct, Enum
 	{
-		return options.TryGetValue(name, out var text)
-			? ulong.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
-				? value
-				: throw CommandException.Invalid($"--{name} must be a number (a bitmask).")
-			: null;
+		if (!options.TryGetValue(name, out var text)) return null;
+
+		var known = FlagNames.Of(typeof(T));
+		ulong bits = 0;
+		foreach (var part in text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+		{
+			if (part.Equals(FlagNames.None, StringComparison.OrdinalIgnoreCase)) continue;
+
+			var match = known.FirstOrDefault(flag => flag.Name.Equals(part, StringComparison.OrdinalIgnoreCase));
+			bits |= match.Name is null
+				? throw CommandException.Invalid(
+					$"--{name}: '{part}' is not a name; use {string.Join(", ", known.Select(flag => flag.Name))}.")
+				: match.Bits;
+		}
+
+		return (T)Enum.ToObject(typeof(T), bits);
 	}
 
 	public TimeSpan? Duration(string name)

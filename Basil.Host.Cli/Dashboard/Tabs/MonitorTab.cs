@@ -277,7 +277,7 @@ internal sealed class MonitorTab : ITabView
 		{
 			var total = _model.ExceptionsLastMinute.Sum(count => count.Count);
 			lines.Add(new MetricLine(MonitorMetrics.LastExceptions, string.Empty,
-				MonitorMetrics.Of(MonitorMetrics.LastExceptions).Label, total == 0 ? "-" : $"×{total}", Ink.Text));
+				MonitorMetrics.Of(MonitorMetrics.LastExceptions).Label, total == 0 ? "-" : _glyphs.Text($"×{total}"), Ink.Text));
 		}
 
 		if (category == "database" && !items.Any(item => item is { Name: "database.connectionsMeasured", Value: "1" }))
@@ -311,7 +311,7 @@ internal sealed class MonitorTab : ITabView
 			lines.Add(_palette.Wrap(Ink.Muted, "Value"));
 			lines.AddRange(_model.ExceptionsLastMinute.Count == 0
 				? [_palette.Wrap(Ink.Muted, "none in the last minute")]
-				: _model.ExceptionsLastMinute.Select(count => _palette.Wrap(Ink.Text, $"{count.Type} ×{count.Count}")));
+				: _model.ExceptionsLastMinute.Select(count => _palette.Wrap(Ink.Text, _glyphs.Text($"{count.Type} ×{count.Count}"))));
 		}
 		else
 		{

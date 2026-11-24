@@ -60,7 +60,6 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 	private readonly State<bool> _showRight = new(true);
 	private readonly Func<(int Columns, int Rows)> _size;
 	private readonly State<string> _title = new("Chat");
-	private readonly UserDetails _users;
 	private TerminalApp? _app;
 	private string _channelSeen = string.Empty;
 	private string _current = string.Empty;
@@ -78,13 +77,12 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 	private long _seen;
 	private bool _stripSlash;
 
-	public ChatTab(IServiceProvider services, UserDetails users, ChannelDetails channels, ChatFeed feed,
+	public ChatTab(IServiceProvider services, ChannelDetails channels, ChatFeed feed,
 		CliOptions options, Glyphs glyphs,
 		ShellKit kit, Palette palette, Func<(int Columns, int Rows)> size, TimeProvider clock, Action<Action> post,
 		ILogger logger)
 	{
 		_services = services;
-		_users = users;
 		_channelDetails = channels;
 		_detail = new DetailPanel("Chat", glyphs, palette, kit.Dialogs, kit.Toasts, post, kit.Changes, logger);
 		_detail.Closed += FocusInput;
@@ -114,9 +112,9 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		_memberSearch = _memberSearchBox.Box;
 		_channelSearch.IsTabStop = false;
 		_memberSearch.IsTabStop = false;
-		var left = new Group("Channels").Style(GroupStyle.Rounded).Padding(new Thickness(0, 0, 1, 0))
+		var left = new Group("Channels").Style(glyphs.Frame).Padding(new Thickness(0, 0, 1, 0))
 			.Content(
-				new VStack(_channelSearchBox.Row, new ScrollViewer(_channels).IsTabStop(false).Stretch()).Spacing(0))
+				_channelSearchBox.Over(new ScrollViewer(_channels).IsTabStop(false).Stretch()))
 			.Stretch();
 		_input = new PromptEditor().LineMode(PromptEditorLineMode.SingleLine).PromptMarkup(string.Empty)
 			.Placeholder("Chatting as BasilBot").Accepted(Send);
@@ -124,9 +122,9 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		var middle = new Grid().Columns(new ColumnDefinition { Width = GridLength.Star() })
 			.Rows(new RowDefinition { Height = GridLength.Star() }, new RowDefinition { Height = GridLength.Auto })
 			.Cell(JumpToEndButton.Over(_log, glyphs, JumpToEnd), 0, 0).Cell(_input, 1, 0);
-		var center = new Group().Style(GroupStyle.Rounded).Content(middle).TopLeftText(() => _title.Value).Stretch();
-		var right = new Group("Members").Style(GroupStyle.Rounded).Padding(new Thickness(0, 0, 1, 0))
-			.Content(new VStack(_memberSearchBox.Row, new ScrollViewer(_members).IsTabStop(false).Stretch()).Spacing(0))
+		var center = new Group().Style(glyphs.Frame).Content(middle).TopLeftText(() => _title.Value).Stretch();
+		var right = new Group("Members").Style(glyphs.Frame).Padding(new Thickness(0, 0, 1, 0))
+			.Content(_memberSearchBox.Over(new ScrollViewer(_members).IsTabStop(false).Stretch()))
 			.Stretch()
 			.IsVisible(_showRight);
 		// The settings of the channel in view, from the right of the top border of its pane.
@@ -153,9 +151,9 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 				CanExecute = _ => _detail.IsOpen, Execute = _ => _detail.Back()
 			});
 		_channels.KeyHook = e => ListKey(e, _channelSearch, _channels.Selected?.Name, _firstChannel);
-		_members.KeyHook = e => ListKey(e, _memberSearch, _members.Selected?.Name, _firstMember) || MemberKey(e);
+		_members.KeyHook = e => ListKey(e, _memberSearch, _members.Selected?.Name, _firstMember);
 		_channels.Activated += _ => OpenSelected();
-		_members.Activated += ShowUser;
+		_members.Activated += member => Select(member.Name);
 		WheelScroll.Accelerate(_log, clock);
 		AddSearchKeys(_channelSearch, _channelQuery, _channels);
 		AddSearchKeys(_memberSearch, _memberQuery, _members);
@@ -197,6 +195,11 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 			Id = "chat.back.alt", LabelMarkup = "Back",
 			Gesture = new KeyGesture(TerminalKey.Left, TerminalModifiers.Alt),
 			CanExecute = _ => Narrow && _open && Active, Execute = _ => Back()
+		});
+		app.AddGlobalCommand(new Command
+		{
+			Id = "chat.channel", LabelMarkup = "Channel", Gesture = new KeyGesture(TerminalChar.CtrlD, TerminalModifiers.Ctrl),
+			CanExecute = _ => Active && _current.Length > 0, Execute = _ => ShowChannel()
 		});
 		app.AddGlobalCommand(new Command
 		{
@@ -353,12 +356,6 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		FocusInput();
 	}
 
-	// A click on a member shows that user's detail; its Send message button opens the conversation.
-	private void ShowUser(MemberItem member)
-	{
-		_detail.ShowAsync(member.Name, () => _users.OfNameAsync(member.Name));
-	}
-
 	private bool ListKey(KeyEventArgs e, TextBox search, string? selected, string first)
 	{
 		if (e.Char == '/' || (e.Char == 'f' && e.Modifiers.HasFlag(TerminalModifiers.Ctrl)))
@@ -376,14 +373,6 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		}
 
 		return false;
-	}
-
-	private bool MemberKey(KeyEventArgs e)
-	{
-		if (e.Key != TerminalKey.Enter || _members.Selected is not { } member) return false;
-
-		ShowUser(member);
-		return true;
 	}
 
 	// Down and Enter go to the list; Esc clears the text, and when there is none goes to the list.

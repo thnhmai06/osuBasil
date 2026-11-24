@@ -30,6 +30,8 @@ internal sealed record SessionItem(
 		return type switch
 		{
 			SessionType.StableTourney => "Tourney",
+			SessionType.Irc => "IRC",
+			SessionType.Api => "API",
 			_ => type.ToString()
 		};
 	}

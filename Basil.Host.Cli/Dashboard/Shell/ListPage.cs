@@ -26,8 +26,9 @@ internal sealed class ListPage<T>
 	private readonly DetailPanel _detail;
 	private readonly Func<T, DetailView> _detailOf;
 	private readonly Dialogs _dialogs;
-	private readonly State<string> _footer = new(string.Empty);
+	private readonly State<int> _total = new(0);
 	private readonly Glyphs _glyphs;
+	private readonly string _empty;
 	private readonly string _help;
 	private readonly Func<T, string> _keyOf;
 	private readonly GroupedList<T> _list;
@@ -57,8 +58,9 @@ internal sealed class ListPage<T>
 	public ListPage(string title, string help, IReadOnlyList<Column<T>> columns, Func<T, string> key,
 		IListSource<T> source,
 		Func<T, DetailView> detail, Glyphs glyphs, ShellKit kit, bool noColor, TimeProvider clock,
-		Action<Action> post, ILogger logger)
+		Action<Action> post, ILogger logger, string empty = "")
 	{
+		_empty = empty;
 		_title = title;
 		_help = help;
 		_source = source;
@@ -88,9 +90,9 @@ internal sealed class ListPage<T>
 		_searchBox = new SearchBox(_query, "search (? for help)", glyphs);
 		_search = _searchBox.Box;
 		_search.KeyDown((_, e) => OnSearchKey(e));
-		var body = new VStack(_searchBox.Row, new ScrollViewer(_list).Stretch()).Spacing(0);
-		var frame = new Group(title).Style(GroupStyle.Rounded).Padding(new Thickness(1, 0, 1, 0)).Content(body)
-			.BottomLeftText(() => _footer.Value).Stretch();
+		var body = _searchBox.Over(new ScrollViewer(_list).Stretch());
+		var frame = new Group(title).Style(glyphs.Frame).Padding(new Thickness(1, 0, 1, 0)).Content(body)
+			.BottomLeftText(() => Footer()).Stretch();
 		// The detail frame stands under the page, across its whole width, directly above the status bar.
 		View = new Grid()
 			.Columns(new ColumnDefinition { Width = GridLength.Star() })
@@ -100,7 +102,7 @@ internal sealed class ListPage<T>
 		foreach (var gesture in Dialogs.BackGestures)
 			View.AddCommand(new Command
 			{
-				Id = $"{title}.back.{gesture}", LabelMarkup = "Back", Gesture = gesture, CanExecute = _ => CanBack,
+				Id = $"{title}.back.{gesture}", LabelMarkup = "Back", Gesture = gesture, CanExecute = _ => CanBack && !Dialogs.EscapeSpent,
 				Execute = _ => Back()
 			});
 	}
@@ -151,6 +153,17 @@ internal sealed class ListPage<T>
 			_pages = 1;
 			Start();
 		}
+	}
+
+	// Follows the scrolling and the selection: the rows in view out of all the rows loaded.
+	private string Footer()
+	{
+		_ = _list.Revision;
+		var total = _total.Value;
+		if (total == 0) return "no items";
+
+		var (first, last) = _list.VisibleItems();
+		return _glyphs.Text($"show {first}–{last} in {total}{(_more ? "+" : string.Empty)}");
 	}
 
 	public void ShowHelp()
@@ -225,6 +238,7 @@ internal sealed class ListPage<T>
 	private void Show(IReadOnlyList<SectionData<T>> data)
 	{
 		_loading = false;
+		_list.EmptyText = _loadedQuery.Trim().Length == 0 && data.All(section => section.Items.Count == 0) ? _empty : string.Empty;
 		_more = data.Any(section => section.HasMore);
 		_list.SetSections([
 				.. data.Select(section => new Section<T>(section.Title,
@@ -233,8 +247,7 @@ internal sealed class ListPage<T>
 			_loadedQuery.Trim().Length > 0);
 		if (_pendingSelect is not null && _list.Select(_pendingSelect)) _pendingSelect = null;
 		var total = data.Sum(section => section.Items.Count);
-		var (first, last) = _list.VisibleItems();
-		_footer.Value = total == 0 ? "no items" : $"show {first}–{last} in {total}{(_more ? "+" : string.Empty)}";
+		_total.Value = total;
 		if (!_detail.IsOpen || _shownKey is not { } shown) return;
 
 		// What the detail shows was removed (a closed session, a deleted account): the detail closes with it.

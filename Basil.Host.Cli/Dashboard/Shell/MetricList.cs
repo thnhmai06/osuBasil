@@ -149,15 +149,15 @@ internal sealed partial class MetricList : Visual, IScrollable
 
 	private void DrawLine(CellBuffer buffer, Rectangle rect, int y, MetricLine line, bool selected, Theme theme)
 	{
-		var label = Palette.Plain(line.Label);
-		var value = Palette.Plain(line.Value);
+		var label = _glyphs.Text(Palette.Plain(line.Label));
+		var value = _glyphs.Text(Palette.Plain(line.Value));
 		var room = Math.Max(rect.Width - 2, 1);
 		// The value keeps at least the room of a short label; the label gives way to the rest.
 		var valueRoom = Math.Max(room - Math.Min(label.Length, 12) - 1, 1);
-		if (value.Length > valueRoom) value = value[..Math.Max(valueRoom - 1, 0)] + "…";
+		if (value.Length > valueRoom) value = value[..Math.Max(valueRoom - 1, 0)] + _glyphs.Cut;
 
 		var labelRoom = Math.Max(room - value.Length - 1, 1);
-		if (label.Length > labelRoom) label = label[..Math.Max(labelRoom - 1, 0)] + "…";
+		if (label.Length > labelRoom) label = label[..Math.Max(labelRoom - 1, 0)] + _glyphs.Cut;
 
 		var labelStyle = Muted(theme);
 		var valueStyle = InkStyles.Of(theme, line.Ink, _noColor);

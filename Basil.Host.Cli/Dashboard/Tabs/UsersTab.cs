@@ -24,7 +24,9 @@ internal sealed record UserItem(
 	string Managed,
 	string Activity,
 	bool Silenced,
-	ulong Granted);
+	ulong Granted,
+	string Away,
+	bool PmPrivate);
 
 internal sealed class UsersSource(IServiceProvider services, TimeProvider clock) : IListSource<UserItem>
 {
@@ -81,7 +83,7 @@ internal sealed class UsersSource(IServiceProvider services, TimeProvider clock)
 				? string.Empty
 				: string.Join(' ', user.Connections.Select(c => c.Type.ToString().ToLowerInvariant()).Distinct()),
 			room, managed, user?.Stable?.Status.Activity.ToString() ?? string.Empty, record.Value.IsSilenced(now),
-			(ulong)record.Value.Privileges);
+			(ulong)record.Value.Privileges, user?.User.Profile.AwayMessage ?? string.Empty, user?.User.Profile.PmPrivate ?? false);
 	}
 }
 

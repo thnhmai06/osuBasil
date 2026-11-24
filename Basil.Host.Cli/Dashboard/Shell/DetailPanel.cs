@@ -185,21 +185,20 @@ internal sealed class DetailPanel
 	private void Fill()
 	{
 		var view = _steps[^1];
-		_crumb.Value = string.Join($" {_palette.Wrap(Ink.Muted, _glyphs.Crumb)} ",
-			_steps.Select(step => Palette.Escape(step.Title)).Prepend(Palette.Escape(_root)));
+		_crumb.Value = _glyphs.Text(string.Join($" {_palette.Wrap(Ink.Muted, _glyphs.Crumb)} ",
+			_steps.Select(step => Palette.Escape(step.Title)).Prepend(Palette.Escape(_root))));
 		var width = view.Fields.Count == 0 ? 0 : view.Fields.Max(field => field.Label.Length);
 		var fields = new VStack().Spacing(0);
 		foreach (var (label, value, kind) in view.Fields)
 		{
 			// A string, not an interpolated string: the compiler would send the latter to the overload that escapes the tags.
-			var line = _palette.Wrap(Ink.Muted, label.PadRight(width)) + " " + _palette.Wrap(kind, value);
+			var line = _glyphs.Text(_palette.Wrap(Ink.Muted, label.PadRight(width)) + " " + _palette.Wrap(kind, value));
 			fields.Add(new Markup(line));
 		}
 
 		var buttons = new List<Button>();
 		if (_steps.Count > 1) buttons.Add(new Button($"[{_glyphs.Back} Back]").Click(Back));
-		var ordered = view.Actions.Append(new DetailAction("Close", Close, DetailActionKind.Close))
-			.OrderBy(action => action.Kind).ToList();
+		var ordered = view.Actions.OrderBy(action => action.Kind).ToList();
 		if (_compact && ordered.Count > 0)
 			buttons.Add(new Button("[Actions]").Click(() => ShowActions(ordered)));
 		else
@@ -217,8 +216,8 @@ internal sealed class DetailPanel
 
 	private Button Button(DetailAction action)
 	{
-		var button = new Button(action.Label).Click(() => Run(action)).HorizontalAlignment(Align.Stretch);
-		return action.Kind == DetailActionKind.Destructive ? button.Tone(ControlTone.Error) : button;
+		var button = new Button(_glyphs.Text(action.Label)).Click(() => Run(action)).HorizontalAlignment(Align.Stretch);
+		return action.Kind == DetailActionKind.Destructive ? Dialogs.Danger(button) : button;
 	}
 
 	// An action touches the interface (a dialog, the selected tab, state), so it runs on the thread of the interface;
@@ -260,10 +259,11 @@ internal sealed class DetailPanel
 		{
 			Close();
 		}
-		else if (e.Key is TerminalKey.Up or TerminalKey.Down && buttons.Count > 0)
+		else if (e.Key is TerminalKey.Up or TerminalKey.Down or TerminalKey.Left or TerminalKey.Right && buttons.Count > 0 &&
+		         (e.Key is TerminalKey.Up or TerminalKey.Down || buttons.Any(button => ReferenceEquals(button, _app?.FocusedElement))))
 		{
 			var at = buttons.FindIndex(button => ReferenceEquals(button, _app?.FocusedElement));
-			var step = e.Key == TerminalKey.Up ? -1 : 1;
+			var step = e.Key is TerminalKey.Up or TerminalKey.Left ? -1 : 1;
 			_app?.Focus(buttons[Math.Clamp(at + step, 0, buttons.Count - 1)]);
 		}
 		else
@@ -280,12 +280,12 @@ internal sealed class DetailPanel
 		var rows = new VStack().Spacing(0);
 		foreach (var action in actions)
 		{
-			var button = new Button(action.Label).Click(() =>
+			var button = new Button(_glyphs.Text(action.Label)).Click(() =>
 			{
 				dialog.Close();
 				Run(action);
 			}).HorizontalAlignment(Align.Stretch);
-			rows.Add(action.Kind == DetailActionKind.Destructive ? button.Tone(ControlTone.Error) : button);
+			rows.Add(action.Kind == DetailActionKind.Destructive ? Dialogs.Danger(button) : button);
 		}
 
 		var list = new ScrollViewer(rows).MinWidth(24).MaxHeight(Math.Max(_height.Value, 6));

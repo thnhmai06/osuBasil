@@ -59,7 +59,7 @@ public sealed class ShutdownController(
 				break;
 			case CtrlCAction.WarnConfirm:
 				Message?.Invoke(new ShutdownMessage(ShutdownMessageKind.Warning,
-					"Press Ctrl+C again within 3 seconds to shut down the server."));
+					CliModes.InContainer() ? ShutdownReplies.ConfirmInContainer : ShutdownReplies.Confirm));
 				break;
 			case CtrlCAction.ConfirmExpired:
 				Message?.Invoke(new ShutdownMessage(ShutdownMessageKind.Clear, string.Empty));
@@ -79,6 +79,16 @@ public sealed class ShutdownController(
 				break;
 		}
 	}
+}
+
+public static class ShutdownReplies
+{
+	public const string Confirm = "Press Ctrl+C again within 3 seconds to shut down the server.";
+
+	public const string ConfirmInContainer =
+		"Press Ctrl+C again within 3 seconds to shut down the server, or press Ctrl+P then Ctrl+Q to leave it running.";
+
+	public const string Detach = "Ctrl+P Ctrl+Q detach";
 }
 
 public enum ShutdownMessageKind : byte

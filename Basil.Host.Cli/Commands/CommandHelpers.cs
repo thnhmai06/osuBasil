@@ -40,6 +40,21 @@ internal static class CommandHelpers
 		}
 	}
 
+	// A file the operator named: a missing or unreadable one is told in plain words.
+	public static FileStream OpenFile(string path)
+	{
+		if (!File.Exists(path)) throw CommandException.Invalid($"There is no file at {path}.");
+
+		try
+		{
+			return File.OpenRead(path);
+		}
+		catch (UnauthorizedAccessException)
+		{
+			throw CommandException.Invalid($"The file {path} cannot be read.");
+		}
+	}
+
 	public static Md5Hash Md5Of(string password)
 	{
 		return new Md5Hash(Encoding.UTF8.GetBytes(password));

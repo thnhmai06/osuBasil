@@ -11,7 +11,17 @@ public static class Program
 {
 	public static async Task<int> Main(string[] args)
 	{
+		if (args.Any(arg => arg is "--help" or "-h")) return await ShellRunner.RunAsync(["help"]);
+
 		if (ShellRunner.IsCommand(args)) return await ShellRunner.RunAsync(args);
+
+		// Before anything starts: a mistyped command must not start a second server on the live database.
+		if (ShellRunner.Unknown(args) is { } unknown)
+		{
+			await Console.Error.WriteLineAsync(
+				$"error: Unknown {(unknown.StartsWith('-') ? "option" : "command")}: {unknown}. Run Basil --help for the list.");
+			return ExitCodes.Invalid;
+		}
 
 		WebApplication app;
 		try
@@ -20,17 +30,17 @@ public static class Program
 		}
 		catch (CliOptionException exception)
 		{
-			await Console.Error.WriteLineAsync($"error: invalid: {exception.Message}");
+			await Console.Error.WriteLineAsync($"error: {exception.Message}");
 			return ExitCodes.Invalid;
 		}
 		catch (DataLayoutException exception)
 		{
-			await Console.Error.WriteLineAsync($"error: invalid: {exception.Message}");
+			await Console.Error.WriteLineAsync($"error: {exception.Message}");
 			return ExitCodes.Invalid;
 		}
 		catch (MissingConfigurationException exception)
 		{
-			await Console.Error.WriteLineAsync($"error: invalid: {exception.Message}");
+			await Console.Error.WriteLineAsync($"error: {exception.Message}");
 			return ExitCodes.Invalid;
 		}
 

@@ -16,6 +16,36 @@ public static class ShellRunner
 			.Any(command => command.Words[0].Equals(args[0], StringComparison.OrdinalIgnoreCase));
 	}
 
+	// The first argument the server would not understand, or null when every one is a known option, an option's value or a
+	// setting such as --Basil:Server:Domain=example.org.
+	public static string? Unknown(string[] args)
+	{
+		string[] options = ["--console", "--nocolor", "--ascii", "--urls", "--environment", "--contentRoot", "--applicationName"];
+		var expectsValue = false;
+		foreach (var arg in args)
+		{
+			if (!arg.StartsWith('-'))
+			{
+				if (expectsValue)
+				{
+					expectsValue = false;
+					continue;
+				}
+
+				return arg;
+			}
+
+			string[] switches = ["--nocolor", "--ascii", "--nogui", "--noconsole"];
+			var isSwitch = switches.Contains(arg, StringComparer.OrdinalIgnoreCase);
+			expectsValue = !arg.Contains('=') && !isSwitch;
+			if (!isSwitch && !options.Contains(arg, StringComparer.OrdinalIgnoreCase) && !arg.Contains(':') &&
+			    !arg.Contains('=') && !arg.Contains("__"))
+				return arg;
+		}
+
+		return null;
+	}
+
 	public static async Task<int> RunAsync(string[] args, Action<WebApplicationBuilder>? configure = null,
 		TextWriter? output = null,
 		TextReader? input = null, CancellationToken ct = default)
@@ -32,7 +62,7 @@ public static class ShellRunner
 		var (parsed, failure) = catalog.Parse(args);
 		if (parsed is null)
 		{
-			await output.WriteLineAsync($"error: invalid: {failure!.Message}");
+			await output.WriteLineAsync($"error: {failure!.Message}");
 			return ExitCodes.Invalid;
 		}
 
@@ -44,7 +74,8 @@ public static class ShellRunner
 
 		if (!parsed.Command.Offline)
 		{
-			await output.WriteLineAsync("error: serverNotRunning: The server is not running; this command needs it.");
+			await output.WriteLineAsync(
+				$"error: The server could not be reached at {path}. Start it there (run ./Basil, or docker compose up -d) and run the command again.");
 			return ExitCodes.NotRunning;
 		}
 

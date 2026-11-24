@@ -29,6 +29,16 @@ internal sealed class SearchBox
 
 	public Visual Row { get; }
 
+	// The box above a list that takes the whole rest of the frame; a stack would give the list only the height it asks for.
+	public Visual Over(Visual list)
+	{
+		return new Grid()
+			.Columns(new ColumnDefinition { Width = GridLength.Star() })
+			.Rows(new RowDefinition { Height = GridLength.Auto }, new RowDefinition { Height = GridLength.Star() })
+			.Cell(Row, 0, 0)
+			.Cell(list, 1, 0);
+	}
+
 	public void Tick()
 	{
 		_wide.Value = Box.HasFocus || Query.Value.Length > 0;

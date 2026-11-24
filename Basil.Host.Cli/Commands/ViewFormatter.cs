@@ -23,15 +23,9 @@ public sealed class ViewFormatter(TimeZoneInfo zone)
 
 	public static string Mask(string name, ulong value)
 	{
-		if (!Masks.TryGetValue(name, out var type)) return value.ToString(CultureInfo.InvariantCulture);
-
-		var names = Enum.GetValues(type).Cast<object>()
-			.Select(flag => (Name: flag.ToString()!, Bits: Convert.ToUInt64(flag, CultureInfo.InvariantCulture)))
-			.Where(flag => BitOperations.PopCount(flag.Bits) == 1 && (value & flag.Bits) != 0)
-			.Select(flag => flag.Name).ToArray();
-		return value == 0 || names.Length == 0
-			? value.ToString(CultureInfo.InvariantCulture)
-			: $"{value} ({string.Join(", ", names)})";
+		return Masks.TryGetValue(name, out var type)
+			? FlagNames.Join(type, value)
+			: value.ToString(CultureInfo.InvariantCulture);
 	}
 
 	public void Print(ICommandOutput output, object view, string indent = "")
@@ -117,6 +111,7 @@ public sealed class ViewFormatter(TimeZoneInfo zone)
 			bool flag => flag ? "true" : "false",
 			DateTimeOffset time => Time(time),
 			Enum when !value.GetType().IsDefined(typeof(FlagsAttribute)) => Camel(value.ToString()!),
+			Enum flags => FlagNames.Join(flags.GetType(), Convert.ToUInt64(flags, CultureInfo.InvariantCulture)),
 			double number => number.ToString("0.##", CultureInfo.InvariantCulture),
 			ulong mask => Mask(label, mask),
 			byte mask when Masks.ContainsKey(label) => Mask(label, mask),

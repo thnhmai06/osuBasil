@@ -104,10 +104,23 @@ public sealed class CommandSuggestions(CommandCatalog catalog, ISuggestionSource
 		var positional = done.TakeWhile(word => !CommandCatalog.IsOption(word)).ToList();
 		var typedOptions = done.Skip(positional.Count).ToList();
 		var result = new List<string>();
+		var exact = catalog.All.FirstOrDefault(command => Fits(command, positional));
+
+		// The value of an option with a fixed set (privilege names, a state) completes from that set.
+		if (exact is not null && typedOptions.Count > 0 && CommandCatalog.IsOption(typedOptions[^1]) &&
+		    !typedOptions[^1].Contains('=') && !partial.StartsWith('-') &&
+		    exact.Options.FirstOrDefault(option => option.Name.Equals(typedOptions[^1].TrimStart('-'),
+			    StringComparison.OrdinalIgnoreCase)) is { Choices: { Count: > 0 } choices } valued)
+		{
+			// A set of flags is a list: the word being typed is the one after the last comma.
+			var comma = valued.Kind == OptionKind.Mask ? partial.LastIndexOf(',') + 1 : 0;
+			var typed = partial[comma..];
+			return ([.. choices.Where(choice => choice.StartsWith(typed, StringComparison.OrdinalIgnoreCase))],
+				start + comma, typed.Length);
+		}
 
 		if (typedOptions.Count == 0 && !partial.StartsWith('-')) AddWordSuggestions(result, positional, partial);
 
-		var exact = catalog.All.FirstOrDefault(command => Fits(command, positional));
 		if (exact is not null && (partial.StartsWith('-') || partial.Length == 0))
 			AddOptionSuggestions(result, exact, typedOptions, partial);
 

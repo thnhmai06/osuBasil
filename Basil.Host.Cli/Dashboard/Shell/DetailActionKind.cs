@@ -6,7 +6,5 @@ internal enum DetailActionKind : byte
 
 	Normal,
 
-	Destructive,
-
-	Close
+	Destructive
 }

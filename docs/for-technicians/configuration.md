@@ -31,7 +31,7 @@ Data/
 ├── appsettings.json
 ├── appsettings.{Environment}.json   optional overlay
 ├── appsettings.schema.json
-├── tuisettings.json                 the dashboard's colour scheme
+├── tuisettings.json                 the dashboard's preferences (its colour theme)
 ├── metadata.json                    the layout version of Data/
 └── Localizations/                   bot.json (BasilBot's wording), irc.json (the IRC server's wording)
 ```
@@ -169,7 +169,7 @@ Basil creates these beside the executable (in the container, under `/app`). Only
 
 | Path | Contents | Safe to delete? |
 |---|---|---|
-| `Data/appsettings.json`, `appsettings.schema.json`, `tuisettings.json` | deployment configuration and the dashboard colours | **No**: a deleted shipped file is written again with its default content |
+| `Data/appsettings.json`, `appsettings.schema.json`, `tuisettings.json` | deployment configuration and the dashboard's preferences | **No**: a deleted shipped file is written again with its default content |
 | `Data/metadata.json` | the layout version of `Data/` | **No** |
 | `Data/Localizations/` | the wording of BasilBot and the IRC server | Optional: the default wording returns |
 | `Data/Rulesets/<version>/` | the osu! calculation stack (installed with `ruleset update`, checked at every start) | Optional: install it again, or copy it from another install |

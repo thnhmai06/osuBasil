@@ -8,6 +8,7 @@ using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Messages;
 using Basil.Domain.Sessions;
 using Basil.Domain.Users;
+using Basil.Host.Cli.Commands;
 using Basil.Host.Cli.Dashboard.Shell;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
@@ -213,13 +214,13 @@ internal sealed class UserDetails(
 		});
 	}
 
-	// Only what the operator changed is sent; an empty away message or private-message answer leaves it as it is.
+	// Only what the operator changed is sent; the form starts with the values the account has.
 	private void EditProfile(UserItem user)
 	{
 		dialogs.Form($"Edit {user.Name}",
 		[
-			new FormField("FullName", user.Name), new FormField("Country", user.Country), new FormField("Away message"),
-			new FormField("Block PMs (yes/no)")
+			new FormField("FullName", user.Name), new FormField("Country", user.Country), new FormField("Away message", user.Away),
+			new FormField("Block PMs (yes/no)", user.PmPrivate ? "yes" : "no")
 		], values =>
 		{
 			var line = $"users {user.Id} set";
@@ -227,8 +228,9 @@ internal sealed class UserDetails(
 				line += $" --username {CommandActions.Quote(values[0])}";
 			if (values[1].Length > 0 && !values[1].Equals(user.Country, StringComparison.OrdinalIgnoreCase))
 				line += $" --country {CommandActions.Quote(values[1])}";
-			if (values[2].Length > 0) line += $" --away {CommandActions.Quote(values[2])}";
-			if (values[3].Length > 0) line += $" --pmPrivate {(values[3].StartsWith('y') ? "true" : "false")}";
+			if (values[2] != user.Away) line += $" --away {CommandActions.Quote(values[2])}";
+			if (values[3].StartsWith("y", StringComparison.OrdinalIgnoreCase) != user.PmPrivate)
+				line += $" --pmPrivate {(user.PmPrivate ? "false" : "true")}";
 			if (line == $"users {user.Id} set") actions.Notify("Nothing was changed.");
 			else actions.Run(line);
 		});
@@ -262,6 +264,6 @@ internal sealed class UserDetails(
 	private void AskPrivileges(UserItem user)
 	{
 		dialogs.Privileges($"Privileges of {user.Name}", (UserPrivileges)user.Granted,
-			granted => actions.Run($"users {user.Id} set --privileges {(byte)granted}"));
+			granted => actions.Run($"users {user.Id} set --privileges {FlagNames.Join(typeof(UserPrivileges), (ulong)granted)}"));
 	}
 }

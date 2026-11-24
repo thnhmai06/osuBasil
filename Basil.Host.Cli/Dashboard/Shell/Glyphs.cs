@@ -1,3 +1,5 @@
+using XenoAtom.Terminal.UI.Styling;
+
 namespace Basil.Host.Cli.Dashboard.Shell;
 
 internal sealed record Glyphs(bool Ascii)
@@ -29,4 +31,17 @@ internal sealed record Glyphs(bool Ascii)
 	public string Back => Ascii ? "<" : "←";
 
 	public string Down => Ascii ? "v" : "↓";
+
+	// One cell wide, for a text cut to fit its column.
+	public string Cut => Ascii ? "~" : "…";
+
+	public GroupStyle Frame => Ascii ? GroupStyle.Ascii : GroupStyle.Rounded;
+
+	public GroupStyle Box => Ascii ? GroupStyle.Ascii : GroupStyle.Single;
+
+	// Text for the screen: with --ascii every character outside ASCII is spelled with ASCII ones.
+	public string Text(string text)
+	{
+		return Ascii ? AsciiText.Of(text) : text;
+	}
 }

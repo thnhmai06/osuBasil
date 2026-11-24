@@ -28,6 +28,8 @@ internal sealed class SettingsTab : ITabView
 {
 	private const string StripHelp = "Down or Enter goes to the settings of the tab; Left and Right change the tab.";
 	private const string NotNumber = "Enter a number.";
+	private const string NotSize = "Enter a size such as 100 MB.";
+	private const string NotDuration = "Enter a duration such as 30m, 12h or 7d.";
 	private const int NestedIndent = 2;
 	private readonly HashSet<string> _closed = [];
 	private readonly ConsoleTab _console;
@@ -87,7 +89,7 @@ internal sealed class SettingsTab : ITabView
 			Id = "settings.strip.enter", LabelMarkup = "Search", Gesture = new KeyGesture(TerminalKey.Enter),
 			ConsumesGestureWhenUnavailable = false, Execute = _ => _app?.Focus(_search)
 		});
-		var description = new Group().Style(GroupStyle.Rounded).Padding(new Thickness(1, 0, 1, 0))
+		var description = new Group().Style(glyphs.Frame).Padding(new Thickness(1, 0, 1, 0))
 			.Content(new ScrollViewer(new VStack(new TextBlock(() => _title.Value).Wrap(true),
 				new Markup(() => _path.Value),
 				new TextBlock(() => _description.Value).Wrap(true))))
@@ -102,7 +104,7 @@ internal sealed class SettingsTab : ITabView
 			e.Handled = true;
 		});
 		var searchRow = new HStack(new TextBlock($"{(glyphs.Ascii ? "?" : "⌕")} "), _search.Stretch()).MaxHeight(1);
-		_content.Style(GroupStyle.Rounded).Padding(new Thickness(1, 0, 1, 0))
+		_content.Style(glyphs.Frame).Padding(new Thickness(1, 0, 1, 0))
 			.Content(new Grid().Columns(new ColumnDefinition { Width = GridLength.Star() })
 				.Rows(new RowDefinition { Height = GridLength.Auto }, new RowDefinition { Height = GridLength.Star() })
 				.Cell(searchRow, 0, 0).Cell(WheelScroll.Accelerate(_scroll, clock).Stretch(), 1, 0)).Stretch();
@@ -248,6 +250,15 @@ internal sealed class SettingsTab : ITabView
 			return;
 		}
 
+		if (page.Name == SettingsPages.Dashboard)
+		{
+			// What the dashboard remembers about how it looks; the theme is the one preference so far.
+			Show(version, page.Name,
+				[new SettingsRow("dashboard", null, "theme", "Theme", _services.GetRequiredService<IThemeControl>().Current,
+					SettingsFieldKind.Text)]);
+			return;
+		}
+
 		_ = Task.Run(async () =>
 		{
 			try
@@ -305,7 +316,7 @@ internal sealed class SettingsTab : ITabView
 							.Text(value);
 
 					var field = new Field(row.Category, row.Path, row.Label,
-						SettingsDescriptions.Of($"{row.Category}.{row.Path}") ?? string.Empty, value, row.Kind,
+						SettingsDescriptions.Of($"{row.Category}.{row.Path}") ?? DashboardDescription(row), value, row.Kind,
 						control);
 					if (!readOnly)
 					{
@@ -321,6 +332,7 @@ internal sealed class SettingsTab : ITabView
 					var shown = row.Raw ? row.Label : Relative(row.Label, row.Group ?? row.Category, row.Category);
 					// A row of a group inside a group is moved right with its title; its label is as much shorter, so the
 					// values still line up in one column.
+					field.Shown = Palette.Plain(shown);
 					field.LabelBox = new TextBlock(Palette.Plain(shown)).Trimming(TextTrimming.EndEllipsis)
 						.Margin(new Thickness(Indent(section), 0, 1, 0));
 					field.Row = new HStack(field.LabelBox, control.Stretch()).Spacing(0);
@@ -380,7 +392,11 @@ internal sealed class SettingsTab : ITabView
 
 	private void SizeLabels()
 	{
-		var width = Math.Clamp(_scroll.Bounds.Width * 5 / 9, 12, SettingsLabels.MaxLength);
+		// The longest label fits when the terminal allows it; the values keep at least 24 columns.
+		var longest = _sections.SelectMany(section => section.Fields.Select(field => field.Shown.Length + Indent(section)))
+			.DefaultIfEmpty(0).Max();
+		var width = Math.Clamp(Math.Max(_scroll.Bounds.Width * 5 / 9, Math.Min(longest + 1, _scroll.Bounds.Width - 24)),
+			12, SettingsLabels.MaxLength);
 		if (width == _labelWidth) return;
 
 		_labelWidth = width;
@@ -514,7 +530,13 @@ internal sealed class SettingsTab : ITabView
 		if (json is null)
 		{
 			// Leaving the same wrong value again does not repeat the message.
-			if (field.Rejected != text) _kit.Toasts.Show(NotNumber, ToastKind.Error);
+			if (field.Rejected != text)
+				_kit.Toasts.Show(field.Kind switch
+				{
+					SettingsFieldKind.Size => NotSize,
+					SettingsFieldKind.Duration => NotDuration,
+					_ => NotNumber
+				}, ToastKind.Error);
 			field.Rejected = text;
 			return;
 		}
@@ -523,7 +545,10 @@ internal sealed class SettingsTab : ITabView
 
 		field.Original = text;
 		_saving++;
-		_ = _console.RunCommand($"settings {field.Category} set --{field.Path} {Quote(json)}", ShowResult)
+		var line = field.Category == "dashboard"
+			? $"theme {Quote(text)}"
+			: $"settings {field.Category} set --{field.Path} {Quote(json)}";
+		_ = _console.RunCommand(line, ShowResult)
 			.ContinueWith(_ => _post(() =>
 			{
 				if (--_saving > 0 || !_reload) return;
@@ -531,6 +556,13 @@ internal sealed class SettingsTab : ITabView
 				_reload = false;
 				Load();
 			}), TaskScheduler.Default);
+	}
+
+	private static string DashboardDescription(SettingsRow row)
+	{
+		return row.Category == "dashboard"
+			? "The colour theme of the dashboard. Type its name; the theme command lists the names. It is kept in Data/tuisettings.json."
+			: string.Empty;
 	}
 
 	private static string? ToJson(SettingsFieldKind kind, string text)
@@ -542,6 +574,12 @@ internal sealed class SettingsTab : ITabView
 			case SettingsFieldKind.Number:
 				return decimal.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var number)
 					? number.ToString(CultureInfo.InvariantCulture)
+					: null;
+			case SettingsFieldKind.Size:
+				return Units.TryParseSize(text, out var bytes) ? $"{bytes}B" : null;
+			case SettingsFieldKind.Duration:
+				return Units.TryParseDuration(text, out var span)
+					? JsonValue.Create(span.ToString("c", CultureInfo.InvariantCulture)).ToJsonString()
 					: null;
 			case SettingsFieldKind.List:
 				return new JsonArray([
@@ -579,6 +617,15 @@ internal sealed class SettingsTab : ITabView
 		{
 			case JsonObject obj:
 				foreach (var (key, value) in obj) Flatten(rows, prefix.Length == 0 ? key : $"{prefix}.{key}", value);
+				break;
+			case JsonValue value when value.GetValueKind() == JsonValueKind.Number &&
+			                          prefix.EndsWith("MaxSize", StringComparison.OrdinalIgnoreCase) &&
+			                          value.TryGetValue<long>(out var bytes):
+				rows.Add((prefix, Units.Size(bytes), SettingsFieldKind.Size));
+				break;
+			case JsonValue value when value.GetValueKind() == JsonValueKind.String && value.ToString().Contains(':') &&
+			                          TimeSpan.TryParse(value.ToString(), CultureInfo.InvariantCulture, out var span):
+				rows.Add((prefix, Units.Duration(span), SettingsFieldKind.Duration));
 				break;
 			case JsonValue value:
 				rows.Add((prefix, value.ToString(), value.GetValueKind() switch
@@ -651,6 +698,8 @@ internal sealed class SettingsTab : ITabView
 		public Visual? Row { get; set; }
 
 		public TextBlock? LabelBox { get; set; }
+
+		public string Shown { get; set; } = string.Empty;
 
 		public bool Focused { get; set; }
 

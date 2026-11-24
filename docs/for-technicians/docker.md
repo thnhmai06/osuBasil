@@ -44,8 +44,10 @@ See [`configuration.md`](configuration.md) for the complete configuration refere
 The image carries the shipped files in `/app/Defaults/Data`. At every start Basil copies each one that is missing from
 the `Data` volume and never overwrites a file, so the settings in the volume are the operator's own.
 
-The `basil` container has `tty` and `stdin_open` on, so `docker attach` shows the console dashboard; detach with
-`Ctrl+P` then `Ctrl+Q`.
+The `basil` container has `tty` and `stdin_open` on, so `docker compose attach basil` (or `docker attach`) shows the
+console dashboard. Leave it without stopping the server by pressing `Ctrl+P` then `Ctrl+Q`; the dashboard shows this in
+its key hints. `Ctrl+C` reaches the dashboard like any key: the first press only asks, and a second press within three
+seconds shuts the server down, so a container stops when you confirm it.
 
 ### 2. Start Basil
 

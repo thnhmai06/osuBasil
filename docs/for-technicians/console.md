@@ -13,23 +13,25 @@ surface: BasilBot's chat commands are separate and keep checking the typist's pr
 
 ## Modes
 
-| Level            | Argument                | Shows                                                          | Changes the server |
-|------------------|-------------------------|----------------------------------------------------------------|--------------------|
-| Full (default)   | `--console 1`           | dashboard and command box                                      | yes                |
-| Log only         | `--console 0`           | linear log lines on stdout, no dashboard                       | no                 |
+| Level          | Argument      | Shows                                    | Commands                                                              |
+|----------------|---------------|------------------------------------------|-----------------------------------------------------------------------|
+| Full (default) | `--console 1` | dashboard and command box                | typed in the command box, or from a shell                             |
+| Log only       | `--console 0` | linear log lines on stdout, no dashboard | from a shell only, through the local socket of the running server    |
 
 Two more arguments change how the dashboard looks:
 
 * `--nocolor` makes it monochrome with a fixed theme; the `theme` command is refused. The `NO_COLOR` environment variable
   turns it on too.
-* `--ascii` draws with ASCII characters only (no box-drawing or braille).
+* `--ascii` draws with ASCII characters only: frames, dialogs, scroll bars (hidden), graphs and text.
 
 * The server switches to `--console 0` by itself when stdin or stdout is redirected (Docker, systemd) or `TERM` is `dumb`.
 * `--nogui` and `--noconsole` no longer exist; the server refuses them.
 * Ctrl+C: the first press clears the line being typed; with nothing typed it warns and opens a
   3 second window in which a second press starts the graceful shutdown. With `--console 0` the first press starts the graceful
   shutdown. While shutting down nothing ends the process for 30 seconds; after that a warning appears and one more press
-  forces the exit (data loss may occur). `SIGTERM` starts the graceful shutdown at once, in every mode.
+  forces the exit (data loss may occur). `SIGTERM` starts the graceful shutdown at once, in every mode. In an attached container the dashboard also shows
+  `Ctrl+P Ctrl+Q detach` in its key hints: that leaves the server running, while two `Ctrl+C` stop it. However the dashboard
+  ends, the terminal is given back (main screen, cursor, mouse and colours).
 
 ## The dashboard
 
@@ -82,9 +84,11 @@ it opens. `Ctrl+R` does the same from the keyboard. The log and the chats follow
 ### The detail panel
 
 A click on an item opens its detail under the list, above the key hints. Clicking an account anywhere (Users, Chat,
-Lobby, Scores, Sessions) opens the detail of that account; clicking a channel opens it directly. The panel is a third of
+Lobby, Scores, Sessions) opens the detail of that account, except a member of a chat channel, which opens a direct message
+with that member; clicking a channel opens it directly. The panel is a third of
 the terminal high whatever it shows. The fields stand in two columns on the left and scroll when long; the actions are
-buttons in a column of fixed width on the right. There is no Close button: `Esc` or `x` closes the panel.
+buttons in a column of fixed width on the right. There is no Close button: `Esc` or `x` closes the panel. `Left`, `Right`, `Up` and `Down` move between the actions, and
+a dialog opened from an action takes `Esc` alone: the detail behind it stays.
 
 Buttons that lead to another tab come first and are named after it with an ellipsis (`User…`, `Sessions…`), actions that
 change something follow, and the ones that end something (kick, close session) come last, in red. A button with an
@@ -96,16 +100,18 @@ reports it with a toast.
 
 ### Toasts
 
-A toast tells how something ended. It stands at the bottom right, above the key hints, 40 columns by 3 rows, with `✓` in
-green for success, `!` in yellow for a warning and `✗` in red for a failure; a long text is cut with `…`. A success stays
+A toast tells how something ended. It stands at the bottom right, above the key hints, 56 columns by 4 rows (two lines of text), with `✓` in
+green for success, `!` in yellow for a warning and `✗` in red for a failure; a longer text is cut with `…` after the second line. A success stays
 5 seconds and a failure 10. A message that is already on screen is not shown twice: the toast shows `×2`, `×3` and so
 on, and its time starts again. At most four toasts show; a click or `Esc` closes one.
 
 ### Settings, Monitor and the mouse wheel
 
-Settings has four tabs: Server (General, Cors, Uploads), Accounts (Accounts, Locks, Sessions, Rate limits), Gameplay
-(Beatmaps, Multiplayer, Bot) and Configuration. Each settings category is a foldable group inside its tab. Configuration
-lists the application configuration grouped by section, then the environment variables in one last group (sub-grouped by
+Settings has five tabs: Server (General, Cors, Uploads), Accounts (Accounts, Locks, Sessions, Rate limits), Gameplay
+(Beatmaps, Multiplayer, Bot), Dashboard (the colour theme, kept in `Data/tuisettings.json`) and Configuration. Sizes show in
+KB, MB or GB (`100 MB`) and durations as `30m`, `12h` or `7d`, in the Settings tab and in the `settings` commands. Each settings category is a foldable group inside its tab. Configuration
+lists the effective application configuration grouped by section, each value with where it comes from (file, environment
+variable or command line), then the environment variables in one last group (sub-grouped by
 the `DOTNET_` and `ASPNETCORE_` prefixes); values of secrets are hidden. A one-line search above the fields filters
 inside the tab in view. Fields are grouped by the
 object they belong to, with names relative to the group (`Lockout time` under `Login`, not `Login: lockout time`), and a
@@ -127,10 +133,14 @@ one notch per step. Scroll bars can be dragged and clicked.
 A command can be typed in the command box or given on the command line of the executable:
 
 ```text
-Basil users create --username admin --password secret --privileges 1048575
+Basil users create --username admin --password secret --admin
 ```
 
 Both use the same parser, print the same output and return the same exit code.
+
+An account can be named instead of numbered (`users alice set --country vn`). A mistyped command or option is refused
+before anything starts, with exit code 2, and `--help` prints the commands and exits with 0. When the server cannot be
+reached, a command that needs it says where it looked and how to start the server.
 
 | The server is...  | What happens                                                                                           |
 |-------------------|--------------------------------------------------------------------------------------------------------|
@@ -145,16 +155,17 @@ Both use the same parser, print the same output and return the same exit code.
   answers, another server is running and this one refuses to start with a clear error; only if the connection is
   refused is the leftover file of a crashed server deleted and replaced. A client treats a refused connection as "the
   server is not running".
-* The path of a Unix socket is limited to about 108 bytes. If `Data/` is too deep the server logs a clear error and runs
-  without the socket (shell commands then fall back to offline mode, which is unsafe while the server runs, so keep the
-  data directory path short).
+* The path of a Unix socket is limited to about 108 bytes. When the data directory is so deep that `basil.sock` would
+  not fit, the socket is created in the temporary directory instead, under a short name made from the data directory;
+  the server and the shell choose the same path. When no socket can be created the server logs a clear error and runs
+  without it (shell commands then fall back to offline mode, which is unsafe while the server runs).
 * The protocol is one request and one streamed reply: the client sends the argument list as one UTF-8 line (a JSON array
   of strings); the server runs it as the operator and streams the plain text output framed per line: every output line
   is sent as `o <text>` and the reply ends with `x <exit code>`, so output can never be mistaken for the exit code.
   The socket has no interactive questions: the confirmation of `shutdown` is asked in the calling terminal
   before the request is sent.
 * The command runs on the machine of the server only. Calling from another machine or container is not supported; in
-  Docker use `docker exec <container> Basil <command>`.
+  Docker use `docker compose exec basil ./Basil <command>`.
 
 ### Running offline
 
@@ -175,9 +186,9 @@ opened. A command waits for its changes to be stored, so a command that printed 
 | 3    | the server is not running and the command needs it                                       |
 | 4    | the operator declined the confirmation                                                   |
 
-The refusal is printed as `error: <code>: <message>`, with the same camelCase code the HTTP API uses (`notFound`,
-`conflict`, `systemAccount`, `invalid`, ...). `privilegeDenied` never happens, because the console skips the checks, and
-`locked` never happens either, because the console passes a lock as a manager does.
+The refusal is printed as `error: <message>` in plain words; the exit code tells the kind of refusal. `privilegeDenied`
+never happens, because the console skips the checks, and `locked` never happens either, because the console passes a lock
+as a manager does.
 
 ### Exit codes of the process
 
@@ -205,8 +216,8 @@ Console commands mirror the HTTP API one to one. There is a single rule, not a s
 | `GET /v1/x/{id}/y`, `.../{yid}`, `DELETE`        | `x <id> y list`, `x <id> y <yid>`, `x <id> y <yid> delete`      |
 
 * Option names are the query parameter or body field names of the API, in camelCase (`--pmPrivate`, `--readPrivileges`).
-* Values have the API's types. **Flags enums are numeric bitmasks**, never names (`--privileges 1048575`, `--types 12`);
-  an ordinary enum is its camelCase name; a boolean is `true` or `false`; a duration is `30m`, `12h` or `7d`.
+* Values have the API's types. **A set of flags is written as names joined by commas** (`--privileges player,supporter`,
+  `--types stable,irc`, or `none`), never as a number; the command box completes the names. An ordinary enum is its camelCase name; a boolean is `true` or `false`; a duration is `30m`, `12h` or `7d`.
 * Every list takes `--offset` and `--limit` as the API does (default 0 and 25, at most 100).
 * A route that returns a file or a stream (replays, beatmap files, avatars, the live `/live` and match streams) and the
   routes of one's own session (`/v1/auth/*`, `/v1/me`, `/v1/sessions`) have no
@@ -218,7 +229,8 @@ The output is for people and never JSON; there is no `--json` option.
 
 * One object is a list of aligned `label: value` lines.
 * A list is a table with a header row.
-* A bitmask is followed by its flag names: `privileges: 12 (ChatPost, ChatPostPrivate)`.
+* A set of flags is shown as its names joined by commas: `privileges: player,supporter`; no number is shown.
+* A refusal is one line, `error: <message>`, without an internal code.
 * Times are shown in the operator's local time zone (injected, so the output of a test does not depend on the machine).
 * The result of an action is one confirmation line.
 * In the dashboard the output is coloured with the theme; from a shell, over the socket and with `--console 0` it is plain
@@ -290,8 +302,9 @@ Two levels: the category strip, then the fields of the category.
 | `Tab`, `Shift+Tab`                   |                            | Channels, then the message box, then the members          |
 | `Up`, `Down`, `Enter` on a channel   | click a channel            | Select it; `Enter` opens it and focuses the message box   |
 | `Enter` in the message box           |                            | Send                                                      |
-|                                      | click a member             | Open a direct message with the member                     |
+| `Enter` on a member                  | click a member             | Open a direct message with the member                     |
 | `Ctrl+B`                             |                            | Show or hide the members                                  |
+| `Ctrl+D`                             | click `[Channel]`          | Show the detail of the channel in view                    |
 | `Esc` or `Alt+Left`                  |                            | In a narrow terminal, back to the channel list           |
 
 The channel and member searches hide the sections that have no match.
@@ -318,15 +331,15 @@ HTTP diagnostics. Per-core CPU is shown on Linux only.
 | Command                                                                                             | API route                                                     | P   |
 |-----------------------------------------------------------------------------------------------------|---------------------------------------------------------------|-----|
 | `users list [--query <q>] [--offset] [--limit]`                                                     | `GET /v1/users`                                               | yes |
-| `users create --username <name> --password <pw> [--country <cc>] [--privileges <mask>] [--admin]`  | `POST /v1/users`                                              | yes |
+| `users create --username <name> --password <pw> [--country <cc>] [--privileges <names>] [--admin]`  | `POST /v1/users`                                              | yes |
 | `users <id>`                                                                                        | `GET /v1/users/{id}`                                          | yes |
-| `users <id> set [--username] [--country] [--away] [--pmPrivate] [--privileges <mask>] [--password <pw>]` | `PATCH /v1/users/{id}`; `--password` is `PUT .../password` | yes |
+| `users <id> set [--username] [--country] [--away] [--pmPrivate] [--privileges <names>] [--password <pw>]` | `PATCH /v1/users/{id}`; `--password` is `PUT .../password` | yes |
 | `users <id> avatar --file <path>`, `users <id> avatar delete`                                       | `PUT`, `DELETE /v1/users/{id}/avatar`                         | yes |
 | `users <id> friends list`                              | `GET /v1/users/{id}/friends`                              | yes |
 | `users <id> blocks list`                                 | `GET /v1/users/{id}/blocks`                               | yes |
 | `users <id> silence --duration <d> [--reason <text>]`                                               | `PUT /v1/users/{id}/silence`                                  | yes |
 | `users <id> unsilence`                                                                              | `DELETE /v1/users/{id}/silence`                               | yes |
-| `users <id> sessions list [--state all\|online\|offline] [--types <mask>]`                          | `GET /v1/users/{id}/sessions`                                 | yes |
+| `users <id> sessions list [--state all\|online\|offline] [--types <names>]`                          | `GET /v1/users/{id}/sessions`                                 | yes |
 | `users <id> sessions <sid>`                                                                         | `GET /v1/users/{id}/sessions/{sid}`                           | yes |
 | `users <id> sessions <sid> connections`                                                             | `GET /v1/users/{id}/sessions/{sid}/connections`               | yes |
 | `users <id> sessions <sid> delete`                                                                  | `DELETE /v1/users/{id}/sessions/{sid}`                        | yes |
@@ -342,8 +355,8 @@ in the log, in the history and in suggestions.
 | Command                                                                                                           | API route                     | P   |
 |-------------------------------------------------------------------------------------------------------------------|-------------------------------|-----|
 | `channels list`                                                                                                   | `GET /v1/channels`            | yes |
-| `channels create --name <#name> [--topic] [--readPrivileges <mask>] [--writePrivileges <mask>] [--autoJoin] [--visible]` | `POST /v1/channels`     | yes |
-| `channels <name> set [--topic] [--readPrivileges <mask>] [--writePrivileges <mask>] [--autoJoin] [--visible]`      | `PATCH /v1/channels/{name}`   | yes |
+| `channels create --name <#name> [--topic] [--readPrivileges <names>] [--writePrivileges <names>] [--autoJoin] [--visible]` | `POST /v1/channels`     | yes |
+| `channels <name> set [--topic] [--readPrivileges <names>] [--writePrivileges <names>] [--autoJoin] [--visible]`      | `PATCH /v1/channels/{name}`   | yes |
 | `channels <name> delete`                                                                                          | `DELETE /v1/channels/{name}`  | yes |
 
 ### rooms
@@ -435,7 +448,7 @@ has. It needs `Developer` and runs by itself at startup for the scores without p
 
 A nested settings field is written with dots: `settings rateLimits set --chat.count 5`. The locks category takes the
 four locks as booleans (`settings locks set --accounts true`): where the API shows a flags enum as booleans, so does the
-console; everywhere else flags are numeric bitmasks.
+console; everywhere else a set of flags is a list of names.
 
 ### diagnostics
 

@@ -138,7 +138,8 @@ internal sealed class LobbyTab : ITabView, ISearchable
 					Link = r => (r.Creator, () => users.OfNameAsync(r.Creator))
 				}
 			], r => r.Id.ToString(), new LobbySource(services), details.Of,
-			glyphs, kit, options.NoColor, clock, post, logger);
+			glyphs, kit, options.NoColor, clock, post, logger,
+			empty: "There are no rooms. A player opens one in the game, or run the rooms create command.");
 	}
 
 	public void FocusSearch()

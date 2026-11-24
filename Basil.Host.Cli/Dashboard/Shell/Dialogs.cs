@@ -10,13 +10,15 @@ using XenoAtom.Terminal.UI.Styling;
 
 namespace Basil.Host.Cli.Dashboard.Shell;
 
-internal sealed class Dialogs
+internal sealed class Dialogs(Glyphs glyphs)
 {
 	private const int FieldWidth = 30;
 	private const int TextWidth = 44;
 
 	public static readonly KeyGesture[] BackGestures =
 		[new(TerminalKey.Escape), new(TerminalKey.Left, TerminalModifiers.Alt)];
+
+	private static bool _escapeSpent;
 
 	private readonly State<int> _open = new(0);
 	private readonly List<Dialog> _shown = [];
@@ -34,9 +36,35 @@ internal sealed class Dialogs
 		_open.Value = _shown.Count;
 	}
 
+	public bool Any => _shown.Count > 0;
+
+	// True for the rest of the loop turn in which a dialog took the Esc, so the page behind does not take it as well.
+	public static bool EscapeSpent => _escapeSpent;
+
+	// A dialog is modal: keys reach it only while the focus is inside it, so it takes the focus whenever it has lost it.
 	public void Settle()
 	{
+		_escapeSpent = false;
 		if (_shown.RemoveAll(dialog => dialog.App is null) > 0) _open.Value = _shown.Count;
+		if (_shown.Count == 0) return;
+
+		var top = _shown[^1];
+		var inside = top.EnumerateVisualsDepthFirst().ToList();
+		if (top.App?.FocusedElement is { } focused && inside.Contains(focused)) return;
+
+		var target = inside.FirstOrDefault(visual => visual is Button or CheckBox or TextBox && visual.AutoFocus) ??
+		             inside.FirstOrDefault(visual => visual is Button or CheckBox or TextBox);
+		if (target is not null) top.App?.Focus(target);
+	}
+
+	public void CloseTop()
+	{
+		if (_shown.Count > 0) _shown[^1].Close();
+	}
+
+	public void CloseAll()
+	{
+		foreach (var dialog in _shown.ToList()) dialog.Close();
 	}
 
 	public static T EscapeCloses<T>(Dialog dialog, T content, Action? onEscape = null) where T : Visual
@@ -46,12 +74,19 @@ internal sealed class Dialogs
 			{
 				Id = $"dialog.back.{gesture}", LabelMarkup = "Back", Gesture = gesture, Execute = _ =>
 				{
+					_escapeSpent = true;
 					dialog.Close();
 					onEscape?.Invoke();
 				}
 			});
 
 		return content;
+	}
+
+	// A red button turns plain while it has the focus, because the focus mark of a red button cannot be seen.
+	public static Button Danger(Button button)
+	{
+		return button.Tone(() => button.HasFocus ? ControlTone.Default : ControlTone.Error);
 	}
 
 	public static Visual Buttons(params Button[] buttons)
@@ -103,7 +138,7 @@ internal sealed class Dialogs
 		// Each box sits in its own frame, so that an empty one is still a visible field.
 		for (var i = 0; i < fields.Count; i++)
 			rows.Add(new HStack(new TextBlock(fields[i].Label.PadRight(width)).VerticalAlignment(Align.Center),
-				new Group().Style(GroupStyle.Single).Content(boxes[i]).MinWidth(FieldWidth)));
+				new Group().Style(glyphs.Box).Content(boxes[i]).MinWidth(FieldWidth)));
 		rows.Add(Buttons(new Button("OK").Click(Ok), new Button("Cancel").Click(dialog.Close)));
 		dialog.Content(EscapeCloses(dialog, rows));
 		Show(dialog);
@@ -115,11 +150,11 @@ internal sealed class Dialogs
 		var rows = new VStack();
 		foreach (var line in WrapText(consequence, TextWidth)) rows.Add(new TextBlock(line));
 		var cancel = new Button("Cancel").Click(dialog.Close).AutoFocus(true);
-		rows.Add(Buttons(new Button(yes).Tone(ControlTone.Error).Click(() =>
+		rows.Add(Buttons(Danger(new Button(yes).Click(() =>
 		{
 			dialog.Close();
 			confirmed();
-		}), cancel));
+		})), cancel));
 		dialog.Content(EscapeCloses(dialog, rows));
 		Show(dialog);
 	}
@@ -146,7 +181,23 @@ internal sealed class Dialogs
 		var dialog = new Dialog().Title(title);
 		var states = options.Select(option => new State<bool>(option.On)).ToList();
 		var rows = new VStack().Spacing(0);
-		for (var i = 0; i < options.Count; i++) rows.Add(new CheckBox(options[i].Label).IsChecked(states[i]));
+		var boxes = new List<CheckBox>();
+		for (var i = 0; i < options.Count; i++)
+		{
+			var box = new CheckBox(options[i].Label).IsChecked(states[i]);
+			boxes.Add(box);
+			rows.Add(box);
+		}
+
+		// Up and Down walk the boxes; Space toggles the one in focus.
+		rows.KeyDown((_, e) =>
+		{
+			if (e.Key is not (TerminalKey.Up or TerminalKey.Down) || dialog.App is not { } app) return;
+
+			var at = boxes.FindIndex(box => ReferenceEquals(box, app.FocusedElement));
+			app.Focus(boxes[Math.Clamp(at + (e.Key == TerminalKey.Up ? -1 : 1), 0, boxes.Count - 1)]);
+			e.Handled = true;
+		});
 		dialog.Content(EscapeCloses(dialog, new VStack(new ScrollViewer(rows).MaxHeight(12), Buttons(
 			new Button("OK").Click(() =>
 			{

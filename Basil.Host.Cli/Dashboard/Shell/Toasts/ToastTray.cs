@@ -7,9 +7,9 @@ namespace Basil.Host.Cli.Dashboard.Shell.Toasts;
 
 internal sealed class ToastTray(Glyphs glyphs, Palette palette, TimeProvider clock, Action<Action> post)
 {
-	public const int Width = 40;
+	public const int Width = 56;
 
-	public const int Height = 3;
+	public const int Height = 4;
 
 	public const int MaxVisible = 4;
 
@@ -104,9 +104,13 @@ internal sealed class ToastTray(Glyphs glyphs, Palette palette, TimeProvider clo
 		};
 		var repeats = entry.Count > 1 ? $"×{entry.Count}" : string.Empty;
 		var room = Width - 2 - 2 - (repeats.Length > 0 ? repeats.Length + 1 : 0);
-		var text = Palette.Plain(entry.Text).Fit(room);
-		var gap = new string(' ', Math.Max(Width - 2 - 2 - text.Length - repeats.Length, 0));
-		return $"{palette.Wrap(ink, mark)} {Palette.Escape(text)}{gap}{palette.Wrap(Ink.Muted, repeats)}";
+		// Two lines of text; what does not fit is cut with an ellipsis.
+		var wrapped = Dialogs.WrapText(Palette.Plain(entry.Text), room);
+		var first = (wrapped.Count > 0 ? wrapped[0] : string.Empty).Fit(room);
+		var second = wrapped.Count > 1 ? wrapped[1] : string.Empty;
+		if (wrapped.Count > 2) second = (second + " " + string.Join(' ', wrapped.Skip(2))).Fit(room);
+		var gap = new string(' ', Math.Max(Width - 2 - 2 - first.Length - repeats.Length, 0));
+		return glyphs.Text($"{palette.Wrap(ink, mark)} {Palette.Escape(first)}{gap}{palette.Wrap(Ink.Muted, repeats)}\n  {Palette.Escape(second)}");
 	}
 
 	private sealed class Entry(string text)

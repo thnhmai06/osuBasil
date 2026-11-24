@@ -32,8 +32,8 @@ internal static class UserCommands
 				new OptionDef("username", "The name of the account.", Required: true, Alias: "u"),
 				new OptionDef("password", "The plain password.", Required: true, Alias: "p", Secret: true),
 				new OptionDef("country", "A two-letter country code."),
-				new OptionDef("privileges", "The privileges, as a bitmask (default: the default privileges).",
-					OptionKind.Mask),
+				new OptionDef("privileges", "The privileges as names joined by commas, such as player,supporter (default: the default privileges).",
+					OptionKind.Mask, Choices: FlagNames.Of(typeof(UserPrivileges)).Select(flag => flag.Name).ToList()),
 				new OptionDef("admin", "Give the account every privilege.", OptionKind.Bool)
 			],
 			Run = CreateAsync
@@ -52,7 +52,8 @@ internal static class UserCommands
 				new OptionDef("username", "The new name."), new OptionDef("country", "A two-letter country code."),
 				new OptionDef("away", "The away message; empty clears it."),
 				new OptionDef("pmPrivate", "Block private messages from strangers.", OptionKind.Bool),
-				new OptionDef("privileges", "The granted privileges, as a bitmask.", OptionKind.Mask),
+				new OptionDef("privileges", "The granted privileges as names joined by commas, such as player,supporter.",
+					OptionKind.Mask, Choices: FlagNames.Of(typeof(UserPrivileges)).Select(flag => flag.Name).ToList()),
 				new OptionDef("password", "A new plain password; every session of the account is closed.", Secret: true)
 			],
 			Run = SetAsync
@@ -102,8 +103,9 @@ internal static class UserCommands
 			Summary = "Lists the sessions of an account.",
 			Options =
 			[
-				new OptionDef("state", "all, online or offline (default all)."),
-				new OptionDef("types", "The connection kinds, as a bitmask.", OptionKind.Mask), .. CommandHelpers.Paging
+				new OptionDef("state", "all, online or offline (default all).", Choices: ["all", "online", "offline"]),
+				new OptionDef("types", "The connection kinds as names joined by commas, such as stable,irc.", OptionKind.Mask,
+					Choices: FlagNames.Of(typeof(SessionType)).Select(flag => flag.Name).ToList()), .. CommandHelpers.Paging
 			],
 			Run = SessionsAsync
 		};
@@ -147,11 +149,9 @@ internal static class UserCommands
 		{
 			Name = call.Required("username")
 		};
-		UserPrivileges? privileges = call.Bool("admin") == true
+		var privileges = call.Bool("admin") == true
 			? UserPrivilegesExtensions.All
-			: call.Mask("privileges") is { } mask
-				? (UserPrivileges)mask
-				: null;
+			: call.Flags<UserPrivileges>("privileges");
 		if (call.Text("country") is { } code)
 			data.Country = Enum.TryParse<Country>(code, true, out var country) && code.Length == 2 &&
 			               Enum.IsDefined(country)
@@ -187,8 +187,16 @@ internal static class UserCommands
 		if (await SetProfileAsync(call, target) is { } profileRefusal) return profileRefusal;
 		if (await SetCredentialsAsync(call, target) is { } credentialsRefusal) return credentialsRefusal;
 
-		call.Output.Ok("Updated.");
+		call.Output.Ok($"Updated {await LabelAsync(call, target)}: {string.Join(", ", call.Options.Keys)}.");
 		return ExitCodes.Success;
+	}
+
+	// "peppy (id 2)", so that a confirmation says which account it is about.
+	private static async Task<string> LabelAsync(CommandCall call, int id)
+	{
+		return await call.Get<ISender>().Send(new GetUser(id), call.CancellationToken) is { } record
+			? $"{record.Value.Name} (id {id})"
+			: $"account {id}";
 	}
 
 	private static async Task<int?> SetProfileAsync(CommandCall call, int target)
@@ -225,8 +233,8 @@ internal static class UserCommands
 		var ct = call.CancellationToken;
 		var sender = call.Get<ISender>();
 		var actor = await call.ByAsync();
-		if (call.Mask("privileges") is { } privileges &&
-		    await sender.Send(new SetUserPrivileges(actor, target, (UserPrivileges)privileges), ct) is
+		if (call.Flags<UserPrivileges>("privileges") is { } privileges &&
+		    await sender.Send(new SetUserPrivileges(actor, target, privileges), ct) is
 			    var set and not UserActionResult.Ok)
 			return call.Refuse(set);
 
@@ -240,11 +248,11 @@ internal static class UserCommands
 
 	private static async Task<int> SetAvatarAsync(CommandCall call)
 	{
-		await using var stream = File.OpenRead(call.Required("file"));
+		await using var stream = CommandHelpers.OpenFile(call.Required("file"));
 		return call.Report(
 			await call.Get<ISender>()
 				.Send(new SetUserAvatar(await call.ByAsync(), call.UserOf(), stream), call.CancellationToken),
-			"Avatar set.");
+			$"Set the avatar of {await LabelAsync(call, call.UserOf())}.");
 	}
 
 	private static async Task<int> RemoveAvatarAsync(CommandCall call)
@@ -252,7 +260,7 @@ internal static class UserCommands
 		return call.Report(
 			await call.Get<ISender>()
 				.Send(new RemoveUserAvatar(await call.ByAsync(), call.UserOf()), call.CancellationToken),
-			"Avatar removed.");
+			$"Removed the avatar of {await LabelAsync(call, call.UserOf())}.");
 	}
 
 	private static async Task<int> RelationsAsync(CommandCall call, RelationshipType type)
@@ -273,13 +281,13 @@ internal static class UserCommands
 		return call.Report(await call.Get<ISender>().Send(
 				new SilenceUser(await call.ByAsync(), call.UserOf(), endsAt, call.Text("reason")),
 				call.CancellationToken),
-			"Silenced.");
+			$"Silenced {await LabelAsync(call, call.UserOf())} for {call.Text("duration")}.");
 	}
 
 	private static async Task<int> UnsilenceAsync(CommandCall call)
 	{
 		return call.Report(await call.Get<ISender>().Send(
-			new UnsilenceUser(await call.ByAsync(), call.UserOf(), null), call.CancellationToken), "Silence lifted.");
+			new UnsilenceUser(await call.ByAsync(), call.UserOf(), null), call.CancellationToken), $"Lifted the silence of {await LabelAsync(call, call.UserOf())}.");
 	}
 
 	private static async Task<int> SessionsAsync(CommandCall call)
@@ -292,8 +300,8 @@ internal static class UserCommands
 			"offline" => SessionFilter.Ended,
 			_ => null
 		} ?? throw CommandException.Invalid("--state must be all, online or offline.");
-		var kinds = call.Mask("types") is { } types
-			? Enum.GetValues<SessionType>().Where(type => (types & (ulong)type) != 0).ToList()
+		var kinds = call.Flags<SessionType>("types") is { } types
+			? Enum.GetValues<SessionType>().Where(type => types.HasFlag(type)).ToList()
 			: null;
 		var (result, sessions) = await call.Get<ISender>()
 			.Send(new ListUserSessions(await call.ByAsync(), call.UserOf(), page, state, kinds),
@@ -325,20 +333,20 @@ internal static class UserCommands
 				.Send(new CloseUserSession(await call.ByAsync(), call.UserOf(),
 						long.Parse(call.Word("sid"), CultureInfo.InvariantCulture)),
 					call.CancellationToken),
-			"Session closed.", "session");
+			$"Closed session {call.Word("sid")} of {await LabelAsync(call, call.UserOf())}.", "session");
 	}
 
 	private static async Task<int> CloseSessionsAsync(CommandCall call)
 	{
 		return call.Report(
 			await call.Get<ISender>().Send(new CloseUserSessions(await call.ByAsync(), call.UserOf(), false),
-				call.CancellationToken), "Sessions closed.");
+				call.CancellationToken), $"Closed every session of {await LabelAsync(call, call.UserOf())}.");
 	}
 
 	private static async Task<int> DeleteAsync(CommandCall call)
 	{
 		return call.Report(
 			await call.Get<ISender>().Send(new DeleteUser(await call.ByAsync(), call.UserOf()), call.CancellationToken),
-			"User deleted.", NoUser);
+			$"Deleted account {call.UserOf()}.", NoUser);
 	}
 }

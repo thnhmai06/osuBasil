@@ -46,7 +46,8 @@ internal static class BeatmapScoreCommands
 			Summary = "Changes the status, visibility or lock of a beatmapset.",
 			Options =
 			[
-				new OptionDef("status", "ranked, approved, qualified, loved, pending, wip or graveyard."),
+				new OptionDef("status", "ranked, approved, qualified, loved, pending, wip or graveyard.",
+					Choices: ["ranked", "approved", "qualified", "loved", "pending", "wip", "graveyard"]),
 				new OptionDef("visible", "Whether the set is shown.", OptionKind.Bool),
 				new OptionDef("locked", "Whether the set is write-locked.", OptionKind.Bool)
 			],
@@ -117,7 +118,7 @@ internal static class BeatmapScoreCommands
 
 	private static async Task<int> UploadAsync(CommandCall call)
 	{
-		await using var stream = File.OpenRead(call.Required("file"));
+		await using var stream = CommandHelpers.OpenFile(call.Required("file"));
 		var (result, import) = await call.Get<ISender>().Send(
 			new UploadBeatmapset(await call.ByAsync(), stream), call.CancellationToken);
 		if (result != ServerActionResult.Ok) return call.Refuse(result);
@@ -152,7 +153,7 @@ internal static class BeatmapScoreCommands
 			call.CancellationToken);
 		if (result != BeatmapsetEditResult.Ok) return call.Refuse(result);
 
-		call.Output.Ok("Updated.");
+		call.Output.Ok($"Updated beatmapset {call.Id("id")}: {string.Join(", ", call.Options.Keys)}.");
 		return ExitCodes.Success;
 	}
 
@@ -174,7 +175,7 @@ internal static class BeatmapScoreCommands
 	{
 		return call.Report(
 			await call.Get<ISender>().Send(new DeleteBeatmapset(await call.ByAsync(), call.Id("id")),
-				call.CancellationToken), "Beatmapset deleted.");
+				call.CancellationToken), $"Deleted beatmapset {call.Id("id")}.");
 	}
 
 	private static async Task<int> ShowBeatmapAsync(CommandCall call)

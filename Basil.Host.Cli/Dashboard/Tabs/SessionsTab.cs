@@ -24,7 +24,8 @@ internal sealed class SessionsTab : ITabView, ISearchable
 			SessionColumns.Of(s => (s.UserName, () => users.OfAsync(s.UserId))),
 			s => s.Id.ToString(CultureInfo.InvariantCulture), new SessionsSource(services, clock), users.Of, glyphs,
 			kit,
-			options.NoColor, clock, post, logger);
+			options.NoColor, clock, post, logger,
+			empty: "There are no open sessions. Sessions appear when players sign in.");
 	}
 
 	public void FocusSearch()

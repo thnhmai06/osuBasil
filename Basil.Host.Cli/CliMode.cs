@@ -59,6 +59,12 @@ public static class CliModes
 		return string.Equals(Environment.GetEnvironmentVariable("TERM"), "dumb", StringComparison.OrdinalIgnoreCase);
 	}
 
+	public static bool InContainer()
+	{
+		return string.Equals(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"), "true",
+			StringComparison.OrdinalIgnoreCase);
+	}
+
 	public static bool NoColorIsSet()
 	{
 		return !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("NO_COLOR"));
