@@ -10,6 +10,8 @@ public sealed record ScoreListing(ScoreListResult Outcome, Page<ScoreRecord>? Sc
 
 public enum ScoreListResult
 {
+	Denied = 0,
+
 	Ok = 1,
 
 	NoBeatmap,

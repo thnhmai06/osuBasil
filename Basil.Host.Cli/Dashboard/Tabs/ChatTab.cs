@@ -86,7 +86,7 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		_services = services;
 		_users = users;
 		_channelDetails = channels;
-		_detail = new DetailPanel("Chat", glyphs, palette, kit.Dialogs, kit.Toasts, post, kit.Changes);
+		_detail = new DetailPanel("Chat", glyphs, palette, kit.Dialogs, kit.Toasts, post, kit.Changes, logger);
 		_detail.Closed += FocusInput;
 		kit.Changes.Occurred += () => Safely(Refresh);
 		_feed = feed;

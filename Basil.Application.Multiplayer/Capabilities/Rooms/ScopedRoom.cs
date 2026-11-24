@@ -88,6 +88,11 @@ public readonly struct ScopedRoom
 		return RoomActionResult.Denied;
 	}
 
+	public RoomActionResult MayAct(RoomPrivileges roles)
+	{
+		return Require(roles) ?? RoomActionResult.Ok;
+	}
+
 	public bool CanView => Room.CanBeViewedBy(Actor);
 
 	internal RoomActionResult? RequireJoin()

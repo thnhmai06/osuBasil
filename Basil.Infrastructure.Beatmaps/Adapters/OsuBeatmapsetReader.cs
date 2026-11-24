@@ -3,13 +3,14 @@ using System.Text;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Ports;
 using Basil.Domain.Game;
+using Microsoft.Extensions.Logging;
 using osu.Game.IO;
 using Decoder = osu.Game.Beatmaps.Formats.Decoder;
 using LazerBeatmap = osu.Game.Beatmaps.Beatmap;
 
 namespace Basil.Infrastructure.Beatmaps.Adapters;
 
-internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
+internal sealed class OsuBeatmapsetReader(ILogger<OsuBeatmapsetReader>? logger = null) : IBeatmapsetReader
 {
 	// At most 2,000 files per set; raise this only if legitimate osu! sets exceed it.
 	private const int MaxFiles = 2_000;
@@ -57,7 +58,7 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 		}
 	}
 
-	private static async Task<BeatmapsetContent?> ReadContentAsync(IReadOnlyList<BeatmapsetContentFile> files,
+	private async Task<BeatmapsetContent?> ReadContentAsync(IReadOnlyList<BeatmapsetContentFile> files,
 		IAsyncDisposable? source, CancellationToken ct)
 	{
 		var byName = new Dictionary<string, BeatmapsetContentFile>(StringComparer.OrdinalIgnoreCase);
@@ -115,7 +116,7 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 		return new BeatmapsetContent(onlineSetId, artist, title, creator, difficulties, files, storyboard, source);
 	}
 
-	private static async Task<DecodedDifficulty?> TryDecodeAsync(BeatmapsetContentFile file,
+	private async Task<DecodedDifficulty?> TryDecodeAsync(BeatmapsetContentFile file,
 		CancellationToken ct)
 	{
 		try
@@ -149,6 +150,7 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 		catch (Exception exception) when (exception is not OperationCanceledException)
 		{
 			// Skip malformed .osu files rather than aborting the whole scan.
+			logger?.LogWarning(exception, "Skipped the malformed difficulty file {File}", file.Name);
 			return null;
 		}
 	}

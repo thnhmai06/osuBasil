@@ -19,15 +19,15 @@ internal static class RoomRoutes
 	{
 		var rooms = v1.MapGroup("/rooms").WithTags("Rooms").RequireToken();
 
-		rooms.MapGet("/", ListAsync).Admitted(WorkClass.Listing).WithSummary("List rooms.")
+		rooms.MapGet("/", ListAsync).Admitted(WorkClass.Listing).ReturnsList<RoomView>().WithSummary("List rooms.")
 			.WithDescription("""
 			                 `query` uses the room search syntax: free text matches the room's name; `host:`, `creator:` and `player:` take an account name or id; `status:` takes `open`, `locked` or `playing`; `mode:` takes `0` to `3`; `password:` takes `yes` or `no`. Rooms are ordered by id. Private rooms are listed only for those who may view them.
 			                 """);
-		rooms.MapPost("/", CreateAsync).WithSummary("Create a room.")
+		rooms.MapPost("/", CreateAsync).Takes<CreateRoomRequest>().Returns<RoomView>(201).WithSummary("Create a room.")
 			.WithDescription("""
 			                 The caller becomes the creator of the room, and its host when their game client is online and in no room. While room creation is locked, only room managers can create one.
 			                 """);
-		rooms.MapGet("/{id:int}", GetAsync).WithSummary("Get a room.")
+		rooms.MapGet("/{id:int}", GetAsync).Returns<RoomView>().WithSummary("Get a room.")
 			.WithDescription(
 				"Includes its slots, referees and bans. A private room the caller may not view is answered with 404.");
 		rooms.MapGet("/{id:int}/live", LiveAsync).Sse().WithSummary("Stream a room.")
@@ -44,26 +44,24 @@ internal static class RoomRoutes
 		{
 			if (await Find(context, lobby, sender, id) is not { } room) return Api.NotFound("No such room.");
 
+			if (await sender.Send(new MayCommandRoom(context.Session(), room, command.Roles), context.RequestAborted) is
+			    var may and not RoomActionResult.Ok)
+				return may.Refusal();
+
 			object? body = null;
 			if (command.Body is { } type)
 			{
-				if (!context.Request.HasJsonContentType()) return Api.Invalid("A JSON body is required.");
-				try
-				{
-					body = await context.Request.ReadFromJsonAsync(type, Api.Json, context.RequestAborted);
-				}
-				catch (JsonException)
-				{
-					return Api.Invalid("The body is not valid.");
-				}
+				var (read, refusal) = await context.ReadBodyAsync(type);
+				if (refusal is not null) return refusal;
 
-				if (body is null) return Api.Invalid("A body is required.");
+				body = read;
 			}
 
 			var result = await command.Run(new RoomCall(sender, context.Session(), room), body,
 				context.RequestServices, context.RequestAborted);
 			return result.Answer(() => RoomView.Of(room));
-		}).WithSummary(command.Summary).WithTags("Rooms");
+		}).WithSummary(command.Summary).WithDescription(RoomCommands.Describe(command)).WithTags("Rooms").Returns<RoomView>()
+			.WithMetadata(command.Body is { } body ? new RequestBody(body) : new object());
 	}
 
 	private static async Task<Room?> Find(HttpContext context, Lobby lobby, ISender sender, int id)
@@ -114,9 +112,12 @@ internal static class RoomRoutes
 			});
 	}
 
-	private static async Task<IResult> CreateAsync(HttpContext context, ISender sender, CreateRoomRequest request)
+	private static async Task<IResult> CreateAsync(HttpContext context, ISender sender)
 	{
-		if (string.IsNullOrWhiteSpace(request.Name)) return Api.Invalid("name is required.");
+		var (request, refused) = await context.ReadBodyAsync<CreateRoomRequest>();
+		if (refused is not null) return refused;
+
+		if (string.IsNullOrWhiteSpace(request!.Name)) return Api.Invalid("name is required.");
 
 		var (room, result) = await sender.Send(new OpenRoom(context.Session(),
 				RoomCommands.Truncate(request.Name), request.Password ?? string.Empty, RoomSource.Api,

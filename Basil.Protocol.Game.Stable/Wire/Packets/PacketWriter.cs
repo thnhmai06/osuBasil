@@ -56,12 +56,6 @@ public sealed partial class PacketWriter
 		Wrap(ServerPacketType.Pong, () => { });
 	}
 
-	// packet id: 9 (deprecated)
-	public void ChangeUsername(string oldName, string newName)
-	{
-		Wrap(ServerPacketType.HandleIrcChangeUsername, () => _writer.WriteOsuString($"{oldName}>>>>{newName}"));
-	}
-
 	// packet id: 11
 	public void UserStats(
 		int userId,
@@ -164,12 +158,6 @@ public sealed partial class PacketWriter
 	public void DisposeMatch(int matchId)
 	{
 		Wrap(ServerPacketType.DisposeMatch, () => _writer.Write(matchId));
-	}
-
-	// packet id: 34
-	public void ToggleBlockNonFriendDm()
-	{
-		Wrap(ServerPacketType.ToggleBlockNonFriendDms, () => { });
 	}
 
 	// packet id: 36

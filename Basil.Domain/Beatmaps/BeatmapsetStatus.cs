@@ -29,7 +29,7 @@ public static class BeatmapsetStatusExtensions
 	/// <summary>Converts the status number of the osu!direct listing into a status.</summary>
 	/// <param name="osuDirectStatus">The status number of the listing.</param>
 	/// <returns>The matching status; graveyard and numbers that are not known give <see cref="BeatmapsetStatus.Pending"/>.</returns>
-	public static BeatmapsetStatus FromOsuDirect(int osuDirectStatus) // TODO: Move to Protocol
+	public static BeatmapsetStatus FromOsuDirect(int osuDirectStatus)
 	{
 		return osuDirectStatus switch
 		{

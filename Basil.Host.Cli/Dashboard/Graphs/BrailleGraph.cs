@@ -39,11 +39,6 @@ public static class BrailleGraph
 			if (bits != 0) surface.Put(area.X + x, area.Y + y, (char)(0x2800 + bits), Tone.Heat, heat[x]);
 		}
 	}
-
-	public static bool FitsGraphs(int width)
-	{
-		return width >= MinimumWidthForGraphs;
-	}
 }
 
 public static class Meter

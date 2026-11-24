@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Basil.Host.Cli.Dashboard.Shell.Toasts;
 using XenoAtom.Terminal;
 using XenoAtom.Terminal.UI;
@@ -12,6 +13,7 @@ internal sealed class DetailPanel
 	private const int CompactWidth = 100;
 	private const int ButtonColumn = 22;
 	private const int CompactButtonColumn = 14;
+	private readonly ILogger _logger;
 	private readonly Group _box;
 	private readonly State<string> _crumb = new(string.Empty);
 	private readonly Dialogs _dialogs;
@@ -28,8 +30,9 @@ internal sealed class DetailPanel
 
 	public DetailPanel(string root, Glyphs glyphs, Palette palette, Dialogs dialogs, ToastTray toasts,
 		Action<Action> post,
-		Changes changes)
+		Changes changes, ILogger logger)
 	{
+		_logger = logger;
 		changes.Occurred += Reload;
 		_root = root;
 		_glyphs = glyphs;
@@ -120,9 +123,10 @@ internal sealed class DetailPanel
 					var view = await step.Reload!();
 					_post(() => Replace(step, view));
 				}
-				catch (Exception)
+				catch (Exception exception)
 				{
 					// The stale step stays.
+					_logger.LogWarning(exception, "A step of the detail view could not be read again");
 				}
 			});
 	}
@@ -143,6 +147,7 @@ internal sealed class DetailPanel
 			}
 			catch (Exception exception)
 			{
+				_logger.LogWarning(exception, "The detail view {Title} could not be read", title);
 				_post(() => Drop(pending, title, exception));
 			}
 		});

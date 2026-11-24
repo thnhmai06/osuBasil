@@ -65,7 +65,7 @@ internal sealed class ListPage<T>
 		_detailOf = detail;
 		_dialogs = kit.Dialogs;
 		_toasts = kit.Toasts;
-		_detail = new DetailPanel(title, glyphs, new Palette(noColor), kit.Dialogs, kit.Toasts, post, kit.Changes);
+		_detail = new DetailPanel(title, glyphs, new Palette(noColor), kit.Dialogs, kit.Toasts, post, kit.Changes, logger);
 		_keyOf = key;
 		kit.Changes.Occurred += OnChanged;
 		_detail.Closed += () => _app?.Focus(_list);

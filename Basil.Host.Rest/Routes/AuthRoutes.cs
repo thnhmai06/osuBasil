@@ -17,7 +17,7 @@ internal static class AuthRoutes
 	public static void MapAuth(this RouteGroupBuilder v1)
 	{
 		var auth = v1.MapGroup("/auth").WithTags("Auth");
-		auth.MapPost("/login", LoginAsync).WithSummary("Create a session.")
+		auth.MapPost("/login", LoginAsync).Takes<LoginRequest>().Returns<LoginResponse>(201).WithSummary("Create a session.")
 			.WithDescription("""
 			                 Signs in with `username` and `password` and returns a Bearer token, which is shown only in this response. To learn the id of the signed-in user later, call `GET /v1/auth/session`.
 
@@ -26,30 +26,32 @@ internal static class AuthRoutes
 			                 A wrong username or password, or an account that cannot sign in, is answered with 401. Repeated wrong passwords for the same address and account, or from one address, are answered with 429.
 			                 """);
 		auth.MapPost("/logout", LogoutAsync).RequireToken()
-			.WithSummary("Delete the current session.");
+			.WithSummary("Delete the current session.")
+			.WithDescription("Ends the session of the token that made the call; the token stops working at once.");
 		auth.MapGet("/session", (HttpContext context) =>
 			{
 				var connection = context.Session();
 				var session = connection.State;
 				return Api.Ok(new SessionView(session.Record.Id, session.Record.Value.User.Id, session.Record.Value.StartedAt, connection.ExpiresAt));
 			}).RequireToken()
-			.WithSummary("Get the current session.")
+			.Returns<SessionView>().WithSummary("Get the current session.")
 			.WithDescription("Names the signed-in user.");
 	}
 
-	private static async Task<IResult> LoginAsync(HttpContext context, LoginRequest request, SessionRegistry registry,
+	private static async Task<IResult> LoginAsync(HttpContext context, SessionRegistry registry,
 		ISender sender, LoginAttemptGuard attempts)
 	{
-		if (string.IsNullOrEmpty(request.Username) || string.IsNullOrEmpty(request.Password))
+		var (request, refused) = await context.ReadBodyAsync<LoginRequest>();
+		if (refused is not null) return refused;
+
+		if (string.IsNullOrEmpty(request!.Username) || string.IsNullOrEmpty(request.Password))
 			return Api.Invalid("username and password are required.");
 
 		context.Response.Headers.CacheControl = "no-store";
 
 		var rules = (await sender.Send(new ReadSettings(), context.RequestAborted)).RateLimits.Login;
 		var ip = context.Ip();
-		var ipKey = $"login-fail:{ip}";
-		var pairKey = $"{ipKey}:{request.Username.ToLowerInvariant()}";
-		using var reservation = attempts.TryReserve(ipKey, pairKey, rules.MaxAttempts, rules.Window);
+		using var reservation = attempts.TryReserve(request.Username.ToLowerInvariant(), rules.MaxAttempts, rules.Window);
 		if (reservation is null)
 		{
 			context.Response.Headers.RetryAfter = ((int)rules.Lockout.TotalSeconds).ToString();

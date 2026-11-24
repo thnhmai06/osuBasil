@@ -13,7 +13,9 @@ public static class SessionMetrics
 
 	public const string AlreadyOnline = "already_online";
 
-	public static readonly Counter<long> Rejected = new Meter("Basil.Sessions", "1.0")
+	public static readonly Meter Meter = new("Basil.Sessions", "1.0");
+
+	public static readonly Counter<long> Rejected = Meter
 		.CreateCounter<long>(RejectedName, description: "Connections the server refused to open.");
 
 	private static readonly long[,] Counts =

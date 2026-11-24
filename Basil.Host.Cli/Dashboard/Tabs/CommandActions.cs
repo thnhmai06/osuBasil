@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Basil.Application.Users;
 using System.Collections.Concurrent;
 using System.Globalization;
@@ -15,7 +16,8 @@ internal sealed class CommandActions(
 	ConsoleTab console,
 	ToastTray toasts,
 	Changes changes,
-	Action<Action> post)
+	Action<Action> post,
+	ILogger logger)
 {
 	public static string Quote(string value)
 	{
@@ -38,6 +40,7 @@ internal sealed class CommandActions(
 	{
 		_ = check().ContinueWith(task => post(() =>
 		{
+			if (task.IsFaulted) logger.LogWarning(task.Exception, "A check before an action failed");
 			if (task is { IsCompletedSuccessfully: true, Result: true }) then();
 			else toasts.Show(otherwise, ToastKind.Warning);
 		}), TaskScheduler.Default);
@@ -54,14 +57,22 @@ internal sealed class CommandActions(
 
 		_ = Task.Run(async () =>
 		{
-			var record = text.Length == 0
-				? null
-				: await services.GetRequiredService<ISender>().Send(new FindUserByName(text));
-			post(() =>
+			try
 			{
-				if (record is null) toasts.Show($"No such user: {text}.", ToastKind.Error);
-				else Run(string.Format(CultureInfo.InvariantCulture, template, record.Id));
-			});
+				var record = text.Length == 0
+					? null
+					: await services.GetRequiredService<ISender>().Send(new FindUserByName(text));
+				post(() =>
+				{
+					if (record is null) toasts.Show($"No such user: {text}.", ToastKind.Error);
+					else Run(string.Format(CultureInfo.InvariantCulture, template, record.Id));
+				});
+			}
+			catch (Exception exception)
+			{
+				logger.LogWarning(exception, "The user {Name} could not be looked up", text);
+				post(() => toasts.Show($"The user {text} could not be looked up.", ToastKind.Error));
+			}
 		});
 	}
 

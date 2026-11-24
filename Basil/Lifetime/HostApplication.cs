@@ -1,3 +1,4 @@
+using Basil.Gateway.Limits;
 using Basil.Configuration;
 using Basil.Documentation;
 using Basil.Host.Cli;
@@ -69,7 +70,10 @@ public static class HostApplication
 		var app = builder.Build();
 		// Before any osu! type is used: the calculation stack is checked and made loadable from Data/Rulesets.
 		app.Services.GetRequiredService<RulesetStore>().Initialize();
-		app.Services.GetRequiredService<RuntimeSampler>().LogsDropped = () => drops.Dropped;
+		var sampler = app.Services.GetRequiredService<RuntimeSampler>();
+		sampler.LogsDropped = () => drops.Dropped;
+		var load = app.Services.GetRequiredService<LoadSignal>();
+		sampler.LoadMeasured = used => load.Report(used, 1);
 		app.UseRequestMetrics();
 		app.UseTrustedProxies();
 		app.UseRestImages();

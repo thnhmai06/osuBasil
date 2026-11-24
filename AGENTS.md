@@ -484,8 +484,8 @@ system; no host or gateway knows it exists.
 * Every transport references `Basil.Host.Shared` and never another transport. Rest and Cli never reference
   `Protocol.Game.Stable`. This is checked in review.
 * `Basil.Gateway` (enforcement by the hosts: **target**) is a leaf project that answers `Allow` or `Deny` for each incoming request from size, rate,
-  concurrency and load, in two tiers (before and after authentication; the second tier receives an opaque
-  `AdmissionSubject` that `Host.Shared` maps from the `Session`). It has no user types and no business facts. Every
+  concurrency and load (a signed-in user also meets an allowance per kind of work; the opaque
+  `AdmissionSubject` is mapped by `Host.Shared` from the `Session`, and a request without a user meets only the server's capacity, because nginx holds every per-address limit). It has no user types and no business facts. Every
   entry point declares a policy. See [`docs/for-developers/gateway.md`](docs/for-developers/gateway.md).
 * The project that defines an options type binds it **(target)**; BasilBot's reply file is bound with the bot
   (`Data/Localizations/bot.json`, written with the defaults when missing).
@@ -623,9 +623,7 @@ Changes to packet encoding or decoding must be treated as protocol changes and c
 
 #### SSE
 
-Live HTTP streams use dedicated `/live` endpoints.
-
-Do not introduce content negotiation between JSON and SSE on the same route.
+A live HTTP stream is a route of its own, never a route that answers JSON or SSE by content negotiation. Its path need not end in `/live`; the generated reference marks it as a stream.
 
 See [`docs/for-developers/sse.md`](docs/for-developers/sse.md).
 

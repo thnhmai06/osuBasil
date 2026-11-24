@@ -9,6 +9,13 @@ namespace Basil.Application.Sessions.Capabilities;
 
 public readonly struct ScopedUserCredentials(SessionRegistry registry, ScopedUser scoped, Session actor)
 {
+	public async Task<UserActionResult> MayChangePasswordAsync()
+	{
+		if (await scoped.IsLockedAsync(Locks.Profiles, UserPrivileges.Owner))
+			return UserActionResult.Locked;
+		return !scoped.IsSelf && scoped.Deny(UserPrivileges.Owner) is { } denied ? denied : UserActionResult.Ok;
+	}
+
 	public async Task<UserActionResult> ChangePasswordAsync(Md5Hash newPasswordHash, Md5Hash? currentPasswordHash,
 		bool includeCurrent = false)
 	{

@@ -46,6 +46,11 @@ public readonly struct ScopedServer
 		return Lacks(UserPrivileges.Owner) ? ServerActionResult.Denied : ServerActionResult.Ok;
 	}
 
+	public ServerActionResult MayAnnounce()
+	{
+		return Denied() ?? ServerActionResult.Ok;
+	}
+
 	public (ServerActionResult Result, int Sent) Notify(string text, UserRecord to)
 	{
 		return Denied() is { } denied ? (denied, 0) : (ServerActionResult.Ok, Server.Notify(text, to));

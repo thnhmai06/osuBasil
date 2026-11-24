@@ -10,6 +10,6 @@ public static class ApiJson
 	{
 		// The API is JSON over HTTPS read by programs: "+" and non-ASCII letters are not escaped to \uXXXX.
 		Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-		Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
+		Converters = { new FlagsArrayConverterFactory(), new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
 	};
 }

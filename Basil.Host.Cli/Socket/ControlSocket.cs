@@ -190,6 +190,10 @@ public sealed class ControlServer(CommandRunner runner, string path, ILogger<Con
 		{
 			logger.LogDebug(exception, "A control connection ended");
 		}
+		catch (Exception exception)
+		{
+			logger.LogWarning(exception, "A control connection failed");
+		}
 	}
 
 	private sealed class SocketOutput(StreamWriter writer) : ICommandOutput

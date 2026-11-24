@@ -272,10 +272,6 @@
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."
 		},
-		"TooManyConnections": {
-			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
-		},
 		"UnknownCommand": {
 			"type": "string",
 			"description": "A reply without arguments. Wording is ICU MessageFormat."

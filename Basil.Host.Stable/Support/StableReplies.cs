@@ -17,7 +17,6 @@ public static class StableReplies
 
 	public const string NoTourneyPrivilege = "This account may not use the osu!tourney client.";
 
-	public const string TooManyConnections = "Too many connections from your address.";
 
 	public const string ServerStopping = "The server is restarting. Please reconnect in a moment.";
 }

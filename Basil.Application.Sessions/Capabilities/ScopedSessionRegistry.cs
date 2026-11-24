@@ -28,6 +28,11 @@ public readonly struct ScopedSessionRegistry
 		_context = context;
 	}
 
+	public UserActionResult MayCreateAccount()
+	{
+		return Lacks(UserPrivileges.Owner) ? UserActionResult.Denied : UserActionResult.Ok;
+	}
+
 	public async Task<(UserRecord? User, UserActionResult Result)> CreateAccountAsync(UserData data,
 		Md5Hash passwordHash, UserPrivileges? privileges)
 	{

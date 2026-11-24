@@ -31,7 +31,7 @@ internal sealed class ImageAdmissionMiddleware(RequestDelegate next)
 			return;
 		}
 
-		var decision = admission.Admit(AdmissionRefusals.SubjectOf(context.Ip().ToString()), WorkClass.Asset);
+		var decision = admission.Admit(null, WorkClass.Asset);
 		if (!decision.Allowed)
 		{
 			context.Response.Headers.RetryAfter = AdmissionRefusals.RetryAfterOf(decision);

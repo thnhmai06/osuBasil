@@ -38,15 +38,15 @@ internal static class BeatmapRoutes
 		var sets = v1.MapGroup("/beatmapsets").WithTags("Beatmapsets");
 		var maps = v1.MapGroup("/beatmaps").WithTags("Beatmaps");
 
-		sets.MapGet("/", SearchAsync).Admitted(WorkClass.Listing).RequireToken().WithSummary("Search beatmapsets.")
+		sets.MapGet("/", SearchAsync).Admitted(WorkClass.Listing).RequireToken().ReturnsList<SetView>().WithSummary("Search beatmapsets.")
 			.WithDescription(
 				"`query` uses the beatmap search syntax. Hidden sets are listed only for those who manage them.");
-		sets.MapGet("/{id:int}", GetSetAsync).WithSummary("Get a beatmapset.")
+		sets.MapGet("/{id:int}", GetSetAsync).Returns<SetDetailView>().WithSummary("Get a beatmapset.")
 			.WithDescription("Includes its beatmaps.");
-		maps.MapGet("/{id:int}", GetBeatmapAsync).WithSummary("Get a beatmap.")
+		maps.MapGet("/{id:int}", GetBeatmapAsync).Returns<BeatmapView>().WithSummary("Get a beatmap.")
 			.WithDescription("Includes its beatmapset.");
 		sets.MapPost("/", UploadAsync).Admitted(WorkClass.Upload).RequireToken().DisableAntiforgery()
-			.WithSummary("Upload a beatmapset.")
+			.Returns<SetDetailView>(201).WithSummary("Upload a beatmapset.")
 			.WithDescription("""
 			                 The multipart form carries the `.osz` archive in `file`. The content of a set is never replaced: a set that already exists is refused with 409, and an archive that is not a readable beatmapset with 422.
 
@@ -54,18 +54,21 @@ internal static class BeatmapRoutes
 
 			                 While the beatmapsets area is locked only managers can upload.
 			                 """);
-		sets.MapDelete("/{id:int}", DeleteAsync).RequireToken().WithSummary("Delete a beatmapset.");
+		sets.MapDelete("/{id:int}", DeleteAsync).RequireToken().WithSummary("Delete a beatmapset.")
+			.WithDescription("Needs the Tournament privilege; a caller without it is refused with 403 whether or not the set exists. A set that does not exist is answered with 404.");
 		sets.MapPatch("/{id:int}", PatchAsync).RequireToken()
-			.WithSummary("Update a beatmapset.")
+			.Takes<PatchSetRequest>().Returns<SetView>().WithSummary("Update a beatmapset.")
 			.WithDescription(
 				"Changes the status, the visibility or the lock of the set; its content never changes. Changing the status can change how clients submit scores and replays; use a status with a leaderboard (ranked, approved, qualified, loved) so those functions keep working.");
 
 		sets.MapGet("/{id:int}/audiopreview", (HttpContext c, int id, ISender s) =>
 				SetFileAsync(c, id, s, BeatmapsetFileType.Preview))
-			.WithSummary("Download the audio preview of a beatmapset.");
+			.WithSummary("Download the audio preview of a beatmapset.")
+			.WithDescription("The answer is the preview clip of the set as audio, and it supports ranges. A set that does not exist or has no preview is answered with 404.");
 		sets.MapGet("/{id:int}/storyboard", (HttpContext c, int id, ISender s) =>
 				SetFileAsync(c, id, s, BeatmapsetFileType.Storyboard)).RequireToken()
-			.WithSummary("Download the storyboard of a beatmapset.");
+			.WithSummary("Download the storyboard of a beatmapset.")
+			.WithDescription("The answer is the storyboard file of the set. A set that does not exist or has no storyboard is answered with 404.");
 		sets.MapGet("/{id:int}/download", DownloadAsync).RequireToken()
 			.WithSummary("Download a beatmapset.")
 			.WithDescription("The archive is an `.osz` file; `noVideo=1` leaves the video out of it.");
@@ -88,7 +91,8 @@ internal static class BeatmapRoutes
 	{
 		var route = maps.MapGet("/{id:int}/" + name, async (HttpContext c, int id, ISender sender) =>
 			Serve(c, await sender.Send(new OpenBeatmapFile(c.ConnectionOrNull(), id, type), c.RequestAborted),
-				type, "No such file.")).WithSummary($"Download the {name} of a beatmap.");
+				type, $"No such beatmap, or it has no {name}.")).WithSummary($"Download the {name} of a beatmap.")
+			.WithDescription($"The answer is the {name} file of the beatmap, and it supports ranges. A beatmap that does not exist or has no {name} is answered with 404.");
 		if (token) route.RequireToken();
 	}
 
@@ -179,12 +183,14 @@ internal static class BeatmapRoutes
 		return (await sender.Send(new DeleteBeatmapset(context.Session(), id), context.RequestAborted)).Answer();
 	}
 
-	private static async Task<IResult> PatchAsync(HttpContext context, int id, PatchSetRequest request,
-		ISender sender)
+	private static async Task<IResult> PatchAsync(HttpContext context, int id, ISender sender)
 	{
+		var (request, refused) = await context.ReadBodyAsync<PatchSetRequest>();
+		if (refused is not null) return refused;
+
 		if (request is { Status: null, Visible: null, Locked: null })
 			return Api.Invalid("Send at least one field to change.");
-		if (request.Status is { } status && !Enum.IsDefined(status)) return Api.Invalid("status is not valid.");
+		if (request!.Status is { } status && !Enum.IsDefined(status)) return Api.Invalid("status is not valid.");
 
 		var result = await sender.Send(
 			new PatchBeatmapset(context.Session(), id, request.Status, request.Visible, request.Locked),
@@ -202,7 +208,7 @@ internal static class BeatmapRoutes
 	{
 		return Serve(context,
 			await sender.Send(new OpenBeatmapsetFile(context.ConnectionOrNull(), id, type), context.RequestAborted),
-			type, "No such file.");
+			type, $"No such beatmapset, or it has no {type.ToString().ToLowerInvariant()}.");
 	}
 
 	private static async Task<IResult> DownloadAsync(HttpContext context, int id, ISender sender, string? noVideo)
@@ -212,7 +218,7 @@ internal static class BeatmapRoutes
 		var archive = await sender.Send(new OpenBeatmapsetArchive(context.ConnectionOrNull(), id, !leavesVideoOut),
 			context.RequestAborted);
 		return archive is null
-			? Api.NotFound("No such file.")
+			? Api.NotFound("No such beatmapset, or it has no archive.")
 			: NoSniff(context, StoredFile.Send(context, archive, "application/x-osu-beatmap-archive", $"{id}.osz"));
 	}
 

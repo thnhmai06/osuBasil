@@ -1,3 +1,4 @@
+using Basil.Application.Shared.Diagnostics;
 using Basil.Domain.Content;
 
 namespace Basil.Application.Servers.Objects;
@@ -24,12 +25,12 @@ public readonly struct ServerScreenshots
 
 		var reference = await context.Screenshots.SaveAsync(content, async (stored, token) =>
 		{
-			if (stored.Length > limits.ScreenshotMaxSize) throw new UploadTooLargeException(limits.ScreenshotMaxSize);
+			if (stored.Length > limits.ScreenshotMaxSize) throw UploadMetrics.Refuse(new UploadTooLargeException(limits.ScreenshotMaxSize));
 
 			var info = await context.Inspector.InspectAsync(stored, token);
-			if (info is null || info.Width < 1 || info.Height < 1) throw new InvalidImageException();
+			if (info is null || info.Width < 1 || info.Height < 1) throw UploadMetrics.Refuse(new InvalidImageException());
 			if (info.Width > limits.ScreenshotMaxSide || info.Height > limits.ScreenshotMaxSide)
-				throw new ImageDimensionsTooLargeException(limits.ScreenshotMaxSide);
+				throw UploadMetrics.Refuse(new ImageDimensionsTooLargeException(limits.ScreenshotMaxSide));
 
 			return info.Extension;
 		}, ct);

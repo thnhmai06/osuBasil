@@ -5,6 +5,4 @@ public static class BasilBot
 {
 	/// <summary>The user id reserved for BasilBot.</summary>
 	public const int Id = 1;
-
-	//TODO: Activity for BasilBot
 }

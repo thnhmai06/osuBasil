@@ -12,14 +12,15 @@ internal static class RulesetRoutes
 	public static void MapRulesets(this RouteGroupBuilder v1)
 	{
 		v1.MapGet("/version", VersionAsync).WithTags("Version")
-			.WithSummary("Get the application and ruleset versions.");
+			.Returns<VersionBody>().WithSummary("Get the application and ruleset versions.")
+			.WithDescription("Names the version of the server and the version of the osu! rulesets it uses.");
 
 		var ruleset = v1.MapGroup("/settings/ruleset").WithTags("Settings").RequireToken();
 		ruleset.MapGet("/version", RulesetVersionAsync)
 			.WithSummary("Get the state of the osu! calculation stack.")
 			.WithDescription("Reports the version the server needs and whether it is `installed`, `missing` or `damaged`. Without it, star ratings and pp stay empty and beatmapset imports are refused.");
 		ruleset.MapPost("/update", UpdateAsync)
-			.WithSummary("Install the osu! calculation stack.")
+			.Returns<UpdateBody>().WithSummary("Install the osu! calculation stack.")
 			.WithDescription("""
 			                 Downloads the files the server needs for star ratings, pp and beatmapset imports, and keeps them only when every file checks out. When the stack is already installed, `downloaded` is `false` and nothing is done.
 
@@ -29,7 +30,7 @@ internal static class RulesetRoutes
 			                 """);
 
 		v1.MapPost("/beatmapsets/reload", ReloadAsync).RequireToken().WithTags("Beatmapsets")
-			.WithSummary("Update the stored beatmaps.")
+			.Returns<object>(202).WithSummary("Update the stored beatmaps.")
 			.WithDescription("""
 			                 Recomputes every stored beatmap, star rating included, with the rulesets in use. The call answers 202 at once and the work goes on; only one reload runs at a time, and a second request is refused with 409.
 			                 """);

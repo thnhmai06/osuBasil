@@ -298,8 +298,8 @@ If this fails, check:
 4. Choose the username and password. The email field is not used.
 5. Complete registration.
 
-New accounts receive the default privilege set. Registration is limited per address and per server by the registration
-rate limit, and while the **accounts** lock is on only account managers can create accounts; see
+New accounts receive the default privilege set. Registration is limited for the whole server by the registration
+rate limit (the reverse proxy limits it per address), and while the **accounts** lock is on only account managers can create accounts; see
 [`configuration.md`](configuration.md). See [`getting-started.md`](../for-client/osu-stable/getting-started.md).
 
 ### Console or API

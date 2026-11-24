@@ -12,7 +12,10 @@ using Microsoft.Extensions.Hosting;
 
 namespace Basil.Host.Rest.Sse;
 
-public sealed record SseEvent(object Data, string? Id = null);
+public sealed record SseEvent(object Data, string? Id = null, string Event = SseEvent.Bundle)
+{
+	public const string Bundle = "bundle";
+}
 
 public sealed record SsePoll(IReadOnlyList<SseEvent> Events, bool Complete = false);
 
@@ -66,7 +69,8 @@ public sealed class SseStream
 	}
 }
 
-public sealed class SseHub(TimeProvider clock, SessionRegistry registry, ISender sender) : IHostedService
+public sealed class SseHub(TimeProvider clock, SessionRegistry registry, ISender sender, ILogger<SseHub> logger)
+	: IHostedService
 {
 	private static readonly byte[] KeepAlive = ": keep-alive\n\n"u8.ToArray();
 	private readonly ConcurrentDictionary<string, int> _open = new();
@@ -114,9 +118,9 @@ public sealed class SseHub(TimeProvider clock, SessionRegistry registry, ISender
 		}
 	}
 
-	public void Publish(string key, object data, string? id = null)
+	public void Publish(string key, object data, string? id = null, string eventName = SseEvent.Bundle)
 	{
-		if (_roots.TryGetValue(key, out var root)) root.Buffer.Enqueue(new SseEvent(data, id));
+		if (_roots.TryGetValue(key, out var root)) root.Buffer.Enqueue(new SseEvent(data, id, eventName));
 	}
 
 	internal int Pending(string key)
@@ -140,7 +144,7 @@ public sealed class SseHub(TimeProvider clock, SessionRegistry registry, ISender
 		if (_stopping) return (null, null, ShuttingDown());
 
 		var current = await sender.Send(new ReadSettings(), ct);
-		var limit = current.RateLimits.Connections.PerIp;
+		var limit = current.RateLimits.Connections.StreamsPerUser;
 		var userKey = connection is null ? null : "user:" + connection.Record.Id;
 		if (userKey is not null && !TryCount(userKey, limit)) return (null, null, TooManyStreams());
 
@@ -240,16 +244,19 @@ public sealed class SseHub(TimeProvider clock, SessionRegistry registry, ISender
 					}
 					catch (Exception exception) when (exception is not OperationCanceledException)
 					{
-						complete = true; // a root that cannot be read ends its streams; reconnecting starts afresh
+						// A root that cannot be read ends its streams; reconnecting starts afresh.
+						logger.LogWarning(exception, "A live stream could not be read and ends");
+						complete = true;
 					}
 
 				var events = new List<SseEvent>();
 				while (root.Buffer.TryDequeue(out var item)) events.Add(item);
 
+				// One frame per event name, in the order the names first appeared.
 				var chunk = events.Count == 0
 					? KeepAlive
-					: Frame("bundle", events[^1].Id,
-						JsonSerializer.SerializeToUtf8Bytes(events.Select(e => e.Data), Api.Json));
+					: events.GroupBy(e => e.Event).SelectMany(group => Frame(group.Key, group.Last().Id,
+						JsonSerializer.SerializeToUtf8Bytes(group.Select(e => e.Data), Api.Json))).ToArray();
 				foreach (var stream in root.Snapshot())
 				{
 					if (stream.Session is { IsOpen: false })

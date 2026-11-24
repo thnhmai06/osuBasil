@@ -26,7 +26,7 @@ retry: 3000
 data: {...}
 ```
 
-After that, a `bundle` arrives about once a second:
+After that, a `bundle` arrives about once a second (the spectate stream names its events `replay` and `activity`, below). A stream route does not need to end in `/live`:
 
 ```text
 event: bundle
@@ -57,10 +57,10 @@ scores received; an event carries its type, time, actor, target and detail.
 
 `GET /v1/users/{id}/spectate` follows a player who is online in game. The player sees a spectator, and the usual
 spectating privilege and blocks apply. The stream only watches: it joins no chat channel. The first
-snapshot has the player's id, name, country and current status. Bundles then carry:
+snapshot has the player's id, name, country and current status. Then, up to once a second:
 
-* `{ "type": "frames", "action": ..., "sequence": ..., "frames": [[button, taiko, x, y, time], ...], "score": {...} }`
-* `{ "type": "status", "status": { "activity", "text", "beatmapId", "mods", "mode" } }`
+* a `replay` event: `{ "action": ..., "sequence": ..., "frames": [[button, taiko, x, y, time], ...], "score": {...} }`
+* an `activity` event: `{ "activity", "text", "beatmapId", "mods", "mode" }`, the player's in-game status; `mods` is an array of mod names
 
 The stream ends when the player goes offline or stops being spectated. Spectating a player who is not in game answers
 `409` with `targetOffline`.

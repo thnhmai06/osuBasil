@@ -4,6 +4,11 @@ namespace Basil.Application.Users.Capabilities;
 
 public readonly struct ScopedUserSilence(ScopedUser scoped)
 {
+	public UserActionResult MayImpose()
+	{
+		return scoped.Deny(UserPrivileges.Moderator) ?? UserActionResult.Ok;
+	}
+
 	public async Task<UserActionResult> ImposeAsync(DateTimeOffset endsAt, string? reason = null)
 	{
 		if (scoped.Deny(UserPrivileges.Moderator) is { } denied) return denied;

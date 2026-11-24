@@ -126,7 +126,8 @@ public sealed record ServerSettings
 		public AdmissionLimitSettings(int requests, TimeSpan window, int elevatedMultiplier,
 			int interactiveConcurrency, int listingConcurrency, int uploadConcurrency, int liveConcurrency,
 			double degradedAbove, double shedAbove, double hardShedAbove, TimeSpan busyRetryAfter,
-			int assetConcurrency = 64, int assetRequests = 1200)
+			int assetConcurrency = 64, int listingRequests = 60, int uploadRequests = 30, int liveRequests = 30,
+			int pollRequests = 1200, long uploadBytesPerHour = 1L << 30)
 		{
 			Requests = Positive(requests);
 			Window = Positive(window);
@@ -140,7 +141,11 @@ public sealed record ServerSettings
 			HardShedAbove = Fraction(hardShedAbove);
 			BusyRetryAfter = Positive(busyRetryAfter);
 			AssetConcurrency = Positive(assetConcurrency);
-			AssetRequests = Positive(assetRequests);
+			ListingRequests = Positive(listingRequests);
+			UploadRequests = Positive(uploadRequests);
+			LiveRequests = Positive(liveRequests);
+			PollRequests = Positive(pollRequests);
+			UploadBytesPerHour = Positive(uploadBytesPerHour);
 			if (!(DegradedAbove < ShedAbove && ShedAbove < HardShedAbove))
 				throw new ArgumentOutOfRangeException(nameof(shedAbove), shedAbove,
 					"The loads must be ordered degraded < shed < hard shed.");
@@ -175,7 +180,15 @@ public sealed record ServerSettings
 
 		public int AssetConcurrency { get; }
 
-		public int AssetRequests { get; }
+		public int ListingRequests { get; }
+
+		public int UploadRequests { get; }
+
+		public int LiveRequests { get; }
+
+		public int PollRequests { get; }
+
+		public long UploadBytesPerHour { get; }
 	}
 
 	public sealed record LoginLimitSettings
@@ -206,7 +219,7 @@ public sealed record ServerSettings
 
 	public sealed record ConnectionLimitSettings
 	{
-		public int PerIp
+		public int StreamsPerUser
 		{
 			get;
 			init => field = Positive(value);

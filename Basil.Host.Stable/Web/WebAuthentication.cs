@@ -51,9 +51,7 @@ internal sealed class WebAuthentication(
 		if (online is null) return null;
 		if (online.Stable is not { IsOpen: true } client) return null;
 		var rules = (await sender.Send(new ReadSettings(), ct)).RateLimits.Login;
-		var ipKey = $"login-fail:{ClientAddress.Resolve(context)}";
-		var pairKey = $"{ipKey}:{normalized}";
-		using var attempt = attempts.TryReserve(ipKey, pairKey, rules.MaxAttempts, rules.Window);
+		using var attempt = attempts.TryReserve(normalized.ToLowerInvariant(), rules.MaxAttempts, rules.Window);
 		if (attempt is null) return null;
 
 		if (_verified.TryGetValue(client, out var known) && SameDigest(known, passwordMd5)) return client;

@@ -25,17 +25,19 @@ internal static class MenuRoutes
 			.Admitted(WorkClass.Listing)
 			.WithSummary("List FAQ entries.")
 			.WithDescription("An entry in a folder has the folder in its name, separated by `:`.");
-		faqs.MapGet("/{entry}", GetFaqAsync).WithSummary("Get a FAQ entry.");
-		faqs.MapPut("/{entry}", SaveFaqAsync).RequireToken().WithSummary("Replace a FAQ entry.")
+		faqs.MapGet("/{entry}", GetFaqAsync).Returns<FaqView>().WithSummary("Get a FAQ entry.")
+			.WithDescription("An entry that does not exist is answered with 404.");
+		faqs.MapPut("/{entry}", SaveFaqAsync).RequireToken().Takes<FaqRequest>().WithSummary("Replace a FAQ entry.")
 			.WithDescription("Creates the entry when no entry has the name.");
-		faqs.MapDelete("/{entry}", DeleteFaqAsync).RequireToken().WithSummary("Delete a FAQ entry.");
+		faqs.MapDelete("/{entry}", DeleteFaqAsync).RequireToken().WithSummary("Delete a FAQ entry.")
+			.WithDescription("Needs the Owner privilege; a caller without it is refused with 403 whether or not the entry exists. A missing entry is answered with 404.");
 
 		var menu = v1.MapGroup("/menu").WithTags("Menu");
 		menu.MapGet("/banners", ListBannersAsync).Admitted(WorkClass.Listing)
-			.WithSummary("List main-menu banners.")
+			.ReturnsList<BannerView>().WithSummary("List main-menu banners.")
 			.WithDescription("Each banner says whether it is current.");
 		menu.MapPost("/banners", AddBannerAsync).Admitted(WorkClass.Upload).DisableAntiforgery().RequireToken()
-			.WithSummary("Create a main-menu banner.")
+			.Returns<BannerView>(201).WithSummary("Create a main-menu banner.")
 			.WithDescription("""
 			                 The multipart form carries the picture in `image` and the HTTP or HTTPS address it opens in `url`. `begins` and `expires` are optional ISO 8601 times; a banner without them is always current.
 
@@ -46,9 +48,10 @@ internal static class MenuRoutes
 		menu.MapGet("/seasonals", async (ISender sender, CancellationToken ct) =>
 				Api.Ok((await sender.Send(new ListSeasonals(), ct)).Select(r => Path.GetFileName(r.Value)).ToList()))
 			.Admitted(WorkClass.Listing)
-			.WithSummary("List seasonal backgrounds.");
+			.ReturnsList<string>().WithSummary("List seasonal backgrounds.")
+			.WithDescription("Each item is the file name of a background.");
 		menu.MapPost("/seasonals", AddSeasonalAsync).Admitted(WorkClass.Upload).DisableAntiforgery().RequireToken()
-			.WithSummary("Create a seasonal background.")
+			.Returns<string>(201).WithSummary("Create a seasonal background.")
 			.WithDescription("""
 			                 The multipart form carries the picture in `image`.
 
@@ -62,7 +65,8 @@ internal static class MenuRoutes
 			var icon = (await sender.Send(new ReadSettings(), ct)).MenuIcon;
 			return Api.Ok(new IconView(icon.Image is { } image ? Path.GetFileName(image.Value) : null,
 				icon.Url?.AbsoluteUri));
-		}).WithSummary("Get the main-menu icon.");
+		}).Returns<IconView>().WithSummary("Get the main-menu icon.")
+			.WithDescription("`image` and `url` are `null` when the icon has none.");
 		menu.MapPut("/icon", SetIconAsync).Admitted(WorkClass.Upload).DisableAntiforgery().RequireToken()
 			.WithSummary("Replace the main-menu icon.")
 			.WithDescription("""
@@ -72,7 +76,8 @@ internal static class MenuRoutes
 			                 """);
 		menu.MapDelete("/icon", async (HttpContext context, ISender sender) =>
 				(await sender.Send(new ClearMenuIcon(context.Session()), context.RequestAborted)).Answer())
-			.RequireToken().WithSummary("Delete the main-menu icon.");
+			.RequireToken().WithSummary("Delete the main-menu icon.")
+			.WithDescription("Needs the Owner privilege; the icon loses its picture and its link.");
 	}
 
 	private static async Task<IResult> GetFaqAsync(string entry, ISender sender, CancellationToken ct)
@@ -82,10 +87,16 @@ internal static class MenuRoutes
 			: Api.NotFound("No such entry.");
 	}
 
-	private static async Task<IResult> SaveFaqAsync(HttpContext context, string entry, FaqRequest request,
-		ISender sender)
+	private static async Task<IResult> SaveFaqAsync(HttpContext context, string entry, ISender sender)
 	{
-		if (request.Text is null) return Api.Invalid("text is required.");
+		if (await sender.Send(new MayChangeFaq(context.Session()), context.RequestAborted) is
+		    var may and not ServerActionResult.Ok)
+			return may.Refusal();
+
+		var (request, refused) = await context.ReadBodyAsync<FaqRequest>();
+		if (refused is not null) return refused;
+
+		if (request!.Text is null) return Api.Invalid("text is required.");
 		return (await sender.Send(new SaveFaq(context.Session(), entry, request.Text), context.RequestAborted))
 			.Answer();
 	}

@@ -27,7 +27,7 @@ internal static class SpectateRoutes
 			.WithDescription("""
 			                 The response is streamed using Server-Sent Events. Opening it spectates the player as an osu! client would: the player sees a spectator, and the spectating privilege, blocks and restrictions apply. The stream only watches; it joins no chat channel.
 
-			                 The first event is the snapshot with the player's profile and in-game status. After that a bundle arrives every second with the frames, score updates and status changes since the previous one.
+			                 The first event is the snapshot with the player's profile and in-game status. After that, up to once a second, a `replay` event carries the frames and score updates since the previous one and an `activity` event carries the changes of the player's in-game status.
 
 			                 A player who is not in game is answered with 409.
 			                 """);
@@ -54,9 +54,22 @@ internal static class SpectateRoutes
 				id = record.Id, name = record.Value.Name, country = record.Value.Country.ToAcronym().ToLowerInvariant()
 			},
 			status = StatusOf(host.Status)
-		}, null)), () => _ = sender.Send(new StopSpectating(connection, host)));
+		}, null)), () => _ = StopAsync(sender, connection, host,
+			context.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(SpectateRoutes))));
 		if (result is not SseResult) await sender.Send(new StopSpectating(connection, host));
 		return result;
+	}
+
+	private static async Task StopAsync(ISender sender, ApiSession connection, StableSession host, ILogger logger)
+	{
+		try
+		{
+			await sender.Send(new StopSpectating(connection, host));
+		}
+		catch (Exception exception)
+		{
+			logger.LogWarning(exception, "Spectating could not be stopped");
+		}
 	}
 
 	internal static object StatusOf(UserStatus status)
@@ -65,7 +78,7 @@ internal static class SpectateRoutes
 		{
 			activity = status.Activity, text = status.Detail?.BeatmapReference.FullName ?? string.Empty,
 			beatmapId = status.Detail?.BeatmapReference.Id,
-			mods = (status.Detail?.Mods ?? GameMods.NoMod).ToString(),
+			mods = status.Detail?.Mods ?? GameMods.NoMod,
 			mode = status.Detail?.Mode ?? GameMode.Standard
 		};
 	}
@@ -75,7 +88,7 @@ internal static class SpectateRoutes
 		// Compact on purpose: one array per frame instead of an object per frame.
 		return new
 		{
-			type = "frames", action = bundle.Action, sequence = bundle.Sequence,
+			action = bundle.Action, sequence = bundle.Sequence,
 			frames = bundle.ReplayFrames.Select(f => new object[]
 				{ (byte)f.Keys, (byte)f.Drum, f.Position.X, f.Position.Y, (int)f.Time.TotalMilliseconds }),
 			score = new
@@ -96,7 +109,8 @@ internal sealed class SpectateFramesFeed(SseHub hub) : INotificationHandler<Spec
 {
 	public ValueTask Handle(SpectatorFramesReceived notification, CancellationToken ct)
 	{
-		hub.Publish(SpectateRoutes.KeyOf(notification.Host.Record.Id), SpectateRoutes.BundleOf(notification.Bundle));
+		hub.Publish(SpectateRoutes.KeyOf(notification.Host.Record.Id), SpectateRoutes.BundleOf(notification.Bundle),
+			eventName: "replay");
 		return ValueTask.CompletedTask;
 	}
 }
@@ -106,7 +120,7 @@ internal sealed class SpectateStatusFeed(SseHub hub) : INotificationHandler<Sess
 	public ValueTask Handle(SessionStatusChanged notification, CancellationToken ct)
 	{
 		hub.Publish(SpectateRoutes.KeyOf(notification.Session.Record.Id),
-			new { type = "status", status = SpectateRoutes.StatusOf(notification.Status) });
+			SpectateRoutes.StatusOf(notification.Status), eventName: "activity");
 		return ValueTask.CompletedTask;
 	}
 }

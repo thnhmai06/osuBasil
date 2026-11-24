@@ -3,16 +3,20 @@ using Basil.Gateway.RateLimiting;
 
 namespace Basil.Gateway.Admission;
 
-public sealed class Admission(TimeProvider clock, Func<GatewayLimits> source, LoadSignal? load = null)
+/// <summary>Decides whether a request enters: the server's capacity for its kind of work, and, for a signed-in user, the user's allowance for that kind.</summary>
+public sealed class Admission(RateLimiter rate, Func<GatewayLimits> source, LoadSignal? load = null)
 {
 	private static readonly WorkClass[] MustServe = [WorkClass.Interactive, WorkClass.Upload, WorkClass.Live, WorkClass.Poll];
+	private static readonly TimeSpan UploadByteWindow = TimeSpan.FromHours(1);
+	private const int UploadByteUnit = 1024;
 	private readonly LoadSignal _load = load ?? new LoadSignal();
-	private readonly RateLimiter _rate = new(clock);
 	private readonly int[] _running = new int[Enum.GetValues<WorkClass>().Length];
+	private readonly HashSet<string> _uploaders = [];
+	private readonly Lock _uploadersLock = new();
 	private Func<GatewayLimits> _source = source;
 
-	public Admission(TimeProvider clock, GatewayLimits? limits = null, LoadSignal? load = null)
-		: this(clock, () => limits ?? new GatewayLimits(), load)
+	public Admission(RateLimiter rate, GatewayLimits? limits = null, LoadSignal? load = null)
+		: this(rate, () => limits ?? new GatewayLimits(), load)
 	{
 	}
 
@@ -23,7 +27,12 @@ public sealed class Admission(TimeProvider clock, Func<GatewayLimits> source, Lo
 		Volatile.Write(ref _source, () => limits);
 	}
 
-	public AdmissionDecision Admit(AdmissionSubject subject, WorkClass workClass = WorkClass.Interactive)
+	/// <summary>
+	/// Admits a request. A request without a user meets only the server's capacity; a user also meets the allowance for the
+	/// kind of work, and an upload is one at a time per user and counts its declared bytes against an hourly allowance.
+	/// </summary>
+	public AdmissionDecision Admit(AdmissionSubject? subject, WorkClass workClass = WorkClass.Interactive,
+		long uploadBytes = 0)
 	{
 		var current = Volatile.Read(ref _source)();
 		if (current.Sheds(workClass, MustServe.Contains(workClass) ? _load.Value : CurrentLoad(current)))
@@ -35,21 +44,44 @@ public sealed class Admission(TimeProvider clock, Func<GatewayLimits> source, Lo
 			return AdmissionDecision.Deny(AdmissionDenial.ClassSaturated, current.BusyRetryAfter);
 		}
 
-		var (key, allowance) = workClass switch
+		if (subject is not { } user) return AdmissionDecision.Allow;
+
+		if (!rate.TryAcquire($"{workClass}:{user.Key}", current.AllowanceOf(workClass, user.Tier), current.Window))
 		{
-			WorkClass.Asset => ($"asset:{subject.Key}", current.AssetRequests),
-			WorkClass.Poll => ($"poll:{subject.Key}", current.PollRequests),
-			_ => (subject.Key, current.AllowanceOf(subject.Tier))
-		};
-		if (_rate.TryAcquire(key, allowance, current.Window))
+			Release(workClass);
+			return AdmissionDecision.Deny(AdmissionDenial.RateExceeded, current.Window);
+		}
+
+		if (workClass != WorkClass.Upload) return AdmissionDecision.Allow;
+
+		var units = (int)Math.Min(int.MaxValue, (uploadBytes + UploadByteUnit - 1) / UploadByteUnit);
+		var allowed = (int)Math.Min(int.MaxValue, current.UploadBytesPerHour / UploadByteUnit);
+		lock (_uploadersLock)
+		{
+			if (!_uploaders.Add(user.Key))
+			{
+				Release(workClass);
+				return AdmissionDecision.Deny(AdmissionDenial.RateExceeded, current.BusyRetryAfter);
+			}
+		}
+
+		if (units == 0 || rate.TryAcquire($"upload-bytes:{user.Key}", allowed, UploadByteWindow, units))
 			return AdmissionDecision.Allow;
-		Release(workClass);
-		return AdmissionDecision.Deny(AdmissionDenial.RateExceeded, current.Window);
+
+		Release(workClass, user);
+		return AdmissionDecision.Deny(AdmissionDenial.RateExceeded, UploadByteWindow);
 	}
 
-	public void Release(WorkClass workClass)
+	/// <summary>Ends a request that <see cref="Admit"/> allowed; give the same subject.</summary>
+	public void Release(WorkClass workClass, AdmissionSubject? subject = null)
 	{
 		Interlocked.Decrement(ref _running[(int)workClass]);
+		if (workClass != WorkClass.Upload || subject is not { } user) return;
+
+		lock (_uploadersLock)
+		{
+			_uploaders.Remove(user.Key);
+		}
 	}
 
 	private double CurrentLoad(GatewayLimits limits)

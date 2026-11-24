@@ -17,13 +17,13 @@ internal static class ChannelRoutes
 	{
 		var channels = v1.MapGroup("/channels").WithTags("Channels").RequireToken();
 		channels.MapGet("/", List).Admitted(WorkClass.Listing)
-			.WithSummary("List general channels.")
+			.ReturnsList<ChannelView>().WithSummary("List general channels.")
 			.WithDescription(
 				"Channels the caller cannot read are not listed. Hidden channels are listed for those who manage channels.");
-		channels.MapPost("/", CreateAsync).WithSummary("Create a general channel.")
+		channels.MapPost("/", CreateAsync).Takes<CreateChannelRequest>().Returns<ChannelView>(201).WithSummary("Create a general channel.")
 			.WithDescription(
 				"For those who manage channels. A channel whose name is already in use is refused with 409.");
-		channels.MapPatch("/{name}", PatchAsync).WithSummary("Update a general channel.")
+		channels.MapPatch("/{name}", PatchAsync).Takes<PatchChannelRequest>().Returns<ChannelView>().WithSummary("Update a general channel.")
 			.WithDescription(
 				"A caller who may not manage channels is refused with 403 whether or not the channel exists; 404 means no channel has the name.");
 		channels.MapDelete("/{name}", DeleteAsync).WithSummary("Delete a general channel.")
@@ -37,12 +37,15 @@ internal static class ChannelRoutes
 			.Select(c => ChannelView.Of(c.Record)).ToList());
 	}
 
-	private static async Task<IResult> CreateAsync(HttpContext context, CreateChannelRequest request, ISender sender)
+	private static async Task<IResult> CreateAsync(HttpContext context, ISender sender)
 	{
-		if (string.IsNullOrWhiteSpace(request.Name)) return Api.Invalid("name is required.");
+		var (request, refused) = await context.ReadBodyAsync<CreateChannelRequest>();
+		if (refused is not null) return refused;
 
-		var read = (UserPrivileges)(request.ReadPrivileges ?? 0);
-		var write = (UserPrivileges)(request.WritePrivileges ?? 0);
+		if (string.IsNullOrWhiteSpace(request!.Name)) return Api.Invalid("name is required.");
+
+		var read = request.ReadPrivileges ?? 0;
+		var write = request.WritePrivileges ?? 0;
 
 		var record = new GeneralChannelRecord
 		{
@@ -61,11 +64,13 @@ internal static class ChannelRoutes
 		return result == ServerActionResult.Ok ? Api.Created(ChannelView.Of(record)) : result.Refusal();
 	}
 
-	private static async Task<IResult> PatchAsync(HttpContext context, string name, PatchChannelRequest request,
-		ISender sender)
+	private static async Task<IResult> PatchAsync(HttpContext context, string name, ISender sender)
 	{
-		var change = new GeneralChannelChange(request.Topic,
-			(UserPrivileges?)request.ReadPrivileges, (UserPrivileges?)request.WritePrivileges, request.AutoJoin,
+		var (request, refused) = await context.ReadBodyAsync<PatchChannelRequest>();
+		if (refused is not null) return refused;
+
+		var change = new GeneralChannelChange(request!.Topic,
+			request.ReadPrivileges, request.WritePrivileges, request.AutoJoin,
 			request.Visible);
 
 		var (result, channel) = await sender.Send(new ConfigureGeneralChannel(context.Session(), name, change),
@@ -85,15 +90,15 @@ internal static class ChannelRoutes
 	public sealed record CreateChannelRequest(
 		string? Name,
 		string? Topic,
-		byte? ReadPrivileges,
-		byte? WritePrivileges,
+		UserPrivileges? ReadPrivileges,
+		UserPrivileges? WritePrivileges,
 		bool? AutoJoin,
 		bool? Visible);
 
 	public sealed record PatchChannelRequest(
 		string? Topic,
-		byte? ReadPrivileges,
-		byte? WritePrivileges,
+		UserPrivileges? ReadPrivileges,
+		UserPrivileges? WritePrivileges,
 		bool? AutoJoin,
 		bool? Visible);
 }

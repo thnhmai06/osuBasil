@@ -58,7 +58,7 @@ public sealed class DashboardApp
 		_console = new ConsoleTab(model.Log, runner, suggestions, mode, _glyphs, new Palette(mode.NoColor), _dialogs,
 			clock,
 			logger);
-		var actions = new CommandActions(services, _console, _toasts, kit.Changes, Post);
+		var actions = new CommandActions(services, _console, _toasts, kit.Changes, Post, logger);
 		var beatmaps = new BeatmapDetails(services, actions, _dialogs);
 		var users = new UserDetails(services, actions, beatmaps, mode, _dialogs, _glyphs, clock,
 			name => OpenIn(DashboardTab.Chat, name));

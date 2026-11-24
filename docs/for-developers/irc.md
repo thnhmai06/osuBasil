@@ -65,9 +65,8 @@ Registration completes when `NICK`, `USER`, a credential and the end of capabili
 | `PASS <password>` | `NICK` names the account (case-insensitive) and the password must be its password, else `464`. |
 | SASL `PLAIN` | `authcid` is the username and the password is the account password. A wrong pair is `904`. If `NICK` differs from the account's nickname the server renames the client with a `NICK` message before the welcome. |
 
-A failed registration is answered with `464` and the connection is closed with `ERROR`. Repeated failures from one
-address, or for one account from one address, are limited by the server's login-failure settings, and the number of
-simultaneous connections from one address by its connection limit; both are refused with `ERROR :Closing Link:`.
+A failed registration is answered with `464` and the connection is closed with `ERROR`. Repeated failures for one account are limited by the server's login-failure settings; the number of connections from one
+address is limited by the reverse proxy.
 
 An account holds one IRC session at a time. While its IRC session is in use, a second sign-in is refused with `464`
 and `ERROR`; once that session has been silent for 30 seconds, the new sign-in ends it (`Replaced`) and takes its

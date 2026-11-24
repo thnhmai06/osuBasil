@@ -21,7 +21,7 @@ public static class OutcomeResults
 		public IResult Refusal()
 		{
 			var info = OutcomeErrors.Describe(result);
-			return Api.Error(StatusOf(info.Kind), info.Code, info.Code);
+			return Api.Error(StatusOf(info.Kind), info.Code, OutcomeTexts.Of(result, info));
 		}
 
 		public IResult Answer()

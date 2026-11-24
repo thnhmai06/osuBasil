@@ -28,8 +28,8 @@ public static class SettingsDescriptions
 			"How many accounts may be registered on the whole server within the window. Whole number, at least 1. Default: 100.",
 		["rateLimits.registration.perServer.window"] =
 			"The window of the server-wide registration limit. Duration as [d.]hh:mm:ss. Default: 01:00:00 (1 hour).",
-		["rateLimits.connections.perIp"] =
-			"How many connections one IP address may hold open at once. Whole number, at least 1. Default: 20.",
+		["rateLimits.connections.streamsPerUser"] =
+			"How many live streams one user may hold open at once. Whole number, at least 1. Default: 20.",
 		["rateLimits.rest.mutations.count"] =
 			"How many changes one user may make through the HTTP API within the window. Whole number, at least 1. Default: 60.",
 		["rateLimits.rest.mutations.window"] =
@@ -62,8 +62,16 @@ public static class SettingsDescriptions
 			"How long a caller refused for load or a full work class is told to wait. Duration as [d.]hh:mm:ss. Default: 00:00:05 (5 seconds).",
 		["rateLimits.admission.assetConcurrency"] =
 			"How many picture requests may run at once. Whole number, at least 1. Default: 64.",
-		["rateLimits.admission.assetRequests"] =
-			"How many picture requests one address may make within the window. Whole number, at least 1. Default: 1200.",
+		["rateLimits.admission.listingRequests"] =
+			"How many listing and search requests one user may make within the window. Whole number, at least 1. Default: 60.",
+		["rateLimits.admission.uploadRequests"] =
+			"How many uploads one user may start within the window; only one runs at a time. Whole number, at least 1. Default: 30.",
+		["rateLimits.admission.liveRequests"] =
+			"How many live streams one user may open within the window. Whole number, at least 1. Default: 30.",
+		["rateLimits.admission.pollRequests"] =
+			"How many polls of an open osu! client one user may make within the window. Whole number, at least 1. Default: 1200.",
+		["rateLimits.admission.uploadBytesPerHour"] =
+			"How many bytes one user may upload in an hour, counted from the declared size of each upload. Bytes, at least 1. Default: 1073741824 (1 GiB).",
 		["uploads.oszMaxSize"] =
 			"The largest beatmapset archive accepted. Bytes, at least 1. Default: 104857600 (100 MiB).",
 		["uploads.screenshotMaxSize"] =

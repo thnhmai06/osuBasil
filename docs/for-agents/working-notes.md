@@ -98,8 +98,8 @@ Proposals from the modular-monolith redesign, for the owner to merge into the sk
 * **A translation layer is a language, not a service.** Protocol is the vocabulary of a wire; the host translates and
   dispatches, and the message type (not the host) chooses the handler. The actor travels in the message as an
   unforgeable object created by one module only.
-* **Admission control is a leaf and knows no business.** Allow/Deny from size, rate, concurrency and load, in two tiers,
-  with an opaque subject for the second; every entry point must declare a policy and a test fails when one does not.
+* **Admission control is a leaf and knows no business.** Allow/Deny from size, rate, concurrency and load,
+  with an opaque user subject for the allowance; every entry point must declare a policy and a test fails when one does not.
 * **Persistence is awaited.** Prefer cache-aside over write-behind; reads are bounded, a listing never instantiates live
   objects, and a large payload never passes through a cache.
 * **Streaming is a rule, not an optimization.** Write uploads into the storage's temporary file, validate, move atomically; no

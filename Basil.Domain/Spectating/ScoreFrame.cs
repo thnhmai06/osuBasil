@@ -14,7 +14,7 @@ public readonly record struct ScoreFrame(
 	int Id,
 	ScoreState State,
 	int Health,
-	int TagByte, //TODO: Can someone reverse-engineer the osu! stable spectating protocol and decode the TagByte bitmask in SPECTATE_FRAMES?
+	int TagByte,
 	ScoreV2Portion? Sv2Portion);
 
 /// <summary>The parts of a ScoreV2 score.</summary>

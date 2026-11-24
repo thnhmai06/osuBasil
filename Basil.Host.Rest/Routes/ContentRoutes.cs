@@ -17,22 +17,26 @@ internal static class ContentRoutes
 	public static void MapContent(this RouteGroupBuilder v1)
 	{
 		var settings = v1.MapGroup("/settings").WithTags("Settings").RequireToken();
-		settings.MapGet("/", GetAllAsync).WithSummary("Get the server settings.");
-		settings.MapGet("/{category}", GetCategoryAsync).WithSummary("Get a settings category.");
+		settings.MapGet("/", GetAllAsync).Returns<object>().WithSummary("Get the server settings.")
+			.WithDescription("Needs the Developer privilege. Groups every setting by category; the same groups are available one at a time through `GET /v1/settings/{category}`.");
+		settings.MapGet("/{category}", GetCategoryAsync).Returns<object>().WithSummary("Get a settings category.")
+			.WithDescription("Needs the Developer privilege. A category that does not exist is answered with 404.");
 		settings.MapPatch("/{category}", PatchCategoryAsync)
-			.WithSummary("Update a settings category.")
+			.Takes<object>().Returns<object>().WithSummary("Update a settings category.")
 			.WithDescription(
 				"The body holds only the fields to change; nested objects are merged. The change applies at once, except that rate limits already counting a caller keep their old limit until they expire.");
 
 		v1.MapPost("/announce", AnnounceAsync).RequireToken().WithTags("Announcements")
-			.WithSummary("Create an announcement.")
+			.Takes<AnnounceRequest>().Returns<AnnounceResponse>().WithSummary("Create an announcement.")
 			.WithDescription(
 				"The text in `text` goes to the users listed in `to`, or to everyone online when `to` is empty or absent. The answer counts the users it reached. A user in `to` that does not exist is answered with 404.");
 
 		var screenshots = v1.MapGroup("/screenshots").WithTags("Screenshots").RequireToken();
 		screenshots.MapGet("/", ListScreenshotsAsync).Admitted(WorkClass.Listing)
-			.WithSummary("List screenshots.");
-		screenshots.MapDelete("/{id}", DeleteScreenshotAsync).WithSummary("Delete a screenshot.");
+			.ReturnsList<ScreenshotView>().WithSummary("List screenshots.")
+			.WithDescription("Needs the Moderator privilege. Each item names a screenshot, which `DELETE /v1/screenshots/{id}` removes.");
+		screenshots.MapDelete("/{id}", DeleteScreenshotAsync).WithSummary("Delete a screenshot.")
+			.WithDescription("Needs the Moderator privilege. A screenshot that does not exist is answered with 404.");
 	}
 
 	private static async Task<IResult> GetAllAsync(HttpContext context, ISender sender)
@@ -53,17 +57,19 @@ internal static class ContentRoutes
 			: Api.NotFound("No such settings category.");
 	}
 
-	private static async Task<IResult> PatchCategoryAsync(HttpContext context, string category, JsonObject patch,
-		ISender sender)
+	private static async Task<IResult> PatchCategoryAsync(HttpContext context, string category, ISender sender)
 	{
 		var actor = context.Session();
 		var (read, current) = await sender.Send(new GetSettings(actor), context.RequestAborted);
 		if (read != ServerActionResult.Ok) return read.Refusal();
 		if (!SettingsCategories.Exists(category)) return Api.NotFound("No such settings category.");
 
+		var (patch, refused) = await context.ReadBodyAsync<JsonObject>();
+		if (refused is not null) return refused;
+
 		try
 		{
-			var changed = SettingsCategories.Patch(category, current!, patch);
+			var changed = SettingsCategories.Patch(category, current!, patch!);
 			var stored = await sender.Send(new UpdateSettings(actor, changed), context.RequestAborted);
 			return stored == ServerActionResult.Ok
 				? Api.Ok(SettingsCategories.Get(category, changed), "Updated successfully")
@@ -76,11 +82,18 @@ internal static class ContentRoutes
 		}
 	}
 
-	private static async Task<IResult> AnnounceAsync(HttpContext context, AnnounceRequest request, ISender sender)
+	private static async Task<IResult> AnnounceAsync(HttpContext context, ISender sender)
 	{
-		if (string.IsNullOrWhiteSpace(request.Text)) return Api.Invalid("text is required.");
-
 		var actor = context.Session();
+		if (await sender.Send(new MayAnnounce(actor), context.RequestAborted) is
+		    var may and not ServerActionResult.Ok)
+			return may.Refusal();
+
+		var (request, refused) = await context.ReadBodyAsync<AnnounceRequest>();
+		if (refused is not null) return refused;
+
+		if (string.IsNullOrWhiteSpace(request!.Text)) return Api.Invalid("text is required.");
+
 		if (request.To is not { Length: > 0 } ids)
 		{
 			var (all, sent) = await sender.Send(new NotifyEveryone(actor, request.Text), context.RequestAborted);

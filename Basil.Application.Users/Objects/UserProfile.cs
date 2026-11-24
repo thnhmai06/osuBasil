@@ -1,3 +1,4 @@
+using Basil.Application.Shared.Diagnostics;
 using Basil.Domain.Content;
 using Basil.Domain.Users;
 
@@ -55,12 +56,12 @@ public sealed class UserProfile
 
 		await context.Avatars.SaveAsync(_user.Record, image, async (stored, token) =>
 		{
-			if (stored.Length > limits.AvatarMaxSize) throw new UploadTooLargeException(limits.AvatarMaxSize);
+			if (stored.Length > limits.AvatarMaxSize) throw UploadMetrics.Refuse(new UploadTooLargeException(limits.AvatarMaxSize));
 
 			var info = await context.Inspector.InspectAsync(stored, token);
-			if (info is null || info.Width < 1 || info.Height < 1) throw new InvalidImageException();
+			if (info is null || info.Width < 1 || info.Height < 1) throw UploadMetrics.Refuse(new InvalidImageException());
 			if (info.Width > limits.AvatarMaxSide || info.Height > limits.AvatarMaxSide)
-				throw new ImageDimensionsTooLargeException(limits.AvatarMaxSide);
+				throw UploadMetrics.Refuse(new ImageDimensionsTooLargeException(limits.AvatarMaxSide));
 		}, ct);
 		return UserActionResult.Ok;
 	}

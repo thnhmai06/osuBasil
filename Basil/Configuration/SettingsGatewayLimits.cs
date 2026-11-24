@@ -25,7 +25,11 @@ public sealed class SettingsGatewayLimits(ISettingsRepository settings)
 			HardShedAbove = source.HardShedAbove,
 			BusyRetryAfter = source.BusyRetryAfter,
 			AssetConcurrency = source.AssetConcurrency,
-			AssetRequests = source.AssetRequests
+			ListingRequests = source.ListingRequests,
+			UploadRequests = source.UploadRequests,
+			LiveRequests = source.LiveRequests,
+			PollRequests = source.PollRequests,
+			UploadBytesPerHour = source.UploadBytesPerHour
 		};
 		_cached = (source, limits);
 		return limits;

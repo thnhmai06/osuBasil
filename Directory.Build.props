@@ -9,35 +9,31 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<!--
-   			AutoMapper 13.0.1 is brought in transitively by ppy.osu.Rulesets, which Basil compiles against but does not ship
-   			(it runs from Data/Rulesets, which holds only hash-checked files). GHSA-rvv3-g6hj-g44x requires untrusted
-   			mapping configuration, which Basil does not expose. Remove this suppression once upstream updates AutoMapper.
- 		-->
+		<!-- AutoMapper 13.0.1 comes with the ppy rulesets that run from Data/Rulesets; Basil maps no client data with it, so a deeply nested object cannot reach it; drop when ppy updates it. -->
 		<NuGetAuditSuppress Include="https://github.com/advisories/GHSA-rvv3-g6hj-g44x"/>
+		<!-- AutoMapper 13.0.1 comes with the ppy rulesets that run from Data/Rulesets; Basil maps no client data with it, so a deeply nested object cannot reach it; drop when ppy updates it. -->
+		<NuGetAuditSuppress Include="https://github.com/advisories/GHSA-6vhm-j9h7-f9gh"/>
+		<!-- AutoMapper 13.0.1 comes with the ppy rulesets that run from Data/Rulesets; Basil maps no client data with it, so a deeply nested object cannot reach it; drop when ppy updates it. -->
+		<NuGetAuditSuppress Include="https://github.com/advisories/GHSA-gpwp-5797-mjff"/>
 
-		<!--
-			SixLabors.ImageSharp 3.1.12 is the last release under the Apache licence; the 3.2 line that fixes these
-			advisories needs a commercial licence key, which is the owner's decision (kept on 3.1.x). Mitigation:
-			uploaded pictures are probed by header first, only PNG and JPEG are decoded (the parsers of the other
-			formats never see uploaded bytes), and the byte size and the pixels per side are capped by
-			Uploads.ScreenshotMaxSize/ScreenshotMaxSide and Uploads.AvatarMaxSize/AvatarMaxSide before decoding.
-			Re-evaluate on every ImageSharp release.
-		-->
+		<!-- ImageSharp stays on 3.1.12 (3.2 needs a commercial licence); uploads are probed by header, only PNG and JPEG are decoded and size and pixels are capped first; recheck on each release. -->
 		<NuGetAuditSuppress Include="https://github.com/advisories/GHSA-j3p4-wp97-rph4"/>
+		<!-- ImageSharp stays on 3.1.12 (3.2 needs a commercial licence); uploads are probed by header, only PNG and JPEG are decoded and size and pixels are capped first; recheck on each release. -->
 		<NuGetAuditSuppress Include="https://github.com/advisories/GHSA-j9gm-c75j-xc9q"/>
+		<!-- ImageSharp stays on 3.1.12 (3.2 needs a commercial licence); uploads are probed by header, only PNG and JPEG are decoded and size and pixels are capped first; recheck on each release. -->
 		<NuGetAuditSuppress Include="https://github.com/advisories/GHSA-jjfr-hcj7-qf5w"/>
+		<!-- ImageSharp stays on 3.1.12 (3.2 needs a commercial licence); uploads are probed by header, only PNG and JPEG are decoded and size and pixels are capped first; recheck on each release. -->
 		<NuGetAuditSuppress Include="https://github.com/advisories/GHSA-v76p-62qx-wwq2"/>
+		<!-- ImageSharp stays on 3.1.12 (3.2 needs a commercial licence); uploads are probed by header, only PNG and JPEG are decoded and size and pixels are capped first; recheck on each release. -->
 		<NuGetAuditSuppress Include="https://github.com/advisories/GHSA-gwg2-r3hj-4w44"/>
+		<!-- ImageSharp stays on 3.1.12 (3.2 needs a commercial licence); uploads are probed by header, only PNG and JPEG are decoded and size and pixels are capped first; recheck on each release. -->
 		<NuGetAuditSuppress Include="https://github.com/advisories/GHSA-wmxv-xphr-5c9g"/>
 
-		<!--
-			MessagePack and the SignalR packages are brought in transitively by ppy.osu.Game (through the rulesets), which
-			Basil compiles against but does not ship. Basil hosts no SignalR hub and never deserializes MessagePack from a client, so the vulnerable code
-			paths are not reachable. Remove these suppressions once upstream updates them.
-		-->
+		<!-- Reached only through ppy.osu.Game, which Basil compiles against; it hosts no SignalR hub and reads no MessagePack from a client; drop when ppy updates it. -->
 		<NuGetAuditSuppress Include="https://github.com/advisories/GHSA-qhrr-8q5h-9q3h"/>
+		<!-- Reached only through ppy.osu.Game, which Basil compiles against; it hosts no SignalR hub and reads no MessagePack from a client; drop when ppy updates it. -->
 		<NuGetAuditSuppress Include="https://github.com/advisories/GHSA-334f-vvp4-7g6p"/>
+		<!-- Reached only through ppy.osu.Game, which Basil compiles against; it hosts no SignalR hub and reads no MessagePack from a client; drop when ppy updates it. -->
 		<NuGetAuditSuppress Include="https://github.com/advisories/GHSA-86xp-94pg-8r6r"/>
 	</ItemGroup>
 

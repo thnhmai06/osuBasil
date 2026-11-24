@@ -27,19 +27,19 @@ internal static class UserRoutes
 		var users = v1.MapGroup("/users").WithTags("Users");
 		var token = users.MapGroup("").RequireToken();
 
-		users.MapGet("/{id:int}", GetAsync).WithSummary("Get an account.")
+		users.MapGet("/{id:int}", GetAsync).Returns<UserView>().WithSummary("Get an account.")
 			.WithDescription(
 				"Includes the granted and the effective privileges and the end of the silence in force. The profile and privileges of an account are public.");
 
 		token.MapSpectate();
-		token.MapGet("/", SearchAsync).Admitted(WorkClass.Listing).WithSummary("Search accounts.")
+		token.MapGet("/", SearchAsync).Admitted(WorkClass.Listing).ReturnsList<UserView>().WithSummary("Search accounts.")
 			.WithDescription("`query` uses the user search syntax.");
-		token.MapPost("/", CreateAsync).WithSummary("Create an account.")
+		token.MapPost("/", CreateAsync).Takes<CreateUserRequest>().Returns<UserView>(201).WithSummary("Create an account.")
 			.WithDescription("Needs the Owner privilege, and the new account can only be given privileges the caller holds. Accounts do not sign themselves up through this API.");
-		token.MapPatch("/{id:int}", PatchAsync).WithSummary("Update an account.")
+		token.MapPatch("/{id:int}", PatchAsync).Takes<PatchUserRequest>().Returns<UserView>().WithSummary("Update an account.")
 			.WithDescription(
 				"Only the fields sent change. `away` and `pmPrivate` can be changed by the account itself only, and an empty `away` clears the away message.");
-		token.MapPut("/{id:int}/password", PasswordAsync).WithSummary("Update the password of an account.")
+		token.MapPut("/{id:int}/password", PasswordAsync).Takes<PasswordRequest>().WithSummary("Update the password of an account.")
 			.WithDescription("""
 			                 For one's own account the current password is required and every other session is closed; with `includeCurrent` the calling session is closed too. Staff change another account's password without the current one, and every session of that account is closed.
 
@@ -55,23 +55,26 @@ internal static class UserRoutes
 
 			                 While the profiles area is locked only staff can change an avatar.
 			                 """);
-		token.MapDelete("/{id:int}/avatar", DeleteAvatarAsync).WithSummary("Delete the avatar of an account.");
+		token.MapDelete("/{id:int}/avatar", DeleteAvatarAsync).WithSummary("Delete the avatar of an account.")
+			.WithDescription("The account falls back to the default picture. Only the account itself, or the Owner privilege for an account of lower rank, can do this; while the profiles area is locked only the Owner can.");
 
 		token.MapGet("/{id:int}/sessions", ListSessionsAsync).Admitted(WorkClass.Listing)
-			.WithSummary("List sessions of an account.")
+			.ReturnsList<SessionView>().WithSummary("List sessions of an account.")
 			.WithDescription(
 				"Filter by `state` (`all`, `online` or `offline`) and by `types`, a bitmask of the session types.");
 		token.MapGet("/{id:int}/sessions/{sid:long}", GetSessionAsync)
-			.WithSummary("Get a session of an account.");
+			.Returns<SessionView>().WithSummary("Get a session of an account.")
+			.WithDescription("Only the account itself, or a caller with the Moderator or Owner privilege, can read it. A session that does not exist for the account is answered with 404.");
 		token.MapDelete("/{id:int}/sessions/{sid:long}", CloseSessionAsync)
 			.WithSummary("Delete a session of an account.")
 			.WithDescription(
 				"Closing an osu! session only disconnects the client, which can sign in again with its password; change the password to keep the client out.");
-		token.MapDelete("/{id:int}/sessions", CloseSessionsAsync).WithSummary("Delete every session of an account.")
+		token.MapDelete("/{id:int}/sessions", CloseSessionsAsync).Takes<CloseSessionsRequest>().WithSummary("Delete every session of an account.")
 			.WithDescription("The optional body `keepCurrent` (default `true`) keeps the calling session.");
 
 		token.MapGet("/{id:int}/friends", FriendsAsync).Admitted(WorkClass.Listing)
-			.WithSummary("List friends of an account.");
+			.ReturnsList<UserRef>().WithSummary("List friends of an account.")
+			.WithDescription("Only the account itself can read the list; any other caller is answered with 403.");
 		token.MapPut("/{id:int}/friends/{otherId:int}", (HttpContext c, int id, int otherId) =>
 				RelationAsync(c, id, otherId, (me, other) => new AddFriend(me, other)))
 			.WithSummary("Create a friend.")
@@ -81,7 +84,8 @@ internal static class UserRoutes
 			.WithSummary("Delete a friend.")
 			.WithDescription("Only the account itself can do this; any other caller is answered with 403.");
 		token.MapGet("/{id:int}/blocks", BlocksAsync).Admitted(WorkClass.Listing)
-			.WithSummary("List blocks of an account.");
+			.ReturnsList<UserRef>().WithSummary("List blocks of an account.")
+			.WithDescription("Only the account itself can read the list; any other caller is answered with 403.");
 		token.MapPut("/{id:int}/blocks/{otherId:int}", (HttpContext c, int id, int otherId) =>
 				RelationAsync(c, id, otherId, (me, other) => new BlockUser(me, other)))
 			.WithSummary("Create a block.")
@@ -92,7 +96,7 @@ internal static class UserRoutes
 			.WithDescription("Only the account itself can do this; any other caller is answered with 403.");
 
 		token.MapPut("/{id:int}/silence", SilenceAsync)
-			.WithSummary("Create a silence on an account.")
+			.Takes<SilenceRequest>().WithSummary("Create a silence on an account.")
 			.WithDescription(
 				"The silence lasts until `endsAt`, which must be in the future. A silenced account cannot post chat messages and receives no private messages.");
 		token.MapDelete("/{id:int}/silence", UnsilenceAsync).WithSummary("Delete the silence of an account.")
@@ -121,11 +125,16 @@ internal static class UserRoutes
 			page!);
 	}
 
-	private static async Task<IResult> CreateAsync(HttpContext context, CreateUserRequest request,
-		UserRegistry registry,
-		TimeProvider clock)
+	private static async Task<IResult> CreateAsync(HttpContext context, UserRegistry registry, TimeProvider clock)
 	{
-		if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrEmpty(request.Password))
+		if (await context.Sender().Send(new MayCreateAccount(context.Session()), context.RequestAborted) is
+		    var may and not UserActionResult.Ok)
+			return may.Refusal();
+
+		var (request, refused) = await context.ReadBodyAsync<CreateUserRequest>();
+		if (refused is not null) return refused;
+
+		if (string.IsNullOrWhiteSpace(request!.Username) || string.IsNullOrEmpty(request.Password))
 			return Api.Invalid("username and password are required.");
 
 		var data = new UserData { Name = request.Username };
@@ -136,17 +145,19 @@ internal static class UserRoutes
 		return result == UserActionResult.Ok ? Api.Created(UserView.Of(registry, record!, clock)) : result.Refusal();
 	}
 
-	private static async Task<IResult> PatchAsync(HttpContext context, int id, PatchUserRequest request,
-		ISender sender, UserRegistry registry, TimeProvider clock)
+	private static async Task<IResult> PatchAsync(HttpContext context, int id, ISender sender, UserRegistry registry,
+		TimeProvider clock)
 	{
 		var target = id;
+		var (request, refused) = await context.ReadBodyAsync<PatchUserRequest>();
+		if (refused is not null) return refused;
 
 		if (request is { Name: null, Country: null, Away: null, PmPrivate: null, Privileges: null })
 			return Api.Invalid("Send at least one field to change.");
 
 		var ct = context.RequestAborted;
-		if (await PatchNameAndCountryAsync(context, target, request, ct) is { } refusal) return refusal;
-		if (await PatchSelfAndPrivilegesAsync(context, target, request, ct) is { } denied) return denied;
+		if (await PatchNameAndCountryAsync(context, target, request!, ct) is { } refusal) return refusal;
+		if (await PatchSelfAndPrivilegesAsync(context, target, request!, ct) is { } denied) return denied;
 
 		var record = await sender.Send(new GetUser(target), ct);
 		return record is null
@@ -198,9 +209,16 @@ internal static class UserRoutes
 			: refused.Refusal();
 	}
 
-	private static async Task<IResult> PasswordAsync(HttpContext context, int id, PasswordRequest request)
+	private static async Task<IResult> PasswordAsync(HttpContext context, int id)
 	{
-		if (string.IsNullOrEmpty(request.New)) return Api.Invalid("new is required.");
+		if (await context.Sender().Send(new MayChangeUserPassword(context.Session(), id), context.RequestAborted) is
+		    var may and not UserActionResult.Ok)
+			return may.Refusal();
+
+		var (request, refused) = await context.ReadBodyAsync<PasswordRequest>();
+		if (refused is not null) return refused;
+
+		if (string.IsNullOrEmpty(request!.New)) return Api.Invalid("new is required.");
 		var target = id;
 
 		var current = request.Current is null ? (Md5Hash?)null : new Md5Hash(Encoding.UTF8.GetBytes(request.Current));
@@ -327,11 +345,17 @@ internal static class UserRoutes
 			context.RequestAborted)).Answer();
 	}
 
-	private static async Task<IResult> SilenceAsync(HttpContext context, int id, SilenceRequest request)
+	private static async Task<IResult> SilenceAsync(HttpContext context, int id)
 	{
 		var target = id;
+		if (await context.Sender().Send(new MaySilenceUser(context.Session(), target), context.RequestAborted) is
+		    var may and not UserActionResult.Ok)
+			return may.Refusal();
 
-		return (await context.Sender().Send(new SilenceUser(context.Session(), target, request.EndsAt,
+		var (request, refused) = await context.ReadBodyAsync<SilenceRequest>();
+		if (refused is not null) return refused;
+
+		return (await context.Sender().Send(new SilenceUser(context.Session(), target, request!.EndsAt,
 			request.Reason), context.RequestAborted)).Answer();
 	}
 

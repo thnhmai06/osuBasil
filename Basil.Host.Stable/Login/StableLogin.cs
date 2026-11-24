@@ -46,14 +46,9 @@ internal sealed class StableLogin(
 		if (!TryParse(body, out var request, out var client))
 			return Fail(LoginFailureReason.ErrorOccurred);
 
-		var ipKey = $"login-fail:{ip}";
-		var pairKey = $"{ipKey}:{request.Username.ToLowerInvariant()}";
 		// The attempt is reserved before the check and stays counted only for wrong credentials.
-		using var attempt = attempts.TryReserve(ipKey, pairKey, rules.Login.MaxAttempts, rules.Login.Window);
+		using var attempt = attempts.TryReserve(request.Username.ToLowerInvariant(), rules.Login.MaxAttempts, rules.Login.Window);
 		if (attempt is null) return Fail(LoginFailureReason.AuthenticationFailed, StableReplies.TooManyAttempts);
-
-		if (CountOpenConnections(ip) >= rules.Connections.PerIp)
-			return Fail(LoginFailureReason.ErrorOccurred, StableReplies.TooManyConnections);
 
 		var type = client.Version.Stream == OsuVersionStream.Tourney ? SessionType.StableTourney : SessionType.Stable;
 		LoginResult result;
@@ -93,13 +88,6 @@ internal sealed class StableLogin(
 			client = null!;
 			return false;
 		}
-	}
-
-	private int CountOpenConnections(IPAddress? ip)
-	{
-		return registry.Online.Values.SelectMany(user => user.Connections)
-			.Count(connection => connection is { IsOpen: true, IsServerOwned: false } &&
-			                     Equals(connection.State.Record.Value.Fingerprint.Ip, ip));
 	}
 
 	private static (string Token, byte[] Reply) FailureReply(LoginFailure? failure)

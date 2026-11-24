@@ -1,3 +1,4 @@
+using Basil.Gateway.RateLimiting;
 using Basil.Protocol.Game.Stable.Wire.Chat;
 using Basil.Application.Chat.Messages;
 using Basil.Application.Shared.Settings;
@@ -30,7 +31,7 @@ internal sealed partial class PacketHandlers
 	private async Task<bool> MayChatAsync(StableSession osu, CancellationToken ct)
 	{
 		var limit = (await sender.Send(new ReadSettings(), ct)).RateLimits.Chat;
-		if (limiter.TryAcquire($"chat:{osu.Record.Id}", limit.Count, limit.Window)) return true;
+		if (limiter.TryAcquire(RateRule.Chat, osu.Record.Id.ToString(System.Globalization.CultureInfo.InvariantCulture), limit.Count, limit.Window)) return true;
 		outbox.Send(osu, writer => writer.Notification(StableReplies.ChatTooFast));
 		return false;
 	}

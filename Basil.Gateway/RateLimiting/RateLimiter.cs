@@ -1,120 +1,61 @@
-using System.Collections.Concurrent;
+using System.Globalization;
+using System.Threading.RateLimiting;
 
 namespace Basil.Gateway.RateLimiting;
 
-public sealed class RateLimiter(TimeProvider clock)
+/// <summary>The rate rules that hosts apply by name; the gateway owns how each one is keyed.</summary>
+public enum RateRule : byte
 {
-	public const int MaxKeys = 100_000;
+	/// <summary>Chat messages a user sends.</summary>
+	Chat,
 
-	private static readonly TimeSpan PurgeEvery = TimeSpan.FromMinutes(1);
-	private static readonly TimeSpan DefaultWindow = TimeSpan.FromHours(1);
+	/// <summary>Changes a user makes through the HTTP API.</summary>
+	RestMutation,
 
-	private readonly ConcurrentDictionary<string, Entry> _events = new();
-	private long _nextPurge;
+	/// <summary>Accounts registered through the game client, for the whole server.</summary>
+	Registration,
 
-	public int KeyCount => _events.Count;
+	/// <summary>Forced garbage collections the diagnostics API starts, for the whole server.</summary>
+	GcCollect
+}
 
-	public bool TryAcquire(string key, int count, TimeSpan window)
-	{
-		var entry = Get(key);
-		var queue = entry.Events;
-		lock (entry)
-		{
-			entry.Window = window > entry.Window ? window : entry.Window;
-			Trim(queue, window);
-			if (queue.Count >= count) return false;
-			queue.Enqueue(clock.GetUtcNow());
-			return true;
-		}
-	}
+/// <summary>Counts events per key in a sliding window; a key costs the same however many events it saw.</summary>
+public sealed class RateLimiter : IDisposable
+{
+	private const int Segments = 6;
 
-	public void Record(string key)
-	{
-		var entry = Get(key);
-		lock (entry)
-		{
-			entry.Events.Enqueue(clock.GetUtcNow());
-		}
-	}
-
-	public void Refund(string key)
-	{
-		if (!_events.TryGetValue(key, out var entry)) return;
-		var queue = entry.Events;
-		lock (entry)
-		{
-			var kept = queue.Take(Math.Max(queue.Count - 1, 0)).ToArray();
-			queue.Clear();
-			foreach (var moment in kept) queue.Enqueue(moment);
-		}
-	}
-
-	public int Count(string key, TimeSpan window)
-	{
-		if (!_events.TryGetValue(key, out var entry)) return 0;
-		var queue = entry.Events;
-		lock (entry)
-		{
-			entry.Window = window > entry.Window ? window : entry.Window;
-			Trim(queue, window);
-			return queue.Count;
-		}
-	}
-
-	private void Trim(Queue<DateTimeOffset> queue, TimeSpan window)
-	{
-		var oldest = clock.GetUtcNow() - window;
-		while (queue.Count > 0 && queue.Peek() <= oldest) queue.Dequeue();
-	}
-
-	private Entry Get(string key)
-	{
-		Purge();
-		return _events.GetOrAdd(key, _ => new Entry());
-	}
-
-	// Runs at most once a minute, or at once when the table is over its cap.
-	private void Purge()
-	{
-		var now = clock.GetTimestamp();
-		var due = Interlocked.Read(ref _nextPurge);
-		if (_events.Count <= MaxKeys && now < due) return;
-		if (Interlocked.CompareExchange(ref _nextPurge,
-			    now + (long)(PurgeEvery.TotalSeconds * clock.TimestampFrequency),
-			    due) != due) return;
-
-		foreach (var (key, entry) in _events)
-		{
-			lock (entry)
+	private readonly PartitionedRateLimiter<Request> _limiter = PartitionedRateLimiter.Create<Request, string>(
+		request => RateLimitPartition.GetSlidingWindowLimiter(request.PartitionKey,
+			_ => new SlidingWindowRateLimiterOptions
 			{
-				Trim(entry.Events, entry.Window == TimeSpan.Zero ? DefaultWindow : entry.Window);
-				if (entry.Events.Count > 0) continue;
-			}
+				PermitLimit = request.Limit,
+				Window = request.Window,
+				SegmentsPerWindow = Segments,
+				QueueLimit = 0,
+				AutoReplenishment = true
+			}), StringComparer.Ordinal);
 
-			_events.TryRemove(key, out _);
-		}
-
-		// Beyond the cap the keys with the fewest recent events go first (down to 90% of the cap, so the next flood
-		// request does not purge again): a key that holds a lockout has the most events and is the last to be forgotten.
-		if (_events.Count <= MaxKeys) return;
-		var weakest = _events
-			.Select(pair =>
-			{
-				lock (pair.Value)
-				{
-					return (pair.Key, Weight: pair.Value.Events.Count);
-				}
-			})
-			.OrderBy(item => item.Weight)
-			.Take(_events.Count - MaxKeys / 10 * 9)
-			.ToList();
-		foreach (var (key, _) in weakest) _events.TryRemove(key, out _);
-	}
-
-	private sealed class Entry
+	public void Dispose()
 	{
-		public readonly Queue<DateTimeOffset> Events = new();
-
-		public TimeSpan Window;
+		_limiter.Dispose();
 	}
+
+	/// <summary>Takes one event for a rule and subject; false when the subject is over the count for the window.</summary>
+	public bool TryAcquire(RateRule rule, string subject, int count, TimeSpan window)
+	{
+		return TryAcquire($"{rule}:{subject}", count, window);
+	}
+
+	/// <summary>Takes <paramref name="permits"/> events for a key; false when that would pass the count for the window.</summary>
+	public bool TryAcquire(string key, int count, TimeSpan window, int permits = 1)
+	{
+		if (permits > count) return false;
+
+		// A changed limit or window is a new partition; the old one is dropped once it goes idle.
+		var partition = string.Create(CultureInfo.InvariantCulture, $"{key}|{count}|{window.Ticks}");
+		using var lease = _limiter.AttemptAcquire(new Request(partition, count, window), Math.Min(permits, count));
+		return lease.IsAcquired && permits <= count;
+	}
+
+	private readonly record struct Request(string PartitionKey, int Limit, TimeSpan Window);
 }

@@ -14,9 +14,6 @@ public enum IrcReply
 	[Reply("Too many failed login attempts. Try again later.")]
 	TooManyAttempts,
 
-	[Reply("Too many connections from your address.")]
-	TooManyConnections,
-
 	[Reply("Excess flood.")]
 	Flooding,
 

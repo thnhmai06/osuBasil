@@ -19,6 +19,11 @@ public readonly struct ScopedServerFaq
 			: null;
 	}
 
+	public ServerActionResult MayChange()
+	{
+		return Denied() ?? ServerActionResult.Ok;
+	}
+
 	public async Task<ServerActionResult> SaveAsync(string entry, string text)
 	{
 		if (Denied() is { } denied) return denied;

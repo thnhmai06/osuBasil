@@ -1,9 +1,10 @@
 using Basil.Infrastructure.Shared.Registry;
 using Basil.Infrastructure.Shared.Storage;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Beatmaps.Storage;
 
-internal sealed class IncomingLeftovers(DataPaths paths) : IResident
+internal sealed class IncomingLeftovers(DataPaths paths, ILogger<IncomingLeftovers> logger) : IResident
 {
 	public Task LoadAsync(CancellationToken ct)
 	{
@@ -16,7 +17,7 @@ internal sealed class IncomingLeftovers(DataPaths paths) : IResident
 		return Task.CompletedTask;
 	}
 
-	private static void DeleteLeftover(Action delete)
+	private void DeleteLeftover(Action delete)
 	{
 		try
 		{
@@ -24,6 +25,7 @@ internal sealed class IncomingLeftovers(DataPaths paths) : IResident
 		}
 		catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
 		{
+			logger.LogWarning(exception, "Could not delete a leftover of an unfinished beatmapset import");
 		}
 	}
 }

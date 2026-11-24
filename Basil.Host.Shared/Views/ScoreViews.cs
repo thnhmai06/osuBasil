@@ -8,7 +8,7 @@ public sealed record ScoreView(
 	int? UserId,
 	string? BeatmapHash,
 	GameMode Mode,
-	string Mods,
+	GameMods Mods,
 	int TotalScore,
 	ushort MaxCombo,
 	double Accuracy,
@@ -21,7 +21,7 @@ public sealed record ScoreView(
 	public static ScoreView Of(ScoreRecord score)
 	{
 		var v = score.Value;
-		return new ScoreView(score.Id, v.UserId, v.BeatmapHash?.HashValue, v.Mode, v.Mods.ToString(),
+		return new ScoreView(score.Id, v.UserId, v.BeatmapHash?.HashValue, v.Mode, v.Mods,
 			v.LastState.TotalScore,
 			v.LastState.MaxCombo, v.Accuracy, v.Grade, v.IsPassed, v.LastState.IsFullCombo, v.Timestamp,
 			v.PerformancePoints);

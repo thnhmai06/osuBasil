@@ -78,6 +78,31 @@ public static class TokenExtensions
 	}
 }
 
+public static class ResponseExtensions
+{
+	/// <summary>Declares the type of <c>data</c> in the success answer, for the OpenAPI document.</summary>
+	public static RouteHandlerBuilder Returns<TData>(this RouteHandlerBuilder builder, int status = 200)
+	{
+		return builder.WithMetadata(new ResponseData(typeof(TData), false, status));
+	}
+
+	/// <summary>Declares that <c>data</c> in the success answer is a list of the type.</summary>
+	public static RouteHandlerBuilder ReturnsList<TData>(this RouteHandlerBuilder builder)
+	{
+		return builder.WithMetadata(new ResponseData(typeof(TData), true, 200));
+	}
+
+	/// <summary>Declares the JSON body the route reads.</summary>
+	public static RouteHandlerBuilder Takes<TBody>(this RouteHandlerBuilder builder)
+	{
+		return builder.WithMetadata(new RequestBody(typeof(TBody)));
+	}
+}
+
+public sealed record ResponseData(Type Type, bool IsList, int Status = 200);
+
+public sealed record RequestBody(Type Type);
+
 public sealed class TokenRequired
 {
 	public static readonly TokenRequired Instance = new();

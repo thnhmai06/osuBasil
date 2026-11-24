@@ -18,7 +18,7 @@ internal static class MatchRoutes
 	public static void MapMatches(this RouteGroupBuilder v1)
 	{
 		var matches = v1.MapGroup("/matches").WithTags("Matches");
-		matches.MapGet("/", ListAsync).Admitted(WorkClass.Listing).RequireToken().WithSummary("List matches.")
+		matches.MapGet("/", ListAsync).Admitted(WorkClass.Listing).RequireToken().ReturnsList<MatchView>().WithSummary("List matches.")
 			.WithDescription("Lists the matches the caller may view: public ones, and private ones the caller took part in or manages; a caller who may manage every room sees all. `query` filters with `ended:` and `private:`.");
 		matches.MapGet("/{id:int}", ReportAsync).Sse().WithSummary("Stream a match report.")
 			.WithDescription("""

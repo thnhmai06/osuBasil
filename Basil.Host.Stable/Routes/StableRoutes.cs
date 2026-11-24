@@ -24,8 +24,6 @@ public static class StableRoutes
 	public static IServiceCollection AddStableHost(this IServiceCollection services)
 	{
 		services.AddSingleton<Outbox>();
-		services.AddSingleton<RateLimiter>();
-		services.AddSingleton<LoginAttemptGuard>();
 		services.AddSingleton<StableState>();
 		services.AddSingleton<RestartAnnouncer>();
 		services.AddSingleton<StableShutdown>();

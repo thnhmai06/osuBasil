@@ -16,8 +16,8 @@ public sealed record UserView(
 	int Id,
 	string Name,
 	string Country,
-	ulong Privileges,
-	ulong EffectivePrivileges,
+	UserPrivileges Privileges,
+	UserPrivileges EffectivePrivileges,
 	DateTimeOffset? SilencedUntil)
 {
 	public static UserView Of(UserRegistry registry, UserRecord record, TimeProvider clock)
@@ -25,7 +25,7 @@ public sealed record UserView(
 		var user = registry.Of(record);
 		var now = clock.GetUtcNow();
 		return new UserView(record.Id, record.Value.Name, record.Value.Country.ToAcronym().ToLowerInvariant(),
-			(ulong)record.Value.Privileges, (ulong)user.EffectivePrivileges(now),
+			record.Value.Privileges, user.EffectivePrivileges(now),
 			record.Value.IsSilenced(now) ? record.Value.SilencedEnd : null);
 	}
 }

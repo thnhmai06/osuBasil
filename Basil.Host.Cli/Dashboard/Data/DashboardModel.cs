@@ -1,3 +1,4 @@
+using Basil.Domain.Users;
 using Basil.Host.Cli.Commands;
 using Microsoft.Extensions.Logging;
 
@@ -10,7 +11,7 @@ public sealed record UserRow(
 	string Status,
 	string Room,
 	TimeSpan Idle,
-	ulong Privileges);
+	UserPrivileges Privileges);
 
 public sealed record SlotRow(int Index, string Player, string State);
 
@@ -120,13 +121,4 @@ public sealed class DashboardModel
 	public string Notice { get; set; } = string.Empty;
 
 	public string ShutdownStatus { get; set; } = string.Empty;
-
-	public void AddOutput(OutputLine line)
-	{
-		lock (_outputGate)
-		{
-			_output.Add(line);
-			if (_output.Count > 200) _output.RemoveAt(0);
-		}
-	}
 }

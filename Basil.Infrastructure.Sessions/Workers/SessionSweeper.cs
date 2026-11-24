@@ -12,7 +12,7 @@ internal sealed class SessionSweeper(
 {
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
-		using var timer = new PeriodicTimer(TimeSpan.FromSeconds(100), time);
+		using var timer = new PeriodicTimer(TimeSpan.FromSeconds(30), time);
 		while (await timer.WaitForNextTickAsync(stoppingToken))
 			try
 			{

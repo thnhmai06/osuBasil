@@ -6,7 +6,7 @@ internal sealed class RestAdmission(RequestDelegate next)
 {
 	private const string HealthPath = "/health";
 
-	public async Task InvokeAsync(HttpContext context, Admission admission)
+	public async Task InvokeAsync(HttpContext context, Admission admission, TimeProvider clock)
 	{
 		// The health probe has to answer exactly when the server is shedding.
 		if (context.GetEndpoint() is not { } endpoint || context.Request.Path == HealthPath)
@@ -17,9 +17,9 @@ internal sealed class RestAdmission(RequestDelegate next)
 
 		var workClass = AdmissionRefusals.ClassOf(endpoint.Metadata);
 		var subject = context.ConnectionOrNull() is { } connection
-			? AdmissionRefusals.SubjectOf(connection)
-			: AdmissionRefusals.SubjectOf(context.Ip().ToString());
-		var decision = admission.Admit(subject, workClass);
+			? AdmissionRefusals.SubjectOf(connection, clock.GetUtcNow())
+			: (AdmissionSubject?)null;
+		var decision = admission.Admit(subject, workClass, context.Request.ContentLength ?? 0);
 		if (!decision.Allowed)
 		{
 			context.Response.Headers.RetryAfter = AdmissionRefusals.RetryAfterOf(decision);
@@ -34,7 +34,7 @@ internal sealed class RestAdmission(RequestDelegate next)
 		}
 		finally
 		{
-			admission.Release(workClass);
+			admission.Release(workClass, subject);
 		}
 	}
 }

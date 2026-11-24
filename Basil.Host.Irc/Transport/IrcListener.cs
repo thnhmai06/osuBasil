@@ -39,7 +39,6 @@ internal sealed class IrcListener(
 
 	private readonly TrustedProxyList _trusted = new(options.Value.TrustedProxies);
 
-	private readonly ConcurrentDictionary<IPAddress, int> _perAddress = new();
 	private readonly ConcurrentDictionary<IrcSocket, Task> _sessions = new();
 	private TcpListener? _listener;
 
@@ -153,7 +152,6 @@ internal sealed class IrcListener(
 
 	private async Task RunAsync(IrcSocket session, TcpClient tcp, CancellationToken stoppingToken)
 	{
-		var counted = _perAddress.AddOrUpdate(session.Address, 1, (_, count) => count + 1);
 		var stream = tcp.GetStream();
 		var writer = session.WriteAsync(stream, CancellationToken.None);
 		await using var housekeeping = session.Every(() =>
@@ -163,8 +161,7 @@ internal sealed class IrcListener(
 		}, RegistrationDeadline, KeepAlive);
 		try
 		{
-			var perIp = (await sender.Send(new ReadSettings(), stoppingToken)).RateLimits.Connections.PerIp;
-			RejectIfOverLimit(session, counted, perIp);
+			RejectIfStopping(session);
 
 			await foreach (var text in IrcLines.ReadAsync(stream, stoppingToken))
 				await HandleLineAsync(session, text, stoppingToken);
@@ -189,10 +186,9 @@ internal sealed class IrcListener(
 		if (session.Registered) session.Send(IrcMessage.ServerPing(session.ServerName));
 	}
 
-	private void RejectIfOverLimit(IrcSocket session, int counted, int perIp)
+	private void RejectIfStopping(IrcSocket session)
 	{
 		if (!state.AcceptingLogins) session.Close(replies.Text(IrcReply.ServerStopping));
-		else if (counted > perIp) session.Close(replies.Text(IrcReply.TooManyConnections));
 	}
 
 	private async Task ReleaseAsync(IrcSocket session, Task writer)
@@ -203,8 +199,6 @@ internal sealed class IrcListener(
 		clients.Remove(session);
 		session.Close(replies.Text(IrcReply.ConnectionClosed));
 		await writer;
-		var remaining = _perAddress.AddOrUpdate(session.Address, 0, (_, count) => count - 1);
-		if (remaining <= 0) _perAddress.TryRemove(new KeyValuePair<IPAddress, int>(session.Address, remaining));
 		_sessions.TryRemove(session, out _);
 	}
 
@@ -219,8 +213,8 @@ internal sealed class IrcListener(
 		if (!IrcMessage.TryParse(text, null, out var message)) return;
 
 		var subject = session.Session is { } connection
-			? AdmissionRefusals.SubjectOf(connection)
-			: AdmissionRefusals.SubjectOf(session.Label);
+			? AdmissionRefusals.SubjectOf(connection, clock.GetUtcNow())
+			: (AdmissionSubject?)null;
 		var decision = admission.Admit(subject);
 		if (!decision.Allowed)
 		{
@@ -248,7 +242,7 @@ internal sealed class IrcListener(
 		finally
 		{
 			DiagnosticsMetrics.IrcDuration.Record(Stopwatch.GetElapsedTime(started).TotalMilliseconds);
-			admission.Release(WorkClass.Interactive);
+			admission.Release(WorkClass.Interactive, subject);
 		}
 	}
 

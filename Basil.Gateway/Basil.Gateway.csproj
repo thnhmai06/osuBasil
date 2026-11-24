@@ -4,4 +4,9 @@
 		<RootNamespace>Basil.Gateway</RootNamespace>
 	</PropertyGroup>
 
+	<ItemGroup>
+		<!-- System.Threading.RateLimiting ships with the ASP.NET Core shared framework. -->
+		<FrameworkReference Include="Microsoft.AspNetCore.App"/>
+	</ItemGroup>
+
 </Project>

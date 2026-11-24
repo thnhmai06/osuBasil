@@ -40,7 +40,7 @@ internal sealed class RestPipeline(RequestDelegate next)
 		{
 			context.Response.Clear();
 			var info = BusinessErrors.Describe(error);
-			await Api.Error(OutcomeResults.StatusOf(info.Kind), info.Code, info.Code).ExecuteAsync(context);
+			await Api.Error(OutcomeResults.StatusOf(info.Kind), info.Code, OutcomeTexts.Of(info.Code)).ExecuteAsync(context);
 		}
 		catch (Exception ex) when (!context.Response.HasStarted && ex is not OperationCanceledException)
 		{
@@ -58,7 +58,7 @@ internal sealed class RestPipeline(RequestDelegate next)
 		if (authenticated && mutation)
 		{
 			var user = context.Session().Record.Id;
-			if (limiter.TryAcquire($"rest-mutation:{user}", limits.Mutations.Count, limits.Mutations.Window))
+			if (limiter.TryAcquire(RateRule.RestMutation, user.ToString(CultureInfo.InvariantCulture), limits.Mutations.Count, limits.Mutations.Window))
 				return false;
 
 			await TooManyAsync(context, limits.Mutations.Window);

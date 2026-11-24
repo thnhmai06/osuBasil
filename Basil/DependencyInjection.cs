@@ -24,6 +24,7 @@ using Basil.Application.Users.Objects.Events;
 using Basil.Configuration;
 using Basil.Gateway.Admission;
 using Basil.Gateway.Limits;
+using Basil.Gateway.RateLimiting;
 using Basil.Host.Cli;
 using Basil.Host.Irc.Transport;
 using Basil.Host.Rest;
@@ -108,7 +109,10 @@ public static class DependencyInjection
 		internal IServiceCollection AddGatewayLimits()
 		{
 			services.AddSingleton<SettingsGatewayLimits>();
-			services.AddSingleton(sp => new Admission(sp.GetRequiredService<TimeProvider>(),
+			services.AddSingleton<RateLimiter>();
+			services.AddSingleton<LoadSignal>();
+			services.AddSingleton<LoginAttemptGuard>();
+			services.AddSingleton(sp => new Admission(sp.GetRequiredService<RateLimiter>(),
 				sp.GetRequiredService<SettingsGatewayLimits>().Current, sp.GetRequiredService<LoadSignal>()));
 			return services;
 		}

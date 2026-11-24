@@ -45,10 +45,6 @@ namespace Basil.Host.Stable.Web;
 
 internal static class OsuWebRoutes
 {
-	internal const int RegistrationChecksPerWindow = 20;
-
-	private static readonly TimeSpan RegistrationCheckWindow = TimeSpan.FromMinutes(10);
-
 	public static void MapOsuWeb(this IEndpointRouteBuilder app)
 	{
 		var web = app.MapGroup("")
@@ -483,12 +479,6 @@ internal static class OsuWebRoutes
 		var password = form["user[password]"].ToString();
 		var checkOnly = form["check"] != "0";
 		var rules = (await sender.Send(new ReadSettings(), ct)).RateLimits.Registration;
-		var ip = ClientAddress.Resolve(context);
-		if (checkOnly &&
-		    !limiter.TryAcquire($"register-check:{ip}", RegistrationChecksPerWindow, RegistrationCheckWindow))
-			return Results.Json(
-				new { form_error = new { user = new { username = new[] { OsuWebReplies.TooManyRegistrations } } } },
-				statusCode: 429);
 		RegistrationFailure? failure;
 		try
 		{
@@ -504,7 +494,7 @@ internal static class OsuWebRoutes
 			return Results.Json(new { form_error = new { user = new { username = new[] { failure.ToString() } } } },
 				statusCode: 400);
 		if (checkOnly) return Text("ok");
-		if (!limiter.TryAcquire("register:server", rules.PerServer.Count, rules.PerServer.Window))
+		if (!limiter.TryAcquire(RateRule.Registration, "server", rules.PerServer.Count, rules.PerServer.Window))
 			return Results.Json(
 				new { form_error = new { user = new { username = new[] { OsuWebReplies.TooManyRegistrations } } } },
 				statusCode: 429);

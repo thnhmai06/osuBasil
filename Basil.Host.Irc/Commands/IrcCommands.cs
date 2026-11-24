@@ -153,9 +153,7 @@ internal sealed partial class IrcCommands(
 		CancellationToken ct)
 	{
 		var rules = (await sender.Send(new ReadSettings(), ct)).RateLimits;
-		var ipKey = $"irc-login-fail:{session.Address}";
-		var pairKey = $"{ipKey}:{claimed.ToLowerInvariant()}";
-		using var attempt = attempts.TryReserve(ipKey, pairKey, rules.Login.MaxAttempts, rules.Login.Window);
+		using var attempt = attempts.TryReserve(claimed.ToLowerInvariant(), rules.Login.MaxAttempts, rules.Login.Window);
 		if (attempt is null) return replies.Text(IrcReply.TooManyAttempts);
 
 		var result = await sender.Send(new LoginSession(

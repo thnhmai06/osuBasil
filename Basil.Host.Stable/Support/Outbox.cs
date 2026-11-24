@@ -1,4 +1,5 @@
 using Mediator;
+using Microsoft.Extensions.Logging;
 using Basil.Application.Sessions.Messages;
 using Basil.Application.Sessions.Registry;
 using System.Collections.Concurrent;
@@ -9,7 +10,7 @@ using Session = Basil.Application.Sessions.Objects.Session;
 
 namespace Basil.Host.Stable.Support;
 
-internal sealed class Outbox(ISender sender)
+internal sealed class Outbox(ISender sender, ILogger<Outbox> logger)
 {
 	public const int MaxQueuedPackets = 10_000;
 
@@ -45,7 +46,20 @@ internal sealed class Outbox(ISender sender)
 		foreach (var connection in tooSlow)
 		{
 			_queues.TryRemove(connection, out _);
-			_ = sender.Send(new CloseSession(connection, SessionEndReason.ConnectionLost));
+			_ = CloseAsync(connection);
+		}
+	}
+
+	// A connection that fell behind is closed without making the sender wait; a close that fails is logged.
+	private async Task CloseAsync(Session connection)
+	{
+		try
+		{
+			await sender.Send(new CloseSession(connection, SessionEndReason.ConnectionLost));
+		}
+		catch (Exception exception)
+		{
+			logger.LogWarning(exception, "A connection that fell behind could not be closed");
 		}
 	}
 

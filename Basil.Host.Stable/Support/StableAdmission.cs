@@ -6,7 +6,7 @@ using Basil.Gateway.Limits;
 
 namespace Basil.Host.Stable.Support;
 
-internal sealed class StableAdmission(Admission admission, SessionRegistry registry) : IEndpointFilter
+internal sealed class StableAdmission(Admission admission, SessionRegistry registry, TimeProvider clock) : IEndpointFilter
 {
 	public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext invocation,
 		EndpointFilterDelegate next)
@@ -16,14 +16,14 @@ internal sealed class StableAdmission(Admission admission, SessionRegistry regis
 		var token = context.Request.Headers["osu-token"].ToString();
 		var connection = token.Length > 0 ? registry.Find(token) : null;
 		var subject = connection is not null
-			? AdmissionRefusals.SubjectOf(connection)
-			: AdmissionRefusals.SubjectOf(ClientAddress.Resolve(context).ToString());
+			? AdmissionRefusals.SubjectOf(connection, clock.GetUtcNow())
+			: (AdmissionSubject?)null;
 		// The bancho poll of an open client is its own traffic, counted apart under a higher rate, so a multiplayer round cannot lock it out;
 		// the sign-in (no or unknown token) and the osu-web endpoints keep the rate limit.
 		if (HttpMethods.IsPost(context.Request.Method) && context.Request.Path == "/" &&
 		    connection is { IsOpen: true, Type: SessionType.Stable or SessionType.StableTourney })
 			workClass = WorkClass.Poll;
-		var decision = admission.Admit(subject, workClass);
+		var decision = admission.Admit(subject, workClass, context.Request.ContentLength ?? 0);
 		if (!decision.Allowed)
 		{
 			context.Response.Headers.RetryAfter = AdmissionRefusals.RetryAfterOf(decision);
@@ -36,7 +36,7 @@ internal sealed class StableAdmission(Admission admission, SessionRegistry regis
 		}
 		finally
 		{
-			admission.Release(workClass);
+			admission.Release(workClass, subject);
 		}
 	}
 }

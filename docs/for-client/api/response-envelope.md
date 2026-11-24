@@ -175,7 +175,7 @@ Beatmap references can similarly contain information about both the difficulty a
 
 ## Enum values
 
-Enum fields are serialized as camelCase strings, for example `"status": "loved"`. Sets of privileges and privileges are bitmasks and are serialized as numbers, for example `"privileges": 19`.
+Enum fields are serialized as camelCase strings, for example `"status": "loved"`. A set of flags (privileges, mods) is an array of names, for example `"privileges": ["player", "supporter"]`, in a response and in a request.
 
 `Country` is a lowercase two-letter country code, for example `"country": "vn"`.
 
@@ -214,7 +214,7 @@ The response envelope applies to JSON responses from the `api.` host.
 It does **not** apply to:
 
 * file downloads;
-* `/live` Server-Sent Events streams.
+* Server-Sent Events streams.
 
 These responses use their own content types and formats.
 

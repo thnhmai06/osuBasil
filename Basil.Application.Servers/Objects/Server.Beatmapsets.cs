@@ -1,3 +1,4 @@
+using Basil.Application.Shared.Diagnostics;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Shared.Settings;
 using Basil.Domain.Content;
@@ -34,7 +35,7 @@ public readonly struct ServerBeatmapsets
 		}
 		catch (ArchiveTooLargeException)
 		{
-			throw new UploadTooLargeException(limit);
+			throw UploadMetrics.Refuse(new UploadTooLargeException(limit));
 		}
 	}
 }

@@ -45,6 +45,9 @@ internal sealed class RuntimeSampler : IDisposable, IClearTally
 
 	public Func<long> LogsDropped { get; set; } = () => 0;
 
+	/// <summary>Told, at every new sample, how loaded the server is: the largest of the CPU, memory and thread pool use, from 0 to 1.</summary>
+	public Action<double>? LoadMeasured { get; set; }
+
 	public void Reset()
 	{
 		Interlocked.Exchange(ref _exceptions, 0);
@@ -111,6 +114,7 @@ internal sealed class RuntimeSampler : IDisposable, IClearTally
 				["stable"] = _stable.Snapshot(elapsed, false),
 				["irc"] = _irc.Snapshot(elapsed, false)
 			};
+			LoadMeasured?.Invoke(LoadOf(cpu - _lastCpu, elapsed, process.WorkingSet64, gc.TotalAvailableMemoryBytes));
 			_lastCpu = cpu;
 			_lastAllocated = allocated;
 			_lastCompleted = completed;
@@ -118,6 +122,15 @@ internal sealed class RuntimeSampler : IDisposable, IClearTally
 			_lastSample = now;
 			return _cache = result;
 		}
+	}
+
+	private static double LoadOf(TimeSpan cpuUsed, double seconds, long workingSet, long availableMemory)
+	{
+		var cpu = cpuUsed.TotalSeconds / seconds / Environment.ProcessorCount;
+		var memory = availableMemory > 0 ? (double)workingSet / availableMemory : 0;
+		// A queue of more than a few items per worker means requests wait for a thread.
+		var queue = (double)ThreadPool.PendingWorkItemCount / Math.Max(1, ThreadPool.ThreadCount) / 4;
+		return Math.Clamp(Math.Max(cpu, Math.Max(memory, queue)), 0, 1);
 	}
 
 	private void OnException(object? sender, FirstChanceExceptionEventArgs args)

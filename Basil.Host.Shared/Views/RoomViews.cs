@@ -10,7 +10,7 @@ public sealed record SlotView(
 	bool Locked,
 	RoomSlotStatus? Status,
 	GameTeam? Team,
-	string? Mods,
+	GameMods? Mods,
 	UserRef? Player,
 	bool IsHost);
 
@@ -27,7 +27,7 @@ public sealed record RoomView(
 	IReadOnlyList<UserRef> Bans,
 	int? BeatmapId,
 	GameMode Mode,
-	string Mods,
+	GameMods Mods,
 	bool Freemods,
 	GameTeamType TeamType,
 	GameWinCondition WinCondition,
@@ -42,11 +42,11 @@ public sealed record RoomView(
 			UserRef.Of(room.Creator),
 			host is null ? null : UserRef.Of(host), [.. room.Referees.Select(UserRef.Of)],
 			[.. room.Members.Banned.Select(UserRef.Of)], room.Settings.Beatmap?.Id, settings.Mode,
-			settings.Mods.ToString(),
+			settings.Mods,
 			settings.Freemods, settings.TeamType, settings.WinCondition,
 			[
 				.. room.Slots.Select(slot => new SlotView(slot.Index, slot.Locked, slot.Status, slot.Team,
-					slot.Mods?.ToString(), slot.Player is null ? null : UserRef.Of(slot.Player),
+					slot.Mods, slot.Player is null ? null : UserRef.Of(slot.Player),
 					host is not null && slot.Player.Equals(host)))
 			]);
 	}

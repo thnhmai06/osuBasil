@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 using Scalar.AspNetCore;
 
@@ -72,7 +74,7 @@ internal static class OpenApiSetup
 				};
 				return Task.CompletedTask;
 			});
-			options.AddOperationTransformer((operation, context, _) =>
+			options.AddOperationTransformer(async (operation, context, ct) =>
 			{
 				var metadata = context.Description.ActionDescriptor.EndpointMetadata;
 				var token = metadata.OfType<TokenRequired>().Any();
@@ -102,8 +104,22 @@ internal static class OpenApiSetup
 						Description = "A Server-Sent Events stream.",
 						Content = new Dictionary<string, OpenApiMediaType> { ["text/event-stream"] = new() }
 					};
+				else if (metadata.OfType<ResponseData>().FirstOrDefault() is { } data)
+					operation.Responses[data.Status.ToString(System.Globalization.CultureInfo.InvariantCulture)] =
+						await WithDataAsync(context, data, ct);
 				else
 					operation.Responses["200"] = Json("Success.");
+
+				if (metadata.OfType<RequestBody>().FirstOrDefault() is { } body)
+					operation.RequestBody = new OpenApiRequestBody
+					{
+						Required = true,
+						Content = new Dictionary<string, OpenApiMediaType>
+						{
+							["application/json"] = new()
+								{ Schema = await context.GetOrCreateSchemaAsync(body.Type, null, ct) }
+						}
+					};
 
 				if (token)
 				{
@@ -116,7 +132,8 @@ internal static class OpenApiSetup
 					operation.Responses["403"] = Json("The caller lacks privileges.");
 				}
 
-				operation.Responses["404"] = Json("The thing does not exist or the caller may not see it.");
+				if (context.Description.ParameterDescriptions.Any(p => p.Source == BindingSource.Path))
+					operation.Responses["404"] = Json("The thing does not exist or the caller may not see it.");
 				if (method != "GET")
 				{
 					operation.Responses["409"] =
@@ -129,10 +146,36 @@ internal static class OpenApiSetup
 				}
 
 				operation.Responses["429"] = Json("Too many requests; `Retry-After` says when to try again.");
-				return Task.CompletedTask;
 			});
 		});
 		return services;
+	}
+
+	// The envelope with `data` described as the declared type (or a list of it).
+	private static async Task<OpenApiResponse> WithDataAsync(OpenApiOperationTransformerContext context,
+		ResponseData data, CancellationToken ct)
+	{
+		var item = await context.GetOrCreateSchemaAsync(data.Type, null, ct);
+		var envelope = new OpenApiSchemaReference("Envelope", context.Document);
+		var payload = data.IsList ? new OpenApiSchema { Type = JsonSchemaType.Array, Items = item } : item;
+		return new OpenApiResponse
+		{
+			Description = "Success.",
+			Content = new Dictionary<string, OpenApiMediaType>
+			{
+				["application/json"] = new()
+				{
+					Schema = new OpenApiSchema
+					{
+						AllOf = [envelope, new OpenApiSchema
+						{
+							Type = JsonSchemaType.Object,
+							Properties = new Dictionary<string, IOpenApiSchema> { ["data"] = payload }
+						}]
+					}
+				}
+			}
+		};
 	}
 
 	public static void MapDocs(this IEndpointRouteBuilder app)

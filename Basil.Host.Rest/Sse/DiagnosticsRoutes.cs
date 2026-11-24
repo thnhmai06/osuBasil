@@ -69,7 +69,7 @@ internal static class DiagnosticsRoutes
 		switch ($"{category}/{action}".ToLowerInvariant())
 		{
 			case "gc/collect":
-				if (!limiter.TryAcquire("diagnostics:gc-collect", 1, CollectInterval))
+				if (!limiter.TryAcquire(RateRule.GcCollect, "server", 1, CollectInterval))
 				{
 					context.Response.Headers.RetryAfter = ((int)CollectInterval.TotalSeconds).ToString();
 					return Api.Error(StatusCodes.Status429TooManyRequests, "rateLimited",

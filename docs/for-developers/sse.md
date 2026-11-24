@@ -28,8 +28,9 @@ state changes            a root collects events
 * A **root** is identified by a key such as `room:5`, `match:12`, `spectate:8` or `diagnostics:all`. The first stream
   creates it; the last stream to leave removes it and its buffer.
 * The first event on every stream is `event: snapshot` with the full current state.
-* Later events are `event: bundle` whose `data` is a JSON array of everything the root collected during that second.
+* Later events are named (`bundle` unless the route says otherwise, `replay` and `activity` on the spectate stream) and their `data` is a JSON array of everything the root collected for that name during that second.
   Data is therefore up to about one second old.
+* A stream route needs no `/live` suffix: what makes it a stream is that it is its own route and the OpenAPI document marks it as one.
 * A second with nothing to send produces an SSE comment (`: keep-alive`), not an empty bundle.
 * Every frame carries `retry: 3000`. An `id:` is set to the last id of the bundle, and only events that have one (for
   example a match entry) supply it. The server never resumes from `Last-Event-ID`; ids let a client spot a gap or
@@ -61,7 +62,7 @@ entry answers `204`, which stops a browser from reconnecting.
 Opening the route spectates the player as an osu! client would: the player sees a spectator, and the spectating
 privilege and blocks apply. The stream only watches; the Api connection joins no chat channel. Frames and
 score updates are decoded once in the osu! (stable) host and published as Application events; every Api spectator of the player
-gets the same bundle. The stream ends when the player goes offline or the spectator stops watching.
+gets the same events. The frames arrive as a `replay` event and the changes of the player's in-game status as an `activity` event. The stream ends when the player goes offline or the spectator stops watching.
 
 ### Diagnostics
 
@@ -72,7 +73,7 @@ category.
 
 Each stream has a bounded queue of 8 ready-to-send chunks. A stream that falls more than 3 ticks behind is closed
 instead of slowing the bundle for everyone else; the client reconnects and gets a fresh snapshot. The number of open
-streams per signed-in user is limited by `ServerSettings.RateLimits.Connections.PerIp`; beyond it the route answers
+streams per signed-in user is limited by `ServerSettings.RateLimits.Connections.StreamsPerUser`; beyond it the route answers
 `429` in the JSON envelope. The reverse proxy limits the connections per address.
 
 ## Errors before streaming
