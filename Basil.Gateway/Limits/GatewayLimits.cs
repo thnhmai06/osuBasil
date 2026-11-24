@@ -22,6 +22,8 @@ public sealed record GatewayLimits
 
 	public int AssetRequests { get; init; } = 1200;
 
+	public int PollRequests { get; init; } = 1200;
+
 	public double DegradedAbove { get; init; } = 0.5;
 
 	public double ShedAbove { get; init; } = 0.7;

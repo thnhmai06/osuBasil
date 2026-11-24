@@ -17,7 +17,7 @@ internal sealed class StableAdmission(Admission admission, SessionRegistry regis
 		var subject = connection is not null
 			? AdmissionRefusals.SubjectOf(connection)
 			: AdmissionRefusals.SubjectOf(ClientAddress.Resolve(context).ToString());
-		// The bancho poll of an open client is its own traffic, so a multiplayer round cannot lock it out;
+		// The bancho poll of an open client is its own traffic, counted apart under a higher rate, so a multiplayer round cannot lock it out;
 		// the sign-in (no or unknown token) and the osu-web endpoints keep the rate limit.
 		if (HttpMethods.IsPost(context.Request.Method) && context.Request.Path == "/" &&
 		    connection is { IsOpen: true, Type: SessionType.Stable or SessionType.StableTourney })

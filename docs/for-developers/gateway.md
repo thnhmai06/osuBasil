@@ -67,8 +67,8 @@ Taken from well-known cloud design patterns, limited to what this single process
   `Upload`, `/live` streams are `Live`; everything else, packets and IRC lines included, is `Interactive`. The one
   exception is chosen by the host at request time: the bancho poll of an open osu! client (`POST /` on `c.` with the token
   of a Stable or StableTourney session) is `Poll`. A `Poll` still counts for concurrency and load (it shares the cap of
-  `Interactive`, counted apart, and is shed with it) but never against `requests`, because a multiplayer round makes
-  more than 120 polls a minute and would lock the client out; the sign-in (no or unknown token) and the osu-web
+  `Interactive`, counted apart, and is shed with it) and has an allowance of its own (1200 per window per session) instead
+  of `requests`, because a multiplayer round makes more than 120 polls a minute and would lock the client out; the sign-in (no or unknown token) and the osu-web
   endpoints stay `Interactive` and keep the limit. Pictures are middleware, not routes: the image
   middleware admits each request as `Asset` per address. `Asset` has an allowance of its own (`assetRequests`, 1200 per
   window) kept apart from `requests`, so fetching many pictures never spends the API budget; a `304` counts like any request.

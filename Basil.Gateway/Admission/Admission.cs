@@ -35,12 +35,12 @@ public sealed class Admission(TimeProvider clock, Func<GatewayLimits> source, Lo
 			return AdmissionDecision.Deny(AdmissionDenial.ClassSaturated, current.BusyRetryAfter);
 		}
 
-		if (workClass == WorkClass.Poll)
-			return AdmissionDecision.Allow;
-
-		var isAsset = workClass == WorkClass.Asset;
-		var key = isAsset ? $"asset:{subject.Key}" : subject.Key;
-		var allowance = isAsset ? current.AssetRequests : current.AllowanceOf(subject.Tier);
+		var (key, allowance) = workClass switch
+		{
+			WorkClass.Asset => ($"asset:{subject.Key}", current.AssetRequests),
+			WorkClass.Poll => ($"poll:{subject.Key}", current.PollRequests),
+			_ => (subject.Key, current.AllowanceOf(subject.Tier))
+		};
 		if (_rate.TryAcquire(key, allowance, current.Window))
 			return AdmissionDecision.Allow;
 		Release(workClass);

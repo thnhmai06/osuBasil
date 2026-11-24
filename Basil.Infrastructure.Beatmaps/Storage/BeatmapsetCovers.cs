@@ -14,6 +14,8 @@ internal sealed class BeatmapsetCovers
 {
 	private const int MaxSourceSide = 8192;
 
+	private const long MaxSourcePixels = 4096L * 4096;
+
 	private const int JpegQuality = 85;
 
 	// Only PNG and JPEG are decoded (see the ImageSharp note in Directory.Build.props): backgrounds come from uploaded archives.
@@ -24,6 +26,9 @@ internal sealed class BeatmapsetCovers
 
 	private readonly SingleFlight<string, bool> _flights = new();
 
+	// Decoding a large background is costly in memory, so only a few run at once across all sets.
+	private readonly SemaphoreSlim _decoding = new(Math.Max(1, Environment.ProcessorCount / 2));
+
 	public async Task<string?> EnsureAsync(string source, string folder, BeatmapsetCoverVariant variant,
 		CancellationToken ct)
 	{
@@ -31,7 +36,18 @@ internal sealed class BeatmapsetCovers
 		// A variant older than its source belongs to an earlier background.
 		if (File.Exists(target) && File.GetLastWriteTimeUtc(target) >= File.GetLastWriteTimeUtc(source)) return target;
 
-		var made = await _flights.RunAsync(target, () => MakeAsync(source, target, variant), ct);
+		var made = await _flights.RunAsync(target, async () =>
+		{
+			await _decoding.WaitAsync();
+			try
+			{
+				return await MakeAsync(source, target, variant);
+			}
+			finally
+			{
+				_decoding.Release();
+			}
+		}, ct);
 		return made ? target : null;
 	}
 
@@ -46,7 +62,8 @@ internal sealed class BeatmapsetCovers
 				             FileOptions.Asynchronous | FileOptions.SequentialScan))
 			{
 				var info = await Image.IdentifyAsync(Decoding, input);
-				if (info.Width > MaxSourceSide || info.Height > MaxSourceSide) return false;
+				if (info.Width > MaxSourceSide || info.Height > MaxSourceSide ||
+				    (long)info.Width * info.Height > MaxSourcePixels) return false;
 
 				input.Position = 0;
 				using var image = await Image.LoadAsync(Decoding, input);
