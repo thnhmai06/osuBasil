@@ -345,7 +345,10 @@ See [`docs/for-technicians/docker.md`](docs/for-technicians/docker.md) for Docke
 > the full description; [`docs/for-developers/migration-status.md`](docs/for-developers/migration-status.md) owns the status.
 
 ```text
-Basil.Domain                     the system at rest: durable models and the      -> (nothing)
+Basil.Shared                     primitives with no business meaning (hashes,    -> (nothing)
+                                 concurrent sets, path validation, string and
+                                 enum helpers)
+Basil.Domain                     the system at rest: durable models and the      -> Shared
                                  rules of one object on its own (its state,
                                  invariants and transitions)
 

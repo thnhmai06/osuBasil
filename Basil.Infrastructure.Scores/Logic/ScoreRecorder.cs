@@ -21,7 +21,7 @@ internal sealed class ScoreRecorder(
 
 	public SubmissionRejectionReason? Validate(
 		UserRecord player,
-		OsuClient loginClient,
+		ClientBuild loginClient,
 		Submission submission,
 		BeatmapChecksums checkedBeatmap,
 		SubmittedClient client)
@@ -31,7 +31,7 @@ internal sealed class ScoreRecorder(
 
 	public async Task<ScoreOutcome> RecordAsync(
 		UserRecord player,
-		OsuClient loginClient,
+		ClientBuild loginClient,
 		Submission submission,
 		double? pp,
 		Stream? replay,
@@ -71,7 +71,7 @@ internal sealed class ScoreRecorder(
 
 	private static SubmissionRejectionReason? Validate(
 		Submission submission,
-		OsuClient osuClient,
+		ClientBuild osuClient,
 		BeatmapChecksums beatmap,
 		string playerName,
 		SubmittedClient submittedClient)

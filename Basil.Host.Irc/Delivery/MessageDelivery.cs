@@ -17,7 +17,7 @@ internal sealed class MessageDelivery(IrcClients clients, IOptions<IrcOptions> o
 	public async ValueTask Handle(ChannelMessagePosted notification, CancellationToken ct)
 	{
 		var prefix = IrcView.Mask(notification.Message.Author, options.Value.Domain).ToString();
-		var command = notification.Message.IsNotice ? "NOTICE" : "PRIVMSG";
+		var command = notification.Message.IsNotice ? IrcVerb.Notice : IrcVerb.Privmsg;
 
 		await DeliverToRecipientsAsync(notification, command, prefix, ct);
 		EchoToPrivateSender(notification, command, prefix);

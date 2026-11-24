@@ -512,7 +512,7 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 
 	private Task<OperatorSession> Operator()
 	{
-		return _operator ??= _services.GetRequiredService<SessionRegistry>().OperateAsync(CancellationToken.None);
+		return _operator ??= _services.GetRequiredService<BotSessions>().OperateAsync(CancellationToken.None);
 	}
 
 	private void Send()

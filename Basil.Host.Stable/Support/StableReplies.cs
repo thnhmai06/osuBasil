@@ -4,6 +4,11 @@ public static class StableReplies
 {
 	public const int MaxMessageLength = 450;
 
+	public static string InviteText(string link)
+	{
+		return $"Come join my game: {link}";
+	}
+
 	public const string ChatTooFast = "You are sending messages too fast. Slow down.";
 
 	public const string AlreadyOnline = "User already logged in.";

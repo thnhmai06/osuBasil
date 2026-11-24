@@ -9,12 +9,15 @@ using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Shared.Storage;
 using Basil.Application.Sessions.Objects;
+using Basil.Application.Sessions.Registry;
 using Basil.Application.Users.Persistence;
 
 namespace Basil.Application.Servers.Objects;
 
 internal sealed record ServerContext(
 	SessionContext Connections,
+	SessionMaintenance Maintenance,
+	BotSessions Bot,
 	ChannelContext Chat,
 	RoomChannels RoomChannels,
 	PmChannels PmChannels,

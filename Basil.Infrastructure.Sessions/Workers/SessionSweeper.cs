@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 namespace Basil.Infrastructure.Sessions.Workers;
 
 internal sealed class SessionSweeper(
-	SessionRegistry registry,
+	SessionMaintenance maintenance,
 	TimeProvider time,
 	ILogger<SessionSweeper> logger) : BackgroundService
 {
@@ -16,8 +16,8 @@ internal sealed class SessionSweeper(
 		while (await timer.WaitForNextTickAsync(stoppingToken))
 			try
 			{
-				await registry.FlushActivityAsync();
-				var ended = await registry.EndSilentAsync();
+				await maintenance.FlushActivityAsync();
+				var ended = await maintenance.EndSilentAsync();
 				if (ended > 0) logger.LogDebug("Ended {SessionCount} expired stored sessions", ended);
 			}
 			catch (Exception exception)

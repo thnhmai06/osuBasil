@@ -267,7 +267,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   bot's voice publishes an event through `IEventPublisher<T>` (`Publish`): it stamps `Timestamp`, queues the delivery
   and returns at once. **A notification is never awaited under a lock**: the object enqueues and the dispatcher publishes outside it. A handler is a class implementing `Mediator.INotificationHandler<TEvent>` for one concrete
   event type (`ConnectionHandler`, `SessionEndHandler`, `ScoreHandler`, the `Room*Recorder` handlers in the Handlers folders of their
-  modules; `RoomAnnouncer`, `AnticheatAnnouncer`, `ChatHandler` in `Basil.Infrastructure.Bot`). The shared queue (`EventQueue`) is run by
+  modules; `AnnounceRoomClosing`, `AnticheatAnnouncer`, `ChatHandler` in `Basil.Infrastructure.Bot`). The shared queue (`EventQueue`) is run by
   `EventDispatcher` in Infrastructure.Shared's Workers folder and delivers the events of each lane (`Chat`, `Presence`,
   `Multiplayer`, `General`; declared with `[EventLane]` on the base event of a category) one at a time in the order they
   were published; across lanes no order is promised ([`architecture.md`](../for-developers/architecture.md#lanes));

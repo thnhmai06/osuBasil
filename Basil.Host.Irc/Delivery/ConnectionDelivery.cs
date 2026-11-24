@@ -20,7 +20,7 @@ internal sealed class ConnectionClosedDelivery(IrcClients clients, IrcPresence p
 		if (!notification.WentOffline) return ValueTask.CompletedTask;
 
 		var channels = presence.Take(connection.Record);
-		var quit = new IrcMessage("QUIT", IrcView.Mask(connection.Record, options.Value.Domain).ToString(),
+		var quit = IrcMessage.Quit(IrcView.Mask(connection.Record, options.Value.Domain),
 			IrcReplies.Closing(notification.Reason));
 		foreach (var session in clients.All.Where(session => session.Session is { } other &&
 		                                                     !ReferenceEquals(other.User, connection.User) &&

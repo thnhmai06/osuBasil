@@ -10,6 +10,7 @@ using Basil.Application.Servers.Objects;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Shared.Storage;
 using Basil.Application.Sessions.Objects;
+using Basil.Application.Sessions.Registry;
 using Basil.Application.Users.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -21,6 +22,8 @@ public static class DependencyInjection
 	{
 		services.AddSingleton<ServerContext>(sp => new ServerContext(
 			sp.GetRequiredService<SessionContext>(),
+			sp.GetRequiredService<SessionMaintenance>(),
+			sp.GetRequiredService<BotSessions>(),
 			sp.GetRequiredService<ChannelContext>(),
 			sp.GetRequiredService<RoomChannels>(),
 			sp.GetRequiredService<PmChannels>(),

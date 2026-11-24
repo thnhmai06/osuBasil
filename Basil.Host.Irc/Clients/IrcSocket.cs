@@ -8,6 +8,7 @@ using Basil.Application.Sessions.Objects;
 using Basil.Domain.Users;
 using Basil.Host.Irc.Support;
 using Basil.Host.Irc.Transport;
+using Basil.Protocol.Irc;
 using Basil.Protocol.Irc.Models;
 
 namespace Basil.Host.Irc.Clients;
@@ -136,7 +137,7 @@ internal sealed class IrcSocket(TcpClient tcp, IPAddress address, IrcOptions opt
 
 	public void Close(string reason)
 	{
-		Send(new IrcMessage("ERROR", null, $"Closing Link: {options.Domain} ({reason})"));
+		Send(IrcMessage.Error(IrcReplies.ClosingLink(options.Domain, reason)));
 		_lines.Writer.TryComplete();
 	}
 
@@ -151,7 +152,7 @@ internal sealed class IrcSocket(TcpClient tcp, IPAddress address, IrcOptions opt
 				while (_lines.Reader.TryRead(out var line))
 				{
 					Interlocked.Add(ref _queuedCharacters, -line.Length);
-					buffer.Append(line).Append("\r\n");
+					buffer.Append(line).Append(IrcWire.LineEnd);
 				}
 
 				await stream.WriteAsync(Encoding.UTF8.GetBytes(buffer.ToString()), ct);

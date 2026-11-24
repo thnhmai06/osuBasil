@@ -70,7 +70,7 @@ public sealed class CommandCall(
 
 	public async Task<OperatorSession> ByAsync()
 	{
-		return _by ??= await Get<SessionRegistry>().OperateAsync(CancellationToken);
+		return _by ??= await Get<BotSessions>().OperateAsync(CancellationToken);
 	}
 
 	public int Id(string name)

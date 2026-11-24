@@ -26,8 +26,16 @@ public static class DependencyInjection
 			sp.GetRequiredService<ISessionRepository>(),
 			sp.GetRequiredService<ICredentialRepository>(),
 			sp.GetRequiredService<ISettingsRepository>()));
+		services.AddSingleton<ActivityLog>();
+		services.AddSingleton(sp => new AccountRegistration(sp.GetRequiredService<IAccountRules>()));
+		services.AddSingleton(sp => new SessionMaintenance(sp.GetRequiredService<SessionContext>(),
+			sp.GetRequiredService<ActivityLog>()));
+		services.AddSingleton(sp => new BotSessions(sp.GetRequiredService<SessionRegistry>(),
+			sp.GetRequiredService<SessionContext>(), sp.GetRequiredService<UserRegistry>()));
 		services.AddSingleton<SessionRegistry>(sp => new SessionRegistry(
 			sp.GetRequiredService<IAccountRules>(),
+			sp.GetRequiredService<AccountRegistration>(),
+			sp.GetRequiredService<ActivityLog>(),
 			sp.GetRequiredService<SessionContext>(),
 			sp.GetRequiredService<UserRegistry>()));
 		return services;

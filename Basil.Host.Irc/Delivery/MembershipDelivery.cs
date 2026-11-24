@@ -22,11 +22,11 @@ internal sealed class ChannelJoinedDelivery(IrcClients clients, IrcPresence pres
 		clients.DeliverTo(member, own => IrcChannels.SendJoin(own, channel, member.Record));
 		if (!firstOfUser) return ValueTask.CompletedTask;
 
-		var mask = IrcView.Mask(member.Record, options.Value.Domain).ToString();
+		var mask = IrcView.Mask(member.Record, options.Value.Domain);
 		foreach (var session in clients.Of(channel.Members.Where(other => !ReferenceEquals(other.User, member.User))))
 			session.Relay(session.Has("extended-join")
-				? new IrcMessage("JOIN", mask, channel.Name, member.Record.Value.Name, IrcView.Nick(member.Record))
-				: new IrcMessage("JOIN", mask, channel.Name), null, session.Now);
+				? IrcMessage.Join(mask, channel.Name, member.Record.Value.Name, IrcView.Nick(member.Record))
+				: IrcMessage.Join(mask, channel.Name), null, session.Now);
 		return ValueTask.CompletedTask;
 	}
 }
@@ -40,11 +40,11 @@ internal sealed class ChannelPartedDelivery(IrcClients clients, IrcPresence pres
 		if (channel is PmChannel or SpectatorChannel) return ValueTask.CompletedTask;
 
 		var (member, domain) = (notification.Member, options.Value.Domain);
-		var mask = IrcView.Mask(member.Record, domain).ToString();
+		var mask = IrcView.Mask(member.Record, domain);
 		if (clients.Find(member) is { } own)
 			own.Deliver(notification.Kicked
-				? Kick(own, channel, "Removed from the channel")
-				: new IrcMessage("PART", mask, channel.Name));
+				? Kick(own, channel, IrcReplies.KickRemoved)
+				: IrcMessage.Part(mask, channel.Name));
 
 		// A user who still has a connection in the channel, or who went offline (one QUIT says that), shows no PART.
 		if (channel.Members.Any(other => ReferenceEquals(other.User, member.User)) || !member.Siblings.IsOnline ||
@@ -52,13 +52,13 @@ internal sealed class ChannelPartedDelivery(IrcClients clients, IrcPresence pres
 			return ValueTask.CompletedTask;
 
 		foreach (var session in clients.Of(channel.Members))
-			session.Relay(new IrcMessage("PART", mask, channel.Name), null, session.Now);
+			session.Relay(IrcMessage.Part(mask, channel.Name), null, session.Now);
 		return ValueTask.CompletedTask;
 	}
 
 	internal static IrcMessage Kick(IrcSocket session, Channel channel, string reason)
 	{
-		return new IrcMessage("KICK", session.ServerName, channel.Name, session.Nick, reason);
+		return IrcMessage.Kick(session.ServerName, channel.Name, session.Nick, reason);
 	}
 }
 
@@ -69,7 +69,7 @@ internal sealed class ChannelClosedDelivery(IrcClients clients, IrcPresence pres
 	{
 		presence.Remove(notification.Channel);
 		foreach (var session in clients.Of(notification.Members))
-			session.Deliver(ChannelPartedDelivery.Kick(session, notification.Channel, "The channel was closed"));
+			session.Deliver(ChannelPartedDelivery.Kick(session, notification.Channel, IrcReplies.KickClosed));
 		return ValueTask.CompletedTask;
 	}
 }
@@ -80,7 +80,7 @@ internal sealed class ChannelConfiguredDelivery(IrcClients clients) : INotificat
 	{
 		foreach (var session in clients.Of(notification.Removed))
 			session.Deliver(ChannelPartedDelivery.Kick(session, notification.Channel,
-				"You may no longer read the channel"));
+				IrcReplies.KickNoAccess));
 		return ValueTask.CompletedTask;
 	}
 }

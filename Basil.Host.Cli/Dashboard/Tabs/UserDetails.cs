@@ -131,7 +131,7 @@ internal sealed class UserDetails(
 
 	private async Task<DetailView> SessionAsync(int userId, long id)
 	{
-		var actor = await services.GetRequiredService<SessionRegistry>().OperateAsync();
+		var actor = await services.GetRequiredService<BotSessions>().OperateAsync();
 		var (outcome, record) = await services.GetRequiredService<ISender>()
 			.Send(new GetUserSession(actor, userId, id));
 		return outcome == UserActionResult.Ok && record is not null
@@ -143,7 +143,7 @@ internal sealed class UserDetails(
 	// The newest sessions of the account, read once as the console command does, shown as the table of the Sessions tab.
 	private async Task<DetailView> SessionsAsync(UserItem user)
 	{
-		var actor = await services.GetRequiredService<SessionRegistry>().OperateAsync();
+		var actor = await services.GetRequiredService<BotSessions>().OperateAsync();
 		var (outcome, page) = await services.GetRequiredService<ISender>().Send(new ListUserSessions(actor,
 			user.Id, new PageRequest(0, RowsShown), SessionFilter.Any, null));
 		if (outcome != UserActionResult.Ok || page is null)
@@ -173,7 +173,7 @@ internal sealed class UserDetails(
 	private async Task<DetailView> RelationsAsync(UserItem user, bool friends)
 	{
 		var title = friends ? "Friends" : "Blocks";
-		var actor = await services.GetRequiredService<SessionRegistry>().OperateAsync();
+		var actor = await services.GetRequiredService<BotSessions>().OperateAsync();
 		var sender = services.GetRequiredService<ISender>();
 		var target = user.Id;
 		var (outcome, records) = friends

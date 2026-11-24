@@ -42,7 +42,7 @@ internal sealed class UsersSource(IServiceProvider services, TimeProvider clock)
 			.OrderBy(user => user.Record.Id)
 			.Select(user => Item(lobby, user.Record, user, now)).ToList();
 		var onlineIds = online.Select(item => item.Id).ToHashSet();
-		var actor = await registry.OperateAsync(ct);
+		var actor = await services.GetRequiredService<BotSessions>().OperateAsync(ct);
 		var found = await services.GetRequiredService<ISender>()
 			.Send(new SearchUsers(actor, parsed, new PageRequest(0, limit)), ct);
 		var offline = found.Items.Where(record => !onlineIds.Contains(record.Id) && record.Id != BasilBot.Id)

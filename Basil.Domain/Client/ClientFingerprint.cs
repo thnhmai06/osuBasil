@@ -8,7 +8,7 @@ namespace Basil.Domain.Client;
 /// <param name="UninstallHash">The hash of the client's uninstall identifier.</param>
 /// <param name="DiskSignatureHash">The hash of the machine's disk signature.</param>
 /// <param name="NetworkAdapters">The network adapters the client reported.</param>
-public readonly record struct OsuFingerprint(
+public readonly record struct ClientFingerprint(
 	Md5Hash PathHash,
 	Md5Hash UninstallHash,
 	Md5Hash DiskSignatureHash,

@@ -1,3 +1,4 @@
+using Basil.Application.Sessions.Messages;
 using Basil.Application.Sessions.Registry;
 using System.Collections.Concurrent;
 using System.Text;
@@ -195,7 +196,7 @@ public sealed class SseHub(TimeProvider clock, SessionRegistry registry, ISender
 
 	public void Touch(SseStream stream)
 	{
-		if (stream.Session is { IsOpen: true } connection) registry.MarkActive(connection);
+		if (stream.Session is { IsOpen: true } connection) sender.Send(new MarkSessionActive(connection));
 	}
 
 	internal static byte[] Frame(string eventName, string? id, byte[] json)

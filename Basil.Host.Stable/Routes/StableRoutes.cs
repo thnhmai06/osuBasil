@@ -1,3 +1,5 @@
+using Mediator;
+using Basil.Application.Sessions.Messages;
 using Basil.Application.Sessions.Registry;
 using System.Diagnostics;
 using Basil.Application.Diagnostics.Services;
@@ -65,7 +67,7 @@ public static class StableRoutes
 		cho.MapPost("/", ExchangeAsync);
 	}
 
-	private static async Task<IResult> ExchangeAsync(HttpContext context, SessionRegistry registry, StableLogin login,
+	private static async Task<IResult> ExchangeAsync(HttpContext context, SessionRegistry registry, ISender sender, StableLogin login,
 		PacketDispatcher dispatcher, Outbox outbox, IPublishedEvents events, CancellationToken ct)
 	{
 		using var buffer = new MemoryStream();
@@ -87,7 +89,7 @@ public static class StableRoutes
 			return Results.Bytes(Outbox.Build(writer => writer.RestartServer(0)), "text/html; charset=UTF-8");
 
 		var started = Stopwatch.GetTimestamp();
-		registry.MarkActive(connection);
+		await sender.Send(new MarkSessionActive(connection), ct);
 		// A session silent past its expiry is closed by the heartbeat: the client logs in again, as for a dead token.
 		if (!connection.IsOpen)
 			return Results.Bytes(Outbox.Build(writer => writer.RestartServer(0)), "text/html; charset=UTF-8");

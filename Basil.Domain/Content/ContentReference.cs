@@ -78,7 +78,7 @@ public readonly record struct ContentReference : IParsable<ContentReference>, IF
 			result = Parse(s, provider);
 			return true;
 		}
-		catch
+		catch (FormatException)
 		{
 			return false;
 		}

@@ -29,10 +29,9 @@ public sealed partial class Server
 			if (OpenChannel(channel) is not null)
 				openedChannels++;
 
-		var registry = Context.Connections.Registry;
-		var closedConnections = await registry.CloseStoppedAsync();
-		await registry.EnsureBotAsync(ct);
-		var botOnline = await registry.ConnectBotAsync(ct) is not null;
+		var closedConnections = await Context.Maintenance.CloseStoppedAsync();
+		await Context.Bot.EnsureBotAsync(ct);
+		var botOnline = await Context.Bot.ConnectBotAsync(ct) is not null;
 
 		var closedMatches = await Context.Lobby.CloseUnfinishedAsync();
 		return new ServerRecovery(openedChannels, botOnline, closedMatches, closedConnections);

@@ -1,4 +1,5 @@
 using Basil.Application.Sessions.Persistence;
+using Basil.Application.Sessions.Messages;
 using Basil.Application.Sessions.Registry;
 using System.Text;
 using Basil.Application.Chat.Registry;
@@ -12,6 +13,8 @@ using Basil.Gateway.RateLimiting;
 using Basil.Host.Irc.Clients;
 using Basil.Host.Irc.Support;
 using Basil.Host.Irc.Transport;
+using Basil.Host.Shared.Info;
+using Basil.Protocol.Irc;
 using Basil.Protocol.Irc.Models;
 using Basil.Shared.Structures.Cryptography;
 using Mediator;
@@ -34,6 +37,8 @@ internal sealed partial class IrcCommands(
 	IrcState state,
 	IOptions<IrcOptions> options)
 {
+	private const int NickLength = 15;
+
 	internal static readonly string[] Capabilities =
 	[
 		"cap-notify", "sasl", "server-time", "message-tags", "account-tag", "account-notify", "away-notify",
@@ -52,7 +57,7 @@ internal sealed partial class IrcCommands(
 	{
 		if (session.Session is { } connection)
 		{
-			registry.MarkActive(connection);
+			await sender.Send(new MarkSessionActive(connection), ct);
 			// A closed session, such as one silent past its expiry, takes its socket with it.
 			if (!connection.IsOpen)
 			{
@@ -71,10 +76,11 @@ internal sealed partial class IrcCommands(
 				return;
 			case "PONG":
 				return;
-			case "QUIT":
+			case IrcVerb.Quit:
 				session.Quit = true;
-				session.Close(
-					$"Quit: {(message.Parameters.Count > 0 ? message.Parameters[0] : string.Empty)}".TrimEnd());
+				session.Close(message.Parameters.Count > 0 && message.Parameters[0].Length > 0
+					? $"{IrcReplies.Closing(SessionEndReason.LoggedOut)}: {message.Parameters[0]}"
+					: IrcReplies.Closing(SessionEndReason.LoggedOut));
 				return;
 		}
 
@@ -85,10 +91,9 @@ internal sealed partial class IrcCommands(
 	private static void Ping(IrcSocket session, IrcMessage message)
 	{
 		if (message.Parameters.Count == 0)
-			session.Numeric(IrcNumericReply.ErrNeedMoreParams, "PING", IrcReplies.NeedMoreParams);
+			session.Numeric(IrcNumericReply.ErrNeedMoreParams, IrcVerb.Ping, IrcReplies.NeedMoreParams);
 		else
-			session.Send(new IrcMessage("PONG", session.ServerName, session.ServerName, message.Parameters[0])
-				{ ForceTrailing = true });
+			session.Send(IrcMessage.ServerPong(session.ServerName, message.Parameters[0]));
 	}
 
 	private async Task RegisteringAsync(IrcSocket session, IrcMessage message, CancellationToken ct)
@@ -101,7 +106,7 @@ internal sealed partial class IrcCommands(
 				else session.Pass = parameters[0];
 				break;
 			case "NICK":
-				if (parameters.Count == 0) session.Numeric(IrcNumericReply.ErrNoNicknameGiven, "No nickname given");
+				if (parameters.Count == 0) session.Numeric(IrcNumericReply.ErrNoNicknameGiven, IrcReplies.NoNicknameGiven);
 				else session.RequestedNick = parameters[0];
 				break;
 			case "USER":
@@ -151,9 +156,9 @@ internal sealed partial class IrcCommands(
 		using var attempt = attempts.TryReserve(ipKey, pairKey, rules.Login.MaxAttempts, rules.Login.Window);
 		if (attempt is null) return IrcReplies.TooManyAttempts;
 
-		var result = await registry.LoginAsync(
+		var result = await sender.Send(new LoginSession(
 			new LoginAttempt(claimed, new Md5Hash(Encoding.UTF8.GetBytes(password))), SessionType.Irc,
-			session.Address, null, 0, ct);
+			session.Address, null, 0), ct);
 		if (result.Session is IrcSession connection)
 		{
 			session.Session = connection;
@@ -182,21 +187,20 @@ internal sealed partial class IrcCommands(
 		var connection = session.Session!;
 		var nick = session.Nick;
 		if (session.RequestedNick is { } asked && !string.Equals(asked, nick, StringComparison.Ordinal))
-			session.Send(new IrcMessage("NICK", asked, nick));
+			session.Send(IrcMessage.NickChange(asked, nick));
 
 		var serverName = Options.ServerName;
 		var mask = IrcView.Mask(connection.Record, Options.Domain);
 		var motd = (await sender.Send(new ReadSettings(), ct)).General.Motd;
 		session.Registered = true;
-		session.Numeric(IrcNumericReply.RplWelcome, $"Welcome to the {IrcReplies.Network} IRC network, {mask}");
+		session.Numeric(IrcNumericReply.RplWelcome, IrcReplies.Welcome(mask.ToString()));
 		session.Numeric(IrcNumericReply.RplYourHost,
-			$"Your host is {serverName}, running version {IrcReplies.Version}");
-		session.Numeric(IrcNumericReply.RplCreated, $"This server was started {state.StartedAt:u}");
-		session.Numeric(IrcNumericReply.RplMyInfo, serverName, IrcReplies.Version, "-", "-");
-		session.Numeric(IrcNumericReply.RplIsupport, "CASEMAPPING=ascii", "CHANTYPES=#", "PREFIX=(ov)@+",
-			"CHANMODES=,,,", $"NETWORK={IrcReplies.Network}", "NICKLEN=15", "MODES=1", "MAXTARGETS=1", "LINELEN=512",
-			"are supported by this server");
-		SendMotd(session, motd);
+			IrcReplies.YourHost(serverName, AppVersion.Current));
+		session.Numeric(IrcNumericReply.RplCreated, IrcReplies.Created(state.StartedAt));
+		session.Numeric(IrcNumericReply.RplMyInfo, serverName, AppVersion.Current, "-", "-");
+		session.Numeric(IrcNumericReply.RplIsupport,
+			[.. IrcIsupport.Tokens(IrcReplies.Network, NickLength), IrcReplies.Supported]);
+		if (!string.IsNullOrWhiteSpace(motd)) SendMotd(session, motd);
 		session.Ready();
 	}
 
@@ -204,14 +208,14 @@ internal sealed partial class IrcCommands(
 	{
 		if (string.IsNullOrWhiteSpace(motd))
 		{
-			session.Numeric(IrcNumericReply.ErrNoMotd, "MOTD File is missing");
+			session.Numeric(IrcNumericReply.ErrNoMotd, IrcReplies.NoMotd);
 			return;
 		}
 
-		session.Numeric(IrcNumericReply.RplMotdStart, $"- {session.ServerName} Message of the day -");
+		session.Numeric(IrcNumericReply.RplMotdStart, IrcReplies.MotdStart(session.ServerName));
 		foreach (var line in IrcText.Lines(motd))
-			session.Numeric(IrcNumericReply.RplMotd, $"- {line}");
-		session.Numeric(IrcNumericReply.RplEndOfMotd, "End of /MOTD command.");
+			session.Numeric(IrcNumericReply.RplMotd, IrcReplies.MotdLine(line));
+		session.Numeric(IrcNumericReply.RplEndOfMotd, IrcReplies.EndOfMotd);
 	}
 
 	private async Task RegisteredAsync(IrcSocket session, IrcMessage message, CancellationToken ct)
@@ -262,7 +266,7 @@ internal sealed partial class IrcCommands(
 				Management(session, message);
 				break;
 			case "AUTHENTICATE" when session.SaslDone:
-				session.Numeric(IrcNumericReply.ErrSaslAlready, "You have already authenticated");
+				session.Numeric(IrcNumericReply.ErrSaslAlready, IrcReplies.SaslAlready);
 				break;
 			case "NICK" or "PASS" or "USER" or "AUTHENTICATE":
 				session.Numeric(IrcNumericReply.ErrAlreadyRegistered, IrcReplies.AlreadyRegistered);
@@ -279,7 +283,7 @@ internal sealed partial class IrcCommands(
 
 		void Reply(string subcommand, string caps)
 		{
-			session.Send(new IrcMessage("CAP", session.ServerName, who, subcommand, caps) { ForceTrailing = true });
+			session.Send(IrcMessage.Cap(session.ServerName, who, subcommand, caps));
 		}
 
 		if (message.Parameters.Count == 0)
@@ -312,9 +316,9 @@ internal sealed partial class IrcCommands(
 	private static void CapLs(IrcSocket session, IrcMessage message, Action<string, string> reply)
 	{
 		if (!session.Registered) session.Negotiating = true;
-		var v302 = message.Parameters.Count > 1 && int.TryParse(message.Parameters[1], out var version) &&
-		           version >= 302;
-		reply("LS", string.Join(' ', Capabilities.Select(cap => cap == "sasl" && v302 ? "sasl=PLAIN" : cap)));
+		var version = 0;
+		if (message.Parameters.Count > 1) int.TryParse(message.Parameters[1], out version);
+		reply("LS", IrcCapabilities.Offer(Capabilities, version));
 	}
 
 	private static void CapReq(IrcSocket session, IrcMessage message, Action<string, string> reply)
@@ -346,19 +350,19 @@ internal sealed partial class IrcCommands(
 		if (data == "*")
 		{
 			session.Sasl = null;
-			session.Numeric(IrcNumericReply.ErrSaslAborted, "SASL authentication aborted");
+			session.Numeric(IrcNumericReply.ErrSaslAborted, IrcReplies.SaslAborted);
 			return;
 		}
 
 		if (session.SaslDone)
 		{
-			session.Numeric(IrcNumericReply.ErrSaslAlready, "You have already authenticated");
+			session.Numeric(IrcNumericReply.ErrSaslAlready, IrcReplies.SaslAlready);
 			return;
 		}
 
 		if (!session.Has("sasl"))
 		{
-			session.Numeric(IrcNumericReply.ErrSaslFail, "SASL authentication failed");
+			session.Numeric(IrcNumericReply.ErrSaslFail, IrcReplies.SaslFailed);
 			return;
 		}
 
@@ -369,22 +373,22 @@ internal sealed partial class IrcCommands(
 		}
 
 		if (data != "+") session.Sasl.Append(data);
-		if (data.Length == 400) return;
+		if (data.Length == IrcCapabilities.AuthenticateChunk) return;
 
 		await FinishSaslAsync(session, ct);
 	}
 
 	private static void StartSasl(IrcSocket session, string mechanism)
 	{
-		if (mechanism.Equals("PLAIN", StringComparison.OrdinalIgnoreCase))
+		if (mechanism.Equals(IrcCapabilities.SaslMechanism, StringComparison.OrdinalIgnoreCase))
 		{
 			session.Sasl = new StringBuilder();
-			session.Send(new IrcMessage("AUTHENTICATE", null, "+"));
+			session.Send(IrcMessage.Authenticate("+"));
 		}
 		else
 		{
-			session.Numeric(IrcNumericReply.RplSaslMechs, "PLAIN", "are available SASL mechanisms");
-			session.Numeric(IrcNumericReply.ErrSaslFail, "SASL authentication failed");
+			session.Numeric(IrcNumericReply.RplSaslMechs, IrcCapabilities.SaslMechanism, IrcReplies.SaslMechanisms);
+			session.Numeric(IrcNumericReply.ErrSaslFail, IrcReplies.SaslFailed);
 		}
 	}
 
@@ -392,34 +396,19 @@ internal sealed partial class IrcCommands(
 	{
 		var payload = session.Sasl!.ToString();
 		session.Sasl = null;
-		if (!TryDecodePlain(payload, out var account, out var key) ||
+		if (!IrcCapabilities.TryDecodePlain(payload, out var account, out var key) ||
 		    await SignInAsync(session, key, account, ct) is not null)
 		{
-			session.Numeric(IrcNumericReply.ErrSaslFail, "SASL authentication failed");
+			session.Numeric(IrcNumericReply.ErrSaslFail, IrcReplies.SaslFailed);
 			return;
 		}
 
 		var user = session.Session!.Record;
 		session.Numeric(IrcNumericReply.RplLoggedIn, IrcView.Mask(user, Options.Domain).ToString(), user.Value.Name,
-			$"You are now logged in as {user.Value.Name}");
-		session.Numeric(IrcNumericReply.RplSaslSuccess, "SASL authentication successful");
+			IrcReplies.LoggedInAs(user.Value.Name));
+		session.Numeric(IrcNumericReply.RplSaslSuccess, IrcReplies.SaslSuccess);
 		session.SaslDone = true;
 		await TryCompleteAsync(session, ct);
 	}
 
-	private static bool TryDecodePlain(string payload, out string account, out string key)
-	{
-		account = key = string.Empty;
-		try
-		{
-			var parts = Encoding.UTF8.GetString(Convert.FromBase64String(payload)).Split('\0');
-			if (parts.Length != 3) return false;
-			(account, key) = (parts[1], parts[2]);
-			return account.Length > 0 && key.Length > 0;
-		}
-		catch (FormatException)
-		{
-			return false;
-		}
-	}
 }

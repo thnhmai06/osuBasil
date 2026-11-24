@@ -6,4 +6,4 @@ namespace Basil.Application.Anticheat.Objects.Events;
 
 public abstract record AnticheatEvent : Event;
 
-public sealed record AnticheatPlayerFlagged(StableSession Player, OsuFlags Signs) : AnticheatEvent;
+public sealed record AnticheatPlayerFlagged(StableSession Player, ClientFlags Signs) : AnticheatEvent;

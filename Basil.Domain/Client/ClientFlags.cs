@@ -2,7 +2,7 @@ namespace Basil.Domain.Client;
 
 /// <summary>The detection flags an osu! client reports with a score or a client check; each set bit is one sign the client noticed.</summary>
 [Flags]
-public enum OsuFlags : uint
+public enum ClientFlags : uint
 {
 	#region Legacy
 
@@ -82,35 +82,35 @@ public enum OsuFlags : uint
 	#endregion
 }
 
-/// <summary>Helpers for reading <see cref="OsuFlags" />.</summary>
-public static class OsuFlagsExtensions
+/// <summary>Helpers for reading <see cref="ClientFlags" />.</summary>
+public static class ClientFlagsExtensions
 {
-	extension(OsuFlags flags)
+	extension(ClientFlags flags)
 	{
-		/// <summary>Gets the names of the flags that are set, in declaration order, without <see cref="OsuFlags.Clean" />.</summary>
+		/// <summary>Gets the names of the flags that are set, in declaration order, without <see cref="ClientFlags.Clean" />.</summary>
 		/// <returns>One name per set flag; empty when none is set.</returns>
 		public IReadOnlyList<string> SignNames()
 		{
 			return
 			[
-				.. Enum.GetValues<OsuFlags>()
-					.Where(sign => sign != OsuFlags.Clean && flags.HasFlag(sign))
+				.. Enum.GetValues<ClientFlags>()
+					.Where(sign => sign != ClientFlags.Clean && flags.HasFlag(sign))
 					.Select(sign => sign.ToString())
 			];
 		}
 	}
 }
 
-/// <summary>Named groups of <see cref="OsuFlags" />.</summary>
-public static class OsuFlagsGroups
+/// <summary>Named groups of <see cref="ClientFlags" />.</summary>
+public static class ClientFlagsGroups
 {
 	/// <summary>The flags that point to cheating, as opposed to those that only describe the client's environment.</summary>
-	public const OsuFlags CheatSigns = OsuFlags.SpeedHackDetected |
-	                                   OsuFlags.MultipleOsuClients | OsuFlags.ChecksumFailure |
-	                                   OsuFlags.FlashlightChecksumIncorrect | OsuFlags.OsuExecutableChecksum |
-	                                   OsuFlags.MissingProcessesInList | OsuFlags.FlashlightImageHack |
-	                                   OsuFlags.SpinnerHack | OsuFlags.TransparentWindow |
-	                                   OsuFlags.FastPress | OsuFlags.RawMouseDiscrepancy |
-	                                   OsuFlags.RawKeyboardDiscrepancy | OsuFlags.HqAssembly |
-	                                   OsuFlags.HqFile | OsuFlags.RegistryEdits;
+	public const ClientFlags CheatSigns = ClientFlags.SpeedHackDetected |
+	                                   ClientFlags.MultipleOsuClients | ClientFlags.ChecksumFailure |
+	                                   ClientFlags.FlashlightChecksumIncorrect | ClientFlags.OsuExecutableChecksum |
+	                                   ClientFlags.MissingProcessesInList | ClientFlags.FlashlightImageHack |
+	                                   ClientFlags.SpinnerHack | ClientFlags.TransparentWindow |
+	                                   ClientFlags.FastPress | ClientFlags.RawMouseDiscrepancy |
+	                                   ClientFlags.RawKeyboardDiscrepancy | ClientFlags.HqAssembly |
+	                                   ClientFlags.HqFile | ClientFlags.RegistryEdits;
 }

@@ -18,6 +18,7 @@ public static class DependencyInjection
 			services.AddSingleton<RepliesWatcher>();
 			services.AddHostedService(sp => sp.GetRequiredService<RepliesWatcher>());
 			services.AddSingleton<RoomCountdowns>();
+			services.AddSingleton<RoomAnnouncements>();
 			services.AddSingleton<MpCommands>();
 			services.AddSingleton<ChannelCommands>();
 			services.AddSingleton<ChatCommands>();

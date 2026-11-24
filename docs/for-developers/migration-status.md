@@ -15,6 +15,9 @@ carrying their own "(target)" notes.
 | Writes take no `CancellationToken`; reads keep it; cancellation tokens are named `ct` | Done |
 | Hosts hold no repository, storage or `ScopeTo`; reads are query messages answered in the owning module | Done, checked in review |
 | `Scoped*` views of `Server` by category (`Faq`, `Banners`, `Seasonals`, `Icon`, `Screenshots`, `Settings`, `Channels`, `Beatmapsets`) | Done |
+| Every change of state a host asks for (sign-in, resume, sign-out, activity, registration) is a Mediator message handled in Infrastructure; the hosts keep lookups only | Done; `SessionRegistry` exposes these operations as `internal` |
+| `SessionRegistry` split by responsibility (`SessionRegistry`, `AccountRegistration`, `BotSessions`, `SessionMaintenance`, `ActivityLog`) | Done |
+| One handler per event type, no state in a handler (state sits in a singleton service such as `RoomAnnouncements`) | Done |
 | Concurrency of the session registry (per-account gate), room countdowns and the SSE hub | Done |
 | XML documentation on every public member (`CS1591` is an error) | Done |
 | Static `IsValidName`/`TryParse` checks instead of catching constructor exceptions | Done for users, MD5 hashes, channels and content names |
@@ -24,7 +27,7 @@ carrying their own "(target)" notes.
 | Area | Today | Target |
 |---|---|---|
 | Admission control | `Basil.Gateway` exists and answers `Allow`/`Deny`; the rate limiter and upload limits still sit partly in `Basil.Host.Shared` and the hosts | The hosts only enforce the gateway's answer, and every entry point declares a policy |
-| Options binding | `Basil` binds configuration and hands it over as `IOptions<T>` | The project that defines an options type binds it |
+| Options binding | `Basil.Host.Irc`, `Basil.Host.Rest` and `Basil.Infrastructure.Beatmaps` bind their own options; they read single keys (`GetValue`) rather than binding a section; `Basil` binds the options it defines (updates, telemetry) | Every options type bound as a section by the project that defines it |
 | Infrastructure part of "Rest and Cli never reference `Protocol.Game.Stable`" | Enforced for the project references of the hosts | Also for the Infrastructure projects |
 | Tests naming | Most test methods follow `Condition_Result` | All of them |
 

@@ -8,10 +8,10 @@ namespace Basil.Infrastructure.Anticheat.Services;
 
 internal sealed class AnticheatReporter(IEventPublisher<AnticheatEvent> events) : IAnticheatReporter
 {
-	public OsuFlags Report(StableSession player, OsuFlags flags)
+	public ClientFlags Report(StableSession player, ClientFlags flags)
 	{
-		var signs = flags & OsuFlagsGroups.CheatSigns;
-		if (signs == OsuFlags.Clean) return signs;
+		var signs = flags & ClientFlagsGroups.CheatSigns;
+		if (signs == ClientFlags.Clean) return signs;
 
 		events.Publish(new AnticheatPlayerFlagged(player, signs));
 		return signs;

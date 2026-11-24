@@ -252,8 +252,7 @@ internal sealed class SettingsTab : ITabView
 		{
 			try
 			{
-				var registry = _services.GetRequiredService<SessionRegistry>();
-				var actor = await registry.OperateAsync(CancellationToken.None);
+				var actor = await _services.GetRequiredService<BotSessions>().OperateAsync(CancellationToken.None);
 				var (_, settings) = await _services.GetRequiredService<ISender>().Send(new GetSettings(actor));
 				if (settings is null) return;
 

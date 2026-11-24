@@ -218,6 +218,61 @@ public sealed record IrcMessage(string Command, string? Prefix = null, params IR
 		return new IrcMessage("PONG", null, token);
 	}
 
+	public static IrcMessage Join(IrcUserPrefix userPrefix, string channel, string account, string realName)
+	{
+		return new IrcMessage(IrcVerb.Join, userPrefix.ToString(), channel, account, realName);
+	}
+
+	public static IrcMessage Kick(string serverName, string channel, string target, string reason)
+	{
+		return new IrcMessage(IrcVerb.Kick, serverName, channel, target, reason);
+	}
+
+	public static IrcMessage NickChange(string oldNick, string newNick)
+	{
+		return new IrcMessage(IrcVerb.Nick, oldNick, newNick);
+	}
+
+	public static IrcMessage Away(IrcUserPrefix userPrefix, string? text)
+	{
+		return new IrcMessage(IrcVerb.Away, userPrefix.ToString(), text is null ? [] : [text]) { ForceTrailing = true };
+	}
+
+	public static IrcMessage Error(string text)
+	{
+		return new IrcMessage(IrcVerb.Error, null, text);
+	}
+
+	public static IrcMessage Cap(string serverName, string target, string subcommand, string capabilities)
+	{
+		return new IrcMessage(IrcVerb.Cap, serverName, target, subcommand, capabilities) { ForceTrailing = true };
+	}
+
+	public static IrcMessage Authenticate(string data)
+	{
+		return new IrcMessage(IrcVerb.Authenticate, null, data);
+	}
+
+	public static IrcMessage Fail(string serverName, string command, string code, string context, string description)
+	{
+		return new IrcMessage(IrcVerb.Fail, serverName, command, code, context, description);
+	}
+
+	public static IrcMessage ServerNotice(string serverName, string target, string text)
+	{
+		return new IrcMessage(IrcVerb.Notice, serverName, target, text);
+	}
+
+	public static IrcMessage ServerPing(string serverName)
+	{
+		return new IrcMessage(IrcVerb.Ping, null, serverName) { ForceTrailing = true };
+	}
+
+	public static IrcMessage ServerPong(string serverName, string token)
+	{
+		return new IrcMessage(IrcVerb.Pong, serverName, serverName, token) { ForceTrailing = true };
+	}
+
 	public override string ToString()
 	{
 		return ToString();

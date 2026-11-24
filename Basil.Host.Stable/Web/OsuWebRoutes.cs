@@ -1,3 +1,4 @@
+using Basil.Application.Sessions.Messages;
 using Basil.Host.Shared.Http;
 using Basil.Application.Sessions.Persistence;
 using Basil.Application.Sessions.Registry;
@@ -93,25 +94,22 @@ internal static class OsuWebRoutes
 			web.MapGet("/web/" + stub, () => Results.Text(string.Empty));
 	}
 
-	private static async Task<IResult> ErrorReportAsync(HttpContext context, ILoggerFactory loggers,
-		CancellationToken ct)
+	private static async Task<IResult> ErrorReportAsync(HttpContext context, WebAuthentication auth,
+		ILoggerFactory loggers, CancellationToken ct)
 	{
 		try
 		{
-			if (context.Request.HasFormContentType)
+			if (context.Request.HasFormContentType && auth.OpenClientAt(context) is { } client)
 			{
 				var form = await context.Request.ReadFormAsync(ct);
 				string Field(string name)
 				{
-					var text = form[name].ToString();
-					return text.Length > OsuWebReplies.MaxErrorFieldLength
-						? text[..OsuWebReplies.MaxErrorFieldLength]
-						: text;
+					return ErrorReportText.Clean(form[name].ToString());
 				}
 
 				loggers.CreateLogger(typeof(OsuWebRoutes).FullName!).LogInformation(
-					"osu! client error report: user {User}, version {Version}, mode {Mode}, beatmap {BeatmapId} {BeatmapChecksum}, exception {Exception}, feedback {Feedback}, stack trace {StackTrace}",
-					Field("u"), Field("version"), Field("gamemode"), Field("beatmap_id"), Field("beatmap_checksum"),
+					"osu! client error report: user {UserId}, version {Version}, mode {Mode}, beatmap {BeatmapId} {BeatmapChecksum}, exception {Exception}, feedback {Feedback}, stack trace {StackTrace}",
+					client.Record.Id, Field("version"), Field("gamemode"), Field("beatmap_id"), Field("beatmap_checksum"),
 					Field("exception"), Field("feedback"), Field("stacktrace"));
 			}
 		}
@@ -226,7 +224,7 @@ internal static class OsuWebRoutes
 					    { } client)
 						return Text("error: no");
 					var clientHashText = ScoreSubmissionCipher.Decrypt(form.Field("s"), iv, version);
-					var fingerprint = OsuFingerprintExtensions.Parse(clientHashText);
+					var fingerprint = ClientFingerprintExtensions.Parse(clientHashText);
 					var ids = form.Field("c1").Split('|');
 					var beatmapHash = new Md5Hash(data.BeatmapHash);
 					var submittedClient = new SubmittedClient(clientHashText, fingerprint, ids[0],
@@ -323,8 +321,8 @@ internal static class OsuWebRoutes
 		var b = query["b"].ToString();
 		// bancho.py: a leading "a" marks the flags the client detected; the rest is the flag bitmask.
 		if (!b.StartsWith('a') || !int.TryParse(b.AsSpan(1), out var flags)) return Text(string.Empty);
-		var signs = anticheat.Report(player, (OsuFlags)flags);
-		return Text(signs == OsuFlags.Clean ? string.Empty : "-3");
+		var signs = anticheat.Report(player, (ClientFlags)flags);
+		return Text(signs == ClientFlags.Clean ? string.Empty : "-3");
 	}
 
 	private static async Task<IResult> SearchAsync(HttpContext context, WebAuthentication auth, ISender sender,
@@ -467,7 +465,7 @@ internal static class OsuWebRoutes
 			: Text(string.Empty);
 	}
 
-	private static async Task<IResult> RegisterAsync(HttpContext context, SessionRegistry registry,
+	private static async Task<IResult> RegisterAsync(HttpContext context, AccountRegistration registration,
 		ISender sender,
 		RateLimiter limiter, CancellationToken ct)
 	{
@@ -489,12 +487,12 @@ internal static class OsuWebRoutes
 		if (checkOnly &&
 		    !limiter.TryAcquire($"register-check:{ip}", RegistrationChecksPerWindow, RegistrationCheckWindow))
 			return Results.Json(
-				new { form_error = new { user = new { username = new[] { "Too many registrations." } } } },
+				new { form_error = new { user = new { username = new[] { OsuWebReplies.TooManyRegistrations } } } },
 				statusCode: 429);
 		RegistrationFailure? failure;
 		try
 		{
-			failure = await registry.CheckRegistrationAsync(
+			failure = await registration.CheckAsync(
 				new RegisterAttempt(name, new Md5Hash(Encoding.UTF8.GetBytes(password))), ct);
 		}
 		catch (InvalidUserNameException)
@@ -508,10 +506,10 @@ internal static class OsuWebRoutes
 		if (checkOnly) return Text("ok");
 		if (!limiter.TryAcquire("register:server", rules.PerServer.Count, rules.PerServer.Window))
 			return Results.Json(
-				new { form_error = new { user = new { username = new[] { "Too many registrations." } } } },
+				new { form_error = new { user = new { username = new[] { OsuWebReplies.TooManyRegistrations } } } },
 				statusCode: 429);
-		var (_, error) = await registry.RegisterAsync(
-			new RegisterAttempt(name, new Md5Hash(Encoding.UTF8.GetBytes(password))), ct);
+		var (_, error) = await sender.Send(
+			new RegisterAccount(new RegisterAttempt(name, new Md5Hash(Encoding.UTF8.GetBytes(password)))), ct);
 		return error is null
 			? Text("ok")
 			: Results.Json(new { form_error = new { user = new { username = new[] { error.ToString() } } } },

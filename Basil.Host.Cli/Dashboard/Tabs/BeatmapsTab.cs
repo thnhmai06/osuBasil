@@ -36,7 +36,7 @@ internal sealed class BeatmapsSource(IServiceProvider services) : IListSource<Be
 	public async Task<IReadOnlyList<SectionData<BeatmapItem>>> LoadAsync(string query, int limit,
 		CancellationToken ct)
 	{
-		var actor = await services.GetRequiredService<SessionRegistry>().OperateAsync(ct);
+		var actor = await services.GetRequiredService<BotSessions>().OperateAsync(ct);
 		var sender = services.GetRequiredService<ISender>();
 		var found = await sender.Send(new SearchBeatmapsets(actor, BeatmapQuery.Parse(query),
 			new PageRequest(0, limit)), ct);

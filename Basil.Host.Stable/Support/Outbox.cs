@@ -1,3 +1,5 @@
+using Mediator;
+using Basil.Application.Sessions.Messages;
 using Basil.Application.Sessions.Registry;
 using System.Collections.Concurrent;
 using Basil.Application.Sessions.Objects;
@@ -7,7 +9,7 @@ using Session = Basil.Application.Sessions.Objects.Session;
 
 namespace Basil.Host.Stable.Support;
 
-internal sealed class Outbox(SessionRegistry registry)
+internal sealed class Outbox(ISender sender)
 {
 	public const int MaxQueuedPackets = 10_000;
 
@@ -43,7 +45,7 @@ internal sealed class Outbox(SessionRegistry registry)
 		foreach (var connection in tooSlow)
 		{
 			_queues.TryRemove(connection, out _);
-			registry.Close(connection, SessionEndReason.ConnectionLost);
+			_ = sender.Send(new CloseSession(connection, SessionEndReason.ConnectionLost));
 		}
 	}
 

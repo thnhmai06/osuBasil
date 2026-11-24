@@ -5,5 +5,5 @@ namespace Basil.Application.Anticheat.Services;
 
 public interface IAnticheatReporter
 {
-	OsuFlags Report(StableSession player, OsuFlags flags);
+	ClientFlags Report(StableSession player, ClientFlags flags);
 }

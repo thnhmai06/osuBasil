@@ -23,15 +23,12 @@ namespace Basil.Application.Sessions.Registry;
 /// <summary>Owns the live sessions: who is online, their tokens, sign-in and resume, take-over, revocation and registration.</summary>
 public sealed class SessionRegistry
 {
-	private const string BotName = "BasilBot";
 	internal static readonly TimeSpan IgnoreLogoutWithin = TimeSpan.FromSeconds(1);
-
-	private static readonly OsuClient ServerClient =
-		new(new OsuVersion(default, null, OsuVersionStream.Stable), default);
 
 	private readonly IAccountRules _accounts;
 
-	private readonly ConcurrentDictionary<long, Session> _activity = new();
+	private readonly ActivityLog _activity;
+	private readonly AccountRegistration _registration;
 	private readonly SessionContext _context;
 
 	// Sessions ended here whose end the store has not confirmed yet: their tokens never resume meanwhile.
@@ -44,9 +41,12 @@ public sealed class SessionRegistry
 	private readonly ConcurrentDictionary<string, Session> _tokens = new(StringComparer.Ordinal);
 	private readonly UserRegistry _users;
 
-	internal SessionRegistry(IAccountRules accounts, SessionContext context, UserRegistry users)
+	internal SessionRegistry(IAccountRules accounts, AccountRegistration registration, ActivityLog activity,
+		SessionContext context, UserRegistry users)
 	{
 		_accounts = accounts;
+		_registration = registration;
+		_activity = activity;
 		_context = context;
 		_users = users;
 	}
@@ -101,7 +101,7 @@ public sealed class SessionRegistry
 
 	public ScopedSessionRegistry ScopeTo(Session actor)
 	{
-		return new ScopedSessionRegistry(this, _context, actor);
+		return new ScopedSessionRegistry(_registration, _context, actor);
 	}
 
 	public ScopedUserSessions ScopeSessions(Session actor, int targetId)
@@ -114,8 +114,8 @@ public sealed class SessionRegistry
 		return new ScopedUserCredentials(this, _users.ScopeTo(actor, targetId), actor);
 	}
 
-	public async Task<LoginResult> LoginAsync(LoginAttempt attempt, SessionType type, IPAddress ip,
-		OsuClient? client, int utcOffset, CancellationToken ct = default)
+	internal async Task<LoginResult> LoginAsync(LoginAttempt attempt, SessionType type, IPAddress ip,
+		ClientBuild? client, int utcOffset, CancellationToken ct = default)
 	{
 		ThrowIfInvalidLogin(type, client);
 
@@ -156,7 +156,7 @@ public sealed class SessionRegistry
 		return LoginResult.Success(session);
 	}
 
-	private static void ThrowIfInvalidLogin(SessionType type, OsuClient? client)
+	private static void ThrowIfInvalidLogin(SessionType type, ClientBuild? client)
 	{
 		type.ThrowIfInvalid();
 		if (type is SessionType.Stable or SessionType.StableTourney && client is null)
@@ -168,14 +168,14 @@ public sealed class SessionRegistry
 		return record is null ? null : new SessionState(record);
 	}
 
-	private static SessionState NewLoginState(UserRecord record, SessionType type, IPAddress ip, OsuClient? client,
+	private static SessionState NewLoginState(UserRecord record, SessionType type, IPAddress ip, ClientBuild? client,
 		DateTimeOffset now, string token)
 	{
 		return SessionState.Start(NewSessionId(), record, type, new SessionFingerprint(ip, client), HashToken(token),
 			now);
 	}
 
-	public async Task<LoginResult> ResumeAsync(string token, Func<UserRecord, bool>? accepts = null,
+	internal async Task<LoginResult> ResumeAsync(string token, Func<UserRecord, bool>? accepts = null,
 		CancellationToken ct = default)
 	{
 		const SessionType type = SessionType.Api;
@@ -281,7 +281,7 @@ public sealed class SessionRegistry
 			}
 	}
 
-	private Session NewSession(SessionState state, string token, int utcOffset)
+	internal Session NewSession(SessionState state, string token, int utcOffset)
 	{
 		return state.Record.Value.Type switch
 		{
@@ -297,23 +297,7 @@ public sealed class SessionRegistry
 		return new Sha256Hash(Encoding.UTF8.GetBytes(token));
 	}
 
-	public Task<RegistrationFailure?> CheckRegistrationAsync(RegisterAttempt attempt,
-		CancellationToken ct = default)
-	{
-		return _accounts.CheckRegistrationAsync(attempt, ct);
-	}
-
-	public async Task<(UserRecord? User, RegistrationFailure? Failure)> RegisterAsync(RegisterAttempt attempt,
-		CancellationToken ct = default)
-	{
-		var failure = await CheckRegistrationAsync(attempt, ct);
-		if (failure is not null) return (null, failure);
-
-		return await _accounts.CreateAsync(new UserData { Name = attempt.Username }, attempt.PasswordHash,
-			null);
-	}
-
-	public void Close(Session connection, SessionEndReason reason)
+	internal void Close(Session connection, SessionEndReason reason)
 	{
 		if (reason is SessionEndReason.LoggedOut && connection is StableSession &&
 		    _context.Clock.GetUtcNow() - connection.State.Record.Value.StartedAt < IgnoreLogoutWithin)
@@ -323,7 +307,7 @@ public sealed class SessionRegistry
 		CloseCore(connection, reason);
 	}
 
-	public void MarkActive(Session session)
+	internal void MarkActive(Session session)
 	{
 		if (!session.IsOpen) return;
 
@@ -334,7 +318,7 @@ public sealed class SessionRegistry
 			return;
 		}
 
-		if (!session.IsServerOwned) _activity[session.State.Record.Id] = session;
+		if (!session.IsServerOwned) _activity.Record(session);
 	}
 
 	// Expiry is decided when a session is looked at, not by a timer: a silent one is closed here and counts as offline.
@@ -350,55 +334,6 @@ public sealed class SessionRegistry
 			Close(session, SessionEndReason.TimedOut);
 
 		return expired.Count;
-	}
-
-	public Task<int> EndSilentAsync()
-	{
-		return _context.Sessions.EndSilentAsync(_context.Clock.GetUtcNow());
-	}
-
-	public async Task<UserRecord> EnsureBotAsync(CancellationToken ct = default)
-	{
-		var stored = await _context.Users.GetAsync(BasilBot.Id, ct);
-		var isBot = stored is { Value: { DeletedAt: null, Privileges: UserPrivileges.Moderator, SilencedEnd: null } };
-
-		if (!isBot && stored is not null) CloseAll(stored, SessionEndReason.Revoked);
-
-		var bot = isBot
-			? stored!
-			: await _context.Users.ReplaceAsync(BasilBot.Id, stored is { Value.DeletedAt: null }
-				? new UserData
-					{ Name = stored.Value.Name, Country = stored.Value.Country, Privileges = UserPrivileges.Moderator }
-				: new UserData { Name = BotName, Country = Country.Vn, Privileges = UserPrivileges.Moderator });
-
-		await _context.Credentials.DeleteAsync(bot);
-		return bot;
-	}
-
-	public async Task<OperatorSession> OperateAsync(CancellationToken ct = default)
-	{
-		var bot = await _context.Users.GetAsync(BasilBot.Id, ct) ??
-		          await EnsureBotAsync(ct);
-		var token = NewToken();
-		var state = NewServerState(bot, SessionType.Api, token);
-		return new OperatorSession(state, token) { User = _users.Of(bot), Siblings = Of(bot), IsOpen = true };
-	}
-
-	public async Task<UserSessions?> ConnectBotAsync(CancellationToken ct = default)
-	{
-		var user = await _context.Users.GetAsync(BasilBot.Id, ct);
-		if (user is null) return null;
-
-		foreach (var type in (ReadOnlySpan<SessionType>)[SessionType.Stable, SessionType.Irc])
-		{
-			if (_online.GetValueOrDefault(user)?[type].Any(open => open.IsOpen) is true) continue;
-
-			var token = NewToken();
-			var session = NewSession(NewServerState(user, type, token), token, 0);
-			if (Open(session) is not null) return null;
-		}
-
-		return _online.GetValueOrDefault(user);
 	}
 
 	internal LoginFailure? Open(Session session, SessionState? stored = null)
@@ -464,15 +399,6 @@ public sealed class SessionRegistry
 		return null;
 	}
 
-	private SessionState NewServerState(UserRecord bot, SessionType type, string token)
-	{
-		var now = _context.Clock.GetUtcNow();
-		// A game client session must report a client, and none stands behind the bot's.
-		var client = type is SessionType.Stable ? ServerClient : null;
-		return SessionState.Start(NewSessionId(), bot, type, new SessionFingerprint(IPAddress.Loopback, client),
-			HashToken(token), now);
-	}
-
 	internal static string NewToken()
 	{
 		return Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(32));
@@ -489,32 +415,6 @@ public sealed class SessionRegistry
 			                              (only is null || connection.State.Record.Id == only))
 			         .OrderByDescending(connection => connection.Type).ToList())
 			Close(connection, reason);
-	}
-
-	public async Task FlushActivityAsync()
-	{
-		var sessions = new List<SessionActivity>();
-		foreach (var (id, _) in _activity)
-			if (_activity.TryRemove(id, out var session))
-				sessions.Add(new SessionActivity(id, session.Type, session.LastActiveAt));
-
-		await _context.Sessions.WriteActivityAsync(sessions);
-	}
-
-	public async Task<int> CloseStoppedAsync()
-	{
-		// Only an API session resumes by its token; osu! and IRC clients sign in again after a restart.
-		var now = _context.Clock.GetUtcNow();
-		var ended = 0;
-		foreach (var type in new[] { SessionType.Stable, SessionType.StableTourney, SessionType.Irc })
-			ended += await _context.Sessions.EndOpenAsync(type, SessionEndReason.ServerStopped, now);
-		return ended;
-	}
-
-	public async Task<int> PurgeEndedSessionsAsync()
-	{
-		var retention = (await _context.Settings.GetAsync()).Sessions.RetentionPeriod;
-		return await _context.Sessions.DeleteEndedBeforeAsync(_context.Clock.GetUtcNow() - retention);
 	}
 
 	/// <summary>Closes the tourney sessions of an account that no longer holds the privilege they need.</summary>
@@ -560,7 +460,7 @@ public sealed class SessionRegistry
 
 		connection.End(_context.Clock.GetUtcNow(), reason);
 		if (!connection.IsServerOwned) _ended[connection.State.Record.Id] = 0;
-		_activity.TryRemove(connection.State.Record.Id, out _);
+		_activity.Forget(connection.State.Record.Id);
 		connection.IsOpen = false;
 		Unindex(connection);
 		connection.Siblings.Remove(connection);
@@ -584,23 +484,6 @@ public sealed class SessionRegistry
 	internal static long NewSessionId()
 	{
 		return RandomNumberGenerator.GetInt32(int.MaxValue) * 4194304L + RandomNumberGenerator.GetInt32(4194304) + 1;
-	}
-
-	internal Task<(UserRecord? User, RegistrationFailure? Failure)> CreateAccountAsync(UserData data,
-		Md5Hash passwordHash, UserPrivileges? privileges)
-	{
-		return _accounts.CreateAsync(data, passwordHash, privileges);
-	}
-
-	internal async Task<(UserRecord? User, UserActionResult Outcome)> RegisterAsync(UserData data, Md5Hash passwordHash,
-		UserPrivileges? privileges)
-	{
-		var (user, failure) = await CreateAccountAsync(data, passwordHash, privileges);
-		return failure switch
-		{
-			null => (user, UserActionResult.Ok),
-			_ => (null, UserActionResult.NameTaken)
-		};
 	}
 
 	internal sealed class Revocation(DateTimeOffset at, long? except)

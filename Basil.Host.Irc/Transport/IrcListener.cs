@@ -1,10 +1,9 @@
-using Basil.Application.Sessions.Registry;
+using Basil.Application.Sessions.Messages;
 using Basil.Domain;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using Basil.Application.Diagnostics.Services;
 using Basil.Application.Shared.Settings;
 using Basil.Domain.Sessions;
@@ -28,7 +27,6 @@ internal sealed class IrcListener(
 	IrcClients clients,
 	IrcState state,
 	Admission admission,
-	SessionRegistry registry,
 	ISender sender,
 	TimeProvider clock,
 	ILogger<IrcListener> logger) : BackgroundService
@@ -136,7 +134,7 @@ internal sealed class IrcListener(
 		state.AcceptingLogins = false;
 		foreach (var (session, _) in _sessions)
 		{
-			session.Send(new IrcMessage("NOTICE", session.ServerName, session.Nick, IrcReplies.ShuttingDownNotice));
+			session.Send(IrcMessage.ServerNotice(session.ServerName, session.Nick, IrcReplies.ShuttingDownNotice));
 			session.Close(IrcReplies.ShuttingDown);
 		}
 	}
@@ -186,7 +184,7 @@ internal sealed class IrcListener(
 
 	private static void PingIfRegistered(IrcSocket session)
 	{
-		if (session.Registered) session.Send(new IrcMessage("PING", null, session.ServerName) { ForceTrailing = true });
+		if (session.Registered) session.Send(IrcMessage.ServerPing(session.ServerName));
 	}
 
 	private void RejectIfOverLimit(IrcSocket session, int counted, int perIp)
@@ -198,9 +196,10 @@ internal sealed class IrcListener(
 	private async Task ReleaseAsync(IrcSocket session, Task writer)
 	{
 		if (session.Session is { IsOpen: true } connection)
-			registry.Close(connection, session.Quit ? SessionEndReason.LoggedOut : SessionEndReason.ConnectionLost);
+			await sender.Send(new CloseSession(connection,
+				session.Quit ? SessionEndReason.LoggedOut : SessionEndReason.ConnectionLost));
 		clients.Remove(session);
-		session.Close("Connection closed");
+		session.Close(IrcReplies.ConnectionClosed);
 		await writer;
 		var remaining = _perAddress.AddOrUpdate(session.Address, 0, (_, count) => count - 1);
 		if (remaining <= 0) _perAddress.TryRemove(new KeyValuePair<IPAddress, int>(session.Address, remaining));
@@ -209,7 +208,7 @@ internal sealed class IrcListener(
 
 	private async Task HandleLineAsync(IrcSocket session, string? text, CancellationToken ct)
 	{
-		if (text is null || Encoding.UTF8.GetByteCount(BodyOf(text)) > IrcReplies.MaxBodyBytes)
+		if (text is null || IrcLines.BodyBytes(text) > IrcWire.MaxBodyBytes)
 		{
 			session.Numeric(IrcNumericReply.ErrInputTooLong, IrcReplies.InputTooLong);
 			return;
@@ -223,7 +222,7 @@ internal sealed class IrcListener(
 		var decision = admission.Admit(subject);
 		if (!decision.Allowed)
 		{
-			session.Send(new IrcMessage("NOTICE", session.ServerName, session.Nick,
+			session.Send(IrcMessage.ServerNotice(session.ServerName, session.Nick,
 				decision.Reason == AdmissionDenial.RateExceeded ? IrcReplies.Flooding : IrcReplies.ServerBusy));
 			if (decision.Reason == AdmissionDenial.RateExceeded) session.Close(IrcReplies.Flooding);
 			return;
@@ -237,10 +236,12 @@ internal sealed class IrcListener(
 		catch (BasilException ex)
 		{
 			logger.LogDebug(ex, "IRC command {Command} was not taken in", message.Command);
+			session.Numeric(IrcNumericReply.ErrUnknownError, message.Command, IrcReplies.CommandFailed);
 		}
 		catch (Exception ex) when (ex is not OperationCanceledException)
 		{
 			logger.LogError(ex, "IRC command {Command} failed", message.Command);
+			session.Numeric(IrcNumericReply.ErrUnknownError, message.Command, IrcReplies.CommandFailed);
 		}
 		finally
 		{
@@ -249,8 +250,4 @@ internal sealed class IrcListener(
 		}
 	}
 
-	private static string BodyOf(string line)
-	{
-		return line.StartsWith('@') && line.IndexOf(' ') is var space and >= 0 ? line[(space + 1)..] : line;
-	}
 }

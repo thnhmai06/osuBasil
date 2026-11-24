@@ -7,7 +7,7 @@ public sealed record BeatmapChecksums(Md5Hash Hash, Md5Hash? StoryboardHash);
 
 public sealed record SubmittedClient(
 	string ClientHash,
-	OsuFingerprint Fingerprint,
+	ClientFingerprint Fingerprint,
 	string UninstallId,
 	string DiskSignature,
 	string VersionDate,

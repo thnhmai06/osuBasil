@@ -57,7 +57,7 @@ internal static class AuthRoutes
 		}
 
 		var attempt = new LoginAttempt(request.Username, new Md5Hash(Encoding.UTF8.GetBytes(request.Password)));
-		var result = await registry.LoginAsync(attempt, SessionType.Api, ip, null, 0, context.RequestAborted);
+		var result = await sender.Send(new LoginSession(attempt, SessionType.Api, ip, null, 0), context.RequestAborted);
 		if (result.Session is not { } connection)
 		{
 			if (result.Failure is LoginFailure.UnknownUser or LoginFailure.WrongPassword) reservation.Keep();

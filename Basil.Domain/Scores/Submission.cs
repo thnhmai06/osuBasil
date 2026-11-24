@@ -10,7 +10,7 @@ public sealed record Submission
 	public required ScoreData Score { get; init; }
 
 	/// <summary>The flags the submitting client sent along with the play.</summary>
-	public required OsuFlags Flags { get; init; }
+	public required ClientFlags Flags { get; init; }
 
 	/// <summary>The hash the client computed for the submission, to compare with the one the server derives.</summary>
 	public required Md5Hash HashByClient { get; init; }

@@ -1,3 +1,5 @@
+using Mediator;
+using Basil.Application.Sessions.Messages;
 using Basil.Application.Sessions.Registry;
 using System.Net;
 using Basil.Application.Sessions.Objects;
@@ -28,7 +30,7 @@ public static class Caller
 			return ClientAddress.Resolve(context);
 		}
 
-		public async Task<bool> AuthenticateAsync(SessionRegistry registry)
+		public async Task<bool> AuthenticateAsync(ISender sender)
 		{
 			var header = context.Request.Headers.Authorization.ToString();
 			if (!header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)) return false;
@@ -36,7 +38,7 @@ public static class Caller
 			var token = header["Bearer ".Length..].Trim();
 			if (token.Length == 0) return false;
 
-			var result = await registry.ResumeAsync(token, null, context.RequestAborted);
+			var result = await sender.Send(new ResumeSession(token), context.RequestAborted);
 			if (result.Session is not ApiSession connection) return false;
 
 			context.Items[ConnectionKey] = connection;

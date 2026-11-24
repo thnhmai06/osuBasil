@@ -25,7 +25,8 @@ the system runs (session state, presence, spectator frames, the state of a room 
 that owns it. A row that carries data to the database is not a Domain model; it is an Infrastructure row.
 
 ```text
-Basil.Domain                     the system at rest                              -> (nothing)
+Basil.Shared                     primitives with no business meaning             -> (nothing)
+Basil.Domain                     the system at rest                              -> Shared
 Basil.Application.Shared         shared contracts, events, Mediator         -> Domain, Mediator.Abstractions
 Basil.Infrastructure.Shared      shared database, files, event dispatcher         -> Application.Shared, Domain
 Basil.Application.<Module>       contracts and runtime objects of one module      -> Domain, Application.Shared,

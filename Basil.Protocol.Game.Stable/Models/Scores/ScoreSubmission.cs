@@ -21,7 +21,7 @@ public sealed record ScoreSubmission(
 	bool IsPassed,
 	int Mode,
 	DateTimeOffset Timestamp,
-	OsuFlags ClientFlags)
+	ClientFlags ClientFlags)
 {
 	private const int FieldCount = 18;
 
@@ -50,7 +50,7 @@ public sealed record ScoreSubmission(
 			Number(15),
 			DateTimeOffset.ParseExact(fields[16], "yyMMddHHmmss", CultureInfo.InvariantCulture,
 				DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal),
-			(OsuFlags)(fields[17].Count(c => c == ' ') & ~4));
+			(ClientFlags)(fields[17].Count(c => c == ' ') & ~4));
 
 		int Number(int index)
 		{

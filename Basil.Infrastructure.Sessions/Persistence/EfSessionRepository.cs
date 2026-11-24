@@ -176,7 +176,7 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 		return new SessionRecord { Id = row.Id, Value = data };
 	}
 
-	private static OsuClient? ToClient(SessionRow row)
+	private static ClientBuild? ToClient(SessionRow row)
 	{
 		if (row.ClientDate is null) return null;
 
@@ -184,8 +184,8 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 			row.ClientRevision, (OsuVersionStream)row.ClientStream!.Value);
 		var adapters = new NetworkAdapters
 			{ Adapters = row.NetworkAdapters!, Hash = new Md5Hash(row.NetworkAdaptersHash!) };
-		return new OsuClient(version,
-			new OsuFingerprint(new Md5Hash(row.OsuPathHash!), new Md5Hash(row.UninstallHash!),
+		return new ClientBuild(version,
+			new ClientFingerprint(new Md5Hash(row.OsuPathHash!), new Md5Hash(row.UninstallHash!),
 				new Md5Hash(row.DiskSignatureHash!),
 				adapters));
 	}

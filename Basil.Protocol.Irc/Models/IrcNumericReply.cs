@@ -64,6 +64,8 @@ public enum IrcNumericReply : ushort
 
 	RplEndOfNames = 366,
 
+	RplEndOfBanList = 368,
+
 	RplMotd = 372,
 
 	RplMotdStart = 375,
@@ -71,6 +73,8 @@ public enum IrcNumericReply : ushort
 	RplEndOfMotd = 376,
 
 	RplTime = 391,
+
+	ErrUnknownError = 400,
 
 	ErrNoSuchNick = 401,
 

@@ -27,7 +27,7 @@ internal sealed class RestPipeline(RequestDelegate next)
 
 		try
 		{
-			var authenticated = await context.AuthenticateAsync(registry);
+			var authenticated = await context.AuthenticateAsync(sender);
 			if (await RateLimitedAsync(context, authenticated, sender, limiter)) return;
 
 			await next(context);

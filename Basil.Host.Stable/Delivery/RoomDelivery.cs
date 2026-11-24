@@ -135,7 +135,7 @@ internal sealed class RoomInviteDelivery(SessionRegistry registry, Outbox outbox
 	{
 		if (registry.OpenStableClient(notification.Player) is { } target)
 			outbox.Send(target, writer => writer.MatchInvite(notification.Actor.Id, notification.Actor.Value.Name,
-				$"Come join my game: {RoomLink.Embed(notification.Room.Settings.Name, notification.Room.WireId, notification.Room.Settings.Password)}", notification.Player.Value.Name));
+				StableReplies.InviteText(RoomLink.Embed(notification.Room.Settings.Name, notification.Room.WireId, notification.Room.Settings.Password)), notification.Player.Value.Name));
 
 		return ValueTask.CompletedTask;
 	}

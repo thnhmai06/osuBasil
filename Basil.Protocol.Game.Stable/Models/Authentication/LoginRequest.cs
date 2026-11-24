@@ -11,7 +11,7 @@ public sealed record LoginRequest(
 	OsuVersion OsuVersion,
 	int UtcOffset,
 	bool DisplayCity,
-	OsuFingerprint Fingerprint,
+	ClientFingerprint Fingerprint,
 	bool BlockNonFriendDms)
 {
 	public static LoginRequest Parse(ReadOnlySpan<byte> body)
@@ -38,6 +38,6 @@ public sealed record LoginRequest(
 			throw new FormatException("The login body's UTC offset is not an integer.");
 
 		return new LoginRequest(lines[0], lines[1], OsuVersionExtensions.Parse(fields[0]), utcOffset, fields[2] == "1",
-			OsuFingerprintExtensions.Parse(fields[3]), fields[4] == "1");
+			ClientFingerprintExtensions.Parse(fields[3]), fields[4] == "1");
 	}
 }

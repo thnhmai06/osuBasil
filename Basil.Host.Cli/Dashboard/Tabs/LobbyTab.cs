@@ -42,10 +42,9 @@ internal sealed class LobbySource(IServiceProvider services) : IListSource<RoomI
 {
 	public async Task<IReadOnlyList<SectionData<RoomItem>>> LoadAsync(string query, int limit, CancellationToken ct)
 	{
-		var registry = services.GetRequiredService<SessionRegistry>();
 		var sender = services.GetRequiredService<ISender>();
 		var parsed = RoomQuery.Parse(query);
-		var actor = await registry.OperateAsync(ct);
+		var actor = await services.GetRequiredService<BotSessions>().OperateAsync(ct);
 		var found = await sender.Send(new ListRooms(actor, parsed, new PageRequest(0, limit)), ct);
 		var open = new List<RoomItem>();
 		foreach (var room in found.Items)

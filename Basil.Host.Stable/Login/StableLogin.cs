@@ -1,3 +1,4 @@
+using Basil.Application.Sessions.Messages;
 using Basil.Host.Shared.Http;
 using Basil.Application.Sessions.Objects;
 using Basil.Application.Sessions.Persistence;
@@ -58,10 +59,10 @@ internal sealed class StableLogin(
 		LoginResult result;
 		try
 		{
-			result = await registry.LoginAsync(new LoginAttempt(request.Username, new Md5Hash(request.PasswordMd5)),
+			result = await sender.Send(new LoginSession(new LoginAttempt(request.Username, new Md5Hash(request.PasswordMd5)),
 				type,
 				ip,
-				client, request.UtcOffset, ct);
+				client, request.UtcOffset), ct);
 		}
 		catch (ArgumentException)
 		{
@@ -78,12 +79,12 @@ internal sealed class StableLogin(
 		return (connection.Token, await WelcomeAsync(connection, ct));
 	}
 
-	private static bool TryParse(byte[] body, out LoginRequest request, out OsuClient client)
+	private static bool TryParse(byte[] body, out LoginRequest request, out ClientBuild client)
 	{
 		try
 		{
 			request = LoginRequest.Parse(body);
-			client = new OsuClient(request.OsuVersion, request.Fingerprint);
+			client = new ClientBuild(request.OsuVersion, request.Fingerprint);
 			return true;
 		}
 		catch (Exception ex) when (ex is FormatException or ArgumentException)

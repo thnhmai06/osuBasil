@@ -17,16 +17,16 @@ internal sealed partial class IrcCommands
 	private async Task MessageAsync(IrcSocket session, Session actor, IrcMessage message,
 		CancellationToken ct)
 	{
-		var notice = message.Command == "NOTICE";
+		var notice = message.Command == IrcVerb.Notice;
 		if (message.Parameters.Count == 0)
 		{
-			session.Numeric(IrcNumericReply.ErrNoRecipient, $"No recipient given ({message.Command})");
+			session.Numeric(IrcNumericReply.ErrNoRecipient, IrcReplies.NoRecipient(message.Command));
 			return;
 		}
 
 		if (message.Parameters.Count < 2 || message.Parameters[1].Length == 0)
 		{
-			session.Numeric(IrcNumericReply.ErrNoTextToSend, "No text to send");
+			session.Numeric(IrcNumericReply.ErrNoTextToSend, IrcReplies.NoTextToSend);
 			return;
 		}
 
@@ -66,7 +66,7 @@ internal sealed partial class IrcCommands
 		}
 		catch (EmptyMessageException)
 		{
-			session.Numeric(IrcNumericReply.ErrNoTextToSend, "No text to send");
+			session.Numeric(IrcNumericReply.ErrNoTextToSend, IrcReplies.NoTextToSend);
 		}
 	}
 
@@ -77,10 +77,10 @@ internal sealed partial class IrcCommands
 		if (limiter.TryAcquire($"chat:{actor.Record.Id}", limit.Count, limit.Window)) return true;
 
 		if (session.Has("standard-replies"))
-			session.Send(new IrcMessage("FAIL", session.ServerName, command, IrcReplies.RateLimitedCode, target,
+			session.Send(IrcMessage.Fail(session.ServerName, command, IrcReplies.RateLimitedCode, target,
 				IrcReplies.ChatTooFast));
 		else
-			session.Send(new IrcMessage("NOTICE", session.ServerName, session.Nick, IrcReplies.ChatTooFast));
+			session.Send(IrcMessage.ServerNotice(session.ServerName, session.Nick, IrcReplies.ChatTooFast));
 		return false;
 	}
 
@@ -97,8 +97,11 @@ internal sealed partial class IrcCommands
 			case ChannelJoinResult.Closed or ChannelJoinResult.NotFound:
 				session.Numeric(IrcNumericReply.ErrNoSuchChannel, target, IrcReplies.NoSuchChannel);
 				break;
-			case ChannelJoinResult.NotMember or ChannelJoinResult.AccessDenied:
-				session.Numeric(IrcNumericReply.ErrCannotSendToChannel, target, IrcReplies.CannotSend);
+			case ChannelJoinResult.NotMember:
+				session.Numeric(IrcNumericReply.ErrCannotSendToChannel, target, IrcReplies.CannotSendNotMember);
+				break;
+			case ChannelJoinResult.AccessDenied:
+				session.Numeric(IrcNumericReply.ErrCannotSendToChannel, target, IrcReplies.CannotSendNoAccess);
 				break;
 			case ChannelJoinResult.Blocked:
 				session.Numeric(IrcNumericReply.ErrCannotSendToChannel, target, IrcReplies.DmBlocked);
@@ -124,7 +127,7 @@ internal sealed partial class IrcCommands
 	{
 		if (message.Parameters.Count == 0)
 		{
-			NeedMore(session, "JOIN");
+			NeedMore(session, IrcVerb.Join);
 			return;
 		}
 
@@ -132,7 +135,7 @@ internal sealed partial class IrcCommands
 		{
 			if (name.StartsWith("#spec_", StringComparison.OrdinalIgnoreCase))
 			{
-				session.Numeric(IrcNumericReply.ErrInviteOnlyChan, name, IrcReplies.CannotJoin);
+				session.Numeric(IrcNumericReply.ErrInviteOnlyChan, name, IrcReplies.CannotJoinSpectator);
 				continue;
 			}
 
@@ -143,7 +146,7 @@ internal sealed partial class IrcCommands
 					session.Numeric(IrcNumericReply.ErrNoSuchChannel, name, IrcReplies.NoSuchChannel);
 					break;
 				case ChannelJoinResult.AccessDenied:
-					session.Numeric(IrcNumericReply.ErrInviteOnlyChan, name, IrcReplies.CannotJoin);
+					session.Numeric(IrcNumericReply.ErrInviteOnlyChan, name, IrcReplies.CannotJoinNoAccess);
 					break;
 			}
 		}
@@ -154,7 +157,7 @@ internal sealed partial class IrcCommands
 	{
 		if (message.Parameters.Count == 0)
 		{
-			NeedMore(session, "PART");
+			NeedMore(session, IrcVerb.Part);
 			return;
 		}
 
@@ -181,10 +184,9 @@ internal sealed partial class IrcCommands
 		var text = message.Parameters.Count > 0 && message.Parameters[0].Length > 0 ? message.Parameters[0] : null;
 		await sender.Send(new SetAwayMessage(actor, text), ct);
 		session.Numeric(text is null ? IrcNumericReply.RplUnaway : IrcNumericReply.RplNowAway,
-			text is null ? "You are no longer marked as being away" : "You have been marked as being away");
+			text is null ? IrcReplies.NoLongerAway : IrcReplies.NowAway);
 
-		var line = new IrcMessage("AWAY", IrcView.Mask(actor.Record, Options.Domain).ToString(),
-			text is null ? [] : [text]) { ForceTrailing = true };
+		var line = IrcMessage.Away(IrcView.Mask(actor.Record, Options.Domain), text);
 		var mine = presence.Of(actor.Record);
 		foreach (var other in clients.All.Where(other =>
 			         other.Has("away-notify") && other.Session is { } connection &&
@@ -201,7 +203,7 @@ internal sealed partial class IrcCommands
 			return;
 		}
 
-		var channel = message.Command == "KICK" ? message.Parameters[0] : message.Parameters[1];
+		var channel = message.Command == IrcVerb.Kick ? message.Parameters[0] : message.Parameters[1];
 		if (!channel.StartsWith('#') || Resolve(channel) is null)
 			session.Numeric(IrcNumericReply.ErrNoSuchChannel, channel, IrcReplies.NoSuchChannel);
 		else
@@ -212,7 +214,7 @@ internal sealed partial class IrcCommands
 	{
 		if (message.Parameters.Count == 0)
 		{
-			NeedMore(session, "TOPIC");
+			NeedMore(session, IrcVerb.Topic);
 			return;
 		}
 
@@ -235,7 +237,7 @@ internal sealed partial class IrcCommands
 	{
 		if (message.Parameters.Count == 0)
 		{
-			NeedMore(session, "MODE");
+			NeedMore(session, IrcVerb.Mode);
 			return;
 		}
 
@@ -246,20 +248,19 @@ internal sealed partial class IrcCommands
 				session.Numeric(IrcNumericReply.ErrNoSuchChannel, target, IrcReplies.NoSuchChannel);
 			else if (message.Parameters.Count == 1)
 				session.NumericPlain(IrcNumericReply.RplChannelModeIs, channel.Name, "+");
+			else if (message.Parameters.Count == 2 && message.Parameters[1].TrimStart('+') == "b")
+				session.Numeric(IrcNumericReply.RplEndOfBanList, channel.Name, IrcReplies.EndOfBanList);
 			else
 				session.Numeric(IrcNumericReply.ErrChanOPrivsNeeded, channel.Name, IrcReplies.NoManagement);
 		}
 		else if (!IrcView.IsNick(actor.Record, target))
 		{
-			session.Numeric(IrcNumericReply.ErrUsersDontMatch, "Cannot change mode for other users");
-		}
-		else if (message.Parameters.Count == 1)
-		{
-			session.NumericPlain(IrcNumericReply.RplUModeIs, "+");
+			session.Numeric(IrcNumericReply.ErrUsersDontMatch, IrcReplies.UsersDontMatch);
 		}
 		else
 		{
-			session.Numeric(IrcNumericReply.ErrUModeUnknownFlag, "Unknown MODE flag");
+			// The server has no user modes: a client's own housekeeping, such as "+i", is answered with the empty set.
+			session.NumericPlain(IrcNumericReply.RplUModeIs, "+");
 		}
 	}
 }

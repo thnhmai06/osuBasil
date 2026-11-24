@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 namespace Basil.Infrastructure.Sessions.Workers;
 
 internal sealed class SessionRetentionSweeper(
-	SessionRegistry registry,
+	SessionMaintenance maintenance,
 	TimeProvider time,
 	ILogger<SessionRetentionSweeper> logger) : BackgroundService
 {
@@ -17,7 +17,7 @@ internal sealed class SessionRetentionSweeper(
 		{
 			try
 			{
-				var deleted = await registry.PurgeEndedSessionsAsync();
+				var deleted = await maintenance.PurgeEndedSessionsAsync();
 				if (deleted > 0) logger.LogInformation("Deleted {SessionCount} sessions past their retention", deleted);
 			}
 			catch (Exception exception) when (exception is not OperationCanceledException)

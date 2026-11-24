@@ -49,7 +49,7 @@ internal sealed partial class PacketHandlers(
 		var reader = PacketReader.ForPayload(packet.Payload);
 		return packet.Type switch
 		{
-			ClientPacketType.Logout => Run(() => registry.Close(actor, SessionEndReason.LoggedOut)),
+			ClientPacketType.Logout => sender.Send(new CloseSession(actor, SessionEndReason.LoggedOut)).AsTask(),
 			ClientPacketType.ErrorReport => Run(() => LogErrorReport(actor, reader)),
 			ClientPacketType.UserStatsRequest => StatsRequestAsync(actor, reader.ReadInt32List().Take(MaxRequestedIds),
 				ct),
@@ -105,8 +105,7 @@ internal sealed partial class PacketHandlers(
 
 	private void LogErrorReport(Session actor, PacketReader reader)
 	{
-		var report = reader.ReadOsuString();
-		if (report.Length > OsuWebReplies.MaxErrorFieldLength) report = report[..OsuWebReplies.MaxErrorFieldLength];
+		var report = ErrorReportText.Clean(reader.ReadOsuString());
 		logger.LogInformation("osu! client error report of user {UserId}: {Report}", actor.Record.Id, report);
 	}
 

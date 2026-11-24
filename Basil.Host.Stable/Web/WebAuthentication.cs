@@ -27,9 +27,16 @@ internal sealed class WebAuthentication(
 	/// <summary>Tells whether the request comes from an address that has an open osu! session.</summary>
 	public bool HasOpenClientAt(HttpContext context)
 	{
+		return OpenClientAt(context) is not null;
+	}
+
+	/// <summary>The open osu! session at the address the request comes from, or null when there is none.</summary>
+	public StableSession? OpenClientAt(HttpContext context)
+	{
 		var address = ClientAddress.Resolve(context);
 		// shortcut: scans the online users, like AuthenticateAsync; add an index by address if the online count grows large.
-		return registry.OpenStableClients().Any(client => client.State.Record.Value.Fingerprint.Ip.Equals(address));
+		return registry.OpenStableClients()
+			.FirstOrDefault(client => client.State.Record.Value.Fingerprint.Ip.Equals(address));
 	}
 
 	public async Task<StableSession?> AuthenticateAsync(HttpContext context, string? username,
