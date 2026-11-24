@@ -81,6 +81,10 @@ Repository contracts, byte storages and the Registry / Repository / Storage mode
   next page is found by a keyset where possible. A live object that exists in a registry is looked up in the registry, not
   rebuilt from the row. A listing that returns a whole collection (a user's relationships or sessions, a match's
   events, rounds and round scores, a set's beatmaps, the channels, the banners) reads at most `ListLimits.Ceiling` rows.
+* **Relationships live in `RelationshipRegistry`** (`Basil.Application.Users/Registry/`): per user, the ids of the users
+  they have each kind of relationship with, loaded once on first need (also at an osu! sign-in) and never unloaded. Writes
+  go to the repository first and then to the memory; friendship and block questions (presence filter, message delivery,
+  private messages, spectating, room invites) are answered from it, so no relationship list is read to answer them.
 * **A stored row is trusted.** Rows are written only by the server, through the Domain, so a row that fails the Domain
   rules on load is a fault of the database, not a case to work around: the read throws. The exception is configuration an
   operator edits by hand (the settings and the menu banners): a value that cannot be read is logged and the default is

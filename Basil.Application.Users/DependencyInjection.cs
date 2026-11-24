@@ -22,10 +22,13 @@ public static class DependencyInjection
 			new Lazy<UserRegistry>(sp.GetRequiredService<UserRegistry>),
 			sp.GetRequiredService<IUserRepository>(),
 			sp.GetRequiredService<IModerationLogRepository>(),
-			sp.GetRequiredService<IRelationshipRepository>(),
+			sp.GetRequiredService<RelationshipRegistry>(),
 			sp.GetRequiredService<IUserAvatarStorage>(),
 			sp.GetRequiredService<IScreenshotInspector>(),
 			sp.GetRequiredService<ISettingsRepository>()));
+		services.AddSingleton<RelationshipRegistry>(sp => new RelationshipRegistry(
+			sp.GetRequiredService<IRelationshipRepository>(),
+			sp.GetRequiredService<TimeProvider>()));
 		services.AddSingleton<UserRegistry>(sp => new UserRegistry(sp.GetRequiredService<UserContext>()));
 		return services;
 	}

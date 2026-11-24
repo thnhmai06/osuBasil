@@ -15,7 +15,7 @@ internal sealed record UserContext(
 	Lazy<UserRegistry> RegistryOf,
 	IUserRepository Users,
 	IModerationLogRepository ModerationLog,
-	IRelationshipRepository Relationships,
+	RelationshipRegistry Relationships,
 	IUserAvatarStorage Avatars,
 	IScreenshotInspector Inspector,
 	ISettingsRepository Settings)

@@ -66,6 +66,10 @@ operation, so a class each would only add files.
   channel joins) are handled first.
 * Packets of a regular osu! client (`StableSession`: status, friends, away message, channels, messages, lobby, spectating,
   multiplayer) follow; a tournament client (target: removed) does not send them.
+* The presence filter (`ReceiveUpdates`, packet 79) is applied: a client receives another user's presence and stats only
+  when its filter includes them (`All`, `Friends` for its friends, `None` for no one; a client always receives its own).
+  The default is `All`, so a client that never sends the packet sees everyone. `PresenceAudience` asks each open client
+  whether it wants the user; friendship is answered from memory by the relationship registry.
 * The multiplayer packets map onto the room's operations (`room.ScopeTo(connection)` and its parts: members, settings,
   authority, slots, rounds).
 

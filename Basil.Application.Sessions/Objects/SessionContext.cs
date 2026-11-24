@@ -4,6 +4,7 @@ using Basil.Application.Sessions.Registry;
 using Basil.Application.Shared.Events;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Persistence;
+using Basil.Application.Users.Registry;
 
 namespace Basil.Application.Sessions.Objects;
 
@@ -12,7 +13,7 @@ public sealed record SessionContext(
 	IEventPublisher<SessionEvent> Events,
 	Lazy<SessionRegistry> RegistryOf,
 	IUserRepository Users,
-	IRelationshipRepository Relationships,
+	RelationshipRegistry Relationships,
 	IModerationLogRepository ModerationLog,
 	ISessionRepository Sessions,
 	ICredentialRepository Credentials,

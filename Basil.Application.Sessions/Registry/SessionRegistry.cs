@@ -129,6 +129,9 @@ public sealed class SessionRegistry
 			? Wrap(await _context.Sessions.FindOpenAsync(record, type, ct))
 			: null;
 
+		// The client asks for its friends at sign-in; they are answered from memory.
+		await _context.Relationships.EnsureLoadedAsync(record, ct);
+
 		var now = _context.Clock.GetUtcNow();
 		var token = NewToken();
 		var session = NewSession(NewLoginState(record, type, ip, client, now, token), token, utcOffset);

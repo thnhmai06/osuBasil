@@ -6,6 +6,7 @@ using Basil.Application.Scores.Objects;
 using Basil.Application.Shared.Events;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Persistence;
+using Basil.Application.Users.Registry;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Application.Multiplayer;
@@ -16,7 +17,7 @@ public static class DependencyInjection
 	{
 		services.AddSingleton<IScoreBeatmapAcceptance>(sp => sp.GetRequiredService<Lobby>());
 		services.AddSingleton<RoomUserLookup>(sp => new RoomUserLookup(
-			sp.GetRequiredService<IRelationshipRepository>(),
+			sp.GetRequiredService<RelationshipRegistry>(),
 			sp.GetRequiredService<IUserRepository>()));
 		services.AddSingleton<LobbyContext>(sp => new LobbyContext(
 			sp.GetRequiredService<TimeProvider>(),

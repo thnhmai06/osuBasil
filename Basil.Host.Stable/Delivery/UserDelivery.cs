@@ -22,7 +22,7 @@ internal sealed class UserOnlineDelivery(
 		var user = notification.Session.Siblings;
 		var stats = await sender.Send(new GetUserStats(user.User, user.Stable?.Status.Detail?.Mode ?? GameMode.Standard), ct);
 		var now = clock.GetUtcNow();
-		outbox.Send(await audience.ForAsync(user, ct), writer =>
+		outbox.Send(audience.For(user), writer =>
 		{
 			StableView.WritePresence(writer, user, stats, now);
 			StableView.WriteStats(writer, user, stats);
@@ -51,7 +51,7 @@ internal sealed class UserStatusDelivery(PresenceAudience audience, Outbox outbo
 	{
 		var user = notification.Session.Siblings;
 		var stats = await sender.Send(new GetUserStats(user.User, notification.Status.Detail?.Mode ?? GameMode.Standard), ct);
-		outbox.Send(await audience.ForAsync(user, ct), writer => StableView.WriteStats(writer, user, stats));
+		outbox.Send(audience.For(user), writer => StableView.WriteStats(writer, user, stats));
 	}
 }
 

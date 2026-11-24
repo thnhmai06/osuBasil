@@ -2,7 +2,7 @@ using Basil.Application.Chat.Objects.Events;
 using Basil.Application.Chat.Persistence;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Shared.Events;
-using Basil.Application.Users.Persistence;
+using Basil.Application.Users.Registry;
 using Basil.Domain.Chat;
 
 namespace Basil.Application.Chat.Objects;
@@ -11,7 +11,7 @@ public sealed record ChannelContext(
 	TimeProvider Clock,
 	IEventPublisher<ChannelEvent> Events,
 	GeneralChannelRegistry Registry,
-	IRelationshipRepository Relationships,
+	RelationshipRegistry Relationships,
 	IChannelRepository Channels)
 {
 	public GeneralChannel? OpenGeneral(GeneralChannelRecord record)

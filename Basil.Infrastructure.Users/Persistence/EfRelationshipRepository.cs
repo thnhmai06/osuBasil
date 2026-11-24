@@ -32,19 +32,6 @@ internal sealed class EfRelationshipRepository(DatabaseSession database) : IRela
 			.ExecuteDeleteAsync());
 	}
 
-	public async Task<IReadOnlySet<int>> ListBlockerIdsAsync(UserRecord target, IReadOnlyCollection<int> among,
-		CancellationToken ct = default)
-	{
-		var targetId = target.Id;
-		var candidates = among.ToArray();
-		var block = (int)RelationshipType.Block;
-		var ids = await database.ReadAsync((UsersDbContext context) => context.Relationships
-			.Where(r => r.TargetId == targetId && r.Type == block && candidates.Contains(r.ActorId))
-			.Select(r => r.ActorId)
-			.ToListAsync(ct), ct);
-		return ids.ToHashSet();
-	}
-
 	public async Task<IReadOnlyList<Relationship>> ListAsync(UserRecord actor,
 		CancellationToken ct = default)
 	{

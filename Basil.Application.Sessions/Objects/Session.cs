@@ -113,8 +113,15 @@ public sealed class StableSession : Session
 
 	public UserStatus Status { get; internal set; } = new();
 
-	/// <summary>Gets whose presence and stats the client asked to receive; none until it asks.</summary>
-	public PresenceFilter PresenceFilter { get; internal set; } = PresenceFilter.None;
+	/// <summary>Gets whose presence and stats the client asked to receive; everyone until it asks.</summary>
+	public PresenceFilter PresenceFilter { get; internal set; } = PresenceFilter.All;
+
+	/// <summary>Gets whether the client wants the presence and stats of <paramref name="user"/>, by its presence filter and its user's friends.</summary>
+	public bool WantsPresenceOf(UserRecord user)
+	{
+		return PresenceFilter.Includes(Record.Equals(user),
+			Context.Relationships.Has(Record.Id, RelationshipType.Friend, user.Id));
+	}
 
 	public IReadOnlySet<Session> Spectators => _spectators;
 
@@ -147,11 +154,9 @@ public sealed class StableSession : Session
 			Context.Events.Publish(new SpectatorLeft(this, spectator));
 	}
 
-	internal async Task<bool> HasBlockedAsync(Session other)
+	internal Task<bool> HasBlockedAsync(Session other)
 	{
-		var relationships = await Context.Relationships.ListAsync(Record);
-		return relationships.Any(relationship => relationship.Type == RelationshipType.Block &&
-		                                         relationship.Target.Equals(other.Record));
+		return Context.Relationships.HasAsync(Record, RelationshipType.Block, other.Record.Id);
 	}
 
 	internal SessionAuthResult Spectate(Session spectator)

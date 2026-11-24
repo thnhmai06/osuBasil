@@ -11,32 +11,14 @@ public sealed class UserRelationships
 		_user = user;
 	}
 
-	internal async Task<IReadOnlyList<Relationship>> ListAsync(RelationshipType type,
-		CancellationToken ct = default)
-	{
-		var all = await _user.Context.Relationships.ListAsync(_user.Record, ct);
-		return all.Where(relationship => relationship.Type == type).ToList();
-	}
-
 	internal Task SetAsync(UserRecord target, RelationshipType type)
 	{
-		return _user.Context.Relationships.CreateOrUpdateAsync(new Relationship
-		{
-			Actor = _user.Record,
-			Target = target,
-			Type = type,
-			CreatedAt = _user.Context.Clock.GetUtcNow()
-		});
+		return _user.Context.Relationships.SetAsync(_user.Record, target, type);
 	}
 
-	internal async Task<bool> RemoveAsync(UserRecord target, RelationshipType type)
+	internal Task<bool> RemoveAsync(UserRecord target, RelationshipType type)
 	{
-		var existing = (await ListAsync(type)).FirstOrDefault(relationship =>
-			relationship.Target.Equals(target));
-		if (existing is null) return false;
-
-		await _user.Context.Relationships.DeleteAsync(existing);
-		return true;
+		return _user.Context.Relationships.RemoveAsync(_user.Record, target, type);
 	}
 
 	internal async Task<UserActionResult> AddFriendAsync(UserRecord target)
@@ -78,7 +60,7 @@ public sealed class UserRelationships
 	internal async Task<IReadOnlyList<UserRecord>> TargetsAsync(RelationshipType type,
 		CancellationToken ct)
 	{
-		var relationships = await ListAsync(type, ct);
-		return relationships.Select(relationship => relationship.Target).ToList();
+		var ids = await _user.Context.Relationships.OfAsync(_user.Record, type, ct);
+		return await _user.Context.Users.GetManyAsync([.. ids], ct);
 	}
 }

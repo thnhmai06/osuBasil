@@ -5,7 +5,7 @@ using Basil.Application.Chat.Registry;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Sessions.Registry;
 using Basil.Application.Shared.Events;
-using Basil.Application.Users.Persistence;
+using Basil.Application.Users.Registry;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Application.Chat;
@@ -19,7 +19,7 @@ public static class DependencyInjection
 			sp.GetRequiredService<TimeProvider>(),
 			sp.GetRequiredService<IEventPublisher<ChannelEvent>>(),
 			sp.GetRequiredService<GeneralChannelRegistry>(),
-			sp.GetRequiredService<IRelationshipRepository>(),
+			sp.GetRequiredService<RelationshipRegistry>(),
 			sp.GetRequiredService<IChannelRepository>()));
 		services.AddSingleton<SpectatorChannels>(sp =>
 			new SpectatorChannels(sp.GetRequiredService<ChannelContext>()));

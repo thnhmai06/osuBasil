@@ -57,9 +57,10 @@ public abstract class Channel
 		var members = Members.ToArray();
 		if (posted.Actor is null || posted.BypassesBlocks || this is PmChannel) return members;
 
-		var candidates = members.Select(member => member.Record).Where(user => !user.Equals(author))
-			.Select(user => user.Id).Distinct().ToArray();
-		var blockers = await Context.Relationships.ListBlockerIdsAsync(author, candidates, ct);
+		var blockers = new HashSet<int>();
+		foreach (var user in members.Select(member => member.Record).Where(user => !user.Equals(author)).Distinct())
+			if (await Context.Relationships.HasAsync(user, RelationshipType.Block, author.Id, ct))
+				blockers.Add(user.Id);
 
 		return blockers.Count == 0 ? members : [.. members.Where(member => !blockers.Contains(member.Record.Id))];
 	}
@@ -141,12 +142,9 @@ public abstract class Channel
 	{
 		if (!mayMessageAnyone)
 		{
-			var relationships = await Context.Relationships.ListAsync(pm.Owner.Record, ct);
-			var self = actor.Record;
-			var blocked = relationships.Any(relationship =>
-				relationship.Type == RelationshipType.Block && relationship.Target.Equals(self));
-			var friend = relationships.Any(relationship =>
-				relationship.Type == RelationshipType.Friend && relationship.Target.Equals(self));
+			var owner = pm.Owner.Record;
+			var blocked = await Context.Relationships.HasAsync(owner, RelationshipType.Block, actor.Record.Id, ct);
+			var friend = await Context.Relationships.HasAsync(owner, RelationshipType.Friend, actor.Record.Id, ct);
 			if (blocked || (pm.Owner.User.PmPrivate && !friend)) return ChannelJoinResult.Blocked;
 		}
 
