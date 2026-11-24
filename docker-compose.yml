@@ -60,13 +60,17 @@ services:
     networks:
       - basil
     volumes:
-      - ./docker-data/Postgres:/var/lib/postgresql/data
+      # A named volume: PostgreSQL owns these files and needs permissions a bind mount may not keep.
+      - postgres:/var/lib/postgresql/data
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U basil -d basil" ]
       interval: 5s
       timeout: 5s
       retries: 20
     restart: on-failure
+
+volumes:
+  postgres:
 
 networks:
   basil:
