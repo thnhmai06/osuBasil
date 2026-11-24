@@ -29,7 +29,7 @@ public enum IrcReply
 	[Reply("Registration timed out.")]
 	RegistrationTimeout,
 
-	[Reply("The server is restarting. Please reconnect in a moment.")]
+	[Reply("The server is restarting. Reconnect in a moment.")]
 	ServerStopping,
 
 	[Reply("Server is shutting down")]
@@ -80,7 +80,7 @@ public enum IrcReply
 	[Reply("No such channel")]
 	NoSuchChannel,
 
-	[Reply("You're not on that channel")]
+	[Reply("You are not on that channel")]
 	NotOnChannel,
 
 	[Reply("You may not reregister")]

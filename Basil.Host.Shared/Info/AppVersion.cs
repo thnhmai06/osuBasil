@@ -4,5 +4,5 @@ namespace Basil.Host.Shared.Info;
 
 public static class AppVersion
 {
-	public static string Current => Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "unknown";
+	public static string Current => Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "unknown";
 }

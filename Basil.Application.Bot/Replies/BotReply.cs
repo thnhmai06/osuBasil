@@ -18,7 +18,7 @@ internal enum BotReply
 	[Reply("{seconds} seconds remaining.", "seconds")]
 	AnnounceCountdownTicked,
 
-	[Reply("The round cannot start because no beatmap has been selected.")]
+	[Reply("The round cannot start because no beatmap is selected.")]
 	AnnounceCountdownElapsedForRound,
 
 	[Reply("Countdown finished.")]
@@ -38,7 +38,7 @@ internal enum BotReply
 
 
 	// ── Room round ─────────────────────────────────────────────────────────────────────────
-	[Reply("Good luck, have fun!")]
+	[Reply("Good luck, have fun.")]
 	AnnounceRoundStartedByCountdown,
 
 	[Reply("The round cannot start because the room has no players.")]
@@ -47,7 +47,7 @@ internal enum BotReply
 	[Reply("The round was aborted.")]
 	AnnounceRoundAborted,
 
-	[Reply("Round #{id} has ended. Please wait {seconds} seconds while the final results arrive.", "id", "seconds")]
+	[Reply("Round #{id} has ended. Wait {seconds} seconds while the final results arrive.", "id", "seconds")]
 	AnnounceRoundEnded,
 
 	[Reply("All scores have been received.")]
@@ -88,7 +88,7 @@ internal enum BotReply
 	[Reply("The country of {name} is not known.", "name")]
 	BotWhereUnknownCountry,
 
-	[Reply("Unknown command {command}. Type !help to see the commands.", "command")]
+	[Reply("Unknown command !{command}. Type !help for the list.", "command")]
 	BotUnknownCommand,
 
 	[Reply("yes")]
@@ -331,7 +331,7 @@ internal enum BotReply
 	[Reply("This room is {privacy, select, private {private} other {not private}}.", "privacy")]
 	MpMatchIsPrivateNow,
 
-	[Reply("The room is now private. It is hidden from the lobby, and only players who took part in it, its referees and server managers can view its history.")]
+	[Reply("The room is now private. It is hidden from the lobby. Only players who took part in it, its referees and server managers can view its history.")]
 	MpMatchNowPrivate,
 
 	[Reply("The room is now public.")]
@@ -345,7 +345,7 @@ internal enum BotReply
 	[Reply("Usage: !mp invite <name/id>")]
 	MpInviteUsage,
 
-	[Reply("User is already in a room.")]
+	[Reply("That user is already in a room.")]
 	MpUserAlreadyInRoom,
 
 	[Reply("Invited {player} to the room.", "player")]
@@ -359,13 +359,13 @@ internal enum BotReply
 	[Reply("That user was not found.")]
 	MpUserNotFound,
 
-	[Reply("Added {player} to the room referees.", "player")]
+	[Reply("Added {player} as a referee of the room.", "player")]
 	MpAddedReferee,
 
 	[Reply("Usage: !mp removeref <name/id>")]
 	MpRemoveRefUsage,
 
-	[Reply("Removed {player} from the room referees.", "player")]
+	[Reply("Removed {player} as a referee of the room.", "player")]
 	MpRemovedReferee,
 
 	[Reply("No referees.")]
@@ -471,7 +471,7 @@ internal enum BotReply
 
 
 	// ── dispatch errors ────────────────────────────────────────────────────────────────────
-	[Reply("Unknown !mp subcommand: {subcommand}. Use !mp help to list available subcommands.", "subcommand")]
+	[Reply("Unknown !mp subcommand: {subcommand}. Type !mp help to see the subcommands.", "subcommand")]
 	MpUnknownMpSubcommand,
 
 	[Reply("!mp in only works in a private message to BasilBot.")]
@@ -533,7 +533,7 @@ internal enum BotReply
 	[Reply("That user is not watching this room.")]
 	MpTargetNotObserver,
 
-	[Reply("You already have the most rooms open that you can.")]
+	[Reply("You already have as many rooms open as you are allowed.")]
 	MpRoomLimitReached,
 
 	[Reply("No more rooms can be opened right now.")]

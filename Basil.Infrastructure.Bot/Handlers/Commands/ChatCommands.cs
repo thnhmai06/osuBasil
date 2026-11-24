@@ -140,7 +140,7 @@ internal sealed class ChatCommands(
 
 		if (CommandCatalog.Line(context.Replies, topic) is not { } line)
 		{
-			await context.ReplyPrivately(BotReply.BotUnknownCommand, new { command = args[0] }, ct);
+			await context.ReplyPrivately(BotReply.BotUnknownCommand, new { command = args[0].TrimStart('!') }, ct);
 			return false;
 		}
 
