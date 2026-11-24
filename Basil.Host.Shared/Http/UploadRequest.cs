@@ -18,7 +18,7 @@ public static class UploadRequest
 	/// <summary>Sets the most bytes the request may carry and the slowest rate it may arrive at.</summary>
 	/// <param name="context">The upload request, before its body is read.</param>
 	/// <param name="fileLimit">The most bytes the file of this kind of upload may have.</param>
-	/// <returns>False when the request already declares more than that, so its body must not be read.</returns>
+	/// <returns>False when the request declares no length or more than that, so its body must not be read.</returns>
 	public static bool Accept(HttpContext context, long fileLimit)
 	{
 		var limit = fileLimit + FormSlack;
@@ -26,7 +26,8 @@ public static class UploadRequest
 			size.MaxRequestBodySize = limit;
 		if (context.Features.Get<IHttpMinRequestBodyDataRateFeature>() is { } rate)
 			rate.MinDataRate = MinimumRate;
-		return context.Request.ContentLength is not { } declared || declared <= limit;
+		// A body without a declared length could not be charged to the hourly upload allowance, so it is refused too.
+		return context.Request.ContentLength is { } declared && declared <= limit;
 	}
 
 	/// <summary>Runs the reading of an upload; when it is refused, logs why and cuts the connection.</summary>

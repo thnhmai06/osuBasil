@@ -47,7 +47,7 @@ internal sealed class StableLogin(
 			return Fail(LoginFailureReason.ErrorOccurred);
 
 		// The attempt is reserved before the check and stays counted only for wrong credentials.
-		using var attempt = attempts.TryReserve(request.Username.ToLowerInvariant(), rules.Login.MaxAttempts, rules.Login.Window);
+		using var attempt = attempts.TryReserve(ip, request.Username.ToLowerInvariant(), rules.Login.MaxAttempts, rules.Login.Window);
 		if (attempt is null) return Fail(LoginFailureReason.AuthenticationFailed, StableReplies.TooManyAttempts);
 
 		var type = client.Version.Stream == OsuVersionStream.Tourney ? SessionType.StableTourney : SessionType.Stable;

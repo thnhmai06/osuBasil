@@ -153,7 +153,7 @@ internal sealed partial class IrcCommands(
 		CancellationToken ct)
 	{
 		var rules = (await sender.Send(new ReadSettings(), ct)).RateLimits;
-		using var attempt = attempts.TryReserve(claimed.ToLowerInvariant(), rules.Login.MaxAttempts, rules.Login.Window);
+		using var attempt = attempts.TryReserve(session.Address, claimed.ToLowerInvariant(), rules.Login.MaxAttempts, rules.Login.Window);
 		if (attempt is null) return replies.Text(IrcReply.TooManyAttempts);
 
 		var result = await sender.Send(new LoginSession(

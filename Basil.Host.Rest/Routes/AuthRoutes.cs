@@ -51,7 +51,7 @@ internal static class AuthRoutes
 
 		var rules = (await sender.Send(new ReadSettings(), context.RequestAborted)).RateLimits.Login;
 		var ip = context.Ip();
-		using var reservation = attempts.TryReserve(request.Username.ToLowerInvariant(), rules.MaxAttempts, rules.Window);
+		using var reservation = attempts.TryReserve(ip, request.Username.ToLowerInvariant(), rules.MaxAttempts, rules.Window);
 		if (reservation is null)
 		{
 			context.Response.Headers.RetryAfter = ((int)rules.Lockout.TotalSeconds).ToString();
