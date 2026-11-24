@@ -39,7 +39,6 @@ using Basil.Infrastructure.Diagnostics;
 using Basil.Infrastructure.Diagnostics.Pipeline;
 using Basil.Infrastructure.Multiplayer;
 using Basil.Host.Irc.Support;
-using Basil.Infrastructure.Persistence;
 using Basil.Infrastructure.Rulesets;
 using Basil.Infrastructure.Scores;
 using Basil.Infrastructure.Servers;
@@ -72,7 +71,6 @@ public static class DependencyInjection
 		public IServiceCollection AddBasilStorage()
 		{
 			services.AddSharedInfrastructure();
-			services.AddPersistenceInfrastructure();
 
 			// The foreign keys decide the order of the migrations, not the project references.
 			services.AddUsersInfrastructure();

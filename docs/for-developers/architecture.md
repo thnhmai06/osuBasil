@@ -33,8 +33,8 @@ Basil.Application.<Module>       contracts and runtime objects of one module    
                                                                                      the Application projects it uses
 Basil.Infrastructure.<Module>    implementations of that module's contracts       -> its own Application,
                                                                                      Infrastructure.Shared
-Basil.Infrastructure.Persistence    Npgsql provider (IDatabaseProvider), design-time   -> Infrastructure.Shared, the
-                                 factories and all PostgreSQL migrations;            module Infrastructure projects
+Basil.Infrastructure.Persistence    Npgsql design-time factories and all            -> Infrastructure.Shared, the
+                                 PostgreSQL migrations;                              module Infrastructure projects
                                  only Basil references it
 Basil.Protocol.Game.Stable / .Irc     the translation language of each wire            -> Domain / nothing
 Basil.Gateway                    (target) admission control                       -> (nothing but the rate-limiting library)

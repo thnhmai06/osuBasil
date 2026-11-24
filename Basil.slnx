@@ -47,4 +47,7 @@
 		<Project Path="Basil.Protocol.Irc/Basil.Protocol.Irc.csproj" />
 		<Project Path="Basil.Protocol.Game.Stable\Basil.Protocol.Game.Stable.csproj" />
 	</Folder>
+	<Folder Name="/Tools/">
+		<Project Path="tools/LoadHarness/LoadHarness.csproj" />
+	</Folder>
 </Solution>

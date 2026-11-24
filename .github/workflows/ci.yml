@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, develop]
   pull_request:
   workflow_dispatch:
 
@@ -25,6 +25,19 @@ jobs:
 
       - name: Build
         run: dotnet build --no-restore --configuration Release
+
+      # The upstream name `basil` only has to resolve for the test; the same files are mounted by docker-compose.yml.
+      - name: Check the nginx configurations
+        shell: bash
+        run: |
+          for real_ip in real-ip.conf cloudflare.conf; do
+            docker run --rm --add-host basil:127.0.0.1 \
+              -v "$PWD/docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro" \
+              -v "$PWD/docker/nginx/proxy.conf:/etc/nginx/proxy.conf:ro" \
+              -v "$PWD/docker/nginx/$real_ip:/etc/nginx/real-ip.conf:ro" \
+              -v "$PWD/docker/nginx/certs:/etc/nginx/certs:ro" \
+              nginx:stable-alpine nginx -t
+          done
 
       # The calculation stack is not shipped; the manifest Basil downloads it by must match the compiled version.
       - name: Check the ruleset manifest

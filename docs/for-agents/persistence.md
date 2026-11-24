@@ -94,7 +94,7 @@ Repository contracts, byte storages and the Registry / Repository / Storage mode
   no `NpgsqlCommand`. **PostgreSQL-native** (owner decision 2026-11-24): PostgreSQL is the only database, so a module's
   Infrastructure project may reference `Npgsql.EntityFrameworkCore.PostgreSQL` and use its fluent API and functions
   (`jsonb`, `inet`, `citext`, `HasPostgresExtension`, GIN/trigram indexes, `EF.Functions.ILike`). What belongs to the
-  provider itself (`IDatabaseProvider`, error recognition, the design-time factories and the migrations) stays in
+  provider itself (the design-time factories and the migrations) stays in
   `Basil.Infrastructure.Persistence`, which only the composition root references; a module never references it.
   Ids still come from `IdCounters` (`ValueGeneratedNever`), and the unique name among live accounts is the nullable unique
   `active_name` column. Tests run on PostgreSQL.

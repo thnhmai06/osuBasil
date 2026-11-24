@@ -109,12 +109,12 @@ the `InitialCreate` of Shared; no other module's migration mentions it.
 
 ### PostgreSQL provider and where the migrations live
 
-The shared `Database` and `DatabaseSession` talk to an `IDatabaseProvider` (Infrastructure.Shared): it opens the pooled
-connections, points a context at a pool and its history table, and tells a unique violation and a connection failure
-apart (the open-retry of `DatabaseSession` retries only the latter). `Basil.Infrastructure.Persistence` implements it with
-Npgsql and snake_case names, owns the design-time factories and holds the migrations, one folder per module context
+The shared `Database` and `DatabaseSession` (Infrastructure.Shared) use Npgsql directly: `Database` opens the pooled
+connections, points a context at a pool and its history table with snake_case names, and tells a unique violation and a
+connection failure apart (the open-retry of `DatabaseSession` retries only the latter). `Basil.Infrastructure.Persistence`
+owns the design-time factories and holds the migrations, one folder per module context
 (`Basil.Infrastructure.Persistence/Migrations/<Module>/`); history table names are unchanged. Only `Basil` references that
-project and calls `AddPersistenceInfrastructure()`; module Infrastructure projects see their `DbContext` types through
+project, so the migrations assembly travels with the server; module Infrastructure projects see their `DbContext` types through
 `InternalsVisibleTo`.
 
 PostgreSQL is the only database, so there is no provider setting. The read and write endpoints differ only by connection string
@@ -149,7 +149,7 @@ dropped and recreated, because its `__ef_migrations_<module>` history names migr
 * `Basil.Infrastructure.Shared/Persistence/` — `DatabaseSession`, `Database`, `DatabaseMigrator`, `ContextModel`
 * `Basil.Infrastructure.Shared/Registry/` — `CacheAside`
 * `Basil.Infrastructure.<Module>/Persistence/` — the module's `DbContext`, the `XxxRow` types and the repositories
-* `Basil.Infrastructure.Persistence/` — `PostgresDatabaseProvider`, the design-time factories and `Migrations/<Module>/`
+* `Basil.Infrastructure.Persistence/` — the design-time factories and `Migrations/<Module>/`
 * `Basil.Infrastructure.Shared/Workers/StorageStartup.cs` — migration and resident loading at startup; `AddBasilStorage()` registers the
   module migrations in the order above
 

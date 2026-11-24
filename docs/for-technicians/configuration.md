@@ -77,6 +77,11 @@ The connection strings are deployment values and secrets, so the shipped file ha
 `POSTGRES_PASSWORD` in `.env`). Without `Write`, Basil refuses to start and names the variable. `Basil:Server:Domain` and
 `Basil:Server:TrustedProxies` are deployment values too.
 
+Pool size and timeouts are Npgsql settings and belong in the connection string, from `.env`: `Maximum Pool Size`,
+`Timeout` (seconds to open a connection) and `Command Timeout` (seconds per command), for example
+`Host=postgres;Database=basil;Username=basil;Password=...;Maximum Pool Size=40;Timeout=15;Command Timeout=30`. There is no
+Basil setting for them beyond `Basil:Database:Read:PoolSize` and `Write:PoolSize` above.
+
 ### Applying changes
 
 The server watches the configuration files.

@@ -20,12 +20,15 @@
 	<ItemGroup>
 		<PackageReference Include="Mediator.Abstractions"/>
 		<PackageReference Include="MessageFormat"/>
+		<PackageReference Include="EFCore.NamingConventions"/>
 		<PackageReference Include="Microsoft.EntityFrameworkCore"/>
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational"/>
 		<PackageReference Include="Microsoft.Extensions.Caching.Memory"/>
 		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions"/>
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
 		<PackageReference Include="Microsoft.Extensions.Options"/>
+		<PackageReference Include="Npgsql"/>
+		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL"/>
 		<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions"/>
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
 	</ItemGroup>

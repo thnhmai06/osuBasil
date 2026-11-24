@@ -3,10 +3,10 @@ using Basil.Infrastructure.Beatmaps.Persistence;
 using Basil.Infrastructure.Chat.Persistence;
 using Basil.Infrastructure.Content.Persistence;
 using Basil.Infrastructure.Multiplayer.Persistence;
-using Basil.Infrastructure.Persistence.Providers;
 using Basil.Infrastructure.Scores.Persistence;
 using Basil.Infrastructure.Shared.Persistence;
 using Basil.Infrastructure.Users.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
 namespace Basil.Infrastructure.Persistence.DesignTime;
@@ -17,7 +17,7 @@ internal sealed class SharedDbContextFactory : IDesignTimeDbContextFactory<Share
 {
 	public SharedDbContext CreateDbContext(string[] args)
 	{
-		return PostgresDatabaseProvider.CreateDesignTime<SharedDbContext>();
+		return DesignTime.Create<SharedDbContext>();
 	}
 }
 
@@ -25,7 +25,7 @@ internal sealed class UsersDbContextFactory : IDesignTimeDbContextFactory<UsersD
 {
 	public UsersDbContext CreateDbContext(string[] args)
 	{
-		return PostgresDatabaseProvider.CreateDesignTime<UsersDbContext>();
+		return DesignTime.Create<UsersDbContext>();
 	}
 }
 
@@ -33,7 +33,7 @@ internal sealed class SessionsDbContextFactory : IDesignTimeDbContextFactory<Ses
 {
 	public SessionsDbContext CreateDbContext(string[] args)
 	{
-		return PostgresDatabaseProvider.CreateDesignTime<SessionsDbContext>();
+		return DesignTime.Create<SessionsDbContext>();
 	}
 }
 
@@ -41,7 +41,7 @@ internal sealed class BeatmapsDbContextFactory : IDesignTimeDbContextFactory<Bea
 {
 	public BeatmapsDbContext CreateDbContext(string[] args)
 	{
-		return PostgresDatabaseProvider.CreateDesignTime<BeatmapsDbContext>();
+		return DesignTime.Create<BeatmapsDbContext>();
 	}
 }
 
@@ -49,7 +49,7 @@ internal sealed class ContentDbContextFactory : IDesignTimeDbContextFactory<Cont
 {
 	public ContentDbContext CreateDbContext(string[] args)
 	{
-		return PostgresDatabaseProvider.CreateDesignTime<ContentDbContext>();
+		return DesignTime.Create<ContentDbContext>();
 	}
 }
 
@@ -57,7 +57,7 @@ internal sealed class ScoresDbContextFactory : IDesignTimeDbContextFactory<Score
 {
 	public ScoresDbContext CreateDbContext(string[] args)
 	{
-		return PostgresDatabaseProvider.CreateDesignTime<ScoresDbContext>();
+		return DesignTime.Create<ScoresDbContext>();
 	}
 }
 
@@ -65,7 +65,7 @@ internal sealed class MultiplayerDbContextFactory : IDesignTimeDbContextFactory<
 {
 	public MultiplayerDbContext CreateDbContext(string[] args)
 	{
-		return PostgresDatabaseProvider.CreateDesignTime<MultiplayerDbContext>();
+		return DesignTime.Create<MultiplayerDbContext>();
 	}
 }
 
@@ -73,6 +73,19 @@ internal sealed class ChatDbContextFactory : IDesignTimeDbContextFactory<ChatDbC
 {
 	public ChatDbContext CreateDbContext(string[] args)
 	{
-		return PostgresDatabaseProvider.CreateDesignTime<ChatDbContext>();
+		return DesignTime.Create<ChatDbContext>();
+	}
+}
+
+internal static class DesignTime
+{
+	public static TContext Create<TContext>() where TContext : DbContext, IDatabaseContext<TContext>
+	{
+		var builder = new DbContextOptionsBuilder<TContext>();
+		builder.UseNpgsql("Host=localhost;Database=basil",
+				postgres => postgres.MigrationsHistoryTable(TContext.HistoryTable)
+					.MigrationsAssembly(typeof(DesignTime).Assembly.GetName().Name))
+			.UseSnakeCaseNamingConvention();
+		return TContext.Create(builder.Options);
 	}
 }

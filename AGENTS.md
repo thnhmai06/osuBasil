@@ -366,8 +366,8 @@ Basil.Infrastructure.<Module>    the implementations of those contracts: Handler
                                  Persistence/, Storage/, Adapters/, Workers/         Application.Shared
                                  Add<Module>Infrastructure() is its only public
                                  surface
-Basil.Infrastructure.Persistence    Npgsql provider (IDatabaseProvider), design-time  -> Infrastructure.Shared, the
-                                 factories and all PostgreSQL migrations;           module Infrastructure projects
+Basil.Infrastructure.Persistence    Npgsql design-time factories and all           -> Infrastructure.Shared, the
+                                 PostgreSQL migrations;                             module Infrastructure projects
                                  only Basil references it
 Basil.Protocol.Game.Stable       the translation language of the osu! wire,      -> Domain, external libraries
                                  score submission cipher (BouncyCastle)
