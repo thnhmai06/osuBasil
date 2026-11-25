@@ -20,6 +20,21 @@ wire), Hosts (translate and dispatch), Gateway (admission control) and the Serve
 | Application | contracts plus the running system | runtime objects (`User`, `Session`, `Room`, channels), registries, capabilities, Mediator messages, and the contracts of services, ports, repositories and storages | implementations, third-party libraries |
 | Infrastructure | the implementations of those contracts | EF rows, handlers, service implementations, adapters, workers | contracts other layers depend on |
 
+Each part of the system has one job, and the job decides where a line of code goes (owner decision 2026-11-25):
+
+* **Gateway** guards the system. It blocks and rate-limits each request, as a doorman keeps strangers out, and does
+  nothing else.
+* **Host** translates. Inbound it turns what the outside world sends into the system's own language (its messages) and
+  routes it to the handler or service that processes it; outbound it turns the system's language back into the outside
+  one and sends it. It holds no system logic at all: a host only routes.
+* **Protocol** defines the languages the outside world does not already provide, such as the osu! client's and IRC.
+* **Application** receives the requests from the hosts and processes them through its contracts.
+* **Infrastructure** provides Application with third-party services.
+* **Domain** is the core: the business and its rules, the objects Application processes.
+
+When a rule needs data the core does not receive, the message carries that data into the core; the rule never moves
+out to the host. A rule that the core cannot check at all is not a rule of the system.
+
 A type belongs to Domain only if it is stored or is a rule that stays true offline. A type that only means something while
 the system runs (session state, presence, spectator frames, the state of a room in play) belongs to Application of the module
 that owns it. A row that carries data to the database is not a Domain model; it is an Infrastructure row.

@@ -474,8 +474,14 @@ command box). The composition root is the project `Basil`: the one
 database provider. It holds no business rule, no recovery logic and no admission policy. It is "the way to run" the
 system; no host or gateway knows it exists.
 
-* A host translates: inbound it turns the wire into a strongly typed message of the system (using Protocol), checks what
-  the client sent, and sends it through Mediator; outbound it listens to Notifications and writes its wire. It holds no
+* The roles (owner decision 2026-11-25): **Gateway** guards (blocks and rate-limits each request, nothing else);
+  **Host** translates the wire into the system's messages and routes them inward, and translates the system's language
+  back out, with no system logic at all; **Protocol** defines the languages the outside world does not provide (osu!,
+  IRC); **Application** processes the requests through its contracts; **Infrastructure** provides third-party services;
+  **Domain** is the core business and its rules. A rule that needs data the core does not get means the message
+  carries that data in; the rule never moves to the host.
+* A host translates: inbound it turns the wire into a strongly typed message of the system (using Protocol), checks
+  only that the wire is well formed (a number is a number, a required field is there), and sends it through Mediator; outbound it listens to Notifications and writes its wire. It holds no
   business, permission or state rule. A host never calls `ScopeTo`, never references Infrastructure and
   never references another host. Every message carries the `Session` of the session as its actor, and only the Sessions
   module creates a `Session`.
