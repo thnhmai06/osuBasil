@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Basil.Application.Sessions.Capabilities;
 using Basil.Application.Sessions.Messages;
 using Basil.Application.Sessions.Objects.Events;
@@ -105,6 +107,20 @@ public sealed class StableSession : Session
 	{
 		UtcOffset = utcOffset;
 		Context = context;
+	}
+
+	// The digest that passed the password check on a web request: later requests skip the slow hash check.
+	private string? _verifiedWebDigest;
+
+	internal bool IsVerifiedWebDigest(string given)
+	{
+		return _verifiedWebDigest is { } known && CryptographicOperations.FixedTimeEquals(
+			Encoding.UTF8.GetBytes(known), Encoding.UTF8.GetBytes(given.ToLowerInvariant()));
+	}
+
+	internal void RememberWebDigest(string digest)
+	{
+		_verifiedWebDigest = digest.ToLowerInvariant();
 	}
 
 	internal SessionContext Context { get; }

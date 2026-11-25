@@ -6,6 +6,7 @@ using Basil.Application.Users.Objects;
 using Basil.Domain.Sessions;
 using Basil.Domain.Moderation;
 using Basil.Domain.Users;
+using Basil.Shared.Structures.Cryptography;
 using Basil.Shared.Structures.Data;
 using Session = Basil.Application.Sessions.Objects.Session;
 using User = Basil.Application.Users.Objects.User;
@@ -49,6 +50,22 @@ public sealed class UserSessions
 
 	public StableSession? Stable =>
 		(StableSession?)this[SessionType.Stable].SingleOrDefault(connection => !connection.IsServerOwned);
+
+	/// <summary>Checks the password digest a web request of the osu! client carries against the account; a digest that passed once is not hashed again for the same client.</summary>
+	/// <returns>The open osu! client, or the failure: <see cref="LoginFailure.UnknownUser"/> when the account has no open client.</returns>
+	internal async Task<LoginResult> SignInWebAsync(string passwordMd5, CancellationToken ct = default)
+	{
+		if (Stable is not { IsOpen: true } client) return LoginResult.Fail(LoginFailure.UnknownUser);
+		if (client.IsVerifiedWebDigest(passwordMd5)) return LoginResult.Success(client);
+
+		if (Md5Hash.TryParse(passwordMd5, null, out var digest) && await Credentials.IsPasswordAsync(digest, ct))
+		{
+			client.RememberWebDigest(passwordMd5);
+			return LoginResult.Success(client);
+		}
+
+		return LoginResult.Fail(LoginFailure.WrongPassword);
+	}
 
 	public IrcSession? Irc => Ircs.FirstOrDefault();
 
