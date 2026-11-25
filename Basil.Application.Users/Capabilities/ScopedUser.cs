@@ -63,6 +63,12 @@ public readonly struct ScopedUser
 		return record != null && record.Value.DeletedAt is null ? _registry.Of(record) : null;
 	}
 
+	/// <summary>The same actor aimed at another account.</summary>
+	internal ScopedUser Other(int targetId)
+	{
+		return new ScopedUser(_registry, targetId, Actor);
+	}
+
 	internal bool Outranks(User target)
 	{
 		return Actor.Outranks(Effective, target.Record.Value.Privileges);

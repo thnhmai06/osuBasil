@@ -11,27 +11,35 @@ public readonly struct ScopedUserRelationships
 		_scoped = scoped;
 	}
 
-	public async Task<UserActionResult> AddFriendAsync()
+	/// <summary>Adds the other account to the friends of this account, which only the account itself may do.</summary>
+	public async Task<UserActionResult> AddFriendAsync(int otherId)
 	{
-		if (await _scoped.ResolveAsync() is not { } target) return UserActionResult.NotFound;
+		if (!_scoped.IsSelf) return UserActionResult.NotSelf;
+		if (await _scoped.Other(otherId).ResolveAsync() is not { } target) return UserActionResult.NotFound;
 		return await _scoped.ActorUser.Relationships.AddFriendAsync(target.Record);
 	}
 
-	public async Task<UserActionResult> RemoveFriendAsync()
+	/// <summary>Removes the other account from the friends of this account, which only the account itself may do.</summary>
+	public async Task<UserActionResult> RemoveFriendAsync(int otherId)
 	{
-		if (await _scoped.ResolveAsync() is not { } target) return UserActionResult.NotFound;
+		if (!_scoped.IsSelf) return UserActionResult.NotSelf;
+		if (await _scoped.Other(otherId).ResolveAsync() is not { } target) return UserActionResult.NotFound;
 		return await _scoped.ActorUser.Relationships.RemoveFriendAsync(target.Record);
 	}
 
-	public async Task<UserActionResult> BlockAsync()
+	/// <summary>Adds the other account to the blocks of this account, which only the account itself may do.</summary>
+	public async Task<UserActionResult> BlockAsync(int otherId)
 	{
-		if (await _scoped.ResolveAsync() is not { } target) return UserActionResult.NotFound;
+		if (!_scoped.IsSelf) return UserActionResult.NotSelf;
+		if (await _scoped.Other(otherId).ResolveAsync() is not { } target) return UserActionResult.NotFound;
 		return await _scoped.ActorUser.Relationships.BlockAsync(target.Record);
 	}
 
-	public async Task<UserActionResult> UnblockAsync()
+	/// <summary>Removes the other account from the blocks of this account, which only the account itself may do.</summary>
+	public async Task<UserActionResult> UnblockAsync(int otherId)
 	{
-		if (await _scoped.ResolveAsync() is not { } target) return UserActionResult.NotFound;
+		if (!_scoped.IsSelf) return UserActionResult.NotSelf;
+		if (await _scoped.Other(otherId).ResolveAsync() is not { } target) return UserActionResult.NotFound;
 		return await _scoped.ActorUser.Relationships.UnblockAsync(target.Record);
 	}
 

@@ -76,22 +76,22 @@ internal static class UserRoutes
 			.ReturnsList<UserRef>().WithSummary("List friends of an account.")
 			.WithDescription("Only the account itself can read the list; any other caller is answered with 403.");
 		token.MapPut("/{id:int}/friends/{otherId:int}", (HttpContext c, int id, int otherId) =>
-				RelationAsync(c, id, otherId, (me, other) => new AddFriend(me, other)))
+				RelationAsync(c, new AddFriend(c.Session(), id, otherId)))
 			.WithSummary("Create a friend.")
 			.WithDescription("Only the account itself can do this; any other caller is answered with 403.");
 		token.MapDelete("/{id:int}/friends/{otherId:int}", (HttpContext c, int id, int otherId) =>
-				RelationAsync(c, id, otherId, (me, other) => new RemoveFriend(me, other)))
+				RelationAsync(c, new RemoveFriend(c.Session(), id, otherId)))
 			.WithSummary("Delete a friend.")
 			.WithDescription("Only the account itself can do this; any other caller is answered with 403.");
 		token.MapGet("/{id:int}/blocks", BlocksAsync).Admitted(WorkClass.Listing)
 			.ReturnsList<UserRef>().WithSummary("List blocks of an account.")
 			.WithDescription("Only the account itself can read the list; any other caller is answered with 403.");
 		token.MapPut("/{id:int}/blocks/{otherId:int}", (HttpContext c, int id, int otherId) =>
-				RelationAsync(c, id, otherId, (me, other) => new BlockUser(me, other)))
+				RelationAsync(c, new BlockUser(c.Session(), id, otherId)))
 			.WithSummary("Create a block.")
 			.WithDescription("Only the account itself can do this; any other caller is answered with 403.");
 		token.MapDelete("/{id:int}/blocks/{otherId:int}", (HttpContext c, int id, int otherId) =>
-				RelationAsync(c, id, otherId, (me, other) => new UnblockUser(me, other)))
+				RelationAsync(c, new UnblockUser(c.Session(), id, otherId)))
 			.WithSummary("Delete a block.")
 			.WithDescription("Only the account itself can do this; any other caller is answered with 403.");
 
@@ -335,14 +335,9 @@ internal static class UserRoutes
 		return result == UserActionResult.Ok ? Api.Ok(list.Select(UserRef.Of).ToList()) : result.Refusal();
 	}
 
-	private static async Task<IResult> RelationAsync(HttpContext context, int id, int otherId,
-		Func<Session, int, IRequest<UserActionResult>> ask)
+	private static async Task<IResult> RelationAsync(HttpContext context, IRequest<UserActionResult> ask)
 	{
-		if (id != context.Session().Record.Id)
-			return Api.Error(StatusCodes.Status403Forbidden, "notSelf", "Only the account itself can do this.");
-
-		return (await context.Sender().Send(ask(context.Session(), otherId),
-			context.RequestAborted)).Answer();
+		return (await context.Sender().Send(ask, context.RequestAborted)).Answer();
 	}
 
 	private static async Task<IResult> SilenceAsync(HttpContext context, int id)
