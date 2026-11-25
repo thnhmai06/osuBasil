@@ -136,7 +136,6 @@ internal static class UserRoutes
 
 		if (string.IsNullOrWhiteSpace(request!.Username) || string.IsNullOrEmpty(request.Password))
 			return Api.Invalid("username and password are required.");
-		if (!Password.IsAcceptable(request.Password)) return Api.Invalid(Password.TooShort);
 
 		var data = new UserData { Name = request.Username };
 		if (Targets.ParseCountry(request.Country) is { } country) data.Country = country;
@@ -220,7 +219,6 @@ internal static class UserRoutes
 		if (refused is not null) return refused;
 
 		if (string.IsNullOrEmpty(request!.New)) return Api.Invalid("new is required.");
-		if (!Password.IsAcceptable(request.New)) return Api.Invalid(Password.TooShort);
 		var target = id;
 
 		var current = request.Current is null ? (Md5Hash?)null : new Md5Hash(Encoding.UTF8.GetBytes(request.Current));
