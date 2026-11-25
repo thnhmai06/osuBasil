@@ -116,18 +116,10 @@ public sealed class CommandCall(
 	{
 		if (!options.TryGetValue(name, out var text)) return null;
 
-		var known = FlagNames.Of(typeof(T));
-		ulong bits = 0;
-		foreach (var part in text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-		{
-			if (part.Equals(FlagNames.None, StringComparison.OrdinalIgnoreCase)) continue;
-
-			var match = known.FirstOrDefault(flag => flag.Name.Equals(part, StringComparison.OrdinalIgnoreCase));
-			bits |= match.Name is null
-				? throw CommandException.Invalid(
-					$"--{name}: '{part}' is not a name; use {string.Join(", ", known.Select(flag => flag.Name))}.")
-				: match.Bits;
-		}
+		var bits = FlagNames.Parse(typeof(T), text, out var unknown);
+		if (unknown is not null)
+			throw CommandException.Invalid(
+				$"--{name}: '{unknown}' is not a name; use {string.Join(", ", FlagNames.Of(typeof(T)).Select(flag => flag.Name))}.");
 
 		return (T)Enum.ToObject(typeof(T), bits);
 	}

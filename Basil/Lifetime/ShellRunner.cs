@@ -56,7 +56,7 @@ public static class ShellRunner
 		{
 			builder.Logging.SetMinimumLevel(LogLevel.Warning);
 			configure?.Invoke(builder);
-		});
+		}, true);
 		await using var _ = app;
 		var catalog = app.Services.GetRequiredService<CommandCatalog>();
 		var (parsed, failure) = catalog.Parse(args);

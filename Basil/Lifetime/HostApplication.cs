@@ -23,7 +23,9 @@ namespace Basil.Lifetime;
 
 public static class HostApplication
 {
-	public static WebApplication Create(string[] args, Action<WebApplicationBuilder>? configure = null)
+	// A one-off command logs to standard error, so its standard output holds only its result.
+	public static WebApplication Create(string[] args, Action<WebApplicationBuilder>? configure = null,
+		bool logToStandardError = false)
 	{
 		var mode = CliModes.Choose(args, Console.IsInputRedirected, Console.IsOutputRedirected,
 			CliModes.TermIsDumb(), CliModes.NoColorIsSet());
@@ -37,7 +39,7 @@ public static class HostApplication
 			Args = args, ContentRootPath = AppContext.BaseDirectory
 		});
 		ConfigurationSetup.Add(builder, args);
-		var drops = ServerLogging.Add(builder, mode);
+		var drops = ServerLogging.Add(builder, mode, logToStandardError);
 		TelemetrySetup.Add(builder);
 		builder.Services.AddOptions<UpdateOptions>().Bind(builder.Configuration.GetSection("Basil:Updates"));
 		builder.Services.AddSingleton<ConfigurationWatcher>();

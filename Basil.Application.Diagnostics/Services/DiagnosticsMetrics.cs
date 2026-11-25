@@ -14,6 +14,9 @@ public static class DiagnosticsMetrics
 
 	public const string IrcDurationName = "basil.irc.line.duration";
 
+	/// <summary>The gateway's counter of refused requests; the gateway names it the same way.</summary>
+	public const string AdmissionDeniedName = "basil.admission.denied";
+
 	private static readonly Meter Instance = new("Basil.Protocols", "1.0");
 
 	public static readonly Histogram<double> StableDuration =

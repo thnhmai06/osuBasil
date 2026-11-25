@@ -83,3 +83,10 @@ One row per attempt, kept or reverted. Baseline and result are the medians of th
 | # | Idea | Baseline | Result | Verdict | Why |
 |---|---|---|---|---|---|
 | 0 | Baseline (image `e91917168`, 4 cores, 2026-11-25) | 1.98 / 1.63 / 2.87 / 12.2 / 195 / 0 | - | - | Spread over the three runs: osu p95 1.98–1.99, irc 1.59–1.69, api 2.83–2.90, CPU 11.8–13.1 %. One run shed 8 sign-ins while the ramp held the CPU near 0.9: sign-in cost (bcrypt, presence to everyone) is the first candidate. |
+
+## Known limits
+
+**Sign-in rate.** A sign-in checks the password with bcrypt (about 145 ms of CPU) and sends the new player everyone's
+presence. On 4 cores, 270 sign-ins in 20 s (13.5 a second) held the CPU near 0.9 and the server shed some of them with
+503; the osu! client retries. bcrypt is slow on purpose and stays as it is (owner, 2026-11-25). The fixed scenario ramps
+over 60 s for that reason.

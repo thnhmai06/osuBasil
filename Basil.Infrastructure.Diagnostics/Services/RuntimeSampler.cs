@@ -12,6 +12,7 @@ internal sealed class RuntimeSampler : IDisposable, IClearTally
 {
 	private const int RecentExceptions = 20;
 	private readonly TimeProvider _clock;
+	private readonly ConcurrentDictionary<string, long> _denied = new();
 	private readonly ConcurrentDictionary<string, HostWindow> _hosts = new();
 	private readonly HostWindow _irc = new();
 	private readonly MeterListener _listener = new();
@@ -37,9 +38,11 @@ internal sealed class RuntimeSampler : IDisposable, IClearTally
 		_listener.InstrumentPublished = (instrument, listener) =>
 		{
 			if (instrument.Name is DiagnosticsMetrics.HttpDurationName or DiagnosticsMetrics.StableDurationName
-			    or DiagnosticsMetrics.IrcDurationName) listener.EnableMeasurementEvents(instrument);
+			    or DiagnosticsMetrics.IrcDurationName or DiagnosticsMetrics.AdmissionDeniedName)
+				listener.EnableMeasurementEvents(instrument);
 		};
 		_listener.SetMeasurementEventCallback<double>(OnDuration);
+		_listener.SetMeasurementEventCallback<long>(OnDenied);
 		_listener.Start();
 	}
 
@@ -112,7 +115,9 @@ internal sealed class RuntimeSampler : IDisposable, IClearTally
 				},
 				["http"] = _hosts.OrderBy(h => h.Key).ToDictionary(h => h.Key, h => (object)h.Value.Snapshot(elapsed)),
 				["stable"] = _stable.Snapshot(elapsed, false),
-				["irc"] = _irc.Snapshot(elapsed, false)
+				["irc"] = _irc.Snapshot(elapsed, false),
+				// Refused requests since start, as "kind/reason": the cause of a 503 or 429 without reading the code.
+				["admissionDenied"] = _denied.OrderBy(entry => entry.Key).ToDictionary(entry => entry.Key, entry => entry.Value)
 			};
 			LoadMeasured?.Invoke(LoadOf(cpu - _lastCpu, elapsed, process.WorkingSet64, gc.TotalAvailableMemoryBytes));
 			_lastCpu = cpu;
@@ -138,6 +143,17 @@ internal sealed class RuntimeSampler : IDisposable, IClearTally
 		Interlocked.Increment(ref _exceptions);
 		_recent.Enqueue(args.Exception.GetType().Name);
 		while (_recent.Count > RecentExceptions) _recent.TryDequeue(out _);
+	}
+
+	private void OnDenied(Instrument instrument, long value, ReadOnlySpan<KeyValuePair<string, object?>> tags,
+		object? state)
+	{
+		string workClass = "other", reason = "other";
+		foreach (var tag in tags)
+			if (tag.Key == "class") workClass = tag.Value?.ToString() ?? workClass;
+			else if (tag.Key == "reason") reason = tag.Value?.ToString() ?? reason;
+
+		_denied.AddOrUpdate($"{workClass}/{reason}", value, (_, total) => total + value);
 	}
 
 	private void OnDuration(Instrument instrument, double value, ReadOnlySpan<KeyValuePair<string, object?>> tags,

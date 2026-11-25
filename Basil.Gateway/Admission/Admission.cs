@@ -1,3 +1,4 @@
+using System.Diagnostics.Metrics;
 using Basil.Gateway.Limits;
 using Basil.Gateway.RateLimiting;
 
@@ -6,6 +7,12 @@ namespace Basil.Gateway.Admission;
 /// <summary>Decides whether a request enters: the server's capacity for its kind of work, and, for a signed-in user, the user's allowance for that kind.</summary>
 public sealed class Admission(RateLimiter rate, Func<GatewayLimits> source, LoadSignal? load = null)
 {
+	/// <summary>The counter of refused requests, tagged with the kind of work and the reason.</summary>
+	public const string DeniedName = "basil.admission.denied";
+
+	private static readonly Counter<long> Denied = new Meter("Basil.Gateway", "1.0")
+		.CreateCounter<long>(DeniedName, description: "Requests the gateway refused, by kind of work and reason.");
+
 	private static readonly WorkClass[] MustServe = [WorkClass.Interactive, WorkClass.Upload, WorkClass.Live, WorkClass.Poll];
 	private static readonly TimeSpan UploadByteWindow = TimeSpan.FromHours(1);
 	private const int UploadByteUnit = 1024;
@@ -36,12 +43,12 @@ public sealed class Admission(RateLimiter rate, Func<GatewayLimits> source, Load
 	{
 		var current = Volatile.Read(ref _source)();
 		if (current.Sheds(workClass, MustServe.Contains(workClass) ? _load.Value : CurrentLoad(current)))
-			return AdmissionDecision.Deny(AdmissionDenial.Shed, current.BusyRetryAfter);
+			return Deny(workClass, AdmissionDenial.Shed, current.BusyRetryAfter);
 
 		if (Interlocked.Increment(ref _running[(int)workClass]) > current.ConcurrencyOf(workClass))
 		{
 			Release(workClass);
-			return AdmissionDecision.Deny(AdmissionDenial.ClassSaturated, current.BusyRetryAfter);
+			return Deny(workClass, AdmissionDenial.ClassSaturated, current.BusyRetryAfter);
 		}
 
 		if (subject is not { } user) return AdmissionDecision.Allow;
@@ -49,7 +56,7 @@ public sealed class Admission(RateLimiter rate, Func<GatewayLimits> source, Load
 		if (!rate.TryAcquire($"{workClass}:{user.Key}", current.AllowanceOf(workClass, user.Tier), current.Window))
 		{
 			Release(workClass);
-			return AdmissionDecision.Deny(AdmissionDenial.RateExceeded, current.Window);
+			return Deny(workClass, AdmissionDenial.RateExceeded, current.Window);
 		}
 
 		if (workClass != WorkClass.Upload) return AdmissionDecision.Allow;
@@ -61,7 +68,7 @@ public sealed class Admission(RateLimiter rate, Func<GatewayLimits> source, Load
 			if (!_uploaders.Add(user.Key))
 			{
 				Release(workClass);
-				return AdmissionDecision.Deny(AdmissionDenial.RateExceeded, current.BusyRetryAfter);
+				return Deny(workClass, AdmissionDenial.RateExceeded, current.BusyRetryAfter);
 			}
 		}
 
@@ -69,7 +76,14 @@ public sealed class Admission(RateLimiter rate, Func<GatewayLimits> source, Load
 			return AdmissionDecision.Allow;
 
 		Release(workClass, user);
-		return AdmissionDecision.Deny(AdmissionDenial.RateExceeded, UploadByteWindow);
+		return Deny(workClass, AdmissionDenial.RateExceeded, UploadByteWindow);
+	}
+
+	private static AdmissionDecision Deny(WorkClass workClass, AdmissionDenial reason, TimeSpan? retryAfter)
+	{
+		Denied.Add(1, new KeyValuePair<string, object?>("class", workClass.ToString()),
+			new KeyValuePair<string, object?>("reason", reason.ToString()));
+		return AdmissionDecision.Deny(reason, retryAfter);
 	}
 
 	/// <summary>Ends a request that <see cref="Admit"/> allowed; give the same subject.</summary>

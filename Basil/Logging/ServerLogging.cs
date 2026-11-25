@@ -41,7 +41,7 @@ public static class ServerLogging
 	private const string Template =
 		"{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}";
 
-	public static LogDrops Add(WebApplicationBuilder builder, CliOptions mode)
+	public static LogDrops Add(WebApplicationBuilder builder, CliOptions mode, bool toStandardError = false)
 	{
 		var options = builder.Configuration.GetSection("Logging").Get<LoggingOptions>() ?? new LoggingOptions();
 		var file = options.File;
@@ -64,7 +64,8 @@ public static class ServerLogging
 				configuration.Sink(new SessionLogSink(Path.Combine(directory, SessionsFolder),
 					new MessageTemplateTextFormatter(Template)));
 			if (mode.Console == ConsoleLevel.Log)
-				configuration.Console(outputTemplate: Template, theme: ConsoleTheme.None);
+				configuration.Console(outputTemplate: Template, theme: ConsoleTheme.None,
+					standardErrorFromLevel: toStandardError ? LogEventLevel.Verbose : null);
 			if (telemetry is { Logs: true, OtlpEndpoint: { Length: > 0 } endpoint })
 				configuration.OpenTelemetry(sink => sink.Endpoint = endpoint);
 		}, options.QueueCapacity, drops);
