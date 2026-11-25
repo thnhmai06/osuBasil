@@ -91,6 +91,27 @@ public sealed class GeneralChannelData
 	/// <summary>Whether the channel is listed; it is by default.</summary>
 	public bool Visible { get; set; } = true;
 
+	/// <summary>Creates the settings of a new channel; a value not given takes its default: no topic, readable and writable by everyone, not joined automatically, listed.</summary>
+	/// <param name="topic">The topic, or <see langword="null"/> for none.</param>
+	/// <param name="readPrivileges">The privileges needed to read, or <see langword="null"/> for none.</param>
+	/// <param name="writePrivileges">The privileges needed to write, or <see langword="null"/> for none.</param>
+	/// <param name="autoJoin">Whether users join automatically, or <see langword="null"/> for no.</param>
+	/// <param name="visible">Whether the channel is listed, or <see langword="null"/> for yes.</param>
+	/// <exception cref="InvalidChannelTopicException">The topic holds a NUL character.</exception>
+	/// <exception cref="InvalidChannelPrivilegesException">A privilege value is not a defined combination.</exception>
+	public static GeneralChannelData Of(string? topic, UserPrivileges? readPrivileges, UserPrivileges? writePrivileges,
+		bool? autoJoin, bool? visible)
+	{
+		return new GeneralChannelData
+		{
+			Topic = topic ?? string.Empty,
+			ReadPrivileges = readPrivileges ?? UserPrivileges.None,
+			WritePrivileges = writePrivileges ?? UserPrivileges.None,
+			AutoJoin = autoJoin ?? false,
+			Visible = visible ?? true
+		};
+	}
+
 	/// <summary>Checks whether a text can be a topic: it is not <see langword="null" /> and holds no NUL character.</summary>
 	/// <param name="topic">The text to check.</param>
 	/// <returns><see langword="true" /> when the topic is valid.</returns>

@@ -44,20 +44,11 @@ internal static class ChannelRoutes
 
 		if (string.IsNullOrWhiteSpace(request!.Name)) return Api.Invalid("name is required.");
 
-		var read = request.ReadPrivileges ?? 0;
-		var write = request.WritePrivileges ?? 0;
-
 		var record = new GeneralChannelRecord
 		{
 			Name = request.Name,
-			Value = new GeneralChannelData
-			{
-				Topic = request.Topic ?? string.Empty,
-				ReadPrivileges = read,
-				WritePrivileges = write,
-				AutoJoin = request.AutoJoin ?? false,
-				Visible = request.Visible ?? true
-			}
+			Value = GeneralChannelData.Of(request.Topic, request.ReadPrivileges, request.WritePrivileges,
+				request.AutoJoin, request.Visible)
 		};
 
 		var result = await sender.Send(new CreateGeneralChannel(context.Session(), record), context.RequestAborted);

@@ -29,7 +29,7 @@ public enum UserPrivileges : byte
 /// <summary>Helpers for combining and checking <see cref="UserPrivileges" />.</summary>
 public static class UserPrivilegesExtensions
 {
-	/// <summary>Every defined privilege.</summary>
+	/// <summary>Every defined privilege: the set an administrator account holds.</summary>
 	public const UserPrivileges All = UserPrivileges.Player | UserPrivileges.Moderator | UserPrivileges.Supporter |
 	                                  UserPrivileges.Owner | UserPrivileges.Developer | UserPrivileges.Tournament;
 

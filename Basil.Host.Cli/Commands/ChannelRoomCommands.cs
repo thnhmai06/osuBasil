@@ -157,16 +157,10 @@ internal static class ChannelRoomCommands
 		return Task.FromResult(ExitCodes.Success);
 	}
 
-	private static GeneralChannelData DataOf(CommandCall call, GeneralChannelData? current = null)
+	private static GeneralChannelData DataOf(CommandCall call)
 	{
-		return new GeneralChannelData
-		{
-			Topic = call.Text("topic") ?? current?.Topic ?? string.Empty,
-			ReadPrivileges = call.Flags<UserPrivileges>("readPrivileges") ?? current?.ReadPrivileges ?? 0,
-			WritePrivileges = call.Flags<UserPrivileges>("writePrivileges") ?? current?.WritePrivileges ?? 0,
-			AutoJoin = call.Bool("autoJoin") ?? current?.AutoJoin ?? false,
-			Visible = call.Bool("visible") ?? current?.Visible ?? true
-		};
+		return GeneralChannelData.Of(call.Text("topic"), call.Flags<UserPrivileges>("readPrivileges"),
+			call.Flags<UserPrivileges>("writePrivileges"), call.Bool("autoJoin"), call.Bool("visible"));
 	}
 
 	private static async Task<int> CreateChannelAsync(CommandCall call)
