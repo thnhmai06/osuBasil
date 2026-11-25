@@ -1,4 +1,5 @@
 using Basil.Application.Shared.Privileges;
+using Basil.Application.Sessions.Messages;
 using Basil.Application.Sessions.Objects;
 using Basil.Domain.Game;
 using Basil.Domain.Spectating;
@@ -53,6 +54,12 @@ public readonly struct ScopedStableSession
 	public bool PublishFrames(SpectatorBundle bundle)
 	{
 		return ReferenceEquals(Actor, Host) && Host.PublishFrames(bundle);
+	}
+
+	/// <summary>Gets who the host's spectator frames are relayed to; nobody when the actor is not the host.</summary>
+	public SpectatorRelay Relay()
+	{
+		return ReferenceEquals(Actor, Host) ? new SpectatorRelay(Host.Spectators, Host.HasApiSpectators) : SpectatorRelay.None;
 	}
 
 	public bool SetPresenceFilter(PresenceFilter filter)

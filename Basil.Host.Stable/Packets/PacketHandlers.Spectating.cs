@@ -28,9 +28,9 @@ internal sealed partial class PacketHandlers
 
 	private async Task ForwardFramesAsync(StableSession osu, byte[] raw, CancellationToken ct)
 	{
-		if (osu.Spectators.Count == 0) return;
-		outbox.Send(osu.Spectators, writer => writer.SpectateFrames(raw));
-		if (!osu.HasApiSpectators) return;
+		var relay = await sender.Send(new RelaySpectatorFrames(osu), ct);
+		outbox.Send(relay.Spectators, writer => writer.SpectateFrames(raw));
+		if (!relay.NeedsBundle) return;
 		SpectatorBundle bundle;
 		try
 		{
