@@ -357,10 +357,10 @@ Basil.Infrastructure.Shared      shared database, files and event dispatch      
 Basil.Application.<Module>       the module's contracts (services, ports,        -> Domain, Application.Shared,
                                  repositories, storages) and its runtime objects:   the Application projects of the
                                  Objects/, Registry/, Capabilities/ (Scoped*        modules it uses (below)
-                                 only), Ports/, Persistence/, Storage/,
+                                 only), Logic/, Ports/, Persistence/, Storage/,
                                  Services/ (contracts); Add<Module>Application()
 Basil.Infrastructure.<Module>    the implementations of those contracts: Handlers/ -> its own Application,
-                                 (Mediator listeners), Logic/, Services/,            Infrastructure.Shared,
+                                 (Mediator listeners), Services/,                    Infrastructure.Shared,
                                  Persistence/, Storage/, Adapters/, Workers/         Application.Shared
                                  Add<Module>Infrastructure() is its only public
                                  surface
@@ -451,14 +451,14 @@ holds only the `Scoped*` views (the object's behaviour as one connection may do 
 external computation (a capability with business meaning whose implementation needs external libraries: beatmapset
 reader, analyser, assets, screenshot inspector; these interfaces and the data they exchange are the only public
 types). **Services/** holds the contracts of the services the system provides (`IAnticheatReporter`). **Persistence/** holds the
-repository ports and their query records, **Storage/** the file-storage ports. Application holds **no** handler, no
-object-free logic and no background run: the Mediator handlers (**Handlers/**, one `internal` class per message type),
-the object-free application logic that needs no live object (**Logic/**: account checks, beatmapset indexing, score
-validation and recording; it takes and returns records and plain results, never creates, receives or publishes an
-object or an event), the implementations of **Services/** and the background runs (**Workers/**) live in
-`Basil.Infrastructure.<Module>`. When an object calls such logic, the object's project declares an `internal` interface
-in **Ports/** (`IAccountRules`, `IScoreRecorder`, `IBeatmapsetImporter`) and the Infrastructure project implements it;
-the plain data both sides name stays in **Persistence/**. This placement is checked in review. Application grants `InternalsVisibleTo` to its own Infrastructure project and the tests of both.
+repository ports and their query records, **Storage/** the file-storage ports. **Logic/** holds the object-free
+coordination that needs no live object (account checks, beatmapset indexing, score recording; owner decision 2026-11-25): it
+may use the module's repository and storage ports, takes and returns records and plain results, and never creates,
+receives or publishes an object or an event; the rules it applies are in Domain. Application holds **no** handler and no
+background run: the Mediator handlers (**Handlers/**, one `internal` class per message type), the implementations of
+**Services/** and the background runs (**Workers/**) live in `Basil.Infrastructure.<Module>`, which has no `Logic/`: it is
+third-party services for Application (repositories, storages, adapters, workers, thin handlers). An object calls
+**Logic/** directly; a port stays only where the implementation needs a third-party library. This placement is checked in review. Application grants `InternalsVisibleTo` to its own Infrastructure project and the tests of both.
 Each module's public `Add<Module>Application()` builds its contexts and objects; its `Add<Module>Infrastructure()`
 registers the implementations of its ports and its migration. Handlers stay `internal`; a project that has them grants
 `InternalsVisibleTo` to the composition root (the generated Mediator code names them) and to its own test project, and
@@ -507,8 +507,8 @@ system; no host or gateway knows it exists.
 
 Application is sliced by module first, then by folder of responsibility; namespace = project + folder
 (`Basil.Application.Chat.Objects`). Every module uses the same folders and creates only the ones it needs: `Objects/`,
-`Registry/`, `Capabilities/` (the `Scoped*` views only), `Ports/`, `Services/`, `Persistence/`, `Storage/`, `Messages/`;
-Infrastructure mirrors them with `Handlers/`, `Logic/`, `Services/`, `Workers/`, `Adapters/`, `Metrics/`. The full map, with what
+`Registry/`, `Capabilities/` (the `Scoped*` views only), `Logic/`, `Ports/`, `Services/`, `Persistence/`, `Storage/`, `Messages/`;
+Infrastructure mirrors them with `Handlers/`, `Services/`, `Workers/`, `Adapters/`, `Metrics/`. The full map, with what
 each module puts in which folder, is in [`docs/for-agents/module-layout.md`](docs/for-agents/module-layout.md). Tests mirror the
 same folders under `tests/`.
 

@@ -214,9 +214,9 @@ Derived media must therefore be treated as disposable cache data, not as another
 
 ## Related code
 
-* [`BeatmapsetImporter.cs`](../../Basil.Infrastructure.Beatmaps/Logic/BeatmapsetImporter.cs): imports one uploaded `.osz`
-* [`BeatmapsetScanner.cs`](../../Basil.Infrastructure.Beatmaps/Logic/BeatmapsetScanner.cs): scans the storage and reconciles it with the database
-* [`BeatmapsetPlanner.cs`](../../Basil.Infrastructure.Beatmaps/Logic/BeatmapsetPlanner.cs): decides what a changed archive means for the stored records
+* [`BeatmapsetImporter.cs`](../../Basil.Application.Beatmaps/Logic/BeatmapsetImporter.cs): imports one uploaded `.osz`
+* [`BeatmapsetScanner.cs`](../../Basil.Application.Beatmaps/Logic/BeatmapsetScanner.cs): scans the storage and reconciles it with the database
+* [`BeatmapsetPlanner.cs`](../../Basil.Application.Beatmaps/Logic/BeatmapsetPlanner.cs): decides what a changed archive means for the stored records
 * [`BeatmapsetStorageWatcher.cs`](../../Basil.Infrastructure.Beatmaps/Workers/BeatmapsetStorageWatcher.cs): startup scan and filesystem change detection
 * [`FileBeatmapsetStorage.cs`](../../Basil.Infrastructure.Beatmaps/Storage/FileBeatmapsetStorage.cs): the `Beatmapsets/` directory as storage
 * [`OsuBeatmapAnalyser.cs`](../../Basil.Infrastructure.Rulesets/Adapters/OsuBeatmapAnalyser.cs): osu! ruleset difficulty calculations

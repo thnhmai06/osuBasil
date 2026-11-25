@@ -5,8 +5,8 @@ How a module's Application and Infrastructure projects are organised, folder by 
 Application is sliced by module first, then by folder of responsibility; namespace = project + folder
 (`Basil.Application.Chat.Objects`). Application.Shared owns shared values, paging/search syntax and event
 contracts/queue; Infrastructure.Shared owns shared persistence and event delivery. The table lists where each folder's
-contents are; `Handlers/`, `Logic/` and `Workers/` and the implementations of `Services/` are in the module's
-Infrastructure project.
+contents are; `Handlers/` and `Workers/` and the implementations of `Services/` are in the module's
+Infrastructure project, which has no `Logic/`.
 
 Every module uses these folders, and creates only the ones it needs:
 
@@ -15,6 +15,7 @@ Every module uses these folders, and creates only the ones it needs:
 | `Objects/` | The module's live objects, their parts and contexts, and their event records (`Objects/Events/`); the part of an object that touches only itself, with its outcome enum, is in Domain under the same name |
 | `Registry/` | What keeps live objects in RAM and hands them out (`UserRegistry`, `Lobby`, the channel registries); one of the three stores with Repository (`Persistence/`, awaited, cache-aside) and Storage (`Storage/`) |
 | `Capabilities/` | The `Scoped*` views only |
+| `Logic/` | The object-free coordination that needs no live object (it may use the module's repository and storage ports; it takes and returns records and plain results). The rules it applies are in Domain |
 | `Ports/` | The ports to external computation and the data they exchange |
 | `Services/` | The contracts of the services the system provides (the implementation is in Infrastructure). Only what a module offers as a service belongs here |
 | `Persistence/` | The repository ports, their query records and the data both layers name |
@@ -23,7 +24,7 @@ Every module uses these folders, and creates only the ones it needs:
 
 Infrastructure mirrors those ports: `Persistence/` for the `DbContext`, rows and repositories (PostgreSQL and its migrations are in `Infrastructure.Persistence`), `Storage/` for the
 file implementations, `Adapters/` for what needs an external library, `Registry/` for the shared memory
-primitives, `Handlers/` for the Mediator handlers, `Logic/` for the object-free application logic, `Services/` for the
+primitives, `Handlers/` for the Mediator handlers, `Services/` for the
 service implementations and `Workers/` for the loops and hosted services. Tests mirror the same folders under `tests/`.
 
 ```text
@@ -39,7 +40,6 @@ Users/         IUserRepository, IRelationshipRepository,
                storage                                                 (Infrastructure)
 Sessions/      ICredentialRepository, ISessionRepository, LoginAttempt,
                RegisterAttempt, CredentialChecks                       (Persistence)
-               IAccountRules (internal)                                (Ports)
                Session and its kinds (StableSession, TourneySession,
                IrcSession, ApiSession, OperatorSession), SessionContext,
                UserSessions, UserCredentials, SessionAuthResult,
@@ -49,7 +49,7 @@ Sessions/      ICredentialRepository, ISessionRepository, LoginAttempt,
                ScopedUserCredentials, ScopedUserSessions               (Capabilities)
                the session, credential and spectating messages,
                SetPlayerStatus                                         (Messages)
-               AccountRules                                            (Infrastructure Logic)
+               AccountRules                                            (Logic)
                ConnectionHandler, the session handlers, and the handlers
                that close sessions when a user is deleted or changes
                privileges                                              (Infrastructure Handlers)
@@ -81,16 +81,14 @@ Beatmaps/      beatmap and beatmapset repositories, import and scan
                IBeatmapsetStorage                                       (Storage)
                Beatmapset, Beatmapsets, contexts, outcomes, events      (Objects)
                ScopedBeatmapset                                         (Capabilities)
-               the reader/analyser/assets ports and
-               IBeatmapsetImporter, IBeatmapsetScanner (internal)       (Ports)
-               the importer, scanner and planner                        (Infrastructure Logic)
+               the reader/analyser/assets ports                         (Ports)
+               the importer, scanner and planner                        (Logic)
 Scores/        score, stats repositories, submission inputs             (Persistence)
                IReplayStorage                                           (Storage)
                ScoreSubmitter, IScoreBeatmapAcceptance,
                ScoreSubmissionResult, ScoreOutcome, ScoreEvents        (Objects)
                ScopedScoreSubmitter                                     (Capabilities)
-               IScoreRecorder (internal)                                (Ports)
-               ScoreRecorder                                            (Infrastructure Logic)
+               ScoreRecorder                                            (Logic)
 Anticheat/     IAnticheatReporter                                       (Services)
                AnticheatReporter                                        (Infrastructure Services)
                AnticheatEvents                                          (Objects/Events)

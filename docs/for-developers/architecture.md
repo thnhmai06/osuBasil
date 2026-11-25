@@ -17,7 +17,7 @@ wire), Hosts (translate and dispatch), Gateway (admission control) and the Serve
 | Layer | Is | Holds | Does not hold |
 |---|---|---|---|
 | Domain | the system at rest | durable models (what is stored) and the rules of one object on its own: validity of data, its state, invariants and transitions that touch only itself, constants and enums of the rules, pure computation | repositories, events, timers, live objects of another module, connections, I/O |
-| Application | contracts plus the running system | runtime objects (`User`, `Session`, `Room`, channels), registries, capabilities, Mediator messages, and the contracts of services, ports, repositories and storages | implementations, third-party libraries |
+| Application | contracts plus the running system | runtime objects (`User`, `Session`, `Room`, channels), registries, capabilities, Mediator messages, the object-free coordination in `Logic/` (it may use the module's repository and storage ports), and the contracts of services, ports, repositories and storages | implementations, third-party libraries |
 | Infrastructure | the implementations of those contracts | EF rows, handlers, service implementations, adapters, workers | contracts other layers depend on |
 
 Each part of the system has one job, and the job decides where a line of code goes (owner decision 2026-11-25):
@@ -79,7 +79,7 @@ Servers      -> every module above
 Bot          -> Anticheat, Beatmaps, Chat, Multiplayer, Scores, Servers, Sessions, Users
 ```
 
-Each module is two projects. `Basil.Application.<Module>` holds only contracts and runtime objects.
+Each module is two projects. `Basil.Application.<Module>` holds only contracts, runtime objects and the object-free `Logic/` that coordinates them.
 `Basil.Infrastructure.<Module>` holds only implementations of those contracts and may use third-party libraries. A module
 Infrastructure project never references another module's projects; foreign keys between module databases decide only the
 order in which migrations are registered. Folder-by-folder detail is in [`../for-agents/application-design.md`](../for-agents/application-design.md).
