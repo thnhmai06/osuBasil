@@ -137,6 +137,7 @@ public static class DependencyInjection
 			});
 			AddCategory<UserEvent>(services);
 			AddCategory<SessionEvent>(services);
+			AddCategory<ChatEvent>(services);
 			AddCategory<ChannelEvent>(services);
 			AddCategory<LobbyEvent>(services);
 			AddCategory<RoomEvent>(services);

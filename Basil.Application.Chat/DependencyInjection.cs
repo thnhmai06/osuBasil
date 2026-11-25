@@ -32,7 +32,8 @@ public static class DependencyInjection
 			sp.GetRequiredService<SpectatorChannels>(),
 			sp.GetRequiredService<PmChannels>(),
 			sp.GetRequiredService<SessionRegistry>(),
-			sp.GetRequiredService<TimeProvider>()));
+			sp.GetRequiredService<TimeProvider>(),
+			sp.GetRequiredService<IEventPublisher<ChatEvent>>()));
 		return services;
 	}
 }

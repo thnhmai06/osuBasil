@@ -3,12 +3,18 @@ using Basil.Application.Chat.Objects;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Sessions.Objects;
 using Basil.Application.Sessions.Registry;
+using Basil.Application.Chat.Objects.Events;
+using Basil.Application.Shared.Events;
+using Basil.Domain.Sessions;
+
+using Session = Basil.Application.Sessions.Objects.Session;
 
 namespace Basil.Application.Chat.Registry;
 
 public sealed class ChannelDirectory
 {
 	private readonly TimeProvider _clock;
+	private readonly IEventPublisher<ChatEvent> _events;
 	private readonly GeneralChannelRegistry _general;
 	private readonly Lobby _lobby;
 	private readonly PmChannels _pmChannels;
@@ -17,9 +23,11 @@ public sealed class ChannelDirectory
 	private readonly SpectatorChannels _spectatorChannels;
 
 	internal ChannelDirectory(GeneralChannelRegistry general, Lobby lobby, RoomChannels roomChannels,
-		SpectatorChannels spectatorChannels, PmChannels pmChannels, SessionRegistry registry, TimeProvider clock)
+		SpectatorChannels spectatorChannels, PmChannels pmChannels, SessionRegistry registry, TimeProvider clock,
+		IEventPublisher<ChatEvent> events)
 	{
 		_clock = clock;
+		_events = events;
 		_general = general;
 		_lobby = lobby;
 		_roomChannels = roomChannels;
@@ -38,6 +46,26 @@ public sealed class ChannelDirectory
 		foreach (var room in _lobby.Rooms.Values)
 			if (!room.IsClosed && room.Involves(actor, privileges))
 				yield return _roomChannels.Of(room);
+	}
+
+	/// <summary>Gets the sessions of the other users that share a general or room channel with the actor's user.</summary>
+	public IReadOnlyList<Session> PeersOf(Session actor)
+	{
+		return
+		[
+			.. _general.All.Values.Cast<Channel>().Concat(_roomChannels.All)
+				.Where(channel => channel.Members.Any(member => ReferenceEquals(member.User, actor.User)))
+				.SelectMany(channel => channel.Members)
+				.Where(member => !ReferenceEquals(member.User, actor.User))
+				.Distinct()
+		];
+	}
+
+	/// <summary>Announces that the user of a closed session went offline to the users who shared a channel with it; nothing is announced when none did.</summary>
+	public void Quit(Session closed, SessionEndReason reason)
+	{
+		var audience = PeersOf(closed);
+		if (audience.Count > 0) _events.Publish(new ChatQuit(closed, reason, audience));
 	}
 
 	public Channel? Find(ChatTarget target, Session viewer)

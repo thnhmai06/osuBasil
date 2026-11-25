@@ -100,6 +100,7 @@ public abstract class Channel
 		if (connection is ApiSession || !CanRead(connection, privileges)) return ChannelJoinResult.AccessDenied;
 		if (Members.Contains(connection)) return ChannelJoinResult.AlreadyMember;
 
+		var firstOfUser = !Members.Any(member => ReferenceEquals(member.User, connection.User));
 		Session? replaced = null;
 		if (connection.Type.IsExclusive)
 		{
@@ -113,7 +114,7 @@ public abstract class Channel
 		}
 
 		MutableMembers.Add(connection);
-		Context.Events.Publish(new ChannelMemberJoined(this, connection, replaced));
+		Context.Events.Publish(new ChannelMemberJoined(this, connection, replaced, firstOfUser));
 		return ChannelJoinResult.Ok;
 	}
 
@@ -121,7 +122,9 @@ public abstract class Channel
 	{
 		using var scope = Enter();
 		if (!MutableMembers.Remove(connection)) return ChannelJoinResult.NotMember;
-		Context.Events.Publish(new ChannelMemberParted(this, connection, false));
+		var lastOfUser = !Members.Any(member => ReferenceEquals(member.User, connection.User));
+		Context.Events.Publish(new ChannelMemberParted(this, connection, false, lastOfUser,
+			!connection.Siblings.IsOnline));
 		return ChannelJoinResult.Ok;
 	}
 

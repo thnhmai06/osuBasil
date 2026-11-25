@@ -12,7 +12,6 @@ namespace Basil.Host.Irc.Delivery;
 
 internal sealed class ChannelJoinedDelivery(
 	IrcClients clients,
-	IrcPresence presence,
 	IReplies<IrcReply> replies,
 	IOptions<IrcOptions> options)
 	: INotificationHandler<ChannelMemberJoined>
@@ -23,9 +22,8 @@ internal sealed class ChannelJoinedDelivery(
 		if (channel is PmChannel or SpectatorChannel) return ValueTask.CompletedTask;
 
 		var member = notification.Member;
-		var firstOfUser = presence.Add(member.Record, channel);
 		clients.DeliverTo(member, own => IrcChannels.SendJoin(own, channel, member.Record, replies));
-		if (!firstOfUser) return ValueTask.CompletedTask;
+		if (!notification.FirstOfUser) return ValueTask.CompletedTask;
 
 		var mask = IrcView.Mask(member.Record, options.Value.Domain);
 		foreach (var session in clients.Of(channel.Members.Where(other => !ReferenceEquals(other.User, member.User))))
@@ -38,7 +36,6 @@ internal sealed class ChannelJoinedDelivery(
 
 internal sealed class ChannelPartedDelivery(
 	IrcClients clients,
-	IrcPresence presence,
 	IReplies<IrcReply> replies,
 	IOptions<IrcOptions> options)
 	: INotificationHandler<ChannelMemberParted>
@@ -56,8 +53,7 @@ internal sealed class ChannelPartedDelivery(
 				: IrcMessage.Part(mask, channel.Name));
 
 		// A user who still has a connection in the channel, or who went offline (one QUIT says that), shows no PART.
-		if (channel.Members.Any(other => ReferenceEquals(other.User, member.User)) || !member.Siblings.IsOnline ||
-		    !presence.Remove(member.Record, channel))
+		if (!notification.LastOfUser || notification.UserOffline)
 			return ValueTask.CompletedTask;
 
 		foreach (var session in clients.Of(channel.Members))
@@ -71,12 +67,11 @@ internal sealed class ChannelPartedDelivery(
 	}
 }
 
-internal sealed class ChannelClosedDelivery(IrcClients clients, IrcPresence presence, IReplies<IrcReply> replies)
+internal sealed class ChannelClosedDelivery(IrcClients clients, IReplies<IrcReply> replies)
 	: INotificationHandler<ChannelClosed>
 {
 	public ValueTask Handle(ChannelClosed notification, CancellationToken ct)
 	{
-		presence.Remove(notification.Channel);
 		foreach (var session in clients.Of(notification.Members))
 			session.Deliver(ChannelPartedDelivery.Kick(session, notification.Channel, replies.Text(IrcReply.KickClosed)));
 		return ValueTask.CompletedTask;

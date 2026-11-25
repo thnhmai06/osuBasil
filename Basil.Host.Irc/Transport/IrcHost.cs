@@ -14,7 +14,6 @@ public static class IrcHost
 		public IServiceCollection AddIrcHost()
 		{
 			services.AddSingleton<IrcClients>();
-			services.AddSingleton<IrcPresence>();
 			services.AddSingleton<IrcState>();
 			services.AddSingleton<IrcCommands>();
 			services.AddSingleton<IDocumentPage, IrcReference>();

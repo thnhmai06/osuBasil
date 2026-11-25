@@ -191,11 +191,8 @@ internal sealed partial class IrcCommands
 			text is null ? replies.Text(IrcReply.NoLongerAway) : replies.Text(IrcReply.NowAway));
 
 		var line = IrcMessage.Away(IrcView.Mask(actor.Record, Options.Domain), text);
-		var mine = presence.Of(actor.Record);
-		foreach (var other in clients.All.Where(other =>
-			         other.Has("away-notify") && other.Session is { } connection &&
-			         !ReferenceEquals(connection.User, actor.User) &&
-			         mine.Any(channel => channel.Members.Contains(connection))))
+		var peers = await sender.Send(new GetChannelPeers(actor), ct);
+		foreach (var other in clients.Of(peers).Where(other => other.Has("away-notify")))
 			other.Deliver(line);
 	}
 

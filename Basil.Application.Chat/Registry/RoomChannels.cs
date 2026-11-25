@@ -14,6 +14,8 @@ public sealed class RoomChannels
 		_context = context;
 	}
 
+	internal IEnumerable<RoomChannel> All => _channels.Values;
+
 	public RoomChannel Of(Room room)
 	{
 		if (room.IsClosed) return Closed(room);

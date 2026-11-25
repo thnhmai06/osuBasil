@@ -31,7 +31,6 @@ internal sealed partial class IrcCommands(
 	Admission admission,
 	SignInGate signIns,
 	IrcClients clients,
-	IrcPresence presence,
 	IrcState state,
 	IReplies<IrcReply> replies,
 	IOptions<IrcOptions> options)
