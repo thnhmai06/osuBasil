@@ -37,6 +37,12 @@ public sealed partial class Server
 		return new ServerRecovery(openedChannels, botOnline, closedMatches, closedConnections);
 	}
 
+	/// <summary>Brings the server's live state to rest before it stops, and reports how many rooms it closed.</summary>
+	public Task<int> ShutdownAsync(CancellationToken ct = default)
+	{
+		return Task.FromResult(Context.Lobby.CloseAll());
+	}
+
 	public GeneralChannel? OpenChannel(GeneralChannelRecord record)
 	{
 		return Context.Chat.OpenGeneral(record);

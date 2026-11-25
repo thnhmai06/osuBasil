@@ -1,4 +1,4 @@
-using Basil.Application.Multiplayer.Registry;
+using Basil.Application.Servers.Objects;
 using Basil.Infrastructure.Shared.Events;
 using Basil.Host.Irc.Clients;
 using Basil.Host.Irc.Transport;
@@ -33,7 +33,7 @@ internal sealed class GracefulShutdown(
 	IrcListener irc,
 	IrcState ircState,
 	SseHub sse,
-	Lobby lobby,
+	Server server,
 	EventQueue events,
 	LogDrops logs,
 	ILogger<GracefulShutdown> logger,
@@ -93,11 +93,10 @@ internal sealed class GracefulShutdown(
 				sse.Announce();
 				return Task.CompletedTask;
 			}),
-			new ShutdownStep("close the rooms", _timings.CloseRooms, _ =>
+			new ShutdownStep("close the rooms", _timings.CloseRooms, async token =>
 			{
-				var closed = lobby.CloseAll();
+				var closed = await server.ShutdownAsync(token);
 				logger.LogInformation("Closed {RoomCount} rooms", closed);
-				return Task.CompletedTask;
 			}),
 			new ShutdownStep("deliver the queued events", _timings.DrainEvents, async token =>
 			{
