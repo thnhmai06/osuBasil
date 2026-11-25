@@ -2,17 +2,18 @@ using System.Net;
 using Basil.Application.Sessions.Objects;
 using Basil.Application.Sessions.Persistence;
 using Basil.Application.Shared.Settings;
+using Basil.Domain.Users;
 
 namespace Basil.Gateway.RateLimiting;
 
 /// <summary>Admits sign-in attempts per account and address, and decides which outcomes count against the limit.</summary>
 public sealed class SignInGate(LoginAttemptGuard attempts, ISettingsRepository settings)
 {
-	/// <summary>Reserves an attempt for an account from an address; the attempt is null when the limit is used up, and <see cref="SignInAdmission.RetryAfter"/> says when to try again.</summary>
+	/// <summary>Reserves an attempt for an account from an address, the account name compared the way user names are compared; the attempt is null when the limit is used up, and <see cref="SignInAdmission.RetryAfter"/> says when to try again.</summary>
 	public SignInAdmission Admit(IPAddress address, string account)
 	{
 		var rules = settings.Current.RateLimits.Login;
-		var attempt = attempts.TryReserve(address, account.ToLowerInvariant(), rules.MaxAttempts, rules.Window);
+		var attempt = attempts.TryReserve(address, UserData.TryNormalize(account) ?? account.ToLowerInvariant(), rules.MaxAttempts, rules.Window);
 		return new SignInAdmission(attempt is null ? null : new SignIn(attempt), rules.Lockout);
 	}
 }
