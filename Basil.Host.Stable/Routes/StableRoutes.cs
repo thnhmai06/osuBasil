@@ -1,10 +1,8 @@
 using Mediator;
 using Basil.Application.Sessions.Messages;
-using Basil.Application.Sessions.Registry;
 using System.Diagnostics;
 using Basil.Application.Diagnostics.Services;
 using Basil.Application.Shared.Events;
-using Basil.Domain.Sessions;
 using Basil.Gateway.Admission;
 using Basil.Gateway.RateLimiting;
 using Basil.Host.Stable.Delivery;
@@ -65,7 +63,7 @@ public static class StableRoutes
 		cho.MapPost("/", ExchangeAsync);
 	}
 
-	private static async Task<IResult> ExchangeAsync(HttpContext context, SessionRegistry registry, ISender sender, StableLogin login,
+	private static async Task<IResult> ExchangeAsync(HttpContext context, ISender sender, StableLogin login,
 		PacketDispatcher dispatcher, Outbox outbox, IPublishedEvents events, CancellationToken ct)
 	{
 		using var buffer = new MemoryStream();
@@ -81,15 +79,9 @@ public static class StableRoutes
 			return Results.Bytes(reply, "text/html; charset=UTF-8");
 		}
 
-		// An unknown token, as after a restart, makes the client sign in again.
-		if (registry.Find(token) is not
-		    { IsOpen: true, Type: SessionType.Stable or SessionType.StableTourney } connection)
-			return Results.Bytes(Outbox.Build(writer => writer.RestartServer(0)), "text/html; charset=UTF-8");
-
+		// An unknown token, as after a restart, or a session silent past its expiry makes the client sign in again.
 		var started = Stopwatch.GetTimestamp();
-		await sender.Send(new MarkSessionActive(connection), ct);
-		// A session silent past its expiry is closed by the heartbeat: the client logs in again, as for a dead token.
-		if (!connection.IsOpen)
+		if (await sender.Send(new ResumeStableSession(token), ct) is not { } connection)
 			return Results.Bytes(Outbox.Build(writer => writer.RestartServer(0)), "text/html; charset=UTF-8");
 		// The deliveries the packets cause are awaited briefly, so the client sees its own action in this answer.
 		using (var published = events.Track())

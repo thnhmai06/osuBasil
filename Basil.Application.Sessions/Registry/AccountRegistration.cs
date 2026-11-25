@@ -17,7 +17,7 @@ public sealed class AccountRegistration
 
 	/// <summary>Checks whether an account could be registered with the attempt, without creating it.</summary>
 	/// <returns>Why it could not, or null when it could.</returns>
-	public Task<RegistrationFailure?> CheckAsync(RegisterAttempt attempt, CancellationToken ct = default)
+	internal Task<RegistrationFailure?> CheckAsync(RegisterAttempt attempt, CancellationToken ct = default)
 	{
 		return _accounts.CheckRegistrationAsync(attempt, ct);
 	}

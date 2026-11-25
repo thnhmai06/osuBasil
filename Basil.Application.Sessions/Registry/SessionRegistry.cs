@@ -79,6 +79,16 @@ public sealed class SessionRegistry
 		return session is not null && CloseExpired([session]) == 0 ? session : null;
 	}
 
+	/// <summary>Brings back the open osu! session that holds a token and records that it was heard from; null when the token is unknown or the session has expired.</summary>
+	internal Session? ResumeStable(string token)
+	{
+		if (Find(token) is not { IsOpen: true, Type: SessionType.Stable or SessionType.StableTourney } session)
+			return null;
+
+		MarkActive(session);
+		return session.IsOpen ? session : null;
+	}
+
 	public StableSession? FindSpectating(Session connection)
 	{
 		// ponytail: scans every online osu! client; add an index if the online count grows large.

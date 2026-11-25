@@ -461,9 +461,8 @@ internal static class OsuWebRoutes
 			: Text(string.Empty);
 	}
 
-	private static async Task<IResult> RegisterAsync(HttpContext context, AccountRegistration registration,
-		ISender sender,
-		Admission admission, CancellationToken ct)
+	private static async Task<IResult> RegisterAsync(HttpContext context, ISender sender, Admission admission,
+		CancellationToken ct)
 	{
 		IFormCollection form;
 		try
@@ -481,8 +480,8 @@ internal static class OsuWebRoutes
 		RegistrationFailure? failure;
 		try
 		{
-			failure = await registration.CheckAsync(
-				new RegisterAttempt(name, new Md5Hash(Encoding.UTF8.GetBytes(password))), ct);
+			failure = await sender.Send(
+				new CheckRegistration(new RegisterAttempt(name, new Md5Hash(Encoding.UTF8.GetBytes(password)))), ct);
 		}
 		catch (InvalidUserNameException)
 		{
