@@ -155,11 +155,6 @@ public sealed record BeatmapQuery(
 
 	public BeatmapQuery LimitTo(UserPrivileges effective)
 	{
-		return MayViewHidden(effective) ? this : this with { Hidden = false };
-	}
-
-	public static bool MayViewHidden(UserPrivileges effective)
-	{
-		return effective.Allows(UserPrivileges.Tournament);
+		return BeatmapsetRecord.MayViewHidden(effective) ? this : this with { Hidden = false };
 	}
 }

@@ -1,4 +1,5 @@
 using Basil.Domain.Content;
+using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Domain.Beatmaps;
@@ -44,6 +45,24 @@ public sealed class BeatmapsetRecord : IEquatable<BeatmapsetRecord>
 
 	/// <summary>True unless the set is hidden, which also hides every beatmap in it.</summary>
 	public bool Visible { get; set; } = true;
+
+	/// <summary>Tells whether a user holding these effective privileges may see hidden beatmaps and sets.</summary>
+	public static bool MayViewHidden(UserPrivileges effective)
+	{
+		return effective.Allows(UserPrivileges.Tournament);
+	}
+
+	/// <summary>Tells whether a user holding these effective privileges may use osu!direct.</summary>
+	public static bool MayUseDirect(UserPrivileges effective)
+	{
+		return effective.Allows(UserPrivileges.Supporter);
+	}
+
+	/// <summary>Tells whether a user holding these effective privileges may see the set: it is visible, or the user may see hidden ones.</summary>
+	public bool CanBeViewedBy(UserPrivileges effective)
+	{
+		return Visible || MayViewHidden(effective);
+	}
 
 	public bool Equals(BeatmapsetRecord? other)
 	{

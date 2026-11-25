@@ -1,18 +1,18 @@
 using Basil.Application.Beatmaps.Messages;
+using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Domain.Beatmaps;
-using Basil.Infrastructure.Beatmaps.Logic;
 using Mediator;
 
 namespace Basil.Infrastructure.Beatmaps.Handlers;
 
-internal sealed class GetBeatmapHandler(IBeatmapRepository beatmaps, TimeProvider clock)
+internal sealed class GetBeatmapHandler(IBeatmapRepository beatmaps, Beatmapsets beatmapsets)
 	: IRequestHandler<GetBeatmap, BeatmapRecord?>
 {
 	public async ValueTask<BeatmapRecord?> Handle(GetBeatmap request, CancellationToken ct)
 	{
 		return await beatmaps.GetAsync(request.BeatmapId, ct) is { } map &&
-		       BeatmapVisibility.CanView(map, BeatmapVisibility.MayViewHidden(request.Actor, clock))
+		       beatmapsets.ScopeTo(request.Actor).CanView(map)
 			? map
 			: null;
 	}

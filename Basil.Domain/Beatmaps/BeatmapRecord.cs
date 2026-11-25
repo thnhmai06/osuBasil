@@ -1,3 +1,4 @@
+using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Domain.Beatmaps;
@@ -72,6 +73,12 @@ public sealed class BeatmapRecord : IEquatable<BeatmapRecord>
 	public bool IsVisible()
 	{
 		return Visible && Beatmapset.Visible;
+	}
+
+	/// <summary>Tells whether a user holding these effective privileges may see the beatmap: it is visible, or the user may see hidden ones.</summary>
+	public bool CanBeViewedBy(UserPrivileges effective)
+	{
+		return IsVisible() || BeatmapsetRecord.MayViewHidden(effective);
 	}
 
 	public bool Equals(BeatmapRecord? other)

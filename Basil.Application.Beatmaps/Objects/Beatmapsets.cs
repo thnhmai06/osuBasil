@@ -34,6 +34,11 @@ public sealed class Beatmapsets
 		_pending = new Pending<int, BeatmapAnalysis?>(context.Clock);
 	}
 
+	public ScopedBeatmaps ScopeTo(IActor? actor)
+	{
+		return new ScopedBeatmaps(actor, _context.Clock);
+	}
+
 	public ScopedBeatmapset ScopeTo(IActor actor, int setId)
 	{
 		return new ScopedBeatmapset(_context, setId, actor);

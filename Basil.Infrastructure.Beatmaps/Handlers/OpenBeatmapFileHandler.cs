@@ -1,8 +1,8 @@
 using Basil.Application.Beatmaps.Messages;
+using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Domain.Beatmaps;
-using Basil.Infrastructure.Beatmaps.Logic;
 using Mediator;
 
 namespace Basil.Infrastructure.Beatmaps.Handlers;
@@ -10,13 +10,13 @@ namespace Basil.Infrastructure.Beatmaps.Handlers;
 internal sealed class OpenBeatmapFileHandler(
 	IBeatmapRepository beatmaps,
 	IBeatmapsetStorage storage,
-	TimeProvider clock)
+	Beatmapsets beatmapsets)
 	: IRequestHandler<OpenBeatmapFile, BeatmapFile?>
 {
 	public async ValueTask<BeatmapFile?> Handle(OpenBeatmapFile request, CancellationToken ct)
 	{
 		if (await beatmaps.GetAsync(request.BeatmapId, ct) is not { } map ||
-		    !BeatmapVisibility.CanView(map, BeatmapVisibility.MayViewHidden(request.Actor, clock)) ||
+		    !beatmapsets.ScopeTo(request.Actor).CanView(map) ||
 		    FileOf(map, request.Type) is not { } name)
 			return null;
 
