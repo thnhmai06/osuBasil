@@ -9,4 +9,10 @@
 		<FrameworkReference Include="Microsoft.AspNetCore.App"/>
 	</ItemGroup>
 
+	<ItemGroup>
+		<ProjectReference Include="..\Basil.Application.Shared\Basil.Application.Shared.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Sessions\Basil.Application.Sessions.csproj"/>
+		<ProjectReference Include="..\Basil.Domain\Basil.Domain.csproj"/>
+	</ItemGroup>
+
 </Project>

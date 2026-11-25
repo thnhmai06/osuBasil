@@ -7,4 +7,4 @@ public enum AdmissionTier : byte
 	Elevated
 }
 
-public readonly record struct AdmissionSubject(string Key, AdmissionTier Tier);
+internal readonly record struct AdmissionSubject(string Key, AdmissionTier Tier);

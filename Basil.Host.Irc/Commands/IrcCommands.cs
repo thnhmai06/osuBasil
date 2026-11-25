@@ -31,8 +31,8 @@ internal sealed partial class IrcCommands(
 	Lobby lobby,
 	RoomChannels roomChannels,
 	ISender sender,
-	RateLimiter limiter,
-	LoginAttemptGuard attempts,
+	Admission admission,
+	SignInGate signIns,
 	IrcClients clients,
 	IrcPresence presence,
 	IrcState state,
@@ -152,8 +152,7 @@ internal sealed partial class IrcCommands(
 	private async Task<string?> SignInAsync(IrcSocket session, string password, string claimed,
 		CancellationToken ct)
 	{
-		var rules = (await sender.Send(new ReadSettings(), ct)).RateLimits;
-		using var attempt = attempts.TryReserve(session.Address, claimed.ToLowerInvariant(), rules.Login.MaxAttempts, rules.Login.Window);
+		using var attempt = signIns.Admit(session.Address, claimed).Attempt;
 		if (attempt is null) return replies.Text(IrcReply.TooManyAttempts);
 
 		var result = await sender.Send(new LoginSession(
@@ -166,8 +165,7 @@ internal sealed partial class IrcCommands(
 			return null;
 		}
 
-		// Only a wrong name or password counts against the sign-in limit.
-		if (result.Failure is LoginFailure.UnknownUser or LoginFailure.WrongPassword) attempt.Keep();
+		attempt.End(result);
 		return result.Failure is LoginFailure.AlreadyOnline ? replies.Text(IrcReply.AlreadyOnline) : replies.Text(IrcReply.BadCredentials);
 	}
 

@@ -8,7 +8,8 @@ or arriving while the server is overloaded never reaches a module.
 
 The rate limiter (`System.Threading.RateLimiting`, one registration), the login-attempt guard and `Admission` live in
 `Basil.Gateway`, with the load policies below (bulkhead, shedding, health). The Rest, Stable and IRC hosts call `Admit`
-before they handle a request and `Release` when it ends; `Basil.Host.Shared` maps a `Session` to an `AdmissionSubject`.
+before they handle a request and `Release` when it ends, handing over the `Session` of the caller (or the token of an osu!
+client); the gateway reads the session and picks the allowance, so no host holds an admission rule.
 `RuntimeSampler` reports the load to the gateway at every sample. The size of an upload is not a gateway decision: nginx
 refuses a declared length above the route's ceiling, and the hosts read the body as a guarded stream (see
 [`edge.md`](edge.md)).
@@ -35,7 +36,7 @@ purpose: a ban or a restriction is a business fact, decided at login and by capa
   A request without a user (a picture, the sign-in form, an anonymous route) meets only the server's capacity for its kind
   of work; the reverse proxy holds every per-address limit (connections, requests, sign-in forms).
 * **No admission facts from the business.** There is no interface through which the gateway asks the business whether a user
-  is banned or restricted.
+  is banned or restricted; the one privilege it reads is the elevated tier of `Tournament`.
 
 ### Policies
 
@@ -47,19 +48,24 @@ purpose: a ban or a restriction is a business fact, decided at login and by capa
 
 ### One subject: the signed-in user
 
-The host turns the `Session` into an opaque `AdmissionSubject` (a key and a tier) that the gateway defines; the mapping lives
-in `Basil.Host.Shared`. All of a user's connections share one key. The tier is recomputed for each request from the stored
-privileges: a user with the `Tournament` privilege is `Elevated` (the allowance times `elevatedMultiplier`), everyone else is
-`Standard`. The gateway never sees a Users type.
+The host hands the `Session` of the caller to the gateway, which turns it into a subject (a key and a tier) it keeps to itself.
+All of a user's connections share one key. The tier is recomputed for each request from the stored privileges: a user with
+the `Tournament` privilege is `Elevated` (the allowance times `elevatedMultiplier`), everyone else is `Standard`. For the
+osu! client the host hands over the `osu-token` and the gateway resolves the session itself.
 
 * **Allowance per kind of work.** Each class has its own allowance per window (`requests`, `listingRequests`,
   `uploadRequests`, `liveRequests`, `pollRequests`), so a listing burst or a stream reconnect cannot spend the allowance of
   ordinary actions.
 * **Uploads** are one at a time per user, held back by the server-wide cap of the class, and counted in bytes: the declared
   length of each upload spends the user's `uploadBytesPerHour`.
-* **Named rules.** The rules the hosts used to write inline are named in the gateway (`RateRule`: chat, API changes,
-  registration, forced garbage collection); the host gives the count and window from the settings and the gateway keys them.
-* **Sign-in attempts** are counted per account, failures only; an attempt in flight counts until it ends.
+* **Named rules.** An entry point names the rule it is under (`RateRule`: chat, API changes, registration, forced garbage
+  collection) and the gateway applies it: it reads the count and window from the settings and keys them. A change through
+  the HTTP API by a signed-in user is charged to the API changes rule by the gateway itself.
+* **Sign-in attempts** are counted per account and address, failures only; an attempt in flight counts until it ends. A host
+  asks the gateway to admit each sign-in (Rest, osu!, IRC and the osu-web endpoints alike) and ends it with the result of the
+  login; the gateway alone decides that only an unknown user or a wrong password counts as a failure.
+* **Open streams** are counted per user against `rateLimits.connections.streamsPerUser`; a stream over it is refused.
+* **Uploads of the osu! client** are taken in only from an address that has an open osu! client.
 * **Memory** is constant per key: the limiter keeps a window of counts, not one entry per request, and drops an idle key by
   itself.
 
@@ -74,8 +80,8 @@ Taken from well-known cloud design patterns, limited to what this single process
   must be matched by one `Admission.Release(class)` when it ends. A route declares its class with
   `AdmissionPolicyAttribute` (the most specific declaration wins): list and search routes are `Listing`, uploads are
   `Upload`, streams are `Live`; everything else, packets and IRC lines included, is `Interactive`. The one
-  exception is chosen by the host at request time: the bancho poll of an open osu! client (`POST /` on `c.` with the token
-  of a Stable or StableTourney session) is `Poll`. A `Poll` still counts for concurrency and load (it shares the cap of
+  exception is chosen by the gateway at request time from the session the token names: the bancho poll of an open osu! client
+  (`POST /` on `c.` with the token of a Stable or StableTourney session) is `Poll`. A `Poll` still counts for concurrency and load (it shares the cap of
   `Interactive`, counted apart, and is shed with it) and has an allowance of its own (`pollRequests`, 1200 per window) instead
   of `requests`, because a multiplayer round makes more than 120 polls a minute and would lock the client out; the sign-in (no or unknown token) and the osu-web
   endpoints stay `Interactive` and keep the limit. Pictures are middleware, not routes: the image
@@ -132,7 +138,8 @@ runtime-configurable.
 
 ## Invariants
 
-* The gateway is a leaf; it references no user, room or other business type.
+* The gateway references the Application projects it guards with and nothing above them; no Application project references
+  the gateway. It reads a session, never changes one.
 * Every entry point (an HTTP route, a packet type, an IRC command) declares an admission policy. An entry point declares it
   by carrying `AdmissionPolicyAttribute` in its metadata. The rule should be enforced by a test that enumerates every route
   of the Rest host and of the two osu! routers (as mapped endpoints), every packet type of the osu! client (the whole
@@ -144,7 +151,7 @@ runtime-configurable.
 
 ## Related code
 
-* [`RateLimiter.cs`](../../Basil.Gateway/RateLimiting/RateLimiter.cs) and [`LoginAttemptGuard.cs`](../../Basil.Gateway/RateLimiting/LoginAttemptGuard.cs) — the limiter and login guard.
+* [`RateLimiter.cs`](../../Basil.Gateway/RateLimiting/RateLimiter.cs), [`LoginAttemptGuard.cs`](../../Basil.Gateway/RateLimiting/LoginAttemptGuard.cs) and [`SignInGate.cs`](../../Basil.Gateway/RateLimiting/SignInGate.cs) — the limiter, the login guard and the sign-in gate the hosts call.
 * [`Admission.cs`](../../Basil.Gateway/Admission/Admission.cs) and [`GatewayLimits.cs`](../../Basil.Gateway/Limits/GatewayLimits.cs) — admission and its swappable limits snapshot.
 * [`UploadRequest.cs`](../../Basil.Host.Shared/Http/UploadRequest.cs) and [`UploadForm.cs`](../../Basil.Host.Shared/Http/UploadForm.cs) — the limit, minimum data rate and streaming read of an upload, set per route by its kind. They stay in the hosts: they depend on ASP.NET and the stored settings, so they are not gateway policies.
 

@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading.Channels;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Sessions.Objects;
+using Basil.Gateway.Admission;
 using Basil.Host.Rest.Http;
 using Mediator;
 using Microsoft.Extensions.Hosting;
@@ -30,18 +31,15 @@ public sealed class SseStream
 	private int _lag;
 	private int _released;
 
-	internal SseStream(string key, ApiSession? connection, string? userKey)
+	internal SseStream(string key, ApiSession? connection)
 	{
 		Key = key;
 		Session = connection;
-		UserKey = userKey;
 	}
 
 	public string Key { get; }
 
 	public ApiSession? Session { get; }
-
-	internal string? UserKey { get; }
 
 	public ChannelReader<byte[]> Reader => _channel.Reader;
 
@@ -69,11 +67,11 @@ public sealed class SseStream
 	}
 }
 
-public sealed class SseHub(TimeProvider clock, SessionRegistry registry, ISender sender, ILogger<SseHub> logger)
+public sealed class SseHub(TimeProvider clock, SessionRegistry registry, ISender sender, Admission admission,
+	ILogger<SseHub> logger)
 	: IHostedService
 {
 	private static readonly byte[] KeepAlive = ": keep-alive\n\n"u8.ToArray();
-	private readonly ConcurrentDictionary<string, int> _open = new();
 	private readonly ConcurrentDictionary<string, Root> _roots = new();
 	private volatile bool _stopping;
 
@@ -143,12 +141,9 @@ public sealed class SseHub(TimeProvider clock, SessionRegistry registry, ISender
 	{
 		if (_stopping) return (null, null, ShuttingDown());
 
-		var current = await sender.Send(new ReadSettings(), ct);
-		var limit = current.RateLimits.Connections.StreamsPerUser;
-		var userKey = connection is null ? null : "user:" + connection.Record.Id;
-		if (userKey is not null && !TryCount(userKey, limit)) return (null, null, TooManyStreams());
+		if (connection is not null && !admission.TryOpenStream(connection)) return (null, null, TooManyStreams());
 
-		var stream = new SseStream(key, connection, userKey);
+		var stream = new SseStream(key, connection);
 		Root root;
 		do
 		{
@@ -176,21 +171,7 @@ public sealed class SseHub(TimeProvider clock, SessionRegistry registry, ISender
 		if (_roots.TryGetValue(stream.Key, out var root) && root.Remove(stream) && root.TryRetire())
 			_roots.TryRemove(new KeyValuePair<string, Root>(stream.Key, root));
 
-		if (stream.UserKey is not null) Uncount(stream.UserKey);
-	}
-
-	private bool TryCount(string owner, int limit)
-	{
-		if (_open.AddOrUpdate(owner, 1, (_, count) => count + 1) <= limit) return true;
-
-		Uncount(owner);
-		return false;
-	}
-
-	private void Uncount(string owner)
-	{
-		var left = _open.AddOrUpdate(owner, 0, (_, count) => count - 1);
-		if (left <= 0) _open.TryRemove(new KeyValuePair<string, int>(owner, left));
+		if (stream.Session is not null) admission.CloseStream(stream.Session);
 	}
 
 	private static IResult TooManyStreams()

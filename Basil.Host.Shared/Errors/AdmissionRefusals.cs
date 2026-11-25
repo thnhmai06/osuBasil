@@ -1,6 +1,4 @@
 using System.Globalization;
-using Basil.Application.Sessions.Objects;
-using Basil.Domain.Users;
 using Basil.Gateway.Admission;
 using Basil.Gateway.Limits;
 
@@ -15,15 +13,6 @@ public static class AdmissionRefusals
 	public const string BusyCode = "busy";
 
 	public const string BusyMessage = "The server is busy. Try again later.";
-
-	/// <summary>The user a request counts against; a user with the Tournament privilege has the elevated allowance, decided on each request.</summary>
-	public static AdmissionSubject SubjectOf(Session connection, DateTimeOffset now)
-	{
-		var tier = connection.EffectivePrivileges(now).Allows(UserPrivileges.Tournament)
-			? AdmissionTier.Elevated
-			: AdmissionTier.Standard;
-		return new AdmissionSubject($"user:{connection.Record.Id}", tier);
-	}
 
 	public static int StatusOf(AdmissionDecision decision)
 	{

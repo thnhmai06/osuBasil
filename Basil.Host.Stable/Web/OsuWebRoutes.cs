@@ -196,13 +196,13 @@ internal static class OsuWebRoutes
 	}
 
 	private static async Task<IResult> SubmitAsync(HttpContext context, SessionRegistry registry, ISender sender,
-		IAnticheatReporter anticheat, WebAuthentication auth,
+		IAnticheatReporter anticheat, WebAuthentication auth, Admission admission,
 		CancellationToken ct)
 	{
 		// A score submission carries a replay, which is far below the screenshot limit.
 		var limit = (await sender.Send(new ReadSettings(), ct)).Uploads.ScreenshotMaxSize;
 		if (!UploadRequest.Accept(context, limit)) return Text(string.Empty, StatusCodes.Status413PayloadTooLarge);
-		if (!auth.HasOpenClientAt(context)) return Text("error: no");
+		if (!admission.HasOpenClient(ClientAddress.Resolve(context))) return Text("error: no");
 
 		return await UploadRequest.GuardAsync(context, "POST /web/osu-submit-modular-selector.php",
 			ClientAddress.Resolve(context).ToString(), async () =>
@@ -274,12 +274,12 @@ internal static class OsuWebRoutes
 		return StoredFile.Send(context, stream, "application/x-osu-replay");
 	}
 
-	private static async Task<IResult> ScreenshotAsync(HttpContext context, WebAuthentication auth, ISender sender,
-		CancellationToken ct)
+	private static async Task<IResult> ScreenshotAsync(HttpContext context, WebAuthentication auth, Admission admission,
+		ISender sender, CancellationToken ct)
 	{
 		var limit = (await sender.Send(new ReadSettings(), ct)).Uploads.ScreenshotMaxSize;
 		if (!UploadRequest.Accept(context, limit)) return Text(string.Empty, StatusCodes.Status413PayloadTooLarge);
-		if (!auth.HasOpenClientAt(context)) return Results.Unauthorized();
+		if (!admission.HasOpenClient(ClientAddress.Resolve(context))) return Results.Unauthorized();
 
 		return await UploadRequest.GuardAsync(context, "POST /web/osu-screenshot.php",
 			ClientAddress.Resolve(context).ToString(), async () =>
@@ -463,7 +463,7 @@ internal static class OsuWebRoutes
 
 	private static async Task<IResult> RegisterAsync(HttpContext context, AccountRegistration registration,
 		ISender sender,
-		RateLimiter limiter, CancellationToken ct)
+		Admission admission, CancellationToken ct)
 	{
 		IFormCollection form;
 		try
@@ -478,7 +478,6 @@ internal static class OsuWebRoutes
 		var name = form["user[username]"].ToString();
 		var password = form["user[password]"].ToString();
 		var checkOnly = form["check"] != "0";
-		var rules = (await sender.Send(new ReadSettings(), ct)).RateLimits.Registration;
 		RegistrationFailure? failure;
 		try
 		{
@@ -494,7 +493,7 @@ internal static class OsuWebRoutes
 			return Results.Json(new { form_error = new { user = new { username = new[] { failure.ToString() } } } },
 				statusCode: 400);
 		if (checkOnly) return Text("ok");
-		if (!limiter.TryAcquire(RateRule.Registration, "server", rules.PerServer.Count, rules.PerServer.Window))
+		if (!admission.Admit(RateRule.Registration).Allowed)
 			return Results.Json(
 				new { form_error = new { user = new { username = new[] { OsuWebReplies.TooManyRegistrations } } } },
 				statusCode: 429);

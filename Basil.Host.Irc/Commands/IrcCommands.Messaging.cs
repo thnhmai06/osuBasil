@@ -74,8 +74,7 @@ internal sealed partial class IrcCommands
 	private async Task<bool> MayChatAsync(IrcSocket session, Session actor, string command, string target,
 		CancellationToken ct)
 	{
-		var limit = (await sender.Send(new ReadSettings(), ct)).RateLimits.Chat;
-		if (limiter.TryAcquire(RateRule.Chat, actor.Record.Id.ToString(System.Globalization.CultureInfo.InvariantCulture), limit.Count, limit.Window)) return true;
+		if (admission.Admit(RateRule.Chat, actor).Allowed) return true;
 
 		if (session.Has("standard-replies"))
 			session.Send(IrcMessage.Fail(session.ServerName, command, IrcReplies.RateLimitedCode, target,

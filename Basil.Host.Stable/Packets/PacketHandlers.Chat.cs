@@ -30,8 +30,7 @@ internal sealed partial class PacketHandlers
 
 	private async Task<bool> MayChatAsync(StableSession osu, CancellationToken ct)
 	{
-		var limit = (await sender.Send(new ReadSettings(), ct)).RateLimits.Chat;
-		if (limiter.TryAcquire(RateRule.Chat, osu.Record.Id.ToString(System.Globalization.CultureInfo.InvariantCulture), limit.Count, limit.Window)) return true;
+		if (admission.Admit(RateRule.Chat, osu).Allowed) return true;
 		outbox.Send(osu, writer => writer.Notification(StableReplies.ChatTooFast));
 		return false;
 	}

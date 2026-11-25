@@ -1,9 +1,7 @@
 using Basil.Application.Sessions.Registry;
 using Basil.Domain;
-using System.Globalization;
 using System.Text.Json;
 using Basil.Application.Shared.Settings;
-using Basil.Gateway.RateLimiting;
 using Basil.Host.Rest.Sse;
 using Mediator;
 using Microsoft.AspNetCore.Cors.Infrastructure;
@@ -15,7 +13,7 @@ internal sealed class RestPipeline(RequestDelegate next)
 	internal const string RetryAfterWhileStopping = "5";
 
 	public async Task InvokeAsync(HttpContext context, SessionRegistry registry, ISender sender,
-		RateLimiter limiter, SseHub hub, ILogger<RestPipeline> logger)
+		SseHub hub, ILogger<RestPipeline> logger)
 	{
 		if (hub.Stopping)
 		{
@@ -27,9 +25,7 @@ internal sealed class RestPipeline(RequestDelegate next)
 
 		try
 		{
-			var authenticated = await context.AuthenticateAsync(sender);
-			if (await RateLimitedAsync(context, authenticated, sender, limiter)) return;
-
+			await context.AuthenticateAsync(sender);
 			await next(context);
 		}
 		catch (Exception ex) when (!context.Response.HasStarted && ex is BadHttpRequestException or JsonException)
@@ -48,26 +44,6 @@ internal sealed class RestPipeline(RequestDelegate next)
 		}
 	}
 
-	private static async Task<bool> RateLimitedAsync(HttpContext context, bool authenticated,
-		ISender sender,
-		RateLimiter limiter)
-	{
-		var limits = (await sender.Send(new ReadSettings(), context.RequestAborted)).RateLimits.Rest;
-		var mutation = !HttpMethods.IsGet(context.Request.Method) && !HttpMethods.IsHead(context.Request.Method) &&
-		               !HttpMethods.IsOptions(context.Request.Method);
-		if (authenticated && mutation)
-		{
-			var user = context.Session().Record.Id;
-			if (limiter.TryAcquire(RateRule.RestMutation, user.ToString(CultureInfo.InvariantCulture), limits.Mutations.Count, limits.Mutations.Window))
-				return false;
-
-			await TooManyAsync(context, limits.Mutations.Window);
-			return true;
-		}
-
-		return false;
-	}
-
 	private static Task RefuseAsync(HttpContext context, Exception ex)
 	{
 		context.Response.Clear();
@@ -82,14 +58,6 @@ internal sealed class RestPipeline(RequestDelegate next)
 		logger.LogError(ex, "Unhandled exception in {Route}", context.GetEndpoint()?.DisplayName ?? "an unknown route");
 		context.Response.Clear();
 		await Api.Error(StatusCodes.Status500InternalServerError, "internalError", "Internal server error.")
-			.ExecuteAsync(context);
-	}
-
-	private static Task TooManyAsync(HttpContext context, TimeSpan retryAfter)
-	{
-		context.Response.Headers.RetryAfter =
-			((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
-		return Api.Error(StatusCodes.Status429TooManyRequests, "rateLimited", "Too many requests.")
 			.ExecuteAsync(context);
 	}
 }

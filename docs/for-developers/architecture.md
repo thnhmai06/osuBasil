@@ -52,7 +52,7 @@ Basil.Infrastructure.Persistence    Npgsql design-time factories and all        
                                  PostgreSQL migrations;                              module Infrastructure projects
                                  only Basil references it
 Basil.Protocol.Game.Stable / .Irc     the translation language of each wire            -> Domain / nothing
-Basil.Gateway                    admission control                                -> (nothing but the rate-limiting library)
+Basil.Gateway                    admission control                                -> the rate-limiting library, Application.Sessions/Shared
 Basil.Host.Shared                views and outcome-to-error mapping               -> Application projects
 Basil.Host.Stable/.Irc/.Rest/.Cli  transports                                     -> Host.Shared, Protocol, Gateway, Application
 Basil                            composition root -> everything

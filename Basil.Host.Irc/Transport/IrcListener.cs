@@ -213,10 +213,8 @@ internal sealed class IrcListener(
 
 		if (!IrcMessage.TryParse(text, null, out var message)) return;
 
-		var subject = session.Session is { } connection
-			? AdmissionRefusals.SubjectOf(connection, clock.GetUtcNow())
-			: (AdmissionSubject?)null;
-		var decision = admission.Admit(subject);
+		var connection = session.Session;
+		var decision = admission.Admit(connection);
 		if (!decision.Allowed)
 		{
 			session.Send(IrcMessage.ServerNotice(session.ServerName, session.Nick,
@@ -243,7 +241,7 @@ internal sealed class IrcListener(
 		finally
 		{
 			DiagnosticsMetrics.IrcDuration.Record(Stopwatch.GetElapsedTime(started).TotalMilliseconds);
-			admission.Release(WorkClass.Interactive, subject);
+			admission.Release(WorkClass.Interactive, connection);
 		}
 	}
 

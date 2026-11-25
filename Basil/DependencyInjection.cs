@@ -16,8 +16,10 @@ using Basil.Application.Scores.Objects.Events;
 using Basil.Application.Servers;
 using Basil.Application.Sessions;
 using Basil.Application.Sessions.Objects.Events;
+using Basil.Application.Sessions.Registry;
 using Basil.Application.Shared;
 using Basil.Application.Shared.Events;
+using Basil.Application.Shared.Settings;
 using Basil.Infrastructure.Shared.Events;
 using Basil.Application.Users;
 using Basil.Application.Users.Objects.Events;
@@ -110,8 +112,11 @@ public static class DependencyInjection
 			services.AddSingleton<RateLimiter>();
 			services.AddSingleton<LoadSignal>();
 			services.AddSingleton<LoginAttemptGuard>();
+			services.AddSingleton<SignInGate>();
 			services.AddSingleton(sp => new Admission(sp.GetRequiredService<RateLimiter>(),
-				sp.GetRequiredService<SettingsGatewayLimits>().Current, sp.GetRequiredService<LoadSignal>()));
+				sp.GetRequiredService<SettingsGatewayLimits>().Current, sp.GetRequiredService<SessionRegistry>(),
+				sp.GetRequiredService<ISettingsRepository>(), sp.GetRequiredService<TimeProvider>(),
+				sp.GetRequiredService<LoadSignal>()));
 			return services;
 		}
 

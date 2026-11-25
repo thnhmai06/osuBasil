@@ -1,6 +1,7 @@
 using Basil.Application.Diagnostics.Messages;
 using Basil.Application.Diagnostics.Objects;
 using Basil.Application.Diagnostics.Services;
+using Basil.Gateway.Admission;
 using Basil.Gateway.RateLimiting;
 using Basil.Host.Rest.Http;
 using Mediator;
@@ -11,7 +12,6 @@ internal static class DiagnosticsRoutes
 {
 	private static readonly string[] Categories = [.. DiagnosticsSample.Categories];
 
-	private static readonly TimeSpan CollectInterval = TimeSpan.FromSeconds(30);
 
 	private static readonly string[] Actions = ["gc/collect", "caches/clear", "exceptions/reset"];
 
@@ -60,7 +60,7 @@ internal static class DiagnosticsRoutes
 	}
 
 	private static async Task<IResult> ActionAsync(HttpContext context, string category, string action, ISender sender,
-		RateLimiter limiter)
+		Admission admission)
 	{
 		var access = await sender.Send(new CheckDiagnosticsAccess(context.Session()), context.RequestAborted);
 		if (access != DiagnosticsCommandResult.Ok) return access.Refusal();
@@ -69,9 +69,9 @@ internal static class DiagnosticsRoutes
 		switch ($"{category}/{action}".ToLowerInvariant())
 		{
 			case "gc/collect":
-				if (!limiter.TryAcquire(RateRule.GcCollect, "server", 1, CollectInterval))
+				if (admission.Admit(RateRule.GcCollect) is { Allowed: false } refused)
 				{
-					context.Response.Headers.RetryAfter = ((int)CollectInterval.TotalSeconds).ToString();
+					context.Response.Headers.RetryAfter = AdmissionRefusals.RetryAfterOf(refused);
 					return Api.Error(StatusCodes.Status429TooManyRequests, "rateLimited",
 						"Garbage can be collected once every 30 seconds.");
 				}

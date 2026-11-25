@@ -19,16 +19,10 @@ namespace Basil.Host.Stable.Web;
 internal sealed class WebAuthentication(
 	SessionRegistry registry,
 	ISender sender,
-	LoginAttemptGuard attempts)
+	SignInGate signIns)
 {
 	// The digest that passed the password check, per connection: later requests skip the slow hash check.
 	private readonly ConditionalWeakTable<StableSession, string> _verified = new();
-
-	/// <summary>Tells whether the request comes from an address that has an open osu! session.</summary>
-	public bool HasOpenClientAt(HttpContext context)
-	{
-		return OpenClientAt(context) is not null;
-	}
 
 	/// <summary>The open osu! session at the address the request comes from, or null when there is none.</summary>
 	public StableSession? OpenClientAt(HttpContext context)
@@ -50,8 +44,7 @@ internal sealed class WebAuthentication(
 		var online = registry.Online.Values.FirstOrDefault(user => user.Record.Value.NormalizedName == normalized);
 		if (online is null) return null;
 		if (online.Stable is not { IsOpen: true } client) return null;
-		var rules = (await sender.Send(new ReadSettings(), ct)).RateLimits.Login;
-		using var attempt = attempts.TryReserve(ClientAddress.Resolve(context), normalized.ToLowerInvariant(), rules.MaxAttempts, rules.Window);
+		using var attempt = signIns.Admit(ClientAddress.Resolve(context), normalized).Attempt;
 		if (attempt is null) return null;
 
 		if (_verified.TryGetValue(client, out var known) && SameDigest(known, passwordMd5)) return client;
@@ -62,7 +55,7 @@ internal sealed class WebAuthentication(
 			return client;
 		}
 
-		attempt.Keep();
+		attempt.Fail();
 		return null;
 	}
 

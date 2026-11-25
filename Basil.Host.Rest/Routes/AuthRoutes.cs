@@ -39,7 +39,7 @@ internal static class AuthRoutes
 	}
 
 	private static async Task<IResult> LoginAsync(HttpContext context, SessionRegistry registry,
-		ISender sender, LoginAttemptGuard attempts)
+		ISender sender, SignInGate signIns)
 	{
 		var (request, refused) = await context.ReadBodyAsync<LoginRequest>();
 		if (refused is not null) return refused;
@@ -49,12 +49,12 @@ internal static class AuthRoutes
 
 		context.Response.Headers.CacheControl = "no-store";
 
-		var rules = (await sender.Send(new ReadSettings(), context.RequestAborted)).RateLimits.Login;
 		var ip = context.Ip();
-		using var reservation = attempts.TryReserve(ip, request.Username.ToLowerInvariant(), rules.MaxAttempts, rules.Window);
+		var admitted = signIns.Admit(ip, request.Username);
+		using var reservation = admitted.Attempt;
 		if (reservation is null)
 		{
-			context.Response.Headers.RetryAfter = ((int)rules.Lockout.TotalSeconds).ToString();
+			context.Response.Headers.RetryAfter = ((int)admitted.RetryAfter.TotalSeconds).ToString();
 			return Api.Error(StatusCodes.Status429TooManyRequests, "rateLimited", "Too many attempts.");
 		}
 
@@ -62,7 +62,7 @@ internal static class AuthRoutes
 		var result = await sender.Send(new LoginSession(attempt, SessionType.Api, ip, null, 0), context.RequestAborted);
 		if (result.Session is not { } connection)
 		{
-			if (result.Failure is LoginFailure.UnknownUser or LoginFailure.WrongPassword) reservation.Keep();
+			reservation.End(result);
 			if (result.Failure is LoginFailure.AlreadyOnline)
 				return Api.Error(StatusCodes.Status409Conflict, "alreadyOnline",
 					"This account is already signed in elsewhere.");

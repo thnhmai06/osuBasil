@@ -30,7 +30,7 @@ internal sealed partial class PacketHandlers(
 	Lobby lobby,
 	ISender sender,
 	Outbox outbox,
-	RateLimiter limiter,
+	Admission admission,
 	TimeProvider clock,
 	ILogger<PacketHandlers> logger)
 {

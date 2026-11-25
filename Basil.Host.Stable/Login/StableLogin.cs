@@ -29,7 +29,7 @@ internal sealed class StableLogin(
 	SessionRegistry registry,
 	GeneralChannelRegistry channels,
 	Outbox outbox,
-	LoginAttemptGuard attempts,
+	SignInGate signIns,
 	StableState state,
 	TimeProvider clock,
 	ISender sender)
@@ -39,7 +39,6 @@ internal sealed class StableLogin(
 	public async Task<(string Token, byte[] Reply)> LoginAsync(HttpContext context, byte[] body,
 		CancellationToken ct)
 	{
-		var rules = (await sender.Send(new ReadSettings(), ct)).RateLimits;
 		var ip = ClientAddress.Resolve(context);
 		if (!state.AcceptingLogins) return Fail(LoginFailureReason.ErrorOccurred, StableReplies.ServerStopping);
 
@@ -47,7 +46,7 @@ internal sealed class StableLogin(
 			return Fail(LoginFailureReason.ErrorOccurred);
 
 		// The attempt is reserved before the check and stays counted only for wrong credentials.
-		using var attempt = attempts.TryReserve(ip, request.Username.ToLowerInvariant(), rules.Login.MaxAttempts, rules.Login.Window);
+		using var attempt = signIns.Admit(ip, request.Username).Attempt;
 		if (attempt is null) return Fail(LoginFailureReason.AuthenticationFailed, StableReplies.TooManyAttempts);
 
 		var type = client.Version.Stream == OsuVersionStream.Tourney ? SessionType.StableTourney : SessionType.Stable;
@@ -66,7 +65,7 @@ internal sealed class StableLogin(
 
 		if (result.Session is not { } connection)
 		{
-			if (result.Failure is LoginFailure.UnknownUser or LoginFailure.WrongPassword) attempt.Keep();
+			attempt.End(result);
 			return FailureReply(result.Failure);
 		}
 
