@@ -1,5 +1,5 @@
 using Basil.Application.Sessions.Persistence;
-using Basil.Application.Sessions.Ports;
+using Basil.Application.Sessions.Logic;
 using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;
 
@@ -8,9 +8,9 @@ namespace Basil.Application.Sessions.Registry;
 /// <summary>Creates accounts, for a person who signs up and for an administrator.</summary>
 public sealed class AccountRegistration
 {
-	private readonly IAccountRules _accounts;
+	private readonly AccountRules _accounts;
 
-	internal AccountRegistration(IAccountRules accounts)
+	internal AccountRegistration(AccountRules accounts)
 	{
 		_accounts = accounts;
 	}

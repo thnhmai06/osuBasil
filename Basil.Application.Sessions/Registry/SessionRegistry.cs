@@ -1,6 +1,6 @@
 using Basil.Application.Sessions.Capabilities;
 using Basil.Application.Sessions.Objects.Events;
-using Basil.Application.Sessions.Ports;
+using Basil.Application.Sessions.Logic;
 using System.Buffers.Text;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
@@ -25,7 +25,7 @@ public sealed class SessionRegistry
 {
 	internal static readonly TimeSpan IgnoreLogoutWithin = TimeSpan.FromSeconds(1);
 
-	private readonly IAccountRules _accounts;
+	private readonly AccountRules _accounts;
 
 	private readonly ActivityLog _activity;
 	private readonly AccountRegistration _registration;
@@ -41,7 +41,7 @@ public sealed class SessionRegistry
 	private readonly ConcurrentDictionary<string, Session> _tokens = new(StringComparer.Ordinal);
 	private readonly UserRegistry _users;
 
-	internal SessionRegistry(IAccountRules accounts, AccountRegistration registration, ActivityLog activity,
+	internal SessionRegistry(AccountRules accounts, AccountRegistration registration, ActivityLog activity,
 		SessionContext context, UserRegistry users)
 	{
 		_accounts = accounts;

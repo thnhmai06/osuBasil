@@ -20,6 +20,13 @@ public sealed class UserRecord : IEquatable<UserRecord>
 	/// <summary>The data of the account.</summary>
 	public required UserData Value { get; init; }
 
+	/// <summary>Tells whether the account may sign in: neither the server's own user nor a deleted account may.</summary>
+	public UserSignInResult CheckSignIn()
+	{
+		if (Id == BasilBot.Id) return UserSignInResult.Denied;
+		return Value.DeletedAt is null ? UserSignInResult.Ok : UserSignInResult.AccountDeleted;
+	}
+
 	public bool Equals(UserRecord? other)
 	{
 		if (other is null) return false;

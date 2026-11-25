@@ -1,13 +1,14 @@
 using Basil.Application.Sessions.Objects;
 using Basil.Application.Sessions.Objects.Events;
 using Basil.Application.Sessions.Persistence;
-using Basil.Application.Sessions.Ports;
+using Basil.Application.Sessions.Logic;
 using Basil.Application.Sessions.Registry;
 using Basil.Application.Shared.Events;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Application.Sessions;
 
@@ -27,13 +28,18 @@ public static class DependencyInjection
 			sp.GetRequiredService<ICredentialRepository>(),
 			sp.GetRequiredService<ISettingsRepository>()));
 		services.AddSingleton<ActivityLog>();
-		services.AddSingleton(sp => new AccountRegistration(sp.GetRequiredService<IAccountRules>()));
+		services.AddSingleton(sp => new AccountRules(
+			sp.GetRequiredService<IUserRepository>(),
+			sp.GetRequiredService<ICredentialRepository>(),
+			sp.GetRequiredService<ISettingsRepository>(),
+			sp.GetRequiredService<ILogger<AccountRules>>()));
+		services.AddSingleton(sp => new AccountRegistration(sp.GetRequiredService<AccountRules>()));
 		services.AddSingleton(sp => new SessionMaintenance(sp.GetRequiredService<SessionContext>(),
 			sp.GetRequiredService<ActivityLog>()));
 		services.AddSingleton(sp => new BotSessions(sp.GetRequiredService<SessionRegistry>(),
 			sp.GetRequiredService<SessionContext>(), sp.GetRequiredService<UserRegistry>()));
 		services.AddSingleton<SessionRegistry>(sp => new SessionRegistry(
-			sp.GetRequiredService<IAccountRules>(),
+			sp.GetRequiredService<AccountRules>(),
 			sp.GetRequiredService<AccountRegistration>(),
 			sp.GetRequiredService<ActivityLog>(),
 			sp.GetRequiredService<SessionContext>(),
