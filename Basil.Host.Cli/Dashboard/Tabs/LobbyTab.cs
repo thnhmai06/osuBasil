@@ -109,9 +109,9 @@ internal sealed class LobbyTab : ITabView, ISearchable
 	                            creator:bob      the creator, by name or id
 	                            player:bob       a player seated in it, by name or id
 	                            status:open      open, locked or playing
-	                            mode:0           the game mode, 0 to 3
+	                            mode:taiko       standard, taiko, catch or mania
 	                            password:yes|no  with or without a password
-	                            Example: status:open mode:0 cup
+	                            Example: status:open mode:standard cup
 	                            Filters apply to open rooms; closed rooms match the words and creator:.
 	                            """;
 

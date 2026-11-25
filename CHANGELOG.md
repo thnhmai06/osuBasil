@@ -31,6 +31,8 @@ workflow refuses a tag that has no section here.
 
 ### Changed
 
+- Search syntax names its values: `mode=taiko` (beatmaps and rooms) and `privilege=player,supporter` (users), the
+  same names the API uses in JSON. Numbers are no longer accepted there.
 - Secrets and deployment values (connection strings, domain, trusted proxies) come from the environment (`.env`), not
   from `appsettings.json`. The server stops at start with one line when the write connection string is missing.
 - Client addresses come from nginx (`X-Real-IP`), and only a trusted proxy may supply them. Per-address rate limits live

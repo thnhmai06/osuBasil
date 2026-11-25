@@ -137,7 +137,7 @@ internal static class UserCommands
 		var registry = call.Get<UserRegistry>();
 		var clock = call.Get<TimeProvider>();
 		var found = await call.Get<ISender>().Send(new SearchUsers(await call.ByAsync(),
-			UserQuery.Parse(FlagNames.UserSearch(call.Text("query") ?? string.Empty)), page), call.CancellationToken);
+			UserQuery.Parse(call.Text("query") ?? string.Empty), page), call.CancellationToken);
 		call.PrintPage(new Page<UserView>(
 			[.. found.Items.Select(user => UserView.Of(registry, user, clock))], found.HasNext), page);
 		return ExitCodes.Success;

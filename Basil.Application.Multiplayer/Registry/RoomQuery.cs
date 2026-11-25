@@ -43,9 +43,8 @@ public sealed record RoomQuery(
 				                   Enum.IsDefined(parsed):
 					status = parsed;
 					return true;
-				case "mode" when byte.TryParse(rawValue, NumberStyles.None, CultureInfo.InvariantCulture,
-					out var number) && Enum.IsDefined((GameMode)number):
-					mode = (GameMode)number;
+				case "mode" when SearchSyntax.TryParseName<GameMode>(rawValue, out var named):
+					mode = named;
 					return true;
 				case "password" when rawValue.ToLowerInvariant() is "yes" or "no":
 					password = rawValue.Equals("yes", StringComparison.OrdinalIgnoreCase);

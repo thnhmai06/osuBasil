@@ -71,11 +71,11 @@ internal sealed class BeatmapsTab : ITabView, ISelectable, ISearchable
 	private const string Help = """
 	                            Words match the artist, title, creator and difficulty; "quoted" keeps spaces.
 	                            stars ar cs od hp bpm length circles sliders: use = < <= > >=  (stars>5 ar=9)
-	                            mode=0|1|2|3     game mode        hidden=1|0|*   hidden state
+	                            mode=taiko       game mode        hidden=1|0|*   hidden state
 	                            status=ranked|approved|qualified|loved|pending
 	                            creator= artist= title= difficulty= filename=  text the field contains
 	                            created= updated=  date comparison
-	                            Example: stars>5 ar=9 mode=0 "some title"
+	                            Example: stars>5 ar=9 mode=standard "some title"
 	                            """;
 
 	private readonly ListPage<BeatmapItem> _page;

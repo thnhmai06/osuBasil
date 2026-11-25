@@ -4,7 +4,6 @@ using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Users;
-using Basil.Host.Cli.Commands;
 using Basil.Host.Cli.Dashboard.Shell;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
@@ -36,7 +35,7 @@ internal sealed class UsersSource(IServiceProvider services, TimeProvider clock)
 		var registry = services.GetRequiredService<SessionRegistry>();
 		var lobby = services.GetRequiredService<Lobby>();
 		// The table hides deleted accounts, as the delete dialog promises, unless the search asks for them.
-		var parsed = UserQuery.Parse(FlagNames.UserSearch(query));
+		var parsed = UserQuery.Parse(query);
 		if (!query.Contains("deleted", StringComparison.OrdinalIgnoreCase)) parsed = parsed with { Deleted = false };
 		var now = clock.GetUtcNow();
 		var online = registry.Online.Values.Where(user => user.Record.Id != BasilBot.Id)

@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Numerics;
 using System.Text.Json;
-using Basil.Domain.Users;
 
 namespace Basil.Host.Cli.Commands;
 
@@ -43,26 +42,6 @@ public static class FlagNames
 		}
 
 		return bits;
-	}
-
-	/// <summary>
-	///     Rewrites <c>privilege=player,supporter</c> in a user search as the number the search takes, so a person types
-	///     names while the search itself, shared with the HTTP API, stays numeric.
-	/// </summary>
-	public static string UserSearch(string query)
-	{
-		return string.Join(' ', query.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(word =>
-		{
-			const string key = "privilege=";
-			if (!word.StartsWith(key, StringComparison.OrdinalIgnoreCase) || ulong.TryParse(word[key.Length..], out _))
-				return word;
-
-			var bits = Parse(typeof(UserPrivileges), word[key.Length..], out var unknown);
-			return unknown is null
-				? $"{key}{bits.ToString(CultureInfo.InvariantCulture)}"
-				: throw CommandException.Invalid(
-					$"privilege: '{unknown}' is not a name; use {string.Join(", ", Of(typeof(UserPrivileges)).Select(flag => flag.Name))}.");
-		}));
 	}
 
 	/// <summary>Writes the flags that are set as names joined by commas, or <c>none</c>.</summary>

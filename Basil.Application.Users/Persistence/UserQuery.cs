@@ -27,9 +27,8 @@ public sealed record UserQuery(
 				case "country" when TryParseCountries(rawValue, out var parsedCountries):
 					countries = parsedCountries;
 					return true;
-				case "privilege" when ulong.TryParse(rawValue, NumberStyles.None, CultureInfo.InvariantCulture,
-					out var mask):
-					privileges = (UserPrivileges)mask;
+				case "privilege" when SearchSyntax.TryParseFlags<UserPrivileges>(rawValue, out var named):
+					privileges = named;
 					return true;
 				case "deleted" when SearchSyntax.TryParseState(rawValue, out var state):
 					deleted = state;

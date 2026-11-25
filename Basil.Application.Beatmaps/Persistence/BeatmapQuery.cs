@@ -57,10 +57,8 @@ public sealed record BeatmapQuery(
 		{
 			switch (key)
 			{
-				case "mode" when op is ":" or "=" &&
-				                 byte.TryParse(rawValue, NumberStyles.None, CultureInfo.InvariantCulture,
-					                 out var number) && Enum.IsDefined((GameMode)number):
-					mode = (GameMode)number;
+				case "mode" when op is ":" or "=" && SearchSyntax.TryParseName<GameMode>(rawValue, out var named):
+					mode = named;
 					return true;
 				case "hidden" when op is ":" or "=" && SearchSyntax.TryParseState(rawValue, out var state):
 					hidden = state;

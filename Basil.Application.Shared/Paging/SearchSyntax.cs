@@ -141,6 +141,33 @@ public static partial class SearchSyntax
 		return false;
 	}
 
+	/// <summary>Reads one value of an enum by its name (any case, never a number): <c>taiko</c>.</summary>
+	public static bool TryParseName<T>(string raw, out T value) where T : struct, Enum
+	{
+		value = default;
+		return raw.Length > 0 && char.IsAsciiLetter(raw[0]) && Enum.TryParse(raw, true, out value) &&
+		       Enum.IsDefined(value);
+	}
+
+	/// <summary>Reads a set of flags as names joined by commas (any case, never a number): <c>player,supporter</c>.</summary>
+	public static bool TryParseFlags<T>(string raw, out T value) where T : struct, Enum
+	{
+		value = default;
+		ulong bits = 0;
+		foreach (var part in raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+		{
+			if (!TryParseName<T>(part, out var flag)) return false;
+
+			var bit = Convert.ToUInt64(flag, CultureInfo.InvariantCulture);
+			if (!ulong.IsPow2(bit)) return false;
+
+			bits |= bit;
+		}
+
+		value = (T)Enum.ToObject(typeof(T), bits);
+		return bits != 0;
+	}
+
 	public static bool TryParseState(string raw, out bool? value)
 	{
 		value = raw switch { "1" => true, "0" => false, _ => null };

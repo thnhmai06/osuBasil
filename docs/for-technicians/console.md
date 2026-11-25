@@ -362,7 +362,7 @@ in the log, in the history and in suggestions.
 ### rooms
 
 Rooms exist only while the server runs. The room search syntax: free text matches the name; `host:`, `creator:` and
-`player:` take an account name or id; `status:open|locked|playing`; `mode:0` to `3`; `password:yes|no`.
+`player:` take an account name or id; `status:open|locked|playing`; `mode:standard|taiko|catch|mania`; `password:yes|no`.
 
 | Command                                                          | API route                          | P  |
 |------------------------------------------------------------------|------------------------------------|----|

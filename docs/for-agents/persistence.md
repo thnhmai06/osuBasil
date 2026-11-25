@@ -53,7 +53,7 @@ Repository contracts, byte storages and the Registry / Repository / Storage mode
   Domain value (`UserData.SafeName`); the server writes the normalized key it looks records up by. A repository filters only by explicit criteria in its query record.
   A query record searched with text (`UserQuery`, `BeatmapQuery`, `MatchQuery`) is `IParsable<T>`: every criterion, a
   state included, is written in the search text (`deleted=1`,
-  `hidden=0`, `ended=0`, `private=1`, enum masks as numbers such as `privilege=4`), and a state is a `bool?` (`null` for both,
+  `hidden=0`, `ended=0`, `private=1`, enums and flag sets by name such as `mode=taiko` and `privilege=player,supporter`), and a state is a `bool?` (`null` for both,
   written `*`) whose default, kept when the text has no token for it, is `null` (both). Every caller narrows a query to the asker
   before using it, `UserQuery.Parse(text).LimitTo(effective)`: `LimitTo` sets each state the asker may not see to
   what a user without that privilege sees (`UserQuery`: `Deleted = false` without `UserPrivileges.Owner`; `BeatmapQuery`: `Hidden = false` without `UserPrivileges.Tournament`); `MatchQuery.LimitTo(effective, viewer)` sets

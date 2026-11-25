@@ -21,7 +21,7 @@ internal static class RoomRoutes
 
 		rooms.MapGet("/", ListAsync).Admitted(WorkClass.Listing).ReturnsList<RoomView>().WithSummary("List rooms.")
 			.WithDescription("""
-			                 `query` uses the room search syntax: free text matches the room's name; `host:`, `creator:` and `player:` take an account name or id; `status:` takes `open`, `locked` or `playing`; `mode:` takes `0` to `3`; `password:` takes `yes` or `no`. Rooms are ordered by id. Private rooms are listed only for those who may view them.
+			                 `query` uses the room search syntax: free text matches the room's name; `host:`, `creator:` and `player:` take an account name or id; `status:` takes `open`, `locked` or `playing`; `mode:` takes `standard`, `taiko`, `catch` or `mania`; `password:` takes `yes` or `no`. Rooms are ordered by id. Private rooms are listed only for those who may view them.
 			                 """);
 		rooms.MapPost("/", CreateAsync).Takes<CreateRoomRequest>().Returns<RoomView>(201).WithSummary("Create a room.")
 			.WithDescription("""
