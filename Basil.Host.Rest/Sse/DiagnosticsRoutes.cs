@@ -12,7 +12,6 @@ internal static class DiagnosticsRoutes
 {
 	private static readonly string[] Categories = [.. DiagnosticsSample.Categories];
 
-
 	private static readonly string[] Actions = ["gc/collect", "caches/clear", "exceptions/reset"];
 
 	public static void MapDiagnostics(this RouteGroupBuilder v1)
