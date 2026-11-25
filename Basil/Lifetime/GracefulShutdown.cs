@@ -93,10 +93,11 @@ internal sealed class GracefulShutdown(
 				sse.Announce();
 				return Task.CompletedTask;
 			}),
-			new ShutdownStep("close the rooms", _timings.CloseRooms, async token =>
+			new ShutdownStep("close the rooms", _timings.CloseRooms, _ =>
 			{
-				var closed = await server.ShutdownAsync(token);
+				var closed = server.Shutdown();
 				logger.LogInformation("Closed {RoomCount} rooms", closed);
+				return Task.CompletedTask;
 			}),
 			new ShutdownStep("deliver the queued events", _timings.DrainEvents, async token =>
 			{

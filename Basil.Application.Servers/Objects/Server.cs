@@ -38,9 +38,9 @@ public sealed partial class Server
 	}
 
 	/// <summary>Brings the server's live state to rest before it stops, and reports how many rooms it closed.</summary>
-	public Task<int> ShutdownAsync(CancellationToken ct = default)
+	public int Shutdown()
 	{
-		return Task.FromResult(Context.Lobby.CloseAll());
+		return Context.Lobby.CloseAll();
 	}
 
 	public GeneralChannel? OpenChannel(GeneralChannelRecord record)
