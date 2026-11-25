@@ -14,7 +14,19 @@ on 2026-11-25 (`docs/for-developers/architecture.md` "Layers", `AGENTS.md` "Host
 
 Already clean: Gateway (it only lacks the work it should take over), both Protocol projects, Domain.
 
-## Decisions needed before starting
+## Decisions (owner, 2026-11-25)
+
+* All three phases (A, B, C) before 1.0.
+* `Logic/` leaves Infrastructure: rules go to Domain, object-free coordination to `Basil.Application.<Module>/Logic/`;
+  Infrastructure keeps repositories, storages, adapters and workers. `AGENTS.md`, `module-layout.md` and
+  `architecture.md` change in the same phase.
+* I3, I4: IRC keeps refusing `#spec_` and KICK/INVITE/TOPIC/MODE as a documented non-feature in the IRC guide; no new
+  messages.
+* Wire limits (X9, S12, S13) stay in the hosts as translation, documented as such.
+* A1 is out of W14: D16 keeps the session kinds.
+* Verification: a Release build and the load harness after every phase (agents still build only and run no tests).
+
+The original questions, kept for the record:
 
 1. **Scope before 1.0.** All three phases, or A and B before 1.0 and C after. Recommendation: A and B before 1.0, because
    they are rules decided in the wrong place (privileges, authority, state); C is placement that does not change behaviour.
