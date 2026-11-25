@@ -115,3 +115,10 @@ strongest check.
 
 The rest of the road to 1.0 is unchanged: load test to the ceiling, real clients behind nginx (LAN and Cloudflare),
 tests (deferred), then `CHANGELOG.md` `[1.0.0]`, merge to `main` and tag `v1.0.0`.
+
+## Estimate
+
+About six to seven Sonnet sessions, sized on W10 to W13 (each 7 to 18 minutes, 185k to 390k tokens): phase A one, B1
+(privileges and authority) one, B2 (state and coordination, about twenty items) two, C one, and one or two for fixes
+after review. A and B alone before 1.0: four to five. Gathering A with B1, or leaving the light B2 items (C1 to C3,
+R4, R6, R7, S10, S11) after 1.0, saves one session each.
