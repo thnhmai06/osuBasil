@@ -1,19 +1,17 @@
 using Basil.Application.Rulesets.Services;
-using Basil.Host.Shared.Info;
-using System.Text.Json;
-using Microsoft.Extensions.Options;
+using Basil.Application.Servers.Ports;
+using Basil.Application.Servers.Services;
+using Microsoft.Extensions.Logging;
 
-namespace Basil.Configuration;
+namespace Basil.Application.Servers.Objects;
 
-internal sealed class UpdateChecker(
-	IOptionsMonitor<UpdateOptions> options,
+/// <summary>Keeps what is known about newer releases of Basil and of the osu! calculation stack.</summary>
+public sealed class UpdateStatus(
+	IReleases releases,
 	IRulesetUpdater rulesets,
-	IHttpClientFactory http,
-	ILogger<UpdateChecker> logger,
-	TimeProvider clock)
-	: BackgroundService, IUpdateStatus
+	ILogger<UpdateStatus> logger,
+	TimeProvider clock) : IUpdateStatus
 {
-	private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(15);
 	private readonly Lock _gate = new();
 	private DateTimeOffset? _lastCheck;
 	private UpdateReport _status = new(UpdateState.NotChecked, null, UpdateState.NotChecked, null);
@@ -42,12 +40,18 @@ internal sealed class UpdateChecker(
 
 	public async Task CheckNowAsync(CancellationToken ct = default)
 	{
-		await CheckAppAsync(options.CurrentValue, ct);
+		await CheckAppAsync(ct);
 		CheckRulesets();
 		lock (_gate)
 		{
 			_lastCheck = clock.GetUtcNow();
 		}
+	}
+
+	/// <summary>Records that checking was switched off, so the report says so instead of "not checked".</summary>
+	public void Skip()
+	{
+		Set(_ => new UpdateReport(UpdateState.Skipped, null, UpdateState.Skipped, null));
 	}
 
 	private void Set(Func<UpdateReport, UpdateReport> change)
@@ -56,19 +60,6 @@ internal sealed class UpdateChecker(
 		{
 			_status = change(_status);
 		}
-	}
-
-	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-	{
-		var update = options.CurrentValue;
-		if (!update.CheckOnStartup)
-		{
-			logger.LogInformation("Skipped checking for updates because checking on startup is disabled");
-			Set(_ => new UpdateReport(UpdateState.Skipped, null, UpdateState.Skipped, null));
-			return;
-		}
-
-		await CheckNowAsync(stoppingToken);
 	}
 
 	private void CheckRulesets()
@@ -85,15 +76,13 @@ internal sealed class UpdateChecker(
 				stack.Version, stack.State);
 	}
 
-	private async Task CheckAppAsync(UpdateOptions update, CancellationToken stoppingToken)
+	private async Task CheckAppAsync(CancellationToken stoppingToken)
 	{
 		try
 		{
-			using var timeout = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
-			timeout.CancelAfter(Timeout);
-			var latest = await LatestReleaseAsync(update.Source, timeout.Token);
+			var latest = await releases.LatestAsync(stoppingToken);
 			var available = Version.TryParse(latest.TrimStart('v'), out var tag) &&
-			                Version.TryParse(AppVersion.Current, out var current) &&
+			                Version.TryParse(releases.Installed, out var current) &&
 			                Normalize(tag) > Normalize(current);
 			Set(status => status with
 			{
@@ -109,18 +98,6 @@ internal sealed class UpdateChecker(
 			Set(status => status with { Basil = UpdateState.Failed, BasilVersion = null });
 			logger.LogWarning(exception, "Skipped checking for updates because the release feed could not be reached:");
 		}
-	}
-
-	private async Task<string> LatestReleaseAsync(string repository, CancellationToken ct)
-	{
-		var path = new Uri(repository).AbsolutePath.Trim('/');
-		using var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{path}/releases/latest");
-		request.Headers.UserAgent.ParseAdd("Basil-update-check");
-		request.Headers.Accept.ParseAdd("application/vnd.github+json");
-		using var response = await http.CreateClient().SendAsync(request, ct);
-		response.EnsureSuccessStatusCode();
-		using var body = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
-		return body.RootElement.GetProperty("tag_name").GetString() ?? string.Empty;
 	}
 
 	// A four-part assembly version and a three-part release tag compare equal when they name the same release.

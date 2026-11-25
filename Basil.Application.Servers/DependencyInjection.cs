@@ -6,13 +6,17 @@ using Basil.Application.Content.Persistence;
 using Basil.Application.Content.Ports;
 using Basil.Application.Content.Storage;
 using Basil.Application.Multiplayer.Registry;
+using Basil.Application.Rulesets.Services;
 using Basil.Application.Servers.Objects;
+using Basil.Application.Servers.Ports;
+using Basil.Application.Servers.Services;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Shared.Storage;
 using Basil.Application.Sessions.Objects;
 using Basil.Application.Sessions.Registry;
 using Basil.Application.Users.Persistence;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Application.Servers;
 
@@ -40,6 +44,12 @@ public static class DependencyInjection
 			sp.GetRequiredService<IMenuSeasonalsStorage>(),
 			sp.GetRequiredService<IMenuIconStorage>()));
 		services.AddSingleton<Server>(sp => new Server(sp.GetRequiredService<ServerContext>()));
+		services.AddSingleton<UpdateStatus>(sp => new UpdateStatus(
+			sp.GetRequiredService<IReleases>(),
+			sp.GetRequiredService<IRulesetUpdater>(),
+			sp.GetRequiredService<ILogger<UpdateStatus>>(),
+			sp.GetRequiredService<TimeProvider>()));
+		services.AddSingleton<IUpdateStatus>(sp => sp.GetRequiredService<UpdateStatus>());
 		return services;
 	}
 }

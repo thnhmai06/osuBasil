@@ -66,6 +66,7 @@ public static class DependencyInjection
 			services.AddRulesetsBackgroundWork();
 			services.AddBeatmapsBackgroundWork();
 			services.AddScoresBackgroundWork();
+			services.AddServersBackgroundWork();
 			services.AddGatewayLimits();
 			return services.AddBasilApplication();
 		}

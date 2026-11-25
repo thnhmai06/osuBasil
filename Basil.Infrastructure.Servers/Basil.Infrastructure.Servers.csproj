@@ -7,6 +7,10 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App"/>
+	</ItemGroup>
+
+	<ItemGroup>
 		<InternalsVisibleTo Include="Basil"/>
 		<InternalsVisibleTo Include="Basil.Infrastructure.Servers.Tests"/>
 	</ItemGroup>
@@ -20,6 +24,5 @@
 
 	<ItemGroup>
 		<PackageReference Include="Mediator.Abstractions"/>
-		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
 	</ItemGroup>
 </Project>

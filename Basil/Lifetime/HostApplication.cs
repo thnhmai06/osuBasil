@@ -8,6 +8,7 @@ using Basil.Host.Rest;
 using Basil.Host.Rest.Http;
 using Basil.Host.Rest.Images;
 using Basil.Host.Shared.Documentation;
+using Basil.Infrastructure.Servers;
 using Basil.Host.Shared.Info;
 using Basil.Host.Stable.Routes;
 using Basil.Http;
@@ -41,13 +42,9 @@ public static class HostApplication
 		ConfigurationSetup.Add(builder, args);
 		var drops = ServerLogging.Add(builder, mode, logToStandardError);
 		TelemetrySetup.Add(builder);
-		builder.Services.AddOptions<UpdateOptions>().Bind(builder.Configuration.GetSection("Basil:Updates"));
 		builder.Services.AddSingleton<ConfigurationWatcher>();
 		builder.Services.AddHostedService(provider => provider.GetRequiredService<ConfigurationWatcher>());
 		builder.Services.AddHttpClient();
-		builder.Services.AddSingleton<UpdateChecker>();
-		builder.Services.AddHostedService(provider => provider.GetRequiredService<UpdateChecker>());
-		builder.Services.AddSingleton<IUpdateStatus>(provider => provider.GetRequiredService<UpdateChecker>());
 		builder.Services.AddBasil();
 		builder.Services.AddSingleton<IDocumentPage, BotReferencePage>();
 		builder.Services.AddIrcListener(builder.Configuration);
@@ -67,6 +64,7 @@ public static class HostApplication
 			builder.Configuration.GetSection("Basil:Server"));
 		builder.Services.AddSharedInfrastructureOptions(builder.Configuration);
 		builder.Services.AddBeatmapsInfrastructureOptions(builder.Configuration);
+		builder.Services.AddServersInfrastructureOptions(builder.Configuration);
 		KestrelSetup.Configure(builder);
 
 		var app = builder.Build();
