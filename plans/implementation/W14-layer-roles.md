@@ -24,6 +24,9 @@ Already clean: Gateway (it only lacks the work it should take over), both Protoc
   messages.
 * Wire limits (X9, S12, S13) stay in the hosts as translation, documented as such.
 * A1 is out of W14: D16 keeps the session kinds.
+* I5 and the IRC half of X5 are done in W14 (owner, 2026-11-26): Chat publishes the audience when a user's last
+  connection leaves; IRC drops its membership copy.
+* Before W14 closes: the load harness (baseline `4dc697312` against W14) and the container check.
 * Verification: a Release build and the load harness after every phase (agents still build only and run no tests).
 
 The original questions, kept for the record:
