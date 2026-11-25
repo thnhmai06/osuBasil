@@ -27,6 +27,8 @@ workflow refuses a tag that has no section here.
 - The console dashboard: dialogs take focus and close with Esc, flags are shown by name, sizes and durations carry units,
   the configuration shows where each value comes from, and `--ascii` draws plain ASCII.
 - Sign-in failures are limited per address and account, with an overall cap per address.
+- A new password needs at least 8 characters, wherever it is set: the console, the API and registration from the osu!
+  client. Passwords already stored are not checked again.
 - A load harness (`tools/LoadHarness`) and `PERF.md` for measuring the server under osu!, IRC and API load.
 
 ### Changed

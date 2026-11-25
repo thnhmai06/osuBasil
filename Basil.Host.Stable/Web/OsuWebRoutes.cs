@@ -478,6 +478,9 @@ internal static class OsuWebRoutes
 		var name = form["user[username]"].ToString();
 		var password = form["user[password]"].ToString();
 		var checkOnly = form["check"] != "0";
+		if (!Password.IsAcceptable(password))
+			return Results.Json(new { form_error = new { user = new { password = new[] { Password.TooShort } } } },
+				statusCode: 400);
 		var rules = (await sender.Send(new ReadSettings(), ct)).RateLimits.Registration;
 		RegistrationFailure? failure;
 		try

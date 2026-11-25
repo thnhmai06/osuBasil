@@ -240,7 +240,7 @@ internal sealed class UserDetails(
 	{
 		dialogs.Form($"Password of {user.Name}", [new FormField("New password", Secret: true)], values =>
 		{
-			if (values[0].Length == 0) actions.Notify("The password is empty.");
+			if (!Password.IsAcceptable(values[0])) actions.Notify(Password.TooShort);
 			else actions.Run($"users {user.Id} set --password {CommandActions.Quote(values[0])}");
 		});
 	}

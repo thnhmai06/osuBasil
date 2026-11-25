@@ -1,3 +1,4 @@
+using Basil.Domain.Users;
 using Basil.Application.Users;
 using System.Text;
 using Basil.Application.Shared.Paging;
@@ -55,8 +56,11 @@ internal static class CommandHelpers
 		}
 	}
 
+	// Only a new password goes through here, so the length rule is checked once for every console path.
 	public static Md5Hash Md5Of(string password)
 	{
+		if (!Password.IsAcceptable(password)) throw CommandException.Invalid(Password.TooShort);
+
 		return new Md5Hash(Encoding.UTF8.GetBytes(password));
 	}
 }
