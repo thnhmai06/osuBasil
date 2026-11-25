@@ -1,4 +1,5 @@
-using Basil.Application.Chat.Registry;
+using Basil.Application.Chat.Messages;
+using Basil.Application.Chat.Objects;
 using Basil.Application.Servers.Messages.Channels;
 using Basil.Application.Servers.Objects;
 using Basil.Domain.Chat;
@@ -7,7 +8,6 @@ using Basil.Gateway.Limits;
 using Basil.Host.Rest.Http;
 using Basil.Host.Shared.Views;
 using Mediator;
-using Basil.Application.Chat.Objects;
 
 namespace Basil.Host.Rest.Routes;
 
@@ -31,10 +31,10 @@ internal static class ChannelRoutes
 				"A caller who may not manage channels is refused with 403 whether or not the channel exists; 404 means no channel has the name.");
 	}
 
-	private static IResult List(HttpContext context, GeneralChannelRegistry registry)
+	private static async Task<IResult> List(HttpContext context, ISender sender)
 	{
-		return Api.Ok(registry.VisibleTo(context.Session()).OrderBy(c => c.Name)
-			.Select(c => ChannelView.Of(c.Record)).ToList());
+		return Api.Ok((await sender.Send(new ListChannels(context.Session()), context.RequestAborted))
+			.Select(ChannelView.Of).ToList());
 	}
 
 	private static async Task<IResult> CreateAsync(HttpContext context, ISender sender)

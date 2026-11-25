@@ -40,9 +40,9 @@ internal static class RoomRoutes
 
 	private static void Command(RouteGroupBuilder rooms, RoomCommand command)
 	{
-		rooms.MapPost("/{id:int}/" + command.Name, async (HttpContext context, int id, Lobby lobby, ISender sender) =>
+		rooms.MapPost("/{id:int}/" + command.Name, async (HttpContext context, int id, ISender sender) =>
 		{
-			if (await Find(context, lobby, sender, id) is not { } room) return Api.NotFound("No such room.");
+			if (await Find(context, sender, id) is not { } room) return Api.NotFound("No such room.");
 
 			if (await sender.Send(new MayCommandRoom(context.Session(), room, command.Roles), context.RequestAborted) is
 			    var may and not RoomActionResult.Ok)
@@ -64,12 +64,9 @@ internal static class RoomRoutes
 			.WithMetadata(command.Body is { } body ? new RequestBody(body) : new object());
 	}
 
-	private static async Task<Room?> Find(HttpContext context, Lobby lobby, ISender sender, int id)
+	private static async Task<Room?> Find(HttpContext context, ISender sender, int id)
 	{
-		return lobby.Find(id) is { } room &&
-		       await sender.Send(new CanViewMatch(context.Session(), room.Match.Id), context.RequestAborted)
-			? room
-			: null;
+		return await sender.Send(new FindRoom(context.Session(), id), context.RequestAborted);
 	}
 
 	private static async Task<IResult> ListAsync(HttpContext context, ISender sender, string? query, int? offset,
@@ -84,16 +81,16 @@ internal static class RoomRoutes
 		return Api.Paged(new Page<RoomView>([.. found.Items.Select(RoomView.Of)], found.HasNext), page);
 	}
 
-	private static async Task<IResult> GetAsync(HttpContext context, Lobby lobby, ISender sender, int id)
+	private static async Task<IResult> GetAsync(HttpContext context, ISender sender, int id)
 	{
-		return await Find(context, lobby, sender, id) is { } room
+		return await Find(context, sender, id) is { } room
 			? Api.Ok(RoomView.Of(room))
 			: Api.NotFound("No such room.");
 	}
 
-	private static async Task<IResult> LiveAsync(HttpContext context, Lobby lobby, ISender sender, int id)
+	private static async Task<IResult> LiveAsync(HttpContext context, ISender sender, int id)
 	{
-		if (await Find(context, lobby, sender, id) is not { } room) return Api.NotFound("No such room.");
+		if (await Find(context, sender, id) is not { } room) return Api.NotFound("No such room.");
 
 		var initial = RoomView.Of(room);
 		var last = JsonSerializer.Serialize(initial, Api.Json);

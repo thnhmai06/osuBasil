@@ -225,12 +225,13 @@ internal static class BeatmapRoutes
 	private static async Task<IResult> RedirectToLowestAsync(HttpContext context, int id, string name,
 		ISender sender)
 	{
-		var detail = await sender.Send(new GetBeatmapset(context.ConnectionOrNull(), id), context.RequestAborted);
-		if (detail is null) return Api.NotFound("No such beatmapset.");
+		var (found, lowest) = await sender.Send(new GetLowestBeatmap(context.ConnectionOrNull(), id),
+			context.RequestAborted);
+		if (!found) return Api.NotFound("No such beatmapset.");
 
-		return detail.Beatmaps.Count == 0
+		return lowest is null
 			? Api.NotFound("The beatmapset has no beatmaps.")
-			: Results.Redirect($"/v1/beatmaps/{detail.Beatmaps[0].Id}/{name}", false, true);
+			: Results.Redirect($"/v1/beatmaps/{lowest.Id}/{name}", false, true);
 	}
 
 	public sealed record PatchSetRequest(BeatmapsetStatus? Status, bool? Visible, bool? Locked);
