@@ -2,8 +2,8 @@ using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Scores.Logic;
 using Basil.Application.Scores.Objects;
 using Basil.Application.Scores.Objects.Events;
-using Basil.Application.Scores.Ports;
 using Basil.Application.Scores.Services;
+using Basil.Application.Scores.Storage;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Shared.Events;
 using Basil.Application.Shared.Settings;
@@ -23,8 +23,11 @@ public static class DependencyInjection
 			sp.GetRequiredService<IScoreRepository>(),
 			sp.GetRequiredService<ISettingsRepository>(),
 			sp.GetRequiredService<TimeProvider>()));
+		services.AddSingleton<ScoreRecorder>(sp => new ScoreRecorder(
+			sp.GetRequiredService<IScoreRepository>(),
+			sp.GetRequiredService<IReplayStorage>()));
 		services.AddSingleton<ScoreSubmitter>(sp => new ScoreSubmitter(
-			sp.GetRequiredService<IScoreRecorder>(),
+			sp.GetRequiredService<ScoreRecorder>(),
 			sp.GetRequiredService<ScorePerformanceRequests>(),
 			sp.GetRequiredService<IEventPublisher<ScoreEvent>>(),
 			sp.GetRequiredService<IScoreBeatmapAcceptance>(),

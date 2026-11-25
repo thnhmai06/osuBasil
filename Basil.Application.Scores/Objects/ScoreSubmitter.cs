@@ -1,7 +1,7 @@
 using Basil.Application.Scores.Capabilities;
 using Basil.Application.Scores.Objects.Events;
+using Basil.Application.Scores.Logic;
 using Basil.Application.Scores.Persistence;
-using Basil.Application.Scores.Ports;
 using Basil.Application.Shared.Events;
 using Basil.Application.Sessions.Objects;
 using Basil.Domain.Scores;
@@ -12,7 +12,7 @@ public sealed class ScoreSubmitter
 {
 	private readonly TimeProvider _clock;
 
-	internal ScoreSubmitter(IScoreRecorder recorder, ScorePerformanceRequests performances,
+	internal ScoreSubmitter(ScoreRecorder recorder, ScorePerformanceRequests performances,
 		IEventPublisher<ScoreEvent> events, IScoreBeatmapAcceptance acceptance, TimeProvider clock)
 	{
 		Recorder = recorder;
@@ -22,7 +22,7 @@ public sealed class ScoreSubmitter
 		_clock = clock;
 	}
 
-	internal IScoreRecorder Recorder { get; }
+	internal ScoreRecorder Recorder { get; }
 
 	internal ScorePerformanceRequests Performances { get; }
 
@@ -48,7 +48,7 @@ public sealed class ScoreSubmitter
 			return (ScoreSubmissionResult.Rejected, SubmissionRejectionReason.UnknownBeatmap, null);
 
 		var loginClient = actor.State.Record.Value.Fingerprint.Client!;
-		if (Recorder.Validate(actor.Record, loginClient, submission, checkedBeatmap, client) is { } invalid)
+		if (submission.Validate(loginClient, checkedBeatmap, actor.Record.Value.Name, client) is { } invalid)
 			return (ScoreSubmissionResult.Rejected, invalid, null);
 
 		var (key, pp) = await Performances.RequestAndWaitAsync(submission.Score, ct);
