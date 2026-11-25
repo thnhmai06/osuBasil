@@ -56,10 +56,10 @@ internal sealed class OsuClient(Context context, Account account, int index)
 			var body = await response.Content.ReadAsByteArrayAsync(ct);
 			var elapsed = Stopwatch.GetElapsedTime(started);
 			var token = response.Headers.TryGetValues("cho-token", out var values) ? values.FirstOrDefault() : null;
-			// The first packet answers the login; its id is not positive when the sign-in was refused.
-			var accepted = response.IsSuccessStatusCode && !string.IsNullOrEmpty(token) && token != "no" && body.Length >= 11
-			               && BitConverter.ToUInt16(body) == (ushort)ServerPacketType.UserId
-			               && BitConverter.ToInt32(body, 7) > 0;
+			// The UserId packet answers the login (other packets may come before it); its id is not positive when the
+			// sign-in was refused.
+			var accepted = response.IsSuccessStatusCode && !string.IsNullOrEmpty(token) && token != "no" &&
+			               UserIdOf(body) > 0;
 			context.Recorder.Record("osu-login", elapsed, accepted ? null : $"login refused ({(int)response.StatusCode})",
 				true);
 			return accepted ? token : null;
@@ -69,6 +69,21 @@ internal sealed class OsuClient(Context context, Account account, int index)
 			context.Recorder.Record("osu-login", Stopwatch.GetElapsedTime(started), Context.Reason(exception), true);
 			return null;
 		}
+	}
+
+	// Packets are a 2-byte id, a compression byte, a 4-byte length and the payload.
+	private static int UserIdOf(byte[] body)
+	{
+		for (var at = 0; at + 7 <= body.Length;)
+		{
+			var id = BitConverter.ToUInt16(body, at);
+			var length = BitConverter.ToInt32(body, at + 3);
+			if (id == (ushort)ServerPacketType.UserId && length >= 4 && at + 11 <= body.Length)
+				return BitConverter.ToInt32(body, at + 7);
+			at += 7 + length;
+		}
+
+		return 0;
 	}
 
 	private async Task PollAsync(string token, byte[] body, CancellationToken ct)

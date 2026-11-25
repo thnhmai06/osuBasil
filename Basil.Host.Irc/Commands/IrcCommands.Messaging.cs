@@ -107,6 +107,9 @@ internal sealed partial class IrcCommands
 			case ChannelJoinResult.Blocked:
 				session.Numeric(IrcNumericReply.ErrCannotSendToChannel, target, replies.Text(IrcReply.DmBlocked));
 				break;
+			case ChannelJoinResult.Silenced:
+				session.Numeric(IrcNumericReply.ErrCannotSendToChannel, target, replies.Text(IrcReply.Silenced));
+				break;
 			case ChannelJoinResult.TargetSilenced:
 				session.Numeric(IrcNumericReply.ErrCannotSendToChannel, target, replies.Text(IrcReply.TargetSilenced));
 				break;

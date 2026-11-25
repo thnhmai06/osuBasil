@@ -45,7 +45,7 @@ internal sealed class RuntimeSampler : IDisposable, IClearTally
 
 	public Func<long> LogsDropped { get; set; } = () => 0;
 
-	/// <summary>Told, at every new sample, how loaded the server is: the largest of the CPU, memory and thread pool use, from 0 to 1.</summary>
+	/// <summary>Told, at every new sample, how loaded the server is: the larger of the CPU and memory use, from 0 to 1.</summary>
 	public Action<double>? LoadMeasured { get; set; }
 
 	public void Reset()
@@ -128,9 +128,9 @@ internal sealed class RuntimeSampler : IDisposable, IClearTally
 	{
 		var cpu = cpuUsed.TotalSeconds / seconds / Environment.ProcessorCount;
 		var memory = availableMemory > 0 ? (double)workingSet / availableMemory : 0;
-		// A queue of more than a few items per worker means requests wait for a thread.
-		var queue = (double)ThreadPool.PendingWorkItemCount / Math.Max(1, ThreadPool.ThreadCount) / 4;
-		return Math.Clamp(Math.Max(cpu, Math.Max(memory, queue)), 0, 1);
+		// Not the thread pool queue: read at one instant it jumps with every burst of polls, and the value stands until the
+		// next sample, so the server shed every poll for a while at a tenth of its CPU.
+		return Math.Clamp(Math.Max(cpu, memory), 0, 1);
 	}
 
 	private void OnException(object? sender, FirstChanceExceptionEventArgs args)

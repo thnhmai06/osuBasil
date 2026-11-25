@@ -43,6 +43,8 @@ services:
       # The host name is the service name below; the password comes from .env.
       ConnectionStrings__Write: "Host=postgres;Port=5432;Database=basil;Username=basil;Password=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}"
       ConnectionStrings__Read: "Host=postgres;Port=5432;Database=basil;Username=basil;Password=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}"
+      # The domain clients reach the server by (c., a., api., irc. below it); set BASIL_DOMAIN in .env.
+      Basil__Server__Domain: ${BASIL_DOMAIN:-basil.local}
       # Only nginx, on the compose network, may tell Basil who the client is.
       Basil__Server__TrustedProxies__0: 172.28.0.0/24
       # The nginx location that serves the files under Data and Cache, each below it under its own name.
@@ -74,6 +76,8 @@ volumes:
 
 networks:
   basil:
+    # IPv4 only: Basil trusts the nginx peer by this subnet, and Docker may otherwise add IPv6 addresses it does not know.
+    enable_ipv6: false
     ipam:
       config:
         - subnet: 172.28.0.0/24

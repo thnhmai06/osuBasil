@@ -38,7 +38,7 @@ the default limits would answer it with 429. For a run, mount a copy with the li
 and never commit it:
 
 ```bash
-sed -E 's/rate=[0-9]+r\/(s|m)/rate=100000r\/s/; s/limit_conn (http_conn|irc_conn) [0-9]+/limit_conn \1 100000/' \
+sed -E 's/rate=[0-9]+r\/(s|m)/rate=100000r\/s/; s/limit_conn (http_conn|irc_conn) [0-9]+/limit_conn \1 60000/' \
   docker/nginx/nginx.conf > docker-data/nginx-load.conf
 ```
 

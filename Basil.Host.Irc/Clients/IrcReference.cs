@@ -50,12 +50,13 @@ public sealed class IrcReference(IOptions<IrcOptions> options) : IDocumentPage
 		text.AppendLine("## Connecting").AppendLine();
 		text.AppendLine("| Setting | Value |").AppendLine("| --- | --- |");
 		text.AppendLine($"| Server | `{options.Value.ServerName}` |");
-		text.AppendLine($"| Port | `{options.Value.Port}`, plain text, no TLS |");
+		// The port clients reach is nginx's TLS port, not the internal one the listener binds.
+		text.AppendLine("| Port | `6697`, TLS |");
 		text.AppendLine("| Nickname | your username, with spaces written as `_` |");
 		text.AppendLine("| Password / SASL password | your account password |").AppendLine();
 		text.AppendLine(
-				"The connection is not encrypted, so your password travels in clear text: connect only from a network you " +
-				"trust. An account holds one IRC sign-in at a time. A wrong password, or an account already signed in on " +
+				"The connection is encrypted with TLS; a server with a self-signed certificate needs your client to trust " +
+				"it. An account holds one IRC sign-in at a time. A wrong password, or an account already signed in on " +
 				"IRC, is answered with `464` and the connection is closed.")
 			.AppendLine();
 		text.AppendLine("## Capabilities").AppendLine();
