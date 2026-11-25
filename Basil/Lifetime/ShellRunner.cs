@@ -1,50 +1,14 @@
 using Basil.Host.Cli.Commands;
 using Basil.Host.Cli.Socket;
+using Basil.Host.Cli.Shutdown;
 using Basil.Infrastructure.Shared.Storage;
+using Basil.Infrastructure.Shared.Workers;
 
 namespace Basil.Lifetime;
 
 public static class ShellRunner
 {
-	private static readonly string[] OfflineServices = ["EventDispatcher", "StorageStartup"];
-
-	public static bool IsCommand(string[] args)
-	{
-		if (args.Length == 0 || args[0].StartsWith('-')) return false;
-
-		return CommandCatalogFactory.Create().All
-			.Any(command => command.Words[0].Equals(args[0], StringComparison.OrdinalIgnoreCase));
-	}
-
-	// The first argument the server would not understand, or null when every one is a known option, an option's value or a
-	// setting such as --Basil:Server:Domain=example.org.
-	public static string? Unknown(string[] args)
-	{
-		string[] options = ["--console", "--nocolor", "--ascii", "--urls", "--environment", "--contentRoot", "--applicationName"];
-		var expectsValue = false;
-		foreach (var arg in args)
-		{
-			if (!arg.StartsWith('-'))
-			{
-				if (expectsValue)
-				{
-					expectsValue = false;
-					continue;
-				}
-
-				return arg;
-			}
-
-			string[] switches = ["--nocolor", "--ascii", "--nogui", "--noconsole"];
-			var isSwitch = switches.Contains(arg, StringComparer.OrdinalIgnoreCase);
-			expectsValue = !arg.Contains('=') && !isSwitch;
-			if (!isSwitch && !options.Contains(arg, StringComparer.OrdinalIgnoreCase) && !arg.Contains(':') &&
-			    !arg.Contains('=') && !arg.Contains("__"))
-				return arg;
-		}
-
-		return null;
-	}
+	private static readonly string[] OfflineServices = [nameof(EventDispatcher), nameof(StorageStartup)];
 
 	public static async Task<int> RunAsync(string[] args, Action<WebApplicationBuilder>? configure = null,
 		TextWriter? output = null,
@@ -93,10 +57,9 @@ public static class ShellRunner
 		TextReader input, CancellationToken ct)
 	{
 		var forwarded = args;
-		if (IsShutdown(parsed) && !parsed.Options.ContainsKey("now"))
+		if (ShutdownConfirmation.Needed(parsed))
 		{
-			if (!await ConfirmAsync(output, input,
-				    $"Really {(parsed.Command.Words[0] == "restart" ? "restart" : "shut down")} the server?"))
+			if (!await ShutdownConfirmation.AskAsync(parsed, output, input))
 			{
 				await output.WriteLineAsync("Cancelled.");
 				return ExitCodes.Declined;
@@ -126,19 +89,5 @@ public static class ShellRunner
 			foreach (var service in Enumerable.Reverse(started)) await service.StopAsync(CancellationToken.None);
 			foreach (var service in Enumerable.Reverse(lifecycle)) await service.StoppedAsync(CancellationToken.None);
 		}
-	}
-
-	private static bool IsShutdown(ParsedCommand parsed)
-	{
-		return parsed.Command.Words[0] is "shutdown" or "restart";
-	}
-
-	private static async Task<bool> ConfirmAsync(TextWriter output, TextReader input, string question)
-	{
-		await output.WriteAsync(question + " (y/N) ");
-		await output.FlushAsync();
-		var answer = await input.ReadLineAsync();
-		return answer is not null && (answer.Trim().Equals("y", StringComparison.OrdinalIgnoreCase) ||
-		                              answer.Trim().Equals("yes", StringComparison.OrdinalIgnoreCase));
 	}
 }

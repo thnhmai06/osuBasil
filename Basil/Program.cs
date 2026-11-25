@@ -13,10 +13,10 @@ public static class Program
 	{
 		if (args.Any(arg => arg is "--help" or "-h")) return await ShellRunner.RunAsync(["help"]);
 
-		if (ShellRunner.IsCommand(args)) return await ShellRunner.RunAsync(args);
+		if (CommandLineArguments.IsCommand(args)) return await ShellRunner.RunAsync(args);
 
 		// Before anything starts: a mistyped command must not start a second server on the live database.
-		if (ShellRunner.Unknown(args) is { } unknown)
+		if (CommandLineArguments.Unknown(args) is { } unknown)
 		{
 			await Console.Error.WriteLineAsync(
 				$"error: Unknown {(unknown.StartsWith('-') ? "option" : "command")}: {unknown}. Run Basil --help for the list.");
