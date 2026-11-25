@@ -21,16 +21,15 @@ public readonly struct ScopedServerSettings
 			: (ServerActionResult.Ok, await _scoped.Server.Settings.GetAsync(ct));
 	}
 
-	public async Task<ServerActionResult> UpdateAsync(ServerSettings settings)
+	public async Task<(ServerActionResult Result, ServerSettings? Settings)> UpdateAsync(
+		Func<ServerSettings, ServerSettings> change)
 	{
 		if (_scoped.Lacks(UserPrivileges.Developer))
-			return ServerActionResult.Denied;
+			return (ServerActionResult.Denied, null);
 
-		var current = await _scoped.Server.Settings.GetAsync();
-		if (settings.Accounts.DefaultPrivileges != current.Accounts.DefaultPrivileges &&
-		    _scoped.Lacks(settings.Accounts.DefaultPrivileges))
-			return ServerActionResult.Denied;
-
-		return await _scoped.Server.Settings.UpdateAsync(settings);
+		var scoped = _scoped;
+		return await _scoped.Server.Settings.UpdateAsync(change,
+			(current, changed) => changed.Accounts.DefaultPrivileges == current.Accounts.DefaultPrivileges ||
+			                      !scoped.Lacks(changed.Accounts.DefaultPrivileges));
 	}
 }

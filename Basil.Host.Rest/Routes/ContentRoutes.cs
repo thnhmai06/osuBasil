@@ -60,7 +60,7 @@ internal static class ContentRoutes
 	private static async Task<IResult> PatchCategoryAsync(HttpContext context, string category, ISender sender)
 	{
 		var actor = context.Session();
-		var (read, current) = await sender.Send(new GetSettings(actor), context.RequestAborted);
+		var (read, _) = await sender.Send(new GetSettings(actor), context.RequestAborted);
 		if (read != ServerActionResult.Ok) return read.Refusal();
 		if (!SettingsCategories.Exists(category)) return Api.NotFound("No such settings category.");
 
@@ -69,10 +69,11 @@ internal static class ContentRoutes
 
 		try
 		{
-			var changed = SettingsCategories.Patch(category, current!, patch!);
-			var stored = await sender.Send(new UpdateSettings(actor, changed), context.RequestAborted);
+			var (stored, changed) = await sender.Send(
+				new UpdateSettings(actor, current => SettingsCategories.Patch(category, current, patch!)),
+				context.RequestAborted);
 			return stored == ServerActionResult.Ok
-				? Api.Ok(SettingsCategories.Get(category, changed), "Updated successfully")
+				? Api.Ok(SettingsCategories.Get(category, changed!), "Updated successfully")
 				: stored.Refusal();
 		}
 		catch (Exception ex) when (ex is ArgumentException or JsonException or InvalidOperationException

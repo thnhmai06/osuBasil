@@ -385,8 +385,8 @@ internal static class ContentCommands
 
 		try
 		{
-			var changed = SettingsCategories.Patch(category, current!, patch);
-			return call.Report(await SendAsync(call, actor => new UpdateSettings(actor, changed)),
+			return call.Report((await SendAsync(call, actor => new UpdateSettings(actor,
+					settings => SettingsCategories.Patch(category, settings, patch)))).Result,
 				$"Updated the {category} settings: {string.Join(", ", call.Options.Keys)}.");
 		}
 		catch (Exception ex) when (ex is ArgumentException or JsonException or InvalidOperationException

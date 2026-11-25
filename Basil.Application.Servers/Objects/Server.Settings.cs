@@ -4,6 +4,8 @@ namespace Basil.Application.Servers.Objects;
 
 public sealed partial class Server
 {
+	internal readonly SemaphoreSlim _settingsChange = new(1, 1);
+
 	public ServerSettingsView Settings => new(this);
 }
 
@@ -21,9 +23,22 @@ public readonly struct ServerSettingsView
 		return await _server.Context.Settings.GetAsync(ct);
 	}
 
-	internal async Task<ServerActionResult> UpdateAsync(ServerSettings settings)
+	internal async Task<(ServerActionResult Result, ServerSettings? Settings)> UpdateAsync(
+		Func<ServerSettings, ServerSettings> change, Func<ServerSettings, ServerSettings, bool> permits)
 	{
-		await _server.Context.Settings.CreateOrUpdateAsync(settings);
-		return ServerActionResult.Ok;
+		await _server._settingsChange.WaitAsync();
+		try
+		{
+			var current = await _server.Context.Settings.GetAsync();
+			var changed = change(current);
+			if (!permits(current, changed)) return (ServerActionResult.Denied, null);
+
+			await _server.Context.Settings.CreateOrUpdateAsync(changed);
+			return (ServerActionResult.Ok, changed);
+		}
+		finally
+		{
+			_server._settingsChange.Release();
+		}
 	}
 }
