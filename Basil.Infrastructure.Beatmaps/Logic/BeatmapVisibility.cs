@@ -1,6 +1,7 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Shared.Actors;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Users;
 
 namespace Basil.Infrastructure.Beatmaps.Logic;
 
@@ -9,6 +10,11 @@ internal static class BeatmapVisibility
 	public static bool MayViewHidden(IActor? actor, TimeProvider clock)
 	{
 		return actor is not null && BeatmapQuery.MayViewHidden(actor.EffectivePrivileges(clock.GetUtcNow()));
+	}
+
+	public static bool MayUseDirect(IActor actor, TimeProvider clock)
+	{
+		return actor.EffectivePrivileges(clock.GetUtcNow()).Allows(UserPrivileges.Supporter);
 	}
 
 	public static bool CanView(BeatmapsetRecord set, bool mayViewHidden)

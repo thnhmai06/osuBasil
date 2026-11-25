@@ -11,6 +11,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Basil.Application.Anticheat.Services;
 using Basil.Application.Beatmaps.Messages;
+using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Application.Content.Messages;
@@ -327,7 +328,6 @@ internal static class OsuWebRoutes
 		var query = context.Request.Query;
 		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is not { } player)
 			return Results.Unauthorized();
-		if (!player.MayUseDirect()) return Results.StatusCode(StatusCodes.Status403Forbidden);
 		if (!int.TryParse(query["r"], out var status) || status is < 0 or > 8 ||
 		    !int.TryParse(query["m"], out var mode) || mode is < OsuWebReplies.DirectAllModes or > 3 ||
 		    !int.TryParse(query["p"], out var pageNumber) || pageNumber < 0 ||
@@ -345,11 +345,11 @@ internal static class OsuWebRoutes
 				? filter.Status
 				: BeatmapsetStatusExtensions.FromOsuDirect(status)
 		};
-		var page = await sender.Send(
-			new SearchBeatmapsets(player,
+		var (result, page, details) = await sender.Send(
+			new SearchBeatmapsetsDirect(player,
 				filter,
 				new PageRequest(pageNumber * OsuWebReplies.DirectPageSize, OsuWebReplies.DirectPageSize)), ct);
-		var details = await sender.Send(new GetBeatmapsets(player, [.. page.Items.Select(set => set.Id)]), ct);
+		if (result == BeatmapDirectResult.Denied) return Results.StatusCode(StatusCodes.Status403Forbidden);
 		var header = page.Items.Count == OsuWebReplies.DirectPageSize
 			? OsuWebReplies.DirectMorePages
 			: page.Items.Count;
@@ -376,11 +376,10 @@ internal static class OsuWebRoutes
 		var query = context.Request.Query;
 		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is not { } player)
 			return Results.Unauthorized();
-		if (!player.MayUseDirect()) return Results.StatusCode(StatusCodes.Status403Forbidden);
-		if (!int.TryParse(query["s"], out var id) ||
-		    await sender.Send(new GetBeatmapset(player, id), ct) is not { } detail)
-			return Text(string.Empty);
-		return Text(OsuWebWriter.DirectLine(DirectSetOf(detail.Set)));
+		if (!int.TryParse(query["s"], out var id)) return Text(string.Empty);
+		var (result, detail) = await sender.Send(new GetBeatmapsetDirect(player, id), ct);
+		if (result == BeatmapDirectResult.Denied) return Results.StatusCode(StatusCodes.Status403Forbidden);
+		return detail is null ? Text(string.Empty) : Text(OsuWebWriter.DirectLine(DirectSetOf(detail.Set)));
 	}
 
 	private static async Task<IResult> DownloadAsync(HttpContext context, string setId, WebAuthentication auth,
@@ -389,10 +388,11 @@ internal static class OsuWebRoutes
 		var query = context.Request.Query;
 		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is not { } player)
 			return Results.Unauthorized();
-		if (!player.MayUseDirect()) return Results.StatusCode(StatusCodes.Status403Forbidden);
 		var withVideo = !setId.EndsWith('n');
 		if (!int.TryParse(setId.TrimEnd('n'), out var id)) return Results.NotFound();
-		if (await sender.Send(new OpenBeatmapsetArchive(player, id, withVideo), ct) is { } archive)
+		var (result, archive) = await sender.Send(new OpenBeatmapsetArchiveDirect(player, id, withVideo), ct);
+		if (result == BeatmapDirectResult.Denied) return Results.StatusCode(StatusCodes.Status403Forbidden);
+		if (archive is not null)
 			return StoredFile.Send(context, archive, "application/x-osu-beatmap-archive", $"{id}.osz",
 				enableRangeProcessing: true);
 		return Results.NotFound();

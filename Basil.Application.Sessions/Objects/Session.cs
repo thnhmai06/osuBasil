@@ -129,12 +129,6 @@ public sealed class StableSession : Session
 
 	internal ISet<Session> MutableSpectators => _spectators;
 
-	/// <summary>Gets whether the client may search for and download beatmapsets from inside the game (osu!direct).</summary>
-	public bool MayUseDirect()
-	{
-		return EffectivePrivileges(Context.Clock.GetUtcNow()).Allows(UserPrivileges.Supporter);
-	}
-
 	public ScopedStableSession ScopeTo(Session actor)
 	{
 		return new ScopedStableSession(this, actor);
