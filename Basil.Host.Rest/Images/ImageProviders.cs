@@ -15,17 +15,6 @@ namespace Basil.Host.Rest.Images;
 /// <summary>Serves the stored pictures of the image hosts; a request it cannot serve goes on to the routes of the host.</summary>
 internal sealed partial class ImageServingMiddleware(RequestDelegate next)
 {
-	private static readonly Lazy<byte[]> DefaultAvatar = new(() =>
-	{
-		using var stream = typeof(ImageServingMiddleware).Assembly.GetManifestResourceStream("Avatars.default.png")!;
-		using var memory = new MemoryStream();
-		stream.CopyTo(memory);
-		return memory.ToArray();
-	});
-
-	private static readonly DateTimeOffset DefaultAvatarModified = File.GetLastWriteTimeUtc(
-		typeof(ImageServingMiddleware).Assembly.Location);
-
 	private static readonly Dictionary<string, BeatmapsetCoverVariant> CoverVariants = new()
 	{
 		["cover"] = BeatmapsetCoverVariant.Cover, ["card"] = BeatmapsetCoverVariant.Card,
@@ -35,8 +24,7 @@ internal sealed partial class ImageServingMiddleware(RequestDelegate next)
 	private static readonly ImageRoute[] Routes =
 	[
 		new("a", AvatarPath(), async (match, sender, ct) =>
-			await sender.Send(new OpenUserAvatar(int.Parse(match.Groups[1].Value)), ct) ??
-			new ImageFile(new MemoryStream(DefaultAvatar.Value, false), "image/png", DefaultAvatarModified)),
+			await sender.Send(new OpenAvatarImage(int.Parse(match.Groups[1].Value)), ct)),
 		new("assets", MenuPath(), (match, sender, ct) =>
 		{
 			var kind = match.Groups["kind"].Value switch

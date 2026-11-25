@@ -49,8 +49,4 @@
 		<PackageReference Include="Scalar.AspNetCore"/>
 	</ItemGroup>
 
-	<ItemGroup>
-		<EmbeddedResource Include="..\assets\avatars\*.png" LogicalName="Avatars.%(Filename)%(Extension)"/>
-	</ItemGroup>
-
 </Project>
