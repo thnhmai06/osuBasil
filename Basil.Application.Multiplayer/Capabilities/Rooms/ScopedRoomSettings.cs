@@ -22,6 +22,12 @@ public readonly struct ScopedRoomSettings
 		return Task.FromResult(RequireConfigure(change) ?? _scoped.Room.Configure(_scoped.Actor, change));
 	}
 
+	public Task<RoomActionResult> ChangeAsync(WantedRoomSettings wanted)
+	{
+		return Task.FromResult(_scoped.Require(RoomPrivileges.Staff) ??
+		                       _scoped.Room.ChangeSettings(_scoped.Actor, wanted));
+	}
+
 	public Task<RoomActionResult> SetLockedAsync(bool locked)
 	{
 		return Task.FromResult(_scoped.Require(RoomPrivileges.Moderators) ??

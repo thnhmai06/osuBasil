@@ -1,4 +1,5 @@
 using Basil.Application.Sessions.Objects;
+using Basil.Domain.Spectating;
 using Basil.Domain.Multiplayer.Report.Rounds;
 using Basil.Domain.Users;
 using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
@@ -41,3 +42,10 @@ public sealed record RoomRoundDecided(
 	Round Round,
 	RoundResult? Result,
 	IReadOnlyList<UserRecord> Missing) : RoomRoundEvent(Room, Round);
+
+/// <summary>A player's score frame during a round, for everyone who watches the room play.</summary>
+/// <param name="Slot">The slot of the player whose frame it is.</param>
+/// <param name="Frame">The standing of the player.</param>
+/// <param name="Audience">The sessions that receive the frame: the players and the observers.</param>
+public sealed record RoomScoreRelayed(Room Room, int Slot, ScoreFrame Frame, IReadOnlyList<Session> Audience)
+	: RoomEvent(Room);

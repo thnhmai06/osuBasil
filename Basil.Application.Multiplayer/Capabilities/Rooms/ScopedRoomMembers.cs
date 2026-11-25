@@ -73,6 +73,11 @@ public readonly struct ScopedRoomMembers
 		return _scoped.Room.Invite(_scoped.Actor.Record, target);
 	}
 
+	public RoomJoinResult CheckObserver()
+	{
+		return _scoped.Actor is TourneySession ? RoomJoinResult.Ok : RoomJoinResult.NotObserver;
+	}
+
 	public Task<RoomJoinResult> ObserverJoinAsync()
 	{
 		return Task.FromResult(_scoped.Actor is TourneySession actor

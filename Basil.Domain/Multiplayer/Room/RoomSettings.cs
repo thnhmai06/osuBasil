@@ -81,6 +81,20 @@ public sealed class RoomSettings
 		return (RoomActionResult.Ok, true);
 	}
 
+	/// <summary>Works out the change that brings the room's settings to the wanted ones; a setting that already matches is left out.</summary>
+	/// <param name="wanted">The settings wanted.</param>
+	public RoomSettingsChange ChangeTowards(WantedRoomSettings wanted)
+	{
+		return new RoomSettingsChange(
+			wanted.Name != Name ? wanted.Name : null,
+			wanted.Beatmap is { } beatmap && Beatmap?.Hash != beatmap.Hash ? beatmap : null,
+			wanted.Mode is { } mode && mode != Editable.Mode ? mode : null,
+			wanted.Mods != Editable.Mods ? wanted.Mods : null,
+			wanted.Freemods != Editable.Freemods ? wanted.Freemods : null,
+			wanted.TeamType is { } teamType && teamType != Editable.TeamType ? teamType : null,
+			wanted.WinCondition is { } winCondition && winCondition != Editable.WinCondition ? winCondition : null);
+	}
+
 	private static bool AreValid(RoomSettingsChange change)
 	{
 		return !((change.Name is { } newName && !MatchData.IsValidName(newName)) ||

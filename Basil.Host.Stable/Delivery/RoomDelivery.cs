@@ -246,3 +246,13 @@ internal sealed class RoundAbortedDelivery(RoomAudience audience) : INotificatio
 		return ValueTask.CompletedTask;
 	}
 }
+
+internal sealed class ScoreRelayedDelivery(Outbox outbox) : INotificationHandler<RoomScoreRelayed>
+{
+	public ValueTask Handle(RoomScoreRelayed notification, CancellationToken ct)
+	{
+		var frame = notification.Frame with { Id = WireMap.SlotToWire(notification.Slot) };
+		outbox.Send(notification.Audience, writer => writer.MatchScoreUpdate(frame));
+		return ValueTask.CompletedTask;
+	}
+}

@@ -1,4 +1,5 @@
 using Basil.Domain.Multiplayer.Room;
+using Basil.Domain.Spectating;
 
 namespace Basil.Application.Multiplayer.Capabilities.Rooms;
 
@@ -26,6 +27,11 @@ public readonly struct ScopedRoomRounds
 	{
 		return Task.FromResult(_scoped.Require(RoomPrivileges.Staff) ??
 		                       _scoped.Room.AbortRound());
+	}
+
+	public bool RelayScore(ScoreFrame frame)
+	{
+		return _scoped.Room.RelayScore(_scoped.Actor, frame);
 	}
 
 	public Task<RoomActionResult> MarkLoadedAsync()

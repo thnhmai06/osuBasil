@@ -1,6 +1,8 @@
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Domain.Multiplayer.Room;
+using Basil.Application.Sessions.Objects;
 using Basil.Domain.Scores;
+using Basil.Domain.Spectating;
 using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;
 
@@ -8,6 +10,16 @@ namespace Basil.Application.Multiplayer.Objects.Rooms;
 
 public sealed partial class Room
 {
+	/// <summary>Relays a player's score frame to the players and observers when the player sits in the room and a round is in progress.</summary>
+	/// <returns>Whether the frame was relayed.</returns>
+	internal bool RelayScore(Session actor, ScoreFrame frame)
+	{
+		if (actor is not StableSession player || SlotOf(player) is not { } slot || !Rounds.InProgress) return false;
+
+		Emit(new RoomScoreRelayed(this, slot.Index, frame, [.. Players, .. Members.Observers]));
+		return true;
+	}
+
 	internal RoomActionResult ReceiveScore(ScoreRecord score, UserRecord player)
 	{
 		using (Enter())

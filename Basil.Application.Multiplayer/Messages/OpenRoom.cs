@@ -1,5 +1,6 @@
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Sessions.Objects;
+using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer.Report.Matches;
 using Mediator;
 using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
@@ -12,6 +13,7 @@ public sealed record OpenRoom(
 	string Password,
 	RoomSource Source,
 	bool IsPrivate,
-	MatchSettings? Settings = null) : IRequest<OpenedRoom>;
+	MatchSettings? Settings = null,
+	BeatmapReference? Beatmap = null) : IRequest<OpenedRoom>;
 
 public sealed record OpenedRoom(Room? Room, LobbyResult Result);

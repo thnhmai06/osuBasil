@@ -16,6 +16,14 @@ public sealed partial class Room
 		}
 	}
 
+	internal RoomActionResult ChangeSettings(Session actor, WantedRoomSettings wanted)
+	{
+		using (Enter())
+		{
+			return Configure(actor, State.Settings.ChangeTowards(wanted));
+		}
+	}
+
 	internal RoomActionResult Configure(Session actor, RoomSettingsChange change)
 	{
 		using (Enter())

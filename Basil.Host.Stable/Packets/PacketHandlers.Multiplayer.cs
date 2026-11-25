@@ -54,7 +54,7 @@ internal sealed partial class PacketHandlers
 				ct),
 			ClientPacketType.MatchChangeSettings => ChangeSettingsAsync(osu, room, reader.ReadMatch(),
 				ct),
-			ClientPacketType.MatchScoreUpdate => Run(() => ForwardScore(osu, room, reader)),
+			ClientPacketType.MatchScoreUpdate => sender.Send(new RelayScore(osu, room, reader.ReadScoreFrame()), ct).AsTask(),
 			_ => Task.CompletedTask
 		};
 	}
@@ -62,17 +62,10 @@ internal sealed partial class PacketHandlers
 	private async Task CreateMatchAsync(StableSession osu, RoomStatePacket match,
 		CancellationToken ct)
 	{
-		var matchSettings = SettingsOf(match);
 		var (room, result) = await sender.Send(
-			new OpenRoom(osu, match.Name, match.Password, RoomSource.Game, false, matchSettings), ct);
-		if (room is null || result != LobbyResult.Ok)
-		{
-			outbox.Send(osu, writer => writer.MatchJoinFail());
-			return;
-		}
-
-		if (BeatmapOf(match) is { } beatmapChange)
-			await sender.Send(new ConfigureRoom(osu, room, await beatmapChange), ct);
+			new OpenRoom(osu, match.Name, match.Password, RoomSource.Game, false, SettingsOf(match),
+				await BeatmapOf(match)), ct);
+		if (room is null || result != LobbyResult.Ok) outbox.Send(osu, writer => writer.MatchJoinFail());
 	}
 
 	private async Task JoinMatchAsync(StableSession osu, JoinMatchRequest request,
@@ -99,39 +92,22 @@ internal sealed partial class PacketHandlers
 		return WireMap.Known<GameMode>(match.Mode);
 	}
 
-	private Task<RoomSettingsChange>? BeatmapOf(RoomStatePacket match)
+	private async Task<BeatmapReference?> BeatmapOf(RoomStatePacket match)
 	{
-		return match.MapMd5.Length == 32 && ModeOf(match) is not null ? BuildAsync() : null;
+		if (match.MapMd5.Length != 32 || ModeOf(match) is null) return null;
 
-		async Task<RoomSettingsChange> BuildAsync()
-		{
-			var hash = new Md5Hash(match.MapMd5);
-			var known = await sender.Send(new FindBeatmapByHash(hash));
-			return new RoomSettingsChange(
-				Beatmap: new BeatmapReference(hash, match.MapId, match.MapName, known));
-		}
+		var hash = new Md5Hash(match.MapMd5);
+		var known = await sender.Send(new FindBeatmapByHash(hash));
+		return new BeatmapReference(hash, match.MapId, match.MapName, known);
 	}
 
 	private async Task ChangeSettingsAsync(StableSession osu, Room room, RoomStatePacket match,
 		CancellationToken ct)
 	{
-		var current = room.Settings.MatchSettings;
-		var change = new RoomSettingsChange(
-			match.Name != room.Settings.Name ? match.Name : null,
-			Mode: ModeOf(match) is { } mode && mode != current.Mode ? mode : null,
-			Mods: WireMap.Mods(match.Mods) is var mods && mods != current.Mods ? mods : null,
-			Freemods: match.FreeMods != current.Freemods ? match.FreeMods : null,
-			TeamType: WireMap.Known<GameTeamType>(match.TeamType) is { } teamType && teamType != current.TeamType
-				? teamType
-				: null,
-			WinCondition: WireMap.Known<GameWinCondition>(match.WinCondition) is { } winCondition &&
-			              winCondition != current.WinCondition
-				? winCondition
-				: null);
-		if (BeatmapOf(match) is { } beatmapChange && room.Settings.Beatmap?.Hash.ToString() != match.MapMd5)
-			change = change with { Beatmap = (await beatmapChange).Beatmap };
-
-		await sender.Send(new ConfigureRoom(osu, room, change), ct);
+		await sender.Send(new ChangeRoomSettings(osu, room,
+			new WantedRoomSettings(match.Name, WireMap.Mods(match.Mods), match.FreeMods, await BeatmapOf(match),
+				ModeOf(match), WireMap.Known<GameTeamType>(match.TeamType),
+				WireMap.Known<GameWinCondition>(match.WinCondition))), ct);
 	}
 
 	private Task Ask<TMessage>(TMessage message, CancellationToken ct)
@@ -152,18 +128,10 @@ internal sealed partial class PacketHandlers
 		await sender.Send(new InvitePlayer(osu, room, userId), ct);
 	}
 
-	private void ForwardScore(StableSession osu, Room room, PacketReader reader)
-	{
-		if (room.SlotOf(osu) is not { } slot || !room.Rounds.InProgress) return;
-		var frame = reader.ReadScoreFrame() with { Id = WireMap.SlotToWire(slot.Index) };
-		outbox.Send(room.Players.Cast<Session>()
-			.Concat(room.Members.Observers), writer => writer.MatchScoreUpdate(frame));
-	}
-
 	private async Task TourneyInfoAsync(Session actor, int matchId, CancellationToken ct)
 	{
-		if (actor is not TourneySession || lobby.FindByWireId(matchId) is not { IsClosed: false } room) return;
-		if (!await sender.Send(new CanViewMatch(actor, room.Match.Id), ct)) return;
+		if (lobby.FindByWireId(matchId) is not { IsClosed: false } room) return;
+		if (await sender.Send(new InspectRoom(actor, room), ct) is not RoomJoinResult.Ok) return;
 		var match = StableView.Match(room);
 		outbox.Send(actor, writer => writer.UpdateMatch(match, false));
 	}
