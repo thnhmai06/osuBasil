@@ -235,16 +235,16 @@ internal sealed partial class IrcCommands(
 				List(session, connection, message);
 				break;
 			case "WHO":
-				Who(session, connection, message);
+				await WhoAsync(session, connection, message, ct);
 				break;
 			case "WHOIS":
-				Whois(session, connection, message);
+				await WhoisAsync(session, connection, message, ct);
 				break;
 			case "ISON":
-				Ison(session, message);
+				await IsonAsync(session, message, ct);
 				break;
 			case "USERHOST":
-				UserHost(session, message);
+				await UserHostAsync(session, message, ct);
 				break;
 			case "AWAY":
 				await AwayAsync(session, connection, message, ct);

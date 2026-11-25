@@ -9,8 +9,7 @@ internal sealed partial class PacketHandlers
 {
 	private async Task StartSpectatingAsync(StableSession osu, int hostId, CancellationToken ct)
 	{
-		if (OnlineUsers([hostId]) is not [{ } hostUser] || registry.OpenStableClient(hostUser.Record) is not { } host)
-			return;
+		if (await sender.Send(new FindStableClient(hostId), ct) is not { } host) return;
 
 		await sender.Send(new SpectateUser(osu, host), ct);
 	}

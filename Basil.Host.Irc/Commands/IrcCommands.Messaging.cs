@@ -1,3 +1,4 @@
+using Basil.Application.Sessions.Messages;
 using Basil.Gateway.RateLimiting;
 using Basil.Application.Chat.Messages;
 using Basil.Application.Chat.Objects;
@@ -48,7 +49,7 @@ internal sealed partial class IrcCommands
 		}
 		else
 		{
-			if (FindUser(target) is not { } user)
+			if (await FindUserAsync(target, ct) is not { } user)
 			{
 				session.Numeric(IrcNumericReply.ErrNoSuchNick, target, replies.Text(IrcReply.NoSuchNick));
 				return;
@@ -120,9 +121,9 @@ internal sealed partial class IrcCommands
 		return name.StartsWith("#spec_", StringComparison.OrdinalIgnoreCase) ? null : server.FindChannel(name);
 	}
 
-	private User? FindUser(string nick)
+	private async Task<User?> FindUserAsync(string nick, CancellationToken ct)
 	{
-		return registry.Online.Values.FirstOrDefault(user => IrcView.IsNick(user.Record, nick))?.User;
+		return (await sender.Send(new FindOnlineUser(nick), ct))?.User;
 	}
 
 	private async Task JoinAsync(IrcSocket session, Session actor, IrcMessage message,

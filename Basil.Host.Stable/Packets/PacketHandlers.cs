@@ -54,9 +54,9 @@ internal sealed partial class PacketHandlers(
 			ClientPacketType.UserStatsRequest => StatsRequestAsync(actor, reader.ReadInt32List().Take(MaxRequestedIds),
 				ct),
 			ClientPacketType.UserPresenceRequest => PresenceRequestAsync(actor,
-				reader.ReadInt32List().Take(MaxRequestedIds), ct),
+				[.. reader.ReadInt32List().Take(MaxRequestedIds)], ct),
 			ClientPacketType.UserPresenceRequestAll => PresenceRequestAsync(actor,
-				registry.Online.Keys.Select(user => user.Id).ToList(), ct),
+				null, ct),
 			ClientPacketType.TournamentMatchInfoRequest => TourneyInfoAsync(actor, reader.ReadInt32(),
 				ct),
 			ClientPacketType.TournamentJoinMatchChannel => TourneyJoinAsync(actor, reader.ReadInt32(),
@@ -144,7 +144,7 @@ internal sealed partial class PacketHandlers(
 
 	private async Task StatsRequestAsync(Session actor, IEnumerable<int> ids, CancellationToken ct)
 	{
-		var wanted = OnlineUsers(ids);
+		var wanted = await sender.Send(new ListOnlineUsers([.. ids]), ct);
 
 		var stats = await sender.Send(new GetUsersStats([
 			.. wanted.Select(user => (user.User, user.Stable?.Status.Detail?.Mode ?? GameMode.Standard))
@@ -156,9 +156,9 @@ internal sealed partial class PacketHandlers(
 		});
 	}
 
-	private async Task PresenceRequestAsync(Session actor, IEnumerable<int> ids, CancellationToken ct)
+	private async Task PresenceRequestAsync(Session actor, IReadOnlyList<int>? ids, CancellationToken ct)
 	{
-		var wanted = OnlineUsers(ids);
+		var wanted = await sender.Send(new ListOnlineUsers(ids), ct);
 
 		var now = clock.GetUtcNow();
 		var stats = await sender.Send(new GetUsersStats([
@@ -169,16 +169,6 @@ internal sealed partial class PacketHandlers(
 			for (var index = 0; index < wanted.Count; index++)
 				StableView.WritePresence(writer, wanted[index], stats[index], now);
 		});
-	}
-
-	// shortcut: one pass over the online users per request; a lookup by id needs an index in the registry.
-	private List<UserSessions> OnlineUsers(IEnumerable<int> ids)
-	{
-		var asked = ids.ToList();
-		var wanted = asked.ToHashSet();
-		var online = registry.Online.Where(pair => wanted.Contains(pair.Key.Id) && pair.Value.HasPresence)
-			.ToDictionary(pair => pair.Key.Id, pair => pair.Value);
-		return [.. asked.Where(online.ContainsKey).Select(id => online[id])];
 	}
 
 	private async Task FriendAsync(StableSession osu, int id, bool add, CancellationToken ct)

@@ -1,3 +1,4 @@
+using Basil.Application.Sessions.Messages;
 using Basil.Gateway.RateLimiting;
 using Basil.Protocol.Game.Stable.Wire.Chat;
 using Basil.Application.Chat.Messages;
@@ -68,10 +69,8 @@ internal sealed partial class PacketHandlers
 	private async Task PrivateMessageAsync(StableSession osu, StableMessage message,
 		CancellationToken ct)
 	{
-		var name = UserData.TryNormalize(message.Recipient);
-		if (name is null ||
-		    registry.Online.Keys.FirstOrDefault(user => user.Value.NormalizedName == name) is not { } record)
-			return;
+		if (await sender.Send(new FindOnlineUser(message.Recipient), ct) is not { } recipient) return;
+		var record = recipient.Record;
 		if (!await MayChatAsync(osu, ct)) return;
 		var (text, action) = ChatText(message.Text);
 		var result = await sender.Send(new PostChatMessage(osu, new ChatTarget.Private(record.Id), text, Action: action),

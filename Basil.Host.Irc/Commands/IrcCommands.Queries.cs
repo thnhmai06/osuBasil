@@ -37,7 +37,7 @@ internal sealed partial class IrcCommands
 		session.Numeric(IrcNumericReply.RplListEnd, replies.Text(IrcReply.EndOfList));
 	}
 
-	private void Who(IrcSocket session, Session actor, IrcMessage message)
+	private async Task WhoAsync(IrcSocket session, Session actor, IrcMessage message, CancellationToken ct)
 	{
 		var mask = message.Parameters.Count > 0 ? message.Parameters[0] : "*";
 		if (mask.StartsWith('#'))
@@ -49,7 +49,7 @@ internal sealed partial class IrcCommands
 					WhoReply(session, channel.Name, group.First().User,
 						IrcView.Prefix(channel.RoleOf(group.First()), session.Has("multi-prefix")));
 		}
-		else if (FindUser(mask) is { } user)
+		else if (await FindUserAsync(mask, ct) is { } user)
 		{
 			WhoReply(session, "*", user, string.Empty);
 		}
@@ -64,7 +64,7 @@ internal sealed partial class IrcCommands
 			(user.AwayMessage is null ? "H" : "G") + prefix, $"0 {nick}");
 	}
 
-	private void Whois(IrcSocket session, Session actor, IrcMessage message)
+	private async Task WhoisAsync(IrcSocket session, Session actor, IrcMessage message, CancellationToken ct)
 	{
 		if (message.Parameters.Count == 0)
 		{
@@ -73,7 +73,7 @@ internal sealed partial class IrcCommands
 		}
 
 		var nick = message.Parameters[^1];
-		if (FindUser(nick) is not { } user)
+		if (await FindUserAsync(nick, ct) is not { } user)
 		{
 			session.Numeric(IrcNumericReply.ErrNoSuchNick, nick, replies.Text(IrcReply.NoSuchNick));
 			session.Numeric(IrcNumericReply.RplEndOfWhoIs, nick, replies.Text(IrcReply.EndOfWhoIs));
@@ -96,15 +96,18 @@ internal sealed partial class IrcCommands
 		session.Numeric(IrcNumericReply.RplEndOfWhoIs, shown, replies.Text(IrcReply.EndOfWhoIs));
 	}
 
-	private void Ison(IrcSocket session, IrcMessage message)
+	private async Task IsonAsync(IrcSocket session, IrcMessage message, CancellationToken ct)
 	{
-		var online = message.Parameters
-			.SelectMany(parameter => parameter.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-			.Select(FindUser).OfType<User>().Select(user => IrcView.Nick(user.Record));
+		var online = new List<string>();
+		foreach (var nick in message.Parameters.SelectMany(parameter =>
+			         parameter.Split(' ', StringSplitOptions.RemoveEmptyEntries)))
+			if (await FindUserAsync(nick, ct) is { } user)
+				online.Add(IrcView.Nick(user.Record));
+
 		session.Numeric(IrcNumericReply.RplIson, string.Join(' ', online));
 	}
 
-	private void UserHost(IrcSocket session, IrcMessage message)
+	private async Task UserHostAsync(IrcSocket session, IrcMessage message, CancellationToken ct)
 	{
 		if (message.Parameters.Count == 0)
 		{
@@ -112,9 +115,12 @@ internal sealed partial class IrcCommands
 			return;
 		}
 
-		var replies = message.Parameters.Take(5).Select(FindUser).OfType<User>()
-			.Select(user =>
-				$"{IrcView.Nick(user.Record)}={(user.AwayMessage is null ? '+' : '-')}{IrcView.Nick(user.Record)}@{session.Domain}");
+		var replies = new List<string>();
+		foreach (var nick in message.Parameters.Take(5))
+			if (await FindUserAsync(nick, ct) is { } user)
+				replies.Add(
+					$"{IrcView.Nick(user.Record)}={(user.AwayMessage is null ? '+' : '-')}{IrcView.Nick(user.Record)}@{session.Domain}");
+
 		session.Numeric(IrcNumericReply.RplUserHost, string.Join(' ', replies));
 	}
 }
