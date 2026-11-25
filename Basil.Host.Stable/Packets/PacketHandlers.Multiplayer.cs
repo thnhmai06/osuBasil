@@ -170,14 +170,14 @@ internal sealed partial class PacketHandlers
 
 	private async Task TourneyJoinAsync(Session actor, int matchId, CancellationToken ct)
 	{
-		if (actor is not TourneySession || lobby.FindByWireId(matchId) is not { IsClosed: false } room) return;
+		if (lobby.FindByWireId(matchId) is not { IsClosed: false } room) return;
 		if (!await sender.Send(new CanViewMatch(actor, room.Match.Id), ct)) return;
 		await sender.Send(new ObserveRoom(actor, room), ct);
 	}
 
 	private async Task TourneyLeaveAsync(Session actor, int matchId, CancellationToken ct)
 	{
-		if (actor is TourneySession && lobby.FindByWireId(matchId) is { } room)
+		if (lobby.FindByWireId(matchId) is { } room)
 			await sender.Send(new StopObservingRoom(actor, room), ct);
 	}
 }
