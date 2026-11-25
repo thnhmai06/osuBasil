@@ -19,7 +19,6 @@ internal sealed partial class MpCommands
 		var name = args.Count > 0
 			? string.Join(' ', args)
 			: context.Replies.Text(BotReply.MpDefaultRoomName, new { name = context.Sender.Value.Name });
-		if (name.Length > MaxRoomNameLength) name = name[..MaxRoomNameLength];
 
 		var (room, outcome) =
 			await sender.Send(new OpenRoom(actor, name, "", RoomSource.Api, isPrivate), ct);

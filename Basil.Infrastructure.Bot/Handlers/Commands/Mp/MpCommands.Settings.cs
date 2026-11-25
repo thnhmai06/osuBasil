@@ -209,8 +209,6 @@ internal sealed partial class MpCommands
 		}
 
 		var name = string.Join(' ', args);
-		if (name.Length > MaxRoomNameLength) name = name[..MaxRoomNameLength];
-
 		var outcome = await sender.Send(new ConfigureRoom(context.Actor, room, new RoomSettingsChange(name)),
 			ct);
 		if (outcome != RoomActionResult.Ok)

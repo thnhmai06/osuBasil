@@ -32,7 +32,7 @@ internal sealed partial class MpCommands
 	private async Task<bool> TimerAsync(CommandContext context, Room room, IReadOnlyList<string> args,
 		CancellationToken ct)
 	{
-		var seconds = DefaultTimerSeconds;
+		var seconds = (int)StartRoomCountdown.DefaultDuration.TotalSeconds;
 		if (args.Count > 0)
 			if (!int.TryParse(args[0], out seconds) || seconds <= 0)
 			{

@@ -21,10 +21,6 @@ internal sealed partial class MpCommands(
 	MpTargets targets,
 	ISender sender)
 {
-	private const int MaxRoomNameLength = 50;
-
-	private const int DefaultTimerSeconds = 30;
-
 	private static readonly FrozenSet<string> NonChainableSubcommands =
 		new[] { "", "help", "make", "makeprivate", "in", "join" }
 			.ToFrozenSet(StringComparer.OrdinalIgnoreCase);

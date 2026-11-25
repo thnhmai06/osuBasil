@@ -28,6 +28,14 @@ public sealed record RoomSettingsChange(
 	bool ClearBeatmap = false,
 	bool? IsPrivate = null)
 {
+	/// <summary>Creates the change that sets the room's mods and freemods; a value not given means no mods and freemods off.</summary>
+	/// <param name="mods">The mods to set, or <see langword="null"/> for none.</param>
+	/// <param name="freemods">Whether players choose their own mods, or <see langword="null"/> for off.</param>
+	public static RoomSettingsChange OfMods(GameMods? mods, bool? freemods)
+	{
+		return new RoomSettingsChange(Mods: mods ?? GameMods.NoMod, Freemods: freemods ?? false);
+	}
+
 	/// <summary>Gets whether the change touches something a round plays with: the beatmap, mode, mods, freemods, team type or win condition.</summary>
 	public bool AltersTheRound => Beatmap is not null || ClearBeatmap || Mode is not null || Mods is not null ||
 	                              Freemods is not null || TeamType is not null || WinCondition is not null;

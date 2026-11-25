@@ -16,6 +16,6 @@ internal sealed class StartRoomCountdownHandler(ISender sender, RoomCountdowns c
 		// A countdown that starts a round is refused when a round could not start now.
 		if (request.StartsRound && request.Room.CheckStart() is var refusal and not RoomActionResult.Ok) return refusal;
 
-		return await countdowns.StartAsync(request.Actor, request.Room, request.Duration, request.StartsRound, ct);
+		return await countdowns.StartAsync(request.Actor, request.Room, request.Length, request.StartsRound, ct);
 	}
 }

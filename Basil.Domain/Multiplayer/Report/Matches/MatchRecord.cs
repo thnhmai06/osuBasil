@@ -43,13 +43,16 @@ public sealed class MatchRecord : IEquatable<MatchRecord>
 /// <summary>The data of a match: its name, creator, time span and visibility.</summary>
 public sealed class MatchData
 {
-	/// <summary>Gets or sets the name of the match.</summary>
+	/// <summary>The most characters a match name keeps; a longer name is cut to this length.</summary>
+	public const int MaxNameLength = 50;
+
+	/// <summary>Gets or sets the name of the match; a name longer than <see cref="MaxNameLength"/> is cut.</summary>
 	/// <exception cref="InvalidRoomSettingsException">The name is blank or contains a NUL character.</exception>
 	public required string Name
 	{
 		get;
 		set => field = IsValidName(value)
-			? value
+			? (value.Length > MaxNameLength ? value[..MaxNameLength] : value)
 			: throw new InvalidRoomSettingsException();
 	}
 

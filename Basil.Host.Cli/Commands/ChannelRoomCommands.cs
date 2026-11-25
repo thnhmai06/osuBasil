@@ -210,7 +210,7 @@ internal static class ChannelRoomCommands
 	private static async Task<int> CreateRoomAsync(CommandCall call)
 	{
 		var (room, result) = await call.Get<ISender>().Send(new OpenRoom(await call.ByAsync(),
-			RoomCommands.Truncate(call.Required("name")), call.Text("password") ?? string.Empty, RoomSource.Api,
+			call.Required("name"), call.Text("password") ?? string.Empty, RoomSource.Api,
 			call.Bool("private") ?? false), call.CancellationToken);
 		if (result != LobbyResult.Ok) return call.Refuse(result);
 

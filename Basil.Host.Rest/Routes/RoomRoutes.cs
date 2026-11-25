@@ -120,7 +120,7 @@ internal static class RoomRoutes
 		if (string.IsNullOrWhiteSpace(request!.Name)) return Api.Invalid("name is required.");
 
 		var (room, result) = await sender.Send(new OpenRoom(context.Session(),
-				RoomCommands.Truncate(request.Name), request.Password ?? string.Empty, RoomSource.Api,
+				request.Name, request.Password ?? string.Empty, RoomSource.Api,
 				request.IsPrivate ?? false),
 			context.RequestAborted);
 		return result == LobbyResult.Ok ? Api.Created(RoomView.Of(room!)) : result.Refusal();
