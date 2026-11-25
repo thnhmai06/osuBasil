@@ -70,7 +70,7 @@ internal sealed partial class MpCommands
 		CancellationToken ct)
 	{
 		var actor = context.Actor;
-		if (seconds < 1 || TimeSpan.FromSeconds(seconds) > RoomCountdown.Max)
+		if (!RoomCountdown.AllowsLength(TimeSpan.FromSeconds(seconds)))
 		{
 			await context.Reply(BotReply.MpCountdownOutOfRange, ct);
 			return false;

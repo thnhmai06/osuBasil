@@ -47,9 +47,7 @@ internal sealed class RoomCountdowns(
 	public async Task<RoomActionResult> StartAsync(Session actor, Room room, TimeSpan length, bool startsRound,
 		CancellationToken ct)
 	{
-		if (room.IsClosed) return RoomActionResult.RoomClosed;
-		if (length < RoomCountdown.Min || length > RoomCountdown.Max) throw new InvalidRoomSettingsException();
-		if (startsRound && room.Rounds.InProgress) return RoomActionResult.InProgress;
+		if (RoomCountdown.Refusal(room, length, startsRound) is { } refusal) return refusal;
 
 		var running = new Running(new RoomCountdown(actor, length, startsRound, clock.GetUtcNow()));
 		running.Timers =
