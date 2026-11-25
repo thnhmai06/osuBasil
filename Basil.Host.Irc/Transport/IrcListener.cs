@@ -10,6 +10,7 @@ using Basil.Application.Shared.Settings;
 using Basil.Domain.Sessions;
 using Basil.Gateway.Admission;
 using Basil.Gateway.Limits;
+using Basil.Application.Servers.Objects;
 using Basil.Host.Irc.Clients;
 using Basil.Host.Irc.Commands;
 using Basil.Host.Irc.Support;
@@ -27,6 +28,7 @@ internal sealed class IrcListener(
 	IrcCommands commands,
 	IrcClients clients,
 	IrcState state,
+	Server server,
 	IReplies<IrcReply> replies,
 	Admission admission,
 	ISender sender,
@@ -133,7 +135,6 @@ internal sealed class IrcListener(
 
 	public void Announce()
 	{
-		state.AcceptingLogins = false;
 		foreach (var (session, _) in _sessions)
 		{
 			session.Send(IrcMessage.ServerNotice(session.ServerName, session.Nick, replies.Text(IrcReply.ShuttingDownNotice)));
@@ -143,7 +144,6 @@ internal sealed class IrcListener(
 
 	public override async Task StopAsync(CancellationToken ct)
 	{
-		state.AcceptingLogins = false;
 		_listener?.Stop();
 		Announce();
 		await Task.WhenAny(Task.WhenAll(_sessions.Select(pair => pair.Value)),
@@ -189,7 +189,7 @@ internal sealed class IrcListener(
 
 	private void RejectIfStopping(IrcSocket session)
 	{
-		if (!state.AcceptingLogins) session.Close(replies.Text(IrcReply.ServerStopping));
+		if (!server.AcceptingLogins) session.Close(replies.Text(IrcReply.ServerStopping));
 	}
 
 	private async Task ReleaseAsync(IrcSocket session, Task writer)

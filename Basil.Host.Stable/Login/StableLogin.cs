@@ -1,3 +1,4 @@
+using Basil.Application.Servers.Objects;
 using Basil.Application.Sessions.Messages;
 using Basil.Host.Shared.Http;
 using Basil.Application.Sessions.Objects;
@@ -28,7 +29,7 @@ internal sealed class StableLogin(
 	GeneralChannelRegistry channels,
 	Outbox outbox,
 	SignInGate signIns,
-	StableState state,
+	Server server,
 	TimeProvider clock,
 	ISender sender)
 {
@@ -38,7 +39,7 @@ internal sealed class StableLogin(
 		CancellationToken ct)
 	{
 		var ip = ClientAddress.Resolve(context);
-		if (!state.AcceptingLogins) return Fail(LoginFailureReason.ErrorOccurred, StableReplies.ServerStopping);
+		if (!server.AcceptingLogins) return Fail(LoginFailureReason.ErrorOccurred, StableReplies.ServerStopping);
 
 		if (!TryParse(body, out var request, out var client))
 			return Fail(LoginFailureReason.ErrorOccurred);

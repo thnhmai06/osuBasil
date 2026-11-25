@@ -15,7 +15,18 @@ public sealed partial class Server
 		Context = context;
 	}
 
+	private volatile bool _acceptingLogins = true;
+
 	internal ServerContext Context { get; }
+
+	/// <summary>Gets whether the server takes new sign-ins; false once it has begun to shut down.</summary>
+	public bool AcceptingLogins => _acceptingLogins;
+
+	/// <summary>Stops the server from taking new sign-ins.</summary>
+	public void StopAccepting()
+	{
+		_acceptingLogins = false;
+	}
 
 	public ScopedServer ScopeTo(Session actor)
 	{

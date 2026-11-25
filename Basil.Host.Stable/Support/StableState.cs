@@ -3,11 +3,6 @@ using Basil.Application.Sessions.Registry;
 
 namespace Basil.Host.Stable.Support;
 
-public sealed class StableState
-{
-	public volatile bool AcceptingLogins = true;
-}
-
 internal sealed class RestartAnnouncer(SessionRegistry registry, Outbox outbox)
 {
 	public void Announce(TimeSpan delay)
@@ -16,17 +11,11 @@ internal sealed class RestartAnnouncer(SessionRegistry registry, Outbox outbox)
 	}
 }
 
-internal sealed class StableShutdown(StableState state, SessionRegistry registry, Outbox outbox, TimeProvider clock)
+internal sealed class StableShutdown(SessionRegistry registry, Outbox outbox, TimeProvider clock)
 {
-	public void StopAccepting()
-	{
-		state.AcceptingLogins = false;
-	}
-
 	public async Task<int> AnnounceAsync(TimeSpan reconnectAfter, TimeSpan pollWindow,
 		CancellationToken ct)
 	{
-		StopAccepting();
 		var clients = registry.Online.Values.SelectMany(user => user.Connections)
 			.Where(connection => connection is { IsOpen: true } and (StableSession or TourneySession))
 			.ToList();

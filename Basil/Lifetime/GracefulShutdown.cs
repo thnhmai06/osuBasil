@@ -31,7 +31,6 @@ internal sealed class GracefulShutdown(
 	ShutdownSequence sequence,
 	StableShutdown stable,
 	IrcListener irc,
-	IrcState ircState,
 	SseHub sse,
 	Server server,
 	EventQueue events,
@@ -80,9 +79,8 @@ internal sealed class GracefulShutdown(
 		[
 			new ShutdownStep("stop accepting new work", _timings.StopAccepting, _ =>
 			{
-				ircState.AcceptingLogins = false;
+				server.StopAccepting();
 				sse.StopAccepting();
-				stable.StopAccepting();
 				return Task.CompletedTask;
 			}),
 			new ShutdownStep("tell the osu! clients", _timings.AnnounceOsu,
