@@ -248,7 +248,7 @@ internal static class OsuWebRoutes
 
 	private static Submission ToSubmission(ScoreSubmission data, Md5Hash beatmapHash)
 	{
-		var score = new ScoreData(null, beatmapHash, WireMap.Known<GameMode>(data.Mode) ?? GameMode.Standard,
+		var score = new ScoreData(null, beatmapHash, WireMap.Known<GameMode>(data.Mode) ?? throw new FormatException(),
 			WireMap.Mods(data.Mods),
 			new ScoreState(
 				new HitCounts(data.Num300, data.Num100, data.Num50, data.NumGeki, data.NumKatu, data.NumMiss),
@@ -260,7 +260,7 @@ internal static class OsuWebRoutes
 
 	private static Grade ParseGrade(string grade)
 	{
-		return Enum.TryParse<Grade>(grade, true, out var parsed) && Enum.IsDefined(parsed) ? parsed : Grade.N;
+		return Enum.TryParse<Grade>(grade, true, out var parsed) && Enum.IsDefined(parsed) ? parsed : throw new FormatException();
 	}
 
 	private static async Task<IResult> GetReplayAsync(HttpContext context, WebAuthentication auth, ISender sender,
