@@ -83,6 +83,7 @@ One row per attempt, kept or reverted. Baseline and result are the medians of th
 | # | Idea | Baseline | Result | Verdict | Why |
 |---|---|---|---|---|---|
 | 0 | Baseline (image `e91917168`, 4 cores, 2026-11-25) | 1.98 / 1.63 / 2.87 / 12.2 / 195 / 0 | - | - | Spread over the three runs: osu p95 1.98–1.99, irc 1.59–1.69, api 2.83–2.90, CPU 11.8–13.1 %. One run shed 8 sign-ins while the ramp held the CPU near 0.9: sign-in cost (bcrypt, presence to everyone) is the first candidate. |
+| 1 | W14: every layer does only its own job (image `26b078a10` against `4dc697312`, 4 cores, 2026-11-26) | 1.99 / 1.62 / 2.85 / 12.4 / 152 / 0 | 1.98 / 1.66 / 2.68 / 12.4 / 157 / 0 | Kept | A placement change, not a tuning: every figure is within the run-to-run spread (osu p95 1.94–2.03, irc 1.62–1.74, api 2.66–3.01, CPU 11.7–12.9 %). The harness has no multiplayer or spectating, so the score and frame relay that W14 moved are not measured here. |
 
 ## Known limits
 

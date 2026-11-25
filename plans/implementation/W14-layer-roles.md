@@ -1,5 +1,10 @@
 # W14: every layer does only its own job
 
+**Done (2026-11-26).** Every audit id is placed except A1 (D16) and the submission-hash formula, which stays in Domain
+(`Submission`) because the beatmap hashes it covers come from Application. Release build clean, container check (1415
+registrations) clean, load harness within the spread of the baseline (`PERF.md` row 1). Not yet checked: a real-client
+session (E9) for sign-in, rooms, spectating and the IRC JOIN/PART/QUIT flows.
+
 Source: the layer audit `plans/review/layer-audit.md` (55 findings, ids below), checked against the roles the owner fixed
 on 2026-11-25 (`docs/for-developers/architecture.md` "Layers", `AGENTS.md` "Hosts, Gateway and Server"):
 
