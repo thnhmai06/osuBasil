@@ -1,0 +1,46 @@
+using Basil.Tests.Shared.Environment.Monitor;
+using Basil.Tests.Shared.Workload.Outcomes;
+using NBomber.Contracts;
+using NBomber.CSharp;
+
+namespace Basil.Tests.LoadTests;
+
+/// <summary>Declares the W15 SLO thresholds shared across load test modules.</summary>
+public static class SloThresholds
+{
+	/// <summary>Returns the standard per-channel and error-rate SLO thresholds for a scenario.</summary>
+	public static Threshold[] ForScenario(bool includePoll = false, bool includeSubmit = false,
+		bool includeGetScores = false, bool includeRest = false, bool includeLogin = false,
+		bool includeServerCpu = false, double maxErrorPercent = 0.5)
+	{
+		var thresholds = new List<Threshold>
+		{
+			Threshold.Create(stats => stats.Fail.Request.Percent < maxErrorPercent)
+		};
+
+		if (includePoll)
+		{
+			thresholds.Add(Threshold.Create(Channels.Poll, stats => stats.Ok.Latency.Percent95 <= 200));
+			thresholds.Add(Threshold.Create(Channels.Poll, stats => stats.Ok.Latency.Percent99 <= 500));
+		}
+
+		if (includeSubmit)
+			thresholds.Add(Threshold.Create(Channels.Submit, stats => stats.Ok.Latency.Percent95 <= 1000));
+
+		if (includeGetScores)
+			thresholds.Add(Threshold.Create(Channels.GetScores, stats => stats.Ok.Latency.Percent95 <= 500));
+
+		if (includeRest)
+			thresholds.Add(Threshold.Create(Channels.Rest, stats => stats.Ok.Latency.Percent95 <= 300));
+
+		if (includeLogin)
+			thresholds.Add(Threshold.Create(Channels.Login, stats => stats.Ok.Latency.Percent95 <= 2000));
+
+		if (includeServerCpu)
+			thresholds.Add(Threshold.Create(
+				metric => (metric.Gauges.Find(DiagnosticsMonitor.CpuGaugeName)?.Value ?? 0) <= 80.0,
+				startCheckAfter: TimeSpan.FromSeconds(15)));
+
+		return [.. thresholds];
+	}
+}

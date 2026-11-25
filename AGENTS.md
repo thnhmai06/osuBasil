@@ -300,7 +300,9 @@ Run Basil locally:
 dotnet run --project Basil
 ```
 
-The repository has no test projects at present; `Basil.slnx` lists none. When test projects exist, run each one on its
+The repository has no xUnit test projects at present; `Basil.slnx` lists the four black-box load test projects under `/Tests/`
+(`Basil.Tests.Shared.Clients`, `Basil.Tests.Shared.Workload`, `Basil.Tests.Shared.Environment`, `Basil.Tests.LoadTests`).
+`Basil.Tests.LoadTests` is an NBomber executable, not an xUnit project, so `dotnet test` never runs it. When xUnit test projects exist, run each one on its
 own and never pass the solution to `dotnet test`. The test tree mirrors the project folders, so a test project for
 `tests/<Layer>/<Module>` is run as:
 
@@ -429,10 +431,16 @@ translate the wire into the system's own messages and back; it does not validate
 Every project is a folder at the repository root named after its project: `Basil.Domain/`,
 `Basil.Application.<Module>/`, `Basil.Infrastructure.<Module>/`, `Basil.Host.{Shared,Stable,Irc,Rest,Cli}/`,
 `Basil.Protocol.{Game.Stable,Irc}/`. The project file and the namespace keep the full name
-(`Basil.Domain.csproj`, `Basil.Domain.*`, `Basil.Application.Users.Persistence`). Tests mirror the same tree under
-`tests/` (a test project for `Basil.Application.Users` goes in `tests/Application/Users/`, named
-`Basil.Application.Users.Tests.csproj`; shared fixtures go under `tests/Support/`, and tests that run several hosts go under
-`tests/Hosts/`). The repository has no test projects yet, so these are the places new tests belong.
+(`Basil.Domain.csproj`, `Basil.Domain.*`, `Basil.Application.Users.Persistence`). The four load-testing and simulated-client
+projects (`Basil.Tests.Shared.Clients/`, `Basil.Tests.Shared.Workload/`, `Basil.Tests.Shared.Environment/`,
+`Basil.Tests.LoadTests/`) also live flat at the repository root under the `/Tests/` solution folder rather than under `tests/`:
+they are an outside black-box client of Basil that reaches the server only over the network, references only
+`Basil.Protocol.Game.Stable` and `Basil.Protocol.Irc` (through `Basil.Tests.Shared.Clients`, which carries no NBomber
+dependency so future host/end-to-end tests can share it), and is never referenced by any production project. Unit and
+integration tests mirror the source tree under `tests/` (a test project for `Basil.Application.Users` goes in
+`tests/Application/Users/`, named `Basil.Application.Users.Tests.csproj`; shared fixtures go under `tests/Support/`, and tests
+that run several hosts go under `tests/Hosts/`). The repository has no xUnit test projects yet, so these are the places new
+tests belong.
 
 The project that defines an options type binds it (`Add<Module>...(IConfiguration)`), keeping every key path; the
 composition root only chooses what to run (Kestrel, ports, logging, lifecycle) and binds only the options it defines

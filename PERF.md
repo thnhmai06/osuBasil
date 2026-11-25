@@ -6,74 +6,81 @@ the ledger so nobody tries them again without a new reason.
 
 ## The harness
 
-`tools/LoadHarness` drives a running server through nginx the way real clients do:
+`Basil.Tests.LoadTests` (backed by `Basil.Tests.Shared.Clients`, `Basil.Tests.Shared.Workload` and
+`Basil.Tests.Shared.Environment`) drives a running server through nginx with NBomber the way real clients do:
 
-* **osu!** clients sign in on `c.<domain>`, then poll once a second with a ping, a chat message about every 20 polls and a
-  status change about every 45;
-* **IRC** clients register over TLS on port 6697, join `#osu`, send a message every 5 s and measure the round trip of a PING;
-* **API** callers sign in once on `api.<domain>`, then read a user, rooms and scores lists once a second.
+* **Tournament rooms (`match_room`)**: 2–8 players (`1v1`, `2v2`, `4v4`), one referee (half over IRC `!mp`, half over REST),
+  0–2 osu!tourney clusters (manager plus one child client per slot), in-game spectators, and SSE overlay viewers on
+  `/v1/matches/{id}` and `/v1/rooms/{id}/live`;
+* **Outside rooms**: solo players (`free_player` — `getscores`, play, encrypted score submission with replay, `getreplay`,
+  chat), casual rooms (`casual_room`), standalone spectators (`spectator`), tourney observers (`tourney_cluster`), overlay
+  viewers (`overlay_viewer`), IRC users (`irc_chatter`), background activities (`background`), login/logout churn (`churn`),
+  and deliberate rule refusals (`edge_cases`).
 
-It reports requests, failures by reason, p50, p95 and p99 latency and throughput per kind, and samples the server
-container's CPU and memory when `--container` is given. The ramp is not measured; a failed sign-in or connect is counted
-even during the ramp, under `osu-login`, `api-login` or `irc`.
+It classifies every request into `ok`, `refused`, `throttled` (429), `shed` (503) or `error` (only `error` counts against
+the SLO), records per-channel latency (`poll`, `submit`, `getscores`, `login`, `rest`, `irc`, `sse`, `download`, `upload`),
+streams Basil's `/v1/diagnostics` SSE feed into NBomber custom gauges and `diagnostics.jsonl`, and writes HTML, CSV, Markdown,
+text and `run-meta.json` reports under `reports/<test>-<timestamp>/`.
 
-### Accounts
+### Seeding accounts and world data
 
-Every client uses its own account (`name,password` per line). Create them against the running stack, once:
-
-```bash
-echo "name,password" > accounts.csv
-for i in $(seq -w 1 270); do
-  docker compose exec -T basil ./Basil users create --username "load$i" --password "load-pass-$i"
-  echo "load$i,load-pass-$i" >> accounts.csv
-done
-```
-
-`accounts.csv` holds passwords: keep it out of the repository.
-
-### nginx limits
-
-nginx limits requests and connections per address (`docker/nginx/nginx.conf`), and the harness comes from one address, so
-the default limits would answer it with 429. For a run, mount a copy with the limits raised in place of the shipped file,
-and never commit it:
+Seed once against the running stack through the public REST API (raises `rest.mutations` temporarily, creates player,
+referee, tourney and developer accounts, restores the default rate limit, and writes `accounts.csv` and `world-data.json`):
 
 ```bash
-sed -E 's/rate=[0-9]+r\/(s|m)/rate=100000r\/s/; s/limit_conn (http_conn|irc_conn) [0-9]+/limit_conn \1 60000/' \
-  docker/nginx/nginx.conf > docker-data/nginx-load.conf
+dotnet run --project Basil.Tests.LoadTests -c Release -- \
+  seed --connect 192.168.27.124 --port 8443 --domain basil.local \
+  --owner-user admin --owner-pass <password> \
+  --accounts accounts.csv --world world-data.json
 ```
 
-Then point the `nginx.conf` volume of the `nginx` service at `./docker-data/nginx-load.conf` (a
-`docker-compose.override.yml` does it), and run `docker compose up -d`. Restore the shipped file afterwards.
+`accounts.csv`, `world-data.json`, database dumps and `reports/` hold credentials or generated outputs: keep them out of git.
+
+### nginx limits and server-side SLO log
+
+nginx limits requests and connections per address (`docker/nginx/nginx.conf`), and a load generator comes from one address,
+so the default limits would answer it with 429. `docker/loadtests/nginx-load.conf` raises the per-address limits, listens on
+8443 (HTTPS) and 6697 (IRC TLS), and writes a tab-separated `load` access log with `$upstream_response_time`, `$request_time`,
+`$status`, `$uri` and whether `osu-token` was sent (poll versus login) for server-side SLO reporting.
 
 ### Running it
 
+Run a single test locally:
+
 ```bash
-dotnet run --project tools/LoadHarness -c Release -- \
-  --accounts accounts.csv --domain basil.local --insecure \
-  --osu 200 --irc 50 --api 20 --ramp 60s --duration 120s \
-  --container osubasil-basil-1 --out load-result.json
+dotnet run --project Basil.Tests.LoadTests -c Release -- \
+  smoke --connect 192.168.27.124 --port 8443 --irc-port 6697 --domain basil.local \
+  --accounts accounts.csv --world world-data.json --seed 20261125
 ```
 
-`--insecure` accepts the self-signed `basil.local` certificate; leave it off against a real certificate. `--connect <ip>`
-reaches a server whose domain does not resolve, and `--irc-host` points IRC elsewhere. The exit code is 1 when any request
-failed. Use `docker ps` for the container name.
+Available test commands: `seed`, `smoke`, `pilot`, `load`, `stress`, `spike`, `soak`, `capacity`, `scalability`, `control`.
+The exit code is 1 when any SLO threshold fails, the login lockout guard trips, or a server restart is detected.
 
-## The fixed scenario
+On the k3s bench (`docker/loadtests/`), one script deploys the stack, resets state between runs, publishes and copies the
+binary, runs both the generator Job (`cappuccino`) and the control/ping/iperf3 Job (`espresso`), and gathers every report and
+infrastructure log into `reports/<test>-<timestamp>/`:
 
-Every comparison uses this run on the same machine, with the same data, started from a freshly restarted stack:
+```bash
+./docker/loadtests/run.sh deploy
+./docker/loadtests/run.sh seed --owner-pass <password>
+./docker/loadtests/run.sh run smoke
+./docker/loadtests/run.sh run load --n 200 --seed 20261125
+./docker/loadtests/run.sh scalability --step-delta 50 --steps 6
+```
 
-| Part | Value |
+## SLO targets
+
+| Channel | Target |
 |---|---|
-| osu! clients | 200 (poll 1 s) |
-| IRC clients | 50 (message every 5 s) |
-| API callers | 20 (call every 1 s) |
-| Ramp | 60 s, not measured (a 20 s ramp saturates 4 cores with sign-ins and sheds some of them) |
-| Measured | 120 s |
-| Server | the Compose stack, the image under test, nothing else running on the machine |
+| osu! poll (`poll`) | p95 <= 200 ms, p99 <= 500 ms |
+| score submission (`submit`) | p95 <= 1 s |
+| getscores (`getscores`) | p95 <= 500 ms |
+| REST read (`rest`) | p95 <= 300 ms |
+| login (`login`) | p95 <= 2 s |
+| real errors (`error`) | < 0.5 % |
+| server | CPU <= 80 %, no OOM, no restart |
 
-Run it three times for each state (baseline and each change). The spread of the three runs is the run-to-run variance; a
-change counts only when its median beats the baseline median by more than that spread, on p95 latency, failures or CPU at
-the same request rate.
+`/d/` downloads (`download`) and uploads (`upload`) are reported separately and are not judged against latency targets.
 
 ## Ledger
 
@@ -88,5 +95,5 @@ One row per attempt, kept or reverted. Baseline and result are the medians of th
 
 **Sign-in rate.** A sign-in checks the password with bcrypt (about 145 ms of CPU) and sends the new player everyone's
 presence. On 4 cores, 270 sign-ins in 20 s (13.5 a second) held the CPU near 0.9 and the server shed some of them with
-503; the osu! client retries. bcrypt is slow on purpose and stays as it is (owner, 2026-11-25). The fixed scenario ramps
-over 60 s for that reason.
+503; the osu! client retries. bcrypt is slow on purpose and stays as it is (owner, 2026-11-25). The ramp duration is derived
+from `N * 0.145 / (cores * 0.5)` for that reason.

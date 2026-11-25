@@ -60,6 +60,6 @@ The first four were recorded while the last waves landed and not re-checked sinc
   a refusal no longer names the privileges.
 * A silenced IRC sender gets no numeric reply: the post outcome `Silenced` has no case in the IRC host's reply mapping.
 * `!mp` kick, unban, team and removeref have no test for an unknown name.
-* No load baseline exists yet. `tools/LoadHarness` and [`PERF.md`](../../PERF.md) define the scenario and keep the ledger,
+* `Basil.Tests.LoadTests` and [`PERF.md`](../../PERF.md) define the load test suite and keep the ledger,
   and the write pool (8 by default) and the single event reader per lane are the first limits to measure.
 * The real binary has been run against a database but not as a full per-protocol check with real clients.

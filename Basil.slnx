@@ -49,8 +49,8 @@
 	</Folder>
 	<Folder Name="/Tests/">
 		<Project Path="Basil.Tests.Shared.Clients/Basil.Tests.Shared.Clients.csproj" />
-	</Folder>
-	<Folder Name="/Tools/">
-		<Project Path="tools/LoadHarness/LoadHarness.csproj" />
+		<Project Path="Basil.Tests.Shared.Workload/Basil.Tests.Shared.Workload.csproj" />
+		<Project Path="Basil.Tests.Shared.Environment/Basil.Tests.Shared.Environment.csproj" />
+		<Project Path="Basil.Tests.LoadTests/Basil.Tests.LoadTests.csproj" />
 	</Folder>
 </Solution>

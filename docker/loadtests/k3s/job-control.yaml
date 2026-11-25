@@ -1,0 +1,80 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ${CONTROL_JOB_NAME}
+  namespace: basil-load
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: control
+        run: ${CONTROL_JOB_NAME}
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: espresso
+      hostNetwork: true
+      restartPolicy: Never
+      containers:
+        - name: control
+          image: mcr.microsoft.com/dotnet/runtime-deps:10.0
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              mkdir -p /reports
+              # Ping and iperf3 run alongside the control probe for network attribution.
+              if command -v ping >/dev/null 2>&1; then
+                ping -i 1 192.168.27.124 > /reports/ping.log 2>&1 &
+                PING_PID=$!
+              fi
+              if command -v iperf3 >/dev/null 2>&1; then
+                (while true; do
+                  date -u +"%Y-%m-%dT%H:%M:%SZ" >> /reports/iperf3.log
+                  iperf3 -c 192.168.27.124 -t 5 >> /reports/iperf3.log 2>&1 || true
+                  sleep 55
+                done) &
+                IPERF_PID=$!
+              fi
+              /bin-host/Basil.Tests.LoadTests control \
+                --connect 192.168.27.124 \
+                --port 8443 \
+                --irc-port 6697 \
+                --domain basil.local \
+                --accounts /data/accounts.csv \
+                --world /data/world-data.json \
+                --duration ${CONTROL_DURATION} \
+                --reports /reports
+              STATUS=$?
+              [ -n "${PING_PID:-}" ] && kill "$PING_PID" 2>/dev/null || true
+              [ -n "${IPERF_PID:-}" ] && kill "$IPERF_PID" 2>/dev/null || true
+              exit $STATUS
+          resources:
+            requests:
+              cpu: "1"
+              memory: 1Gi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          volumeMounts:
+            - name: bin
+              mountPath: /bin-host
+              readOnly: true
+            - name: data
+              mountPath: /data
+              readOnly: true
+            - name: reports
+              mountPath: /reports
+      volumes:
+        - name: bin
+          hostPath:
+            path: ${ESPRESSO_HOME}/loadtests/bin
+            type: Directory
+        - name: data
+          hostPath:
+            path: ${ESPRESSO_HOME}/loadtests/data
+            type: Directory
+        - name: reports
+          hostPath:
+            path: ${ESPRESSO_HOME}/loadtests/reports/${RUN_ID}
+            type: DirectoryOrCreate
