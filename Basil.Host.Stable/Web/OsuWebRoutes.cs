@@ -9,7 +9,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Basil.Application.Anticheat.Services;
+using Basil.Application.Anticheat.Messages;
 using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Persistence;
@@ -197,7 +197,7 @@ internal static class OsuWebRoutes
 	}
 
 	private static async Task<IResult> SubmitAsync(HttpContext context, SessionRegistry registry, ISender sender,
-		IAnticheatReporter anticheat, WebAuthentication auth, Admission admission,
+		WebAuthentication auth, Admission admission,
 		CancellationToken ct)
 	{
 		// A score submission carries a replay, which is far below the screenshot limit.
@@ -230,7 +230,7 @@ internal static class OsuWebRoutes
 					var known = await sender.Send(new FindBeatmapByHash(beatmapHash), ct);
 					var storyboard = Md5Text.TryParse(form.Field("sbk"), out var sb) ? sb : (Md5Hash?)null;
 					var submission = ToSubmission(data, beatmapHash);
-					anticheat.Report(client, submission.Flags);
+					await sender.Send(new ReportClientFlags(client, submission.Flags), ct);
 					var (result, _, receipt) = await sender.Send(new SubmitScore(client, submission,
 						known is null ? null : new BeatmapChecksums(known.Hash, storyboard), submittedClient,
 						form.File), ct);
@@ -308,8 +308,7 @@ internal static class OsuWebRoutes
 			});
 	}
 
-	private static async Task<IResult> LastFmAsync(HttpContext context, WebAuthentication auth,
-		IAnticheatReporter anticheat,
+	private static async Task<IResult> LastFmAsync(HttpContext context, WebAuthentication auth, ISender sender,
 		CancellationToken ct)
 	{
 		var query = context.Request.Query;
@@ -318,8 +317,8 @@ internal static class OsuWebRoutes
 		var b = query["b"].ToString();
 		// bancho.py: a leading "a" marks the flags the client detected; the rest is the flag bitmask.
 		if (!b.StartsWith('a') || !int.TryParse(b.AsSpan(1), out var flags)) return Text(string.Empty);
-		var signs = anticheat.Report(player, (ClientFlags)flags);
-		return Text(signs == ClientFlags.Clean ? string.Empty : "-3");
+		var flagged = await sender.Send(new ReportClientFlags(player, (ClientFlags)flags), ct);
+		return Text(flagged ? "-3" : string.Empty);
 	}
 
 	private static async Task<IResult> SearchAsync(HttpContext context, WebAuthentication auth, ISender sender,
