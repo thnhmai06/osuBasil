@@ -121,6 +121,21 @@ public sealed class SseHub(TimeProvider clock, SessionRegistry registry, ISender
 		if (_roots.TryGetValue(key, out var root)) root.Buffer.Enqueue(new SseEvent(data, id, eventName));
 	}
 
+	/// <summary>Tells whether a root has a stream open, so a publisher can skip building data nobody reads.</summary>
+	public bool IsWatched(string key)
+	{
+		return _roots.TryGetValue(key, out var root) && root.Count > 0;
+	}
+
+	/// <summary>Publishes a last event to a root; its streams end after the bundle that carries it.</summary>
+	public void Finish(string key, object data)
+	{
+		if (!_roots.TryGetValue(key, out var root)) return;
+
+		root.Buffer.Enqueue(new SseEvent(data));
+		root.Finishing = true;
+	}
+
 	internal int Pending(string key)
 	{
 		return _roots.TryGetValue(key, out var root) ? root.Buffer.Count : 0;
@@ -230,6 +245,7 @@ public sealed class SseHub(TimeProvider clock, SessionRegistry registry, ISender
 						complete = true;
 					}
 
+				complete |= root.Finishing;
 				var events = new List<SseEvent>();
 				while (root.Buffer.TryDequeue(out var item)) events.Add(item);
 
@@ -268,6 +284,8 @@ public sealed class SseHub(TimeProvider clock, SessionRegistry registry, ISender
 		private long _snapshotTick = -1;
 
 		public Func<CancellationToken, Task<SsePoll>>? Poll { get; init; }
+
+		public volatile bool Finishing;
 
 		public ConcurrentQueue<SseEvent> Buffer { get; } = new();
 

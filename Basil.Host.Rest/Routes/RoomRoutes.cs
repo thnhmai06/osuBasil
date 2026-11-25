@@ -32,7 +32,7 @@ internal static class RoomRoutes
 				"Includes its slots, referees and bans. A private room the caller may not view is answered with 404.");
 		rooms.MapGet("/{id:int}/live", LiveAsync).Sse().WithSummary("Stream a room.")
 			.WithDescription("""
-			                 The response is streamed using Server-Sent Events. The first event is the room as `GET /v1/rooms/{id}` returns it; after that a bundle arrives every second in which the room changed, carrying the room as it is then. The stream ends when the room closes and carries no gameplay or scores.
+			                 The response is streamed using Server-Sent Events. The first event is the room as `GET /v1/rooms/{id}` returns it; after that a bundle arrives every second in which the room changed, carrying the room as it is after each change. The stream ends when the room closes and carries no gameplay or scores.
 			                 """);
 
 		foreach (var command in RoomCommands.All) Command(rooms, command);
@@ -92,21 +92,12 @@ internal static class RoomRoutes
 	{
 		if (await Find(context, sender, id) is not { } room) return Api.NotFound("No such room.");
 
-		var initial = RoomView.Of(room);
-		var last = JsonSerializer.Serialize(initial, Api.Json);
-		return await context.StreamAsync($"room:{id}",
-			_ => Task.FromResult<(object, string?)>((initial, null)), null,
-			_ =>
-			{
-				if (room.IsClosed) return Task.FromResult(new SsePoll([new SseEvent(new { type = "closed" })], true));
+		return await context.StreamAsync(KeyOf(id), _ => Task.FromResult<(object, string?)>((RoomView.Of(room), null)));
+	}
 
-				var view = RoomView.Of(room);
-				var json = JsonSerializer.Serialize(view, Api.Json);
-				if (json == last) return Task.FromResult(new SsePoll([]));
-
-				last = json;
-				return Task.FromResult(new SsePoll([new SseEvent(new { type = "room", room = view })]));
-			});
+	internal static string KeyOf(int roomId)
+	{
+		return $"room:{roomId}";
 	}
 
 	private static async Task<IResult> CreateAsync(HttpContext context, ISender sender)
