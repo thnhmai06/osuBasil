@@ -50,7 +50,7 @@ Then point the `nginx.conf` volume of the `nginx` service at `./docker-data/ngin
 ```bash
 dotnet run --project tools/LoadHarness -c Release -- \
   --accounts accounts.csv --domain basil.local --insecure \
-  --osu 200 --irc 50 --api 20 --ramp 20s --duration 120s \
+  --osu 200 --irc 50 --api 20 --ramp 60s --duration 120s \
   --container osubasil-basil-1 --out load-result.json
 ```
 
@@ -67,7 +67,7 @@ Every comparison uses this run on the same machine, with the same data, started 
 | osu! clients | 200 (poll 1 s) |
 | IRC clients | 50 (message every 5 s) |
 | API callers | 20 (call every 1 s) |
-| Ramp | 20 s, not measured |
+| Ramp | 60 s, not measured (a 20 s ramp saturates 4 cores with sign-ins and sheds some of them) |
 | Measured | 120 s |
 | Server | the Compose stack, the image under test, nothing else running on the machine |
 
@@ -82,4 +82,4 @@ One row per attempt, kept or reverted. Baseline and result are the medians of th
 
 | # | Idea | Baseline | Result | Verdict | Why |
 |---|---|---|---|---|---|
-| 0 | Baseline (the image at the start of tuning) | | | | |
+| 0 | Baseline (image `e91917168`, 4 cores, 2026-11-25) | 1.98 / 1.63 / 2.87 / 12.2 / 195 / 0 | - | - | Spread over the three runs: osu p95 1.98–1.99, irc 1.59–1.69, api 2.83–2.90, CPU 11.8–13.1 %. One run shed 8 sign-ins while the ramp held the CPU near 0.9: sign-in cost (bcrypt, presence to everyone) is the first candidate. |
