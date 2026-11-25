@@ -119,16 +119,10 @@ public static class RoomCommands
 	/// <summary>The description of a command in the API reference: who may give it, what it reads and what it answers.</summary>
 	public static string Describe(RoomCommand command)
 	{
-		var roles = new List<string>();
-		if (command.Roles.HasFlag(RoomPrivileges.Player)) roles.Add("a player in the room");
-		if (command.Roles.HasFlag(RoomPrivileges.Host)) roles.Add("the host");
-		if (command.Roles.HasFlag(RoomPrivileges.Referee)) roles.Add("a referee");
-		if (command.Roles.HasFlag(RoomPrivileges.Creator)) roles.Add("the creator");
-		var who = roles.Count == 1 ? roles[0] : string.Join(", ", roles[..^1]) + " or " + roles[^1];
 		var body = command.Body is null
 			? "It takes no body."
 			: "A field that is missing or of the wrong type is answered with 422 and the field's name.";
-		return $"{command.Summary} Can be given by {who}, and by a user with the Tournament privilege; anyone else is refused with 403. {body} The answer is the room as it is after the command. A room that does not exist or that the caller may not view is answered with 404, and a closed room with 410.\n\nThe room's other rules can refuse the command with 409 or 422.";
+		return $"{command.Summary} A caller who may not give it is refused with 403. {body} The answer is the room as it is after the command. A room that does not exist or that the caller may not view is answered with 404, and a closed room with 410.\n\nThe room's other rules can refuse the command with 409 or 422.";
 	}
 
 	public static string Truncate(string name)
