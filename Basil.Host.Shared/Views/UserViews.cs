@@ -1,6 +1,7 @@
-using Basil.Application.Users.Registry;
+using Basil.Application.Users.Messages;
 using Basil.Domain.Sessions;
 using Basil.Domain.Users;
+using Mediator;
 
 namespace Basil.Host.Shared.Views;
 
@@ -20,13 +21,17 @@ public sealed record UserView(
 	UserPrivileges EffectivePrivileges,
 	DateTimeOffset? SilencedUntil)
 {
-	public static UserView Of(UserRegistry registry, UserRecord record, TimeProvider clock)
+	public static async Task<IReadOnlyList<UserView>> OfAsync(ISender sender, IReadOnlyList<UserRecord> records,
+		CancellationToken ct)
 	{
-		var user = registry.Of(record);
-		var now = clock.GetUtcNow();
+		return [.. (await sender.Send(new DescribeUsers(records), ct)).Select(Of)];
+	}
+
+	public static UserView Of(UserStanding standing)
+	{
+		var record = standing.Record;
 		return new UserView(record.Id, record.Value.Name, record.Value.Country.ToAcronym().ToLowerInvariant(),
-			record.Value.Privileges, user.EffectivePrivileges(now),
-			record.Value.IsSilenced(now) ? record.Value.SilencedEnd : null);
+			record.Value.Privileges, standing.EffectivePrivileges, standing.SilencedUntil);
 	}
 }
 

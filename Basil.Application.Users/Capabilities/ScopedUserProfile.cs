@@ -55,7 +55,7 @@ public readonly struct ScopedUserProfile(ScopedUser scoped)
 	}
 
 	// BasilBot's metadata changes like any user's; only its privileges, password and sessions are fixed.
-	private async Task<(User? User, UserActionResult Refusal)> GuardAsync()
+	internal async Task<(User? User, UserActionResult Refusal)> GuardAsync()
 	{
 		if (await scoped.IsLockedAsync(Locks.Profiles, UserPrivileges.Owner))
 			return (null, UserActionResult.Locked);

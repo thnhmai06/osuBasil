@@ -1,6 +1,7 @@
 using Basil.Application.Shared.Actors;
 using Basil.Application.Shared.Privileges;
 using Basil.Application.Shared.Settings;
+using Basil.Application.Users.Messages;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Users;
 using User = Basil.Application.Users.Objects.User;
@@ -90,6 +91,45 @@ public readonly struct ScopedUser
 	{
 		return (await _registry.Context.Settings.GetAsync(ct)).Locks.HasFlag(area) &&
 		       Lacks(manager);
+	}
+
+	/// <summary>Applies a change to the account: every refusal known beforehand is answered before anything changes, then the name, country, away message, private-message setting and privileges are set in that order.</summary>
+	/// <param name="change">What to change.</param>
+	public async Task<UserActionResult> UpdateAsync(UserChange change)
+	{
+		User? user = null;
+		if (change.Name is not null || change.Country is not null)
+		{
+			var (guarded, refusal) = await Profile.GuardAsync();
+			if (guarded is null) return refusal;
+
+			user = guarded;
+		}
+
+		if ((change.Away is not null || change.PmPrivate is not null) && this is { IsSelf: false, IsOperator: false })
+			return UserActionResult.NotSelf;
+
+		var privileges = change.Privileges?.Completed();
+		if (privileges is not null)
+		{
+			if (Deny(UserPrivileges.Owner) is { } denied) return denied;
+			if (await ResolveAsync() is not { } target) return UserActionResult.NotFound;
+			if (Guard(target, true) is { } refused) return refused;
+			if (Deny(target.Record.Value.Privileges ^ privileges.Value) is { } cannotGrant) return cannotGrant;
+
+			user ??= target;
+		}
+
+		user ??= await ResolveAsync();
+		if (user is null) return UserActionResult.NotFound;
+
+		if (change.Name is not null && await user.Profile.RenameAsync(change.Name) is var renamed and not UserActionResult.Ok)
+			return renamed;
+		if (change.Country is { } country) await user.Profile.SetCountryAsync(country);
+		if (change.Away is not null) user.Profile.SetAway(change.Away.Length == 0 ? null : change.Away);
+		if (change.PmPrivate is { } pmPrivate) user.Profile.SetPmPrivate(pmPrivate);
+		if (privileges is { } set) await user.SetPrivilegesAsync(set);
+		return UserActionResult.Ok;
 	}
 
 	public async Task<UserActionResult> DeleteAsync()

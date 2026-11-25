@@ -134,12 +134,11 @@ internal static class UserCommands
 	private static async Task<int> ListAsync(CommandCall call)
 	{
 		var page = call.Page();
-		var registry = call.Get<UserRegistry>();
-		var clock = call.Get<TimeProvider>();
-		var found = await call.Get<ISender>().Send(new SearchUsers(await call.ByAsync(),
+		var sender = call.Get<ISender>();
+		var found = await sender.Send(new SearchUsers(await call.ByAsync(),
 			UserQuery.Parse(call.Text("query") ?? string.Empty), page), call.CancellationToken);
-		call.PrintPage(new Page<UserView>(
-			[.. found.Items.Select(user => UserView.Of(registry, user, clock))], found.HasNext), page);
+		call.PrintPage(new Page<UserView>(await UserView.OfAsync(sender, found.Items, call.CancellationToken),
+			found.HasNext), page);
 		return ExitCodes.Success;
 	}
 
@@ -177,15 +176,16 @@ internal static class UserCommands
 		if (await call.Get<ISender>().Send(new GetUser(call.UserOf()), call.CancellationToken) is not { } record)
 			return call.NotFound(NoUser);
 
-		call.Formatter.Print(call.Output, UserView.Of(call.Get<UserRegistry>(), record, call.Get<TimeProvider>()));
+		call.Formatter.Print(call.Output,
+			(await UserView.OfAsync(call.Get<ISender>(), [record], call.CancellationToken))[0]);
 		return ExitCodes.Success;
 	}
 
 	private static async Task<int> SetAsync(CommandCall call)
 	{
 		var target = call.UserOf();
-		if (await SetProfileAsync(call, target) is { } profileRefusal) return profileRefusal;
-		if (await SetCredentialsAsync(call, target) is { } credentialsRefusal) return credentialsRefusal;
+		if (await UpdateAsync(call, target) is { } refusal) return refusal;
+		if (await SetPasswordAsync(call, target) is { } passwordRefusal) return passwordRefusal;
 
 		call.Output.Ok($"Updated {await LabelAsync(call, target)}: {string.Join(", ", call.Options.Keys)}.");
 		return ExitCodes.Success;
@@ -199,48 +199,28 @@ internal static class UserCommands
 			: $"account {id}";
 	}
 
-	private static async Task<int?> SetProfileAsync(CommandCall call, int target)
+	private static async Task<int?> UpdateAsync(CommandCall call, int target)
 	{
-		var ct = call.CancellationToken;
-		var sender = call.Get<ISender>();
-		var actor = await call.ByAsync();
-		if (call.Text("username") is { } name && await sender.Send(new RenameUser(actor, target, name), ct) is
-			    var renamed and not UserActionResult.Ok)
-			return call.Refuse(renamed);
-
+		Country? country = null;
 		if (call.Text("country") is { } code)
-		{
-			if (!(code.Length == 2 && Enum.TryParse<Country>(code, true, out var country) && Enum.IsDefined(country)))
-				throw CommandException.Invalid("--country must be a two-letter code.");
-			if (await sender.Send(new SetUserCountry(actor, target, country), ct) is var changed and not UserActionResult.Ok)
-				return call.Refuse(changed);
-		}
+			country = code.Length == 2 && Enum.TryParse<Country>(code, true, out var parsed) && Enum.IsDefined(parsed)
+				? parsed
+				: throw CommandException.Invalid("--country must be a two-letter code.");
 
-		if (call.Text("away") is { } away &&
-		    await sender.Send(new SetUserAway(actor, target, away.Length == 0 ? null : away), ct) is
-			    var awaySet and not UserActionResult.Ok)
-			return call.Refuse(awaySet);
-
-		if (call.Bool("pmPrivate") is { } pm &&
-		    await sender.Send(new SetUserPmPrivate(actor, target, pm), ct) is var pmSet and not UserActionResult.Ok)
-			return call.Refuse(pmSet);
-
-		return null;
+		var change = new UserChange(call.Text("username"), country, call.Text("away"), call.Bool("pmPrivate"),
+			call.Flags<UserPrivileges>("privileges"));
+		return await call.Get<ISender>().Send(new UpdateUser(await call.ByAsync(), target, change),
+			call.CancellationToken) is var result and not UserActionResult.Ok
+			? call.Refuse(result)
+			: null;
 	}
 
-	private static async Task<int?> SetCredentialsAsync(CommandCall call, int target)
+	private static async Task<int?> SetPasswordAsync(CommandCall call, int target)
 	{
-		var ct = call.CancellationToken;
-		var sender = call.Get<ISender>();
-		var actor = await call.ByAsync();
-		if (call.Flags<UserPrivileges>("privileges") is { } privileges &&
-		    await sender.Send(new SetUserPrivileges(actor, target, privileges), ct) is
-			    var set and not UserActionResult.Ok)
-			return call.Refuse(set);
-
 		if (call.Text("password") is { } password &&
-		    await sender.Send(new ChangeUserPassword(actor, target, CommandHelpers.Md5Of(password), null, false), ct) is
-			    var changedPassword and not UserActionResult.Ok)
+		    await call.Get<ISender>().Send(
+			    new ChangeUserPassword(await call.ByAsync(), target, CommandHelpers.Md5Of(password), null, false),
+			    call.CancellationToken) is var changedPassword and not UserActionResult.Ok)
 			return call.Refuse(changedPassword);
 
 		return null;

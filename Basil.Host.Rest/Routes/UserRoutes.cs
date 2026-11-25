@@ -103,17 +103,16 @@ internal static class UserRoutes
 			.WithDescription("The silence ends at once. An account that is not silenced is answered with 404.");
 	}
 
-	private static async Task<IResult> GetAsync(int id, ISender sender, UserRegistry registry,
-		TimeProvider clock, CancellationToken ct)
+	private static async Task<IResult> GetAsync(int id, ISender sender, CancellationToken ct)
 	{
 		var record = await sender.Send(new GetUser(id), ct);
 		return record is null
 			? Api.NotFound("No such user.")
-			: Api.Ok(UserView.Of(registry, record, clock));
+			: Api.Ok((await UserView.OfAsync(sender, [record], ct))[0]);
 	}
 
 	private static async Task<IResult> SearchAsync(HttpContext context, string? query, int? offset, int? limit,
-		ISender sender, UserRegistry registry, TimeProvider clock, CancellationToken ct)
+		ISender sender, CancellationToken ct)
 	{
 		var (page, error) = Targets.Paging(offset, limit);
 		if (error is not null) return error;
@@ -121,11 +120,11 @@ internal static class UserRoutes
 		var found = await sender.Send(new SearchUsers(context.Session(), UserQuery.Parse(query ?? string.Empty),
 			page!), ct);
 		return Api.Paged(
-			new Page<UserView>([.. found.Items.Select(u => UserView.Of(registry, u, clock))], found.HasNext),
+			new Page<UserView>(await UserView.OfAsync(sender, found.Items, ct), found.HasNext),
 			page!);
 	}
 
-	private static async Task<IResult> CreateAsync(HttpContext context, UserRegistry registry, TimeProvider clock)
+	private static async Task<IResult> CreateAsync(HttpContext context, ISender sender)
 	{
 		if (await context.Sender().Send(new MayCreateAccount(context.Session()), context.RequestAborted) is
 		    var may and not UserActionResult.Ok)
@@ -142,71 +141,33 @@ internal static class UserRoutes
 
 		var (record, result) = await context.Sender().Send(new CreateAccount(context.Session(), data,
 			new Md5Hash(Encoding.UTF8.GetBytes(request.Password)), request.Privileges), context.RequestAborted);
-		return result == UserActionResult.Ok ? Api.Created(UserView.Of(registry, record!, clock)) : result.Refusal();
+		return result == UserActionResult.Ok
+			? Api.Created((await UserView.OfAsync(sender, [record!], context.RequestAborted))[0])
+			: result.Refusal();
 	}
 
-	private static async Task<IResult> PatchAsync(HttpContext context, int id, ISender sender, UserRegistry registry,
-		TimeProvider clock)
+	private static async Task<IResult> PatchAsync(HttpContext context, int id, ISender sender)
 	{
-		var target = id;
 		var (request, refused) = await context.ReadBodyAsync<PatchUserRequest>();
 		if (refused is not null) return refused;
 
 		if (request is { Name: null, Country: null, Away: null, PmPrivate: null, Privileges: null })
 			return Api.Invalid("Send at least one field to change.");
 
-		var ct = context.RequestAborted;
-		if (await PatchNameAndCountryAsync(context, target, request!, ct) is { } refusal) return refusal;
-		if (await PatchSelfAndPrivilegesAsync(context, target, request!, ct) is { } denied) return denied;
+		var country = Targets.ParseCountry(request!.Country);
+		if (request.Country is not null && country is null) return Api.Invalid("country must be a two-letter code.");
 
-		var record = await sender.Send(new GetUser(target), ct);
+		var ct = context.RequestAborted;
+		var result = await sender.Send(new UpdateUser(context.Session(), id,
+			new UserChange(request.Name, country, request.Away, request.PmPrivate, request.Privileges)), ct);
+		if (result == UserActionResult.NotSelf)
+			return Api.Error(StatusCodes.Status403Forbidden, "notSelf", "Only the account itself can do this.");
+		if (result != UserActionResult.Ok) return result.Refusal();
+
+		var record = await sender.Send(new GetUser(id), ct);
 		return record is null
 			? Api.NotFound("No such user.")
-			: Api.Ok(UserView.Of(registry, registry.Of(record).Record, clock), "Updated successfully");
-	}
-
-	private static async Task<IResult?> PatchNameAndCountryAsync(HttpContext context, int target,
-		PatchUserRequest request, CancellationToken ct)
-	{
-		if (request.Name is not null &&
-		    await context.Sender().Send(new RenameUser(context.Session(), target, request.Name), ct) is
-			    var renamed and not UserActionResult.Ok)
-			return renamed.Refusal();
-
-		if (request.Country is null) return null;
-		if (Targets.ParseCountry(request.Country) is not { } country)
-			return Api.Invalid("country must be a two-letter code.");
-		return await context.Sender().Send(new SetUserCountry(context.Session(), target, country), ct) is
-			var changed and not UserActionResult.Ok
-			? changed.Refusal()
-			: null;
-	}
-
-	private static async Task<IResult?> PatchSelfAndPrivilegesAsync(HttpContext context, int target,
-		PatchUserRequest request, CancellationToken ct)
-	{
-		if (request.Away is not null && await context.Sender().Send(
-				    new SetUserAway(context.Session(), target, request.Away.Length == 0 ? null : request.Away), ct) is
-			    var away and not UserActionResult.Ok)
-			return NotSelf(away);
-		if (request.PmPrivate is { } pm &&
-		    await context.Sender().Send(new SetUserPmPrivate(context.Session(), target, pm), ct) is
-			    var pmPrivate and not UserActionResult.Ok)
-			return NotSelf(pmPrivate);
-		if (request.Privileges is { } privileges &&
-		    await context.Sender()
-				    .Send(new SetUserPrivileges(context.Session(), target, privileges), ct) is
-			    var set and not UserActionResult.Ok)
-			return set.Refusal();
-
-		return null;
-	}
-
-	private static IResult NotSelf(UserActionResult refused)
-	{
-		return refused == UserActionResult.Denied
-			? Api.Error(StatusCodes.Status403Forbidden, "notSelf", "Only the account itself can do this.")
-			: refused.Refusal();
+			: Api.Ok((await UserView.OfAsync(sender, [record], ct))[0], "Updated successfully");
 	}
 
 	private static async Task<IResult> PasswordAsync(HttpContext context, int id)
