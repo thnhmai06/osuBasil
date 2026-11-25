@@ -4,14 +4,14 @@ using Basil.Application.Beatmaps.Storage;
 using Basil.Application.Rulesets.Services;
 using Microsoft.Extensions.Logging;
 
-namespace Basil.Infrastructure.Beatmaps.Logic;
+namespace Basil.Application.Beatmaps.Logic;
 
 internal sealed class BeatmapsetImporter(
 	IBeatmapsetStorage storage,
 	BeatmapsetPlanner planner,
 	BeatmapsetStorer storer,
 	IRulesetUpdater rulesets,
-	ILogger<BeatmapsetImporter> logger) : IBeatmapsetImporter
+	ILogger<BeatmapsetImporter> logger)
 {
 	public async Task<(BeatmapsetImportResult Result, BeatmapsetIndexed? Imported)> ImportAsync(Stream archive,
 		bool replaceExisting, CancellationToken ct = default)

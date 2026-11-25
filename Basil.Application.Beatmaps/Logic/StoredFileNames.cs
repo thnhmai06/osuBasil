@@ -2,7 +2,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Basil.Application.Beatmaps.Persistence;
 
-namespace Basil.Infrastructure.Beatmaps.Logic;
+namespace Basil.Application.Beatmaps.Logic;
 
 internal static partial class StoredFileNames
 {

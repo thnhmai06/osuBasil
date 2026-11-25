@@ -1,7 +1,7 @@
 using Basil.Application.Beatmaps.Capabilities;
+using Basil.Application.Beatmaps.Logic;
 using Basil.Application.Beatmaps.Objects.Events;
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Rulesets.Messages;
 using Basil.Application.Rulesets.Ports;
 using Basil.Application.Shared.Actors;
@@ -15,14 +15,14 @@ namespace Basil.Application.Beatmaps.Objects;
 public sealed class Beatmapsets
 {
 	private readonly BeatmapsetContext _context;
-	private readonly IBeatmapsetImporter _importer;
-	private readonly IBeatmapsetScanner _scanner;
+	private readonly BeatmapsetImporter _importer;
+	private readonly BeatmapsetScanner _scanner;
 	private readonly IBeatmapRepository _beatmaps;
 	private readonly ISender _sender;
 	private readonly ISettingsRepository _settings;
 	private readonly Pending<int, BeatmapAnalysis?> _pending;
 
-	internal Beatmapsets(BeatmapsetContext context, IBeatmapsetImporter importer, IBeatmapsetScanner scanner,
+	internal Beatmapsets(BeatmapsetContext context, BeatmapsetImporter importer, BeatmapsetScanner scanner,
 		IBeatmapRepository beatmaps, ISender sender, ISettingsRepository settings)
 	{
 		_context = context;

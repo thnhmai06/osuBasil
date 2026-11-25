@@ -3,7 +3,7 @@ using Basil.Application.Beatmaps.Ports;
 using Basil.Domain.Beatmaps;
 using Basil.Shared.Structures.Cryptography;
 
-namespace Basil.Infrastructure.Beatmaps.Logic;
+namespace Basil.Application.Beatmaps.Logic;
 
 internal sealed class BeatmapsetMatcher(IBeatmapRepository beatmaps, IBeatmapsetRepository beatmapsets)
 {

@@ -4,7 +4,6 @@ using Basil.Application.Rulesets.Ports;
 using Basil.Application.Beatmaps.Services;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Infrastructure.Beatmaps.Adapters;
-using Basil.Infrastructure.Beatmaps.Logic;
 using Basil.Infrastructure.Beatmaps.Persistence;
 using Basil.Infrastructure.Beatmaps.Services;
 using Basil.Infrastructure.Beatmaps.Storage;
@@ -39,25 +38,12 @@ public static class DependencyInjection
 				if (string.IsNullOrWhiteSpace(options.CacheDirectory))
 					options.CacheDirectory = Path.Combine(paths.Cache.Path, "Previews");
 			});
-			services.AddBeatmapsLogic();
 			return services;
 		}
 
 		public IServiceCollection AddBeatmapsInfrastructureOptions(IConfiguration configuration)
 		{
 			services.AddOptions<AssetOptions>().Bind(configuration.GetSection("Basil:Assets"));
-			return services;
-		}
-
-		public IServiceCollection AddBeatmapsLogic()
-		{
-			services.AddSingleton<BeatmapsetMatcher>();
-			services.AddSingleton<BeatmapsetPlanner>();
-			services.AddSingleton<BeatmapsetFileWriter>();
-			services.AddSingleton<BeatmapsetFileAudit>();
-			services.AddSingleton<BeatmapsetStorer>();
-			services.AddSingleton<IBeatmapsetImporter, BeatmapsetImporter>();
-			services.AddSingleton<IBeatmapsetScanner, BeatmapsetScanner>();
 			return services;
 		}
 

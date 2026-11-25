@@ -5,7 +5,7 @@ using Basil.Application.Rulesets.Services;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
 
-namespace Basil.Infrastructure.Beatmaps.Logic;
+namespace Basil.Application.Beatmaps.Logic;
 
 internal sealed class BeatmapsetScanner(
 	IBeatmapsetStorage storage,
@@ -15,7 +15,7 @@ internal sealed class BeatmapsetScanner(
 	BeatmapsetStorer storer,
 	BeatmapsetFileWriter files,
 	BeatmapsetFileAudit audit,
-	IRulesetUpdater rulesets) : IBeatmapsetScanner
+	IRulesetUpdater rulesets)
 {
 	// Without the calculation stack no archive can be read, and an unread archive must not be taken for a broken one:
 	// the scan leaves everything, the waiting archives included, where it is until the stack is installed.

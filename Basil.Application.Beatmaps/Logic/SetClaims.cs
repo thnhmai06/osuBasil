@@ -1,7 +1,7 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Shared.Structures.Cryptography;
 
-namespace Basil.Infrastructure.Beatmaps.Logic;
+namespace Basil.Application.Beatmaps.Logic;
 
 internal sealed class SetClaims
 {

@@ -3,7 +3,7 @@ using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Domain.Beatmaps;
 
-namespace Basil.Infrastructure.Beatmaps.Logic;
+namespace Basil.Application.Beatmaps.Logic;
 
 internal sealed class BeatmapsetFileWriter(
 	IBeatmapsetReader reader,
