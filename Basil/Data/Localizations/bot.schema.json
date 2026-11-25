@@ -2,7 +2,7 @@
 	"$schema": "http://json-schema.org/draft-07/schema#",
 	"$id": "./bot.schema.json",
 	"title": "BasilBot replies",
-	"description": "The wording of every BasilBot reply, by reply name. A reply left out keeps its default wording.",
+	"description": "The wording of each reply related to BasilBot can be customized in the localization file. Values use ICU MessageFormat and may reference only the variables listed under Arguments. Replies omitted from the file keep their default wording from the code.",
 	"type": "object",
 	"properties": {
 		"$schema": {
@@ -10,843 +10,843 @@
 		},
 		"AnnounceAnticheatFlagPm": {
 			"type": "string",
-			"description": "A reply with the arguments {room}, {name}, {player}, {reason}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Sends the room creator and referees a private message about an anti-cheat flag recorded in the room.\n\nArguments:\n- {room}: The ID of the room being discussed.\n- {name}: The room name.\n- {player}: The name of the player flagged.\n- {reason}: The anti-cheat signs detected for the player."
 		},
 		"AnnounceAnticheatFlagRoom": {
 			"type": "string",
-			"description": "A reply with the arguments {player}, {reason}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Announces an anti-cheat flag for a player in the room.\n\nArguments:\n- {player}: The name of the player affected or mentioned.\n- {reason}: The reason associated with the anti-cheat flag."
 		},
 		"AnnounceCountdownCancelled": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Announces that the room countdown was cancelled."
 		},
 		"AnnounceCountdownCancelledByRoundAbort": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Announces that the countdown was cancelled because the round was aborted."
 		},
 		"AnnounceCountdownCancelledByRoundStart": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Announces that the countdown was cancelled because the round started another way."
 		},
 		"AnnounceCountdownElapsed": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Announces that the countdown has finished."
 		},
 		"AnnounceCountdownElapsedForRound": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Announces that the countdown ended but the round cannot start because no beatmap is selected."
 		},
 		"AnnounceCountdownReplaced": {
 			"type": "string",
-			"description": "A reply with the arguments {seconds}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Announces that a running countdown was replaced by a new countdown.\n\nArguments:\n- {seconds}: The countdown duration or wait time, in seconds."
 		},
 		"AnnounceCountdownStarted": {
 			"type": "string",
-			"description": "A reply with the arguments {seconds}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Announces that a room countdown has started.\n\nArguments:\n- {seconds}: The countdown duration or wait time, in seconds."
 		},
 		"AnnounceCountdownStartedForRound": {
 			"type": "string",
-			"description": "A reply with the arguments {seconds}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Announces that a round has been scheduled to start after a countdown.\n\nArguments:\n- {seconds}: The countdown duration or wait time, in seconds."
 		},
 		"AnnounceCountdownTicked": {
 			"type": "string",
-			"description": "A reply with the arguments {seconds}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Updates the remaining time in a room countdown.\n\nArguments:\n- {seconds}: The countdown duration or wait time, in seconds."
 		},
 		"AnnounceCountdownTickedForRound": {
 			"type": "string",
-			"description": "A reply with the arguments {seconds}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Updates the time remaining before the round starts.\n\nArguments:\n- {seconds}: The countdown duration or wait time, in seconds."
 		},
 		"AnnounceRoomClosingAnnounced": {
 			"type": "string",
-			"description": "A reply with the arguments {minutes}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Warns that an empty room will close unless a player joins before the deadline.\n\nArguments:\n- {minutes}: The number of minutes before the empty room closes."
 		},
 		"AnnounceRoomPlayerJoinedClosing": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Announces that a player joined an empty room that was due to close, so it will stay open."
 		},
 		"AnnounceRoundAborted": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Announces that the active round was aborted."
 		},
 		"AnnounceRoundEnded": {
 			"type": "string",
-			"description": "A reply with the arguments {id}, {seconds}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Announces that the round ended and gives the wait time for final results.\n\nArguments:\n- {id}: The index of the round that ended.\n- {seconds}: The countdown duration or wait time, in seconds."
 		},
 		"AnnounceRoundStartedByCountdown": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Sends the good-luck message when a round starts after a countdown."
 		},
 		"AnnounceRoundStartedNoPlayers": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Announces that the round cannot start because the room has no players."
 		},
 		"AnnounceScoreMissing": {
 			"type": "string",
-			"description": "A reply with the arguments {player}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Names a player who has not submitted a score after the round scores are collected.\n\nArguments:\n- {player}: The name of the player affected or mentioned."
 		},
 		"AnnounceScoresReceived": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Announces that all round scores have been received."
 		},
 		"AnnounceScoresReceivedExcept": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Introduces the list of players who have not submitted a round score."
 		},
 		"AnnounceSettingsChangedCountdownCancelled": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Announces that the countdown was cancelled because the room settings changed."
 		},
 		"BotAvailableFaqEntries": {
 			"type": "string",
-			"description": "A reply with the arguments {entries}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Lists the available FAQ entry names when a user requests the list.\n\nArguments:\n- {entries}: The names of the available FAQ entries."
 		},
 		"BotChainNotInLobby": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that command chains cannot be run in #lobby."
 		},
 		"BotChainOnlyMpAllowed": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that command chains can contain only !mp commands that support chaining."
 		},
 		"BotFaqUsage": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Shows the !faq syntax when the entry name or the list keyword is missing."
 		},
 		"BotHelpChannel": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Describes the !channel command in the help list."
 		},
 		"BotHelpFaq": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Describes the !faq command in the help list."
 		},
 		"BotHelpHelp": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Describes the !help command in the help list."
 		},
 		"BotHelpMp": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Describes the !mp command in the help list."
 		},
 		"BotHelpRoll": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Describes the !roll command in the help list."
 		},
 		"BotHelpWhere": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Describes the !where command in the help list."
 		},
 		"BotNo": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Text shown for a false value in !mp settings."
 		},
 		"BotNoFaqEntriesAvailable": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that !faq list has no FAQ entries to show."
 		},
 		"BotNoFaqEntryFound": {
 			"type": "string",
-			"description": "A reply with the arguments {entry}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Reports that the requested FAQ entry was not found.\n\nArguments:\n- {entry}: The FAQ entry name requested by the user."
 		},
 		"BotRollResult": {
 			"type": "string",
-			"description": "A reply with the arguments {user}, {points}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Shows the random number generated by !roll.\n\nArguments:\n- {user}: The account name of the user who ran !roll.\n- {points}: The random number generated by !roll."
 		},
 		"BotRollUsage": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Shows the !roll syntax when max is not a positive whole number."
 		},
 		"BotUnknownCommand": {
 			"type": "string",
-			"description": "A reply with the arguments {command}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Reports an unrecognized command. It is sent in private messages or room channels, not public channels.\n\nArguments:\n- {command}: The unrecognized command entered by the user."
 		},
 		"BotWhereIsIn": {
 			"type": "string",
-			"description": "A reply with the arguments {name}, {country}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Answers !where with the account’s known country.\n\nArguments:\n- {name}: The account name being looked up.\n- {country}: The account’s country name."
 		},
 		"BotWhereUnknownCountry": {
 			"type": "string",
-			"description": "A reply with the arguments {name}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Answers !where when the account’s country is unknown.\n\nArguments:\n- {name}: The account name being looked up."
 		},
 		"BotWhereUsage": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Shows the !where syntax when the username is missing."
 		},
 		"BotYes": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Text shown for a true value in !mp settings."
 		},
 		"ChannelCreated": {
 			"type": "string",
-			"description": "A reply with the arguments {name}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Confirms that a general channel was created.\n\nArguments:\n- {name}: The name of the channel created."
 		},
 		"ChannelDeleted": {
 			"type": "string",
-			"description": "A reply with the arguments {name}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Confirms that a general channel was deleted.\n\nArguments:\n- {name}: The name of the channel deleted."
 		},
 		"ChannelInvalidArguments": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports an invalid channel name or !channel option."
 		},
 		"ChannelListEntry": {
 			"type": "string",
-			"description": "A reply with the arguments {name}, {read}, {write}, {autoJoin}, {visible}, {topic}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Formats one channel entry in the !channel list output.\n\nArguments:\n- {name}: The name of the listed channel.\n- {read}: The account privileges required to read the channel.\n- {write}: The account privileges required to send messages to the channel.\n- {autoJoin}: Whether users automatically join the channel.\n- {visible}: Whether the channel appears in channel lists.\n- {topic}: The channel’s current topic."
 		},
 		"ChannelMissingPrivileges": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the caller needs the Moderator privilege to manage general channels."
 		},
 		"ChannelNameTaken": {
 			"type": "string",
-			"description": "A reply with the arguments {name}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Reports that the general channel name is already in use.\n\nArguments:\n- {name}: The channel name already in use."
 		},
 		"ChannelNoChannels": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the caller has no general channels they can view."
 		},
 		"ChannelNotFound": {
 			"type": "string",
-			"description": "A reply with the arguments {name}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Reports that the specified general channel was not found.\n\nArguments:\n- {name}: The channel name being looked up."
 		},
 		"ChannelRefused": {
 			"type": "string",
-			"description": "A reply with the arguments {outcome}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Explains why a general-channel management operation was refused.\n\nArguments:\n- {outcome}: The outcome identifying why the operation was refused or failed."
 		},
 		"ChannelUpdated": {
 			"type": "string",
-			"description": "A reply with the arguments {name}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Confirms that a general channel’s settings were updated.\n\nArguments:\n- {name}: The name of the channel updated."
 		},
 		"ChannelUsage": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Shows the syntax for the list, create, set, and delete !channel operations."
 		},
 		"MpAbortedMatch": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Confirms that the active round was aborted with !mp abort."
 		},
 		"MpAddRefUsage": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Shows the !mp addref syntax when the command is called without valid arguments."
 		},
 		"MpAddedReferee": {
 			"type": "string",
-			"description": "A reply with the arguments {player}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Confirms that a user was added as a room referee.\n\nArguments:\n- {player}: The name of the player affected or mentioned."
 		},
 		"MpAlreadyInThisMatch": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the caller has already joined this room."
 		},
 		"MpBanUsage": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Shows the !mp ban syntax when the command is called without valid arguments."
 		},
 		"MpBannedFromMatch": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the caller is banned from this room."
 		},
 		"MpBannedPlayerFromMatch": {
 			"type": "string",
-			"description": "A reply with the arguments {player}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Confirms that a player was banned from the room.\n\nArguments:\n- {player}: The name of the player affected or mentioned."
 		},
 		"MpCannotInvite": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the caller cannot invite the selected user under the room’s invitation rules."
 		},
 		"MpChangedBeatmap": {
 			"type": "string",
-			"description": "A reply with the arguments {artist}, {title}, {version}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Confirms that the room’s selected beatmap was changed.\n\nArguments:\n- {artist}: The selected beatmap’s artist.\n- {title}: The selected beatmap’s song title.\n- {version}: The selected beatmap’s difficulty name."
 		},
 		"MpChangedMatchHost": {
 			"type": "string",
-			"description": "A reply with the arguments {player}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Confirms that the room host role was transferred to another player.\n\nArguments:\n- {player}: The name of the player affected or mentioned."
 		},
 		"MpChangedMatchPassword": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Confirms that the room password was set or changed."
 		},
 		"MpChangedMatchSettings": {
 			"type": "string",
-			"description": "A reply with the arguments {teamType}, {winCondition}, {size}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Confirms that the team type, win condition, and optionally the room size were changed.\n\nArguments:\n- {teamType}: The room’s team type.\n- {winCondition}: The condition used to determine the winning team.\n- {size}: The new slot count, or “none” when the size was not changed."
 		},
 		"MpChangedMatchSize": {
 			"type": "string",
-			"description": "A reply with the arguments {size}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Confirms that the number of player slots in the room was changed.\n\nArguments:\n- {size}: The room’s player-slot count or the new count being set."
 		},
 		"MpClearedMatchHost": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Confirms that the room’s current host was cleared."
 		},
 		"MpClosedMatch": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Confirms that the room was closed immediately."
 		},
 		"MpCountdownOutOfRange": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the countdown duration is outside the allowed range of 1 second to 1 hour."
 		},
 		"MpCreatedMatch": {
 			"type": "string",
-			"description": "A reply with the arguments {room}, {name}, {privacy}, {channel}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Confirms that !mp make or !mp makeprivate created a room and identifies the room and its chat channel.\n\nArguments:\n- {room}: The ID of the room created.\n- {name}: The name of the room created.\n- {privacy}: The room privacy state, either private or public.\n- {channel}: The room’s chat channel name."
 		},
 		"MpDefaultRoomName": {
 			"type": "string",
-			"description": "A reply with the arguments {name}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Provides the default room name, based on the room creator’s name.\n\nArguments:\n- {name}: The room creator’s account name."
 		},
 		"MpDestinationSlotNotOpen": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the destination slot is not open when moving a player."
 		},
 		"MpDisabledFreemod": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Confirms that Freemod was disabled in the room."
 		},
 		"MpDisabledMods": {
 			"type": "string",
-			"description": "A reply with the arguments {mods}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Confirms that the specified mods were disabled in the room settings.\n\nArguments:\n- {mods}: The mods being enabled, disabled, or currently applied."
 		},
 		"MpEnabledFreemod": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Confirms that Freemod was enabled in the room."
 		},
 		"MpEnabledMods": {
 			"type": "string",
-			"description": "A reply with the arguments {mods}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Confirms that the specified mods were enabled in the room settings.\n\nArguments:\n- {mods}: The mods being enabled, disabled, or currently applied."
 		},
 		"MpFreemod": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The Freemod label shown in room settings or a player slot."
 		},
 		"MpFreemodNotEnabled": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that an operation requiring Freemod cannot proceed because Freemod is disabled."
 		},
 		"MpGenericFailed": {
 			"type": "string",
-			"description": "A reply with the arguments {outcome}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Reports a failed !mp operation when no more specific reply is available.\n\nArguments:\n- {outcome}: The outcome identifying why the operation was refused or failed."
 		},
 		"MpHelpAbort": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp abort command."
 		},
 		"MpHelpAborttimer": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp aborttimer command."
 		},
 		"MpHelpAddref": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp addref command."
 		},
 		"MpHelpBan": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp ban command."
 		},
 		"MpHelpBanlist": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp banlist command."
 		},
 		"MpHelpClearhost": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp clearhost command."
 		},
 		"MpHelpClose": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp close command."
 		},
 		"MpHelpHost": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp host command."
 		},
 		"MpHelpIn": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp in command."
 		},
 		"MpHelpInvite": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp invite command."
 		},
 		"MpHelpJoin": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp join command."
 		},
 		"MpHelpKick": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp kick command."
 		},
 		"MpHelpList": {
 			"type": "string",
-			"description": "A reply with the arguments {commands}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "The help text for the !mp list command.\n\nArguments:\n- {commands}: The list of subcommands being shown."
 		},
 		"MpHelpListrefs": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp listrefs command."
 		},
 		"MpHelpLock": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp lock command."
 		},
 		"MpHelpMake": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp make command."
 		},
 		"MpHelpMakeprivate": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp makeprivate command."
 		},
 		"MpHelpMap": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp map command."
 		},
 		"MpHelpMods": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp mods command."
 		},
 		"MpHelpMove": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp move command."
 		},
 		"MpHelpName": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp name command."
 		},
 		"MpHelpPassword": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp password command."
 		},
 		"MpHelpPrivate": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp private command."
 		},
 		"MpHelpRemoveref": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp removeref command."
 		},
 		"MpHelpSet": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp set command."
 		},
 		"MpHelpSettings": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp settings command."
 		},
 		"MpHelpSize": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp size command."
 		},
 		"MpHelpStart": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp start command."
 		},
 		"MpHelpTeam": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp team command."
 		},
 		"MpHelpTimer": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp timer command."
 		},
 		"MpHelpUnban": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp unban command."
 		},
 		"MpHelpUnlock": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The help text for the !mp unlock command."
 		},
 		"MpHostTag": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The host label shown in a player-slot entry."
 		},
 		"MpHostUsage": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Shows the !mp host syntax when the command is called without valid arguments."
 		},
 		"MpInUsage": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Shows the !mp in syntax when the command is called without valid arguments."
 		},
 		"MpIncorrectPassword": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the password entered to join the room was incorrect."
 		},
 		"MpInvalidMods": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the supplied mod list is invalid."
 		},
 		"MpInviteUsage": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Shows the !mp invite syntax when the command is called without valid arguments."
 		},
 		"MpInvitedToRoom": {
 			"type": "string",
-			"description": "A reply with the arguments {player}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Confirms that a player was invited to the room.\n\nArguments:\n- {player}: The name of the player affected or mentioned."
 		},
 		"MpJoinUsage": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Shows the !mp join syntax when the command is called without valid arguments."
 		},
 		"MpJoinedMatch": {
 			"type": "string",
-			"description": "A reply with the arguments {room}, {name}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Confirms that the caller joined the room.\n\nArguments:\n- {room}: The ID of the room joined.\n- {name}: The name of the room joined."
 		},
 		"MpKickUsage": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Shows the !mp kick syntax when the command is called without valid arguments."
 		},
 		"MpKickedFromMatch": {
 			"type": "string",
-			"description": "A reply with the arguments {player}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Confirms that a player was removed from the room.\n\nArguments:\n- {player}: The name of the player affected or mentioned."
 		},
 		"MpLockedMatch": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Confirms that the room’s player slots were locked."
 		},
 		"MpMapUsage": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Shows the !mp map syntax when the command is called without valid arguments."
 		},
 		"MpMatchAlreadyInProgress": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that a new round cannot start because a round is already in progress."
 		},
 		"MpMatchBans": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The heading for the room’s list of banned players."
 		},
 		"MpMatchClosed": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the operation cannot proceed because the room is closed."
 		},
 		"MpMatchHasNoTeams": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that a team-selection operation cannot be used because the room has no teams."
 		},
 		"MpMatchIsFull": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the room has no open slots."
 		},
 		"MpMatchIsLocked": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the room cannot be joined because it is locked."
 		},
 		"MpMatchIsPrivateNow": {
 			"type": "string",
-			"description": "A reply with the arguments {privacy}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Answers with the room’s current privacy status.\n\nArguments:\n- {privacy}: The room privacy state, either private or public."
 		},
 		"MpMatchNotInProgress": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the requested operation needs an active round, but none is running."
 		},
 		"MpMatchNowPrivate": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Announces that the room became private and explains who can view its history."
 		},
 		"MpMatchNowPublic": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Announces that the room became public."
 		},
 		"MpMatchReferees": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The heading for the room’s current referee list."
 		},
 		"MpMatchStarted": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Confirms that the round has started."
 		},
 		"MpMissingPrivileges": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the caller is not the room creator or a referee with management authority."
 		},
 		"MpModsUsage": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Shows the !mp mods syntax when the command is called without valid arguments."
 		},
 		"MpMoveUsage": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Shows the !mp move syntax when the command is called without valid arguments."
 		},
 		"MpMovedToSlot": {
 			"type": "string",
-			"description": "A reply with the arguments {player}, {slot}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Confirms that a player was moved to the specified slot.\n\nArguments:\n- {player}: The name of the player affected or mentioned.\n- {slot}: The player-slot number."
 		},
 		"MpMovedToTeam": {
 			"type": "string",
-			"description": "A reply with the arguments {player}, {team}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Confirms that a player was assigned to the specified team.\n\nArguments:\n- {player}: The name of the player affected or mentioned.\n- {team}: The team assigned to the player."
 		},
 		"MpMpInDmOnly": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that !mp in can only be used in a private message to BasilBot."
 		},
 		"MpNameUsage": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Shows the !mp name syntax when the command is called without valid arguments."
 		},
 		"MpNoActiveRoomWithHashId": {
 			"type": "string",
-			"description": "A reply with the arguments {room}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Reports that no active room was found for the specified #ID.\n\nArguments:\n- {room}: The ID of the room searched for."
 		},
 		"MpNoActiveRoomWithId": {
 			"type": "string",
-			"description": "A reply with the arguments {room}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Reports that no active room was found for the specified ID.\n\nArguments:\n- {room}: The ID of the room searched for."
 		},
 		"MpNoBannedPlayers": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the room’s ban list is empty."
 		},
 		"MpNoBeatmapSelected": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the operation requires a beatmap, but the room has none selected."
 		},
 		"MpNoBeatmapWithId": {
 			"type": "string",
-			"description": "A reply with the arguments {beatmap}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Reports that no beatmap was found with the specified ID.\n\nArguments:\n- {beatmap}: The beatmap ID being searched for or displayed."
 		},
 		"MpNoCountdownRunning": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that there is no countdown to cancel."
 		},
 		"MpNoMatchesAvailable": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the server cannot open any more rooms right now."
 		},
 		"MpNoModChanges": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the room’s mod settings did not change."
 		},
 		"MpNoReferees": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the room has no referees."
 		},
 		"MpNone": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Text used to indicate that no host or mod is set in !mp settings."
 		},
 		"MpNotInARoom": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the caller is not in a room and must join or select one."
 		},
 		"MpNotScopedToAnyMatch": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the caller has not selected a target room for !mp commands."
 		},
 		"MpNowTargetingMatch": {
 			"type": "string",
-			"description": "A reply with the arguments {room}, {name}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Confirms which room !mp in selected as the target.\n\nArguments:\n- {room}: The ID of the room selected as the target.\n- {name}: The name of the room selected as the target."
 		},
 		"MpOwnSlotLocked": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that a player cannot lock their own slot."
 		},
 		"MpPlayerReady": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that mods cannot be changed while the player is ready."
 		},
 		"MpPlayersOnly": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the operation requires the Player privilege."
 		},
 		"MpPrivateUsage": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Shows the !mp private syntax when the command is called without valid arguments."
 		},
 		"MpRemoveRefUsage": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Shows the !mp removeref syntax when the command is called without valid arguments."
 		},
 		"MpRemovedMatchPassword": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Confirms that the room password was removed."
 		},
 		"MpRemovedReferee": {
 			"type": "string",
-			"description": "A reply with the arguments {player}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Confirms that a user was removed from the room’s referee list.\n\nArguments:\n- {player}: The name of the player affected or mentioned."
 		},
 		"MpRoomLimitReached": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the creator has reached the allowed limit for open rooms."
 		},
 		"MpRoomNameUpdated": {
 			"type": "string",
-			"description": "A reply with the arguments {name}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Confirms that the room name was changed.\n\nArguments:\n- {name}: The name of the user or room mentioned."
 		},
 		"MpRoomPrefix": {
 			"type": "string",
-			"description": "A reply with the arguments {room}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "A prefix added to replies to identify the room they refer to.\n\nArguments:\n- {room}: The ID of the room being discussed."
 		},
 		"MpRoomsLocked": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that room creation is currently locked by the server."
 		},
 		"MpScoreNotCurrentRound": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the submitted score is not for the current round."
 		},
 		"MpSetUsage": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Shows the !mp set syntax for changing team type, win condition, and room size."
 		},
 		"MpSettingsAccess": {
 			"type": "string",
-			"description": "A reply with the arguments {locked}, {private}, {password}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "The !mp settings line showing the room’s locked, private, and password status.\n\nArguments:\n- {locked}: Whether the room is locked.\n- {private}: Whether the room is private.\n- {password}: Whether the room has a password."
 		},
 		"MpSettingsActiveMods": {
 			"type": "string",
-			"description": "A reply with the arguments {mods}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "The !mp settings line listing mods active for the room.\n\nArguments:\n- {mods}: The mods being enabled, disabled, or currently applied."
 		},
 		"MpSettingsBeatmap": {
 			"type": "string",
-			"description": "A reply with the arguments {beatmap}, {name}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "The !mp settings line showing the selected beatmap and its display name.\n\nArguments:\n- {beatmap}: The ID of the selected beatmap.\n- {name}: The selected beatmap’s display name."
 		},
 		"MpSettingsBeatmapNotSelected": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The !mp settings line shown when no beatmap is selected."
 		},
 		"MpSettingsCreator": {
 			"type": "string",
-			"description": "A reply with the arguments {id}, {name}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "The !mp settings line identifying the room creator by account ID and name.\n\nArguments:\n- {id}: The room creator’s account ID.\n- {name}: The room creator’s account name."
 		},
 		"MpSettingsHost": {
 			"type": "string",
-			"description": "A reply with the arguments {host}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "The !mp settings line showing the current room host.\n\nArguments:\n- {host}: The name of the current room host."
 		},
 		"MpSettingsInvalid": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the room’s current settings are invalid."
 		},
 		"MpSettingsPlayers": {
 			"type": "string",
-			"description": "A reply with the arguments {count}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "The !mp settings line showing the number of players in the room.\n\nArguments:\n- {count}: The number of players currently in the room."
 		},
 		"MpSettingsReferees": {
 			"type": "string",
-			"description": "A reply with the arguments {referees}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "The !mp settings line listing the room’s referees.\n\nArguments:\n- {referees}: The names of the room’s referees."
 		},
 		"MpSettingsRoomName": {
 			"type": "string",
-			"description": "A reply with the arguments {name}, {room}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "The !mp settings line showing the room name and ID.\n\nArguments:\n- {name}: The current room name.\n- {room}: The room ID."
 		},
 		"MpSettingsSize": {
 			"type": "string",
-			"description": "A reply with the arguments {size}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "The !mp settings line showing the room’s maximum number of player slots.\n\nArguments:\n- {size}: The room’s player-slot count or the new count being set."
 		},
 		"MpSettingsSlot": {
 			"type": "string",
-			"description": "A reply with the arguments {slot}, {status}, {team}, {id}, {name}, {tags}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "The !mp settings line describing a player slot and its occupant.\n\nArguments:\n- {slot}: The player-slot number.\n- {status}: The slot’s readiness or other status.\n- {team}: The player’s team, if the room uses teams.\n- {id}: The account ID of the player in the slot, or empty if the slot is unoccupied.\n- {name}: The name of the player in the slot.\n- {tags}: Additional labels shown after the player name."
 		},
 		"MpSettingsTeamMode": {
 			"type": "string",
-			"description": "A reply with the arguments {teamType}, {winCondition}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "The !mp settings line showing the team type and win condition.\n\nArguments:\n- {teamType}: The room’s team type.\n- {winCondition}: The condition used to determine the winning team."
 		},
 		"MpSizeOutOfRange": {
 			"type": "string",
-			"description": "A reply with the arguments {min}, {max}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Reports that the requested number of slots is outside the allowed range.\n\nArguments:\n- {min}: The minimum allowed number of slots.\n- {max}: The maximum allowed number of slots."
 		},
 		"MpSizeUsage": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Shows the !mp size syntax when the command is called without valid arguments."
 		},
 		"MpSlotStatusNoMap": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The slot status label used when the player has not selected a beatmap."
 		},
 		"MpSlotStatusNotReady": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "The slot status label used when the player is not ready."
 		},
 		"MpSpeedModsMatchWide": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that speed-changing mods can only be set for the whole room."
 		},
 		"MpTagNotAvailable": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that Tag team types are only available in osu! mode."
 		},
 		"MpTags": {
 			"type": "string",
-			"description": "A reply with the arguments {tags}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "The text appended after a player’s name to show slot labels.\n\nArguments:\n- {tags}: Additional slot labels, such as Host or Freemod."
 		},
 		"MpTargetAlreadyReferee": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the selected user is already a room referee."
 		},
 		"MpTargetInAnotherMatch": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the selected player is in another room."
 		},
 		"MpTargetIsBanned": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the selected player is banned from the room."
 		},
 		"MpTargetIsCreator": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the selected user created the room."
 		},
 		"MpTargetIsManager": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the operation cannot target the room creator or a referee."
 		},
 		"MpTargetIsObserver": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the selected player is observing the room."
 		},
 		"MpTargetIsPlayer": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the selected user is playing in the room."
 		},
 		"MpTargetNotBanned": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the selected user is not on the room’s ban list."
 		},
 		"MpTargetNotInMatch": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the selected player is not in the room."
 		},
 		"MpTargetNotObserver": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the selected user is not observing the room."
 		},
 		"MpTargetNotOnline": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the selected user is offline."
 		},
 		"MpTargetNotPlaying": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the selected user is not currently playing."
 		},
 		"MpTargetNotReferee": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the selected user is not a room referee."
 		},
 		"MpTeamUsage": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Shows the !mp team syntax when the command is called without valid arguments."
 		},
 		"MpTimerUsage": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Shows the !mp timer syntax when the command is called without valid arguments."
 		},
 		"MpUnbanUsage": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Shows the !mp unban syntax when the command is called without valid arguments."
 		},
 		"MpUnbannedFromMatch": {
 			"type": "string",
-			"description": "A reply with the arguments {player}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Confirms that a player was unbanned from the room.\n\nArguments:\n- {player}: The name of the player affected or mentioned."
 		},
 		"MpUnknownMpSubcommand": {
 			"type": "string",
-			"description": "A reply with the arguments {subcommand}. Wording is ICU MessageFormat; use only these arguments."
+			"description": "Reports that the !mp subcommand was not recognized.\n\nArguments:\n- {subcommand}: The unrecognized !mp subcommand."
 		},
 		"MpUnlockedMatch": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Confirms that the room was unlocked."
 		},
 		"MpUserAlreadyInRoom": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that the invited user is already in another room."
 		},
 		"MpUserNotFound": {
 			"type": "string",
-			"description": "A reply without arguments. Wording is ICU MessageFormat."
+			"description": "Reports that no account matched the supplied name or ID."
 		}
 	},
 	"additionalProperties": false
