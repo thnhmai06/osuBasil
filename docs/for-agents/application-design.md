@@ -2,7 +2,7 @@
 
 Rules for Domain and Application objects, capabilities, events and naming. Moved out of `AGENTS.md`; the rules are binding. Read this before touching `Basil.Domain`, `Basil.Application.*` or `Basil.Infrastructure.Bot`.
 
-> **Migration status.** The target architecture ([`architecture.md`](../for-developers/architecture.md)) moves handlers, object-free logic and service implementations from `Basil.Application.<Module>` into `Basil.Infrastructure.<Module>`, makes hosts send Mediator messages instead of calling `ScopeTo`, and moves BasilBot into its own module. The handlers, the object-free logic and the service implementations are already in `Basil.Infrastructure.<Module>`; the contracts stay in Application. A rule below that mentions `Handlers/`, `Logic/` or `Workers/` means the folder of the module's Infrastructure project. Hosts still call `ScopeTo` for the modules not yet migrated. New code follows the target.
+> **Migration status.** The target architecture ([`architecture.md`](../for-developers/architecture.md)) moves handlers and service implementations from `Basil.Application.<Module>` into `Basil.Infrastructure.<Module>` and keeps the object-free logic in `Basil.Application.<Module>/Logic/`, makes hosts send Mediator messages instead of calling `ScopeTo`, and moves BasilBot into its own module. The handlers and the service implementations are already in `Basil.Infrastructure.<Module>`; the contracts and the object-free logic stay in Application. A rule below that mentions `Handlers/` or `Workers/` means the folder of the module's Infrastructure project; `Logic/` means the folder of its Application project. Hosts still call `ScopeTo` for the modules not yet migrated. New code follows the target.
 
 ### Scopes and results (decided 2026-10-21; supersedes any older wording)
 
@@ -123,7 +123,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   holds shared paging and search syntax. Live objects (`Room`, `RoomSlot`, `User`, connections and channels), their
   contexts, their outcome enums and their event records live in **Objects/**; the registries that keep live objects in
   RAM (`UserRegistry`, `Lobby`, `GeneralChannelRegistry`, the channel registries) live in **Registry/**; the `Scoped*`
-  views live in **Capabilities/** (only those), the ports to external computation in **Ports/**, the contracts of the object-free logic in **Ports/** (an `internal` interface, implemented in `Infrastructure.<Module>/Logic`); the event handlers, the logic and the background runs live in the Infrastructure project (**Handlers/**, **Logic/**, **Workers/**). In the
+  views live in **Capabilities/** (only those), the ports to external computation in **Ports/**, the object-free logic in **Logic/**; the event handlers and the background runs live in the Infrastructure project (**Handlers/**, **Workers/**). In the
   Users module the user and its context are in `Objects/`, and its
   registry in `Registry/`; the Sessions module keeps its sessions in `Objects/` and its registry in `Registry/`. Persistence never decides a business rule, emits an event, calls a service or starts a
   timer. A state change and its consequences belong to the object that owns the state.
