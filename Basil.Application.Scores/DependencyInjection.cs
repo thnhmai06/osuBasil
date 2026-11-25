@@ -1,4 +1,5 @@
 using Basil.Application.Beatmaps.Persistence;
+using Basil.Application.Scores.Logic;
 using Basil.Application.Scores.Objects;
 using Basil.Application.Scores.Objects.Events;
 using Basil.Application.Scores.Ports;
@@ -6,6 +7,7 @@ using Basil.Application.Scores.Services;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Shared.Events;
 using Basil.Application.Shared.Settings;
+using Basil.Application.Users.Persistence;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -30,6 +32,10 @@ public static class DependencyInjection
 		services.AddSingleton<ScorePerformances>(sp => new ScorePerformances(
 			sp.GetRequiredService<TimeProvider>(),
 			sp.GetRequiredService<IScorePerformanceRecalculator>()));
+		services.AddSingleton<ScoreQueries>(sp => new ScoreQueries(
+			sp.GetRequiredService<IBeatmapRepository>(),
+			sp.GetRequiredService<IScoreRepository>(),
+			sp.GetRequiredService<IUserRepository>()));
 		return services;
 	}
 }
