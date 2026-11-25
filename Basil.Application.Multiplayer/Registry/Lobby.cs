@@ -10,6 +10,7 @@ using Basil.Application.Shared.Settings;
 using Basil.Application.Sessions.Objects;
 using Basil.Domain.Multiplayer.Report.Matches;
 using Basil.Domain.Multiplayer.Room;
+using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;
 using Basil.Shared.Structures.Data;
@@ -99,6 +100,13 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	{
 		// ponytail: scans every room; add a player index if room counts grow large.
 		return _rooms.Select(pair => pair.Value).FirstOrDefault(room => room.SlotOf(player) is not null);
+	}
+
+	/// <summary>Hands a submitted score to the room the player is playing in; rooms the player is not in ignore it.</summary>
+	internal void ReceiveScore(ScoreRecord score, UserRecord player)
+	{
+		foreach (var room in _rooms.Values)
+			room.ReceiveScore(score, player);
 	}
 
 	internal int? Reserve()
