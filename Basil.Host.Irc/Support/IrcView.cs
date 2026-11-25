@@ -1,5 +1,4 @@
 using Basil.Application.Chat.Objects;
-using Basil.Application.Sessions.Objects;
 using Basil.Domain.Users;
 using Basil.Protocol.Irc.Models;
 
@@ -22,17 +21,10 @@ internal static class IrcView
 		return new IrcUserPrefix(Nick(user), Nick(user), domain);
 	}
 
-	public static string Prefix(Channel channel, Session member, DateTimeOffset now, bool all)
+	public static string Prefix(ChannelMemberRole role, bool all)
 	{
-		var privileges = member.EffectivePrivileges(now);
-		var (authority, voice) = channel switch
-		{
-			RoomChannel room => (room.Room.IsManagedBy(member.Record), room.Room.Involves(member, privileges)),
-			GeneralChannel general => (privileges.Allows(UserPrivileges.Moderator),
-				privileges.Allows(general.Record.Value.WritePrivileges)),
-			_ => (false, false)
-		};
-		var symbols = (authority ? "@" : string.Empty) + (voice ? "+" : string.Empty);
+		var symbols = (role.HasFlag(ChannelMemberRole.Manager) ? "@" : string.Empty) +
+		              (role.HasFlag(ChannelMemberRole.Speaker) ? "+" : string.Empty);
 		return all || symbols.Length == 0 ? symbols : symbols[..1];
 	}
 

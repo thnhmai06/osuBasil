@@ -10,25 +10,14 @@ namespace Basil.Host.Irc.Commands;
 
 internal sealed partial class IrcCommands
 {
-	private IEnumerable<Channel> VisibleChannels(Session actor, DateTimeOffset now)
-	{
-		var privileges = actor.EffectivePrivileges(now);
-		foreach (var channel in general.VisibleTo(actor))
-			yield return channel;
-
-		foreach (var room in lobby.Rooms.Values)
-			if (!room.IsClosed && room.Involves(actor, privileges))
-				yield return roomChannels.Of(room);
-	}
-
 	private void Names(IrcSocket session, Session actor, IrcMessage message)
 	{
 		var names = message.Parameters.Count > 0
 			? message.Parameters[0].Split(',', StringSplitOptions.RemoveEmptyEntries)
-			: [.. VisibleChannels(actor, session.Now).Select(channel => channel.Name)];
+			: [.. directory.VisibleTo(actor).Select(channel => channel.Name)];
 		foreach (var name in names)
 			if (Resolve(name) is { } channel &&
-			    (channel.Members.Contains(actor) || VisibleChannels(actor, session.Now).Contains(channel)))
+			    (channel.Members.Contains(actor) || directory.VisibleTo(actor).Contains(channel)))
 				IrcChannels.SendNames(session, channel, replies);
 			else
 				session.Numeric(IrcNumericReply.RplEndOfNames, name, replies.Text(IrcReply.EndOfNames));
@@ -40,7 +29,7 @@ internal sealed partial class IrcCommands
 		var filter = message.Parameters.Count > 0
 			? message.Parameters[0].Split(',', StringSplitOptions.RemoveEmptyEntries)
 			: null;
-		foreach (var channel in VisibleChannels(actor, session.Now)
+		foreach (var channel in directory.VisibleTo(actor)
 			         .Where(channel =>
 				         filter is null || filter.Contains(channel.Name, StringComparer.OrdinalIgnoreCase)))
 			session.Numeric(IrcNumericReply.RplList, channel.Name, IrcView.UserCount(channel).ToString(),
@@ -51,15 +40,14 @@ internal sealed partial class IrcCommands
 	private void Who(IrcSocket session, Session actor, IrcMessage message)
 	{
 		var mask = message.Parameters.Count > 0 ? message.Parameters[0] : "*";
-		var now = session.Now;
 		if (mask.StartsWith('#'))
 		{
 			if (Resolve(mask) is { } channel &&
-			    (channel.Members.Contains(actor) || VisibleChannels(actor, now).Contains(channel)))
+			    (channel.Members.Contains(actor) || directory.VisibleTo(actor).Contains(channel)))
 				foreach (var group in channel.Members.GroupBy(member => member.Record)
 					         .OrderBy(group => IrcView.Nick(group.Key), StringComparer.OrdinalIgnoreCase))
 					WhoReply(session, channel.Name, group.First().User,
-						IrcView.Prefix(channel, group.First(), now, session.Has("multi-prefix")));
+						IrcView.Prefix(channel.RoleOf(group.First()), session.Has("multi-prefix")));
 		}
 		else if (FindUser(mask) is { } user)
 		{
@@ -97,14 +85,13 @@ internal sealed partial class IrcCommands
 		session.Numeric(IrcNumericReply.RplWhoIsServer, shown, session.ServerName, IrcReplies.Network);
 		if (user.AwayMessage is { } away) session.Numeric(IrcNumericReply.RplAway, shown, away.ReplaceLineEndings(" "));
 		session.Numeric(IrcNumericReply.RplWhoIsAccount, shown, shown, replies.Text(IrcReply.IsLoggedInAs));
-		var now = session.Now;
-		var visible = VisibleChannels(actor, now).ToHashSet();
+		var visible = directory.VisibleTo(actor).ToHashSet();
 		var channels = general.All.Values
 			.Where(channel =>
 				visible.Contains(channel) && channel.Members.Any(member => ReferenceEquals(member.User, user)))
-			.Select(channel => IrcView.Prefix(channel,
-				channel.Members.First(member => ReferenceEquals(member.User, user)),
-				now, false) + channel.Name).ToList();
+			.Select(channel => IrcView.Prefix(
+				channel.RoleOf(channel.Members.First(member => ReferenceEquals(member.User, user))), false) +
+			                   channel.Name).ToList();
 		if (channels.Count > 0) session.Numeric(IrcNumericReply.RplWhoIsChannels, shown, string.Join(' ', channels));
 		session.Numeric(IrcNumericReply.RplEndOfWhoIs, shown, replies.Text(IrcReply.EndOfWhoIs));
 	}

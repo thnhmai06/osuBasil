@@ -19,10 +19,9 @@ internal static class IrcChannels
 
 	public static void SendNames(IrcSocket session, Channel channel, IReplies<IrcReply> replies)
 	{
-		var now = session.Now;
 		var entries = channel.Members.GroupBy(member => member.Record)
 			.OrderBy(group => IrcView.Nick(group.Key), StringComparer.OrdinalIgnoreCase)
-			.Select(group => IrcView.Prefix(channel, group.First(), now, session.Has("multi-prefix")) +
+			.Select(group => IrcView.Prefix(channel.RoleOf(group.First()), session.Has("multi-prefix")) +
 			                 (session.Has("userhost-in-names")
 				                 ? IrcView.Mask(group.Key, session.Domain).ToString()
 				                 : IrcView.Nick(group.Key)));

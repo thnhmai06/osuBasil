@@ -40,6 +40,17 @@ public abstract class Channel
 
 	internal abstract bool CanWrite(Session connection, UserPrivileges privileges);
 
+	/// <summary>Gets the role of a member in this channel, from the member's own privileges.</summary>
+	public ChannelMemberRole RoleOf(Session member)
+	{
+		return RoleOf(member, member.EffectivePrivileges(Context.Clock.GetUtcNow()));
+	}
+
+	internal virtual ChannelMemberRole RoleOf(Session member, UserPrivileges privileges)
+	{
+		return ChannelMemberRole.None;
+	}
+
 	public ScopedChannel ScopeTo(Session actor)
 	{
 		return new ScopedChannel(this, actor);

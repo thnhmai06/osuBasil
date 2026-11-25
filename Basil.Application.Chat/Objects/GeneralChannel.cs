@@ -30,6 +30,12 @@ public sealed class GeneralChannel : Channel
 		return privileges.Allows(Record.Value.WritePrivileges);
 	}
 
+	internal override ChannelMemberRole RoleOf(Session member, UserPrivileges privileges)
+	{
+		return (privileges.Allows(UserPrivileges.Moderator) ? ChannelMemberRole.Manager : ChannelMemberRole.None) |
+		       (privileges.Allows(Record.Value.WritePrivileges) ? ChannelMemberRole.Speaker : ChannelMemberRole.None);
+	}
+
 	internal async Task<ChannelJoinResult> ConfigureAsync(GeneralChannelChange change,
 		Func<Session, UserPrivileges> privilegesOf)
 	{

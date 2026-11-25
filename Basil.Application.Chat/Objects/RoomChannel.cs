@@ -42,4 +42,10 @@ public sealed class RoomChannel : Channel
 	{
 		return Room.Involves(connection, privileges);
 	}
+
+	internal override ChannelMemberRole RoleOf(Session member, UserPrivileges privileges)
+	{
+		return (Room.IsManagedBy(member.Record) ? ChannelMemberRole.Manager : ChannelMemberRole.None) |
+		       (Room.Involves(member, privileges) ? ChannelMemberRole.Speaker : ChannelMemberRole.None);
+	}
 }

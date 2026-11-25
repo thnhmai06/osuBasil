@@ -31,7 +31,8 @@ public static class DependencyInjection
 			sp.GetRequiredService<RoomChannels>(),
 			sp.GetRequiredService<SpectatorChannels>(),
 			sp.GetRequiredService<PmChannels>(),
-			sp.GetRequiredService<SessionRegistry>()));
+			sp.GetRequiredService<SessionRegistry>(),
+			sp.GetRequiredService<TimeProvider>()));
 		return services;
 	}
 }

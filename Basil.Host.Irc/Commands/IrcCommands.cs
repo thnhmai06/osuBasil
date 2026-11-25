@@ -4,7 +4,6 @@ using Basil.Application.Sessions.Messages;
 using Basil.Application.Sessions.Registry;
 using System.Text;
 using Basil.Application.Chat.Registry;
-using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Sessions.Objects;
@@ -28,8 +27,7 @@ internal sealed partial class IrcCommands(
 	SessionRegistry registry,
 	Server server,
 	GeneralChannelRegistry general,
-	Lobby lobby,
-	RoomChannels roomChannels,
+	ChannelDirectory directory,
 	ISender sender,
 	Admission admission,
 	SignInGate signIns,

@@ -5,7 +5,6 @@ using Basil.Application.Sessions.Persistence;
 using Basil.Application.Sessions.Registry;
 using Basil.Application.Users;
 using System.Net;
-using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Scores.Messages;
 using Basil.Application.Shared.Settings;
@@ -106,8 +105,7 @@ internal sealed class StableLogin(
 		var user = connection.Siblings;
 		var now = clock.GetUtcNow();
 		var effective = user.EffectivePrivileges(now);
-		var roles = StableView.Roles(effective);
-		var privileges = (int)roles;
+		var privileges = StableView.Privileges(effective);
 		var motd = (await sender.Send(new ReadSettings(), ct)).General.Motd;
 		var friends = (await sender.Send(new ListFriends(connection, user.Record.Id), ct)).Users;
 		var silenceSeconds = user.Record.Value.IsSilenced(now)
@@ -127,7 +125,7 @@ internal sealed class StableLogin(
 			if (silenceSeconds > 0) writer.SilenceEnd(silenceSeconds);
 			if (!string.IsNullOrEmpty(motd)) writer.Notification(motd);
 			writer.FriendsList([.. friends.Select(friend => friend.Id)]);
-			foreach (var channel in channels.All.Values.Where(channel => ReadableBy(channel, roles)))
+			foreach (var channel in channels.VisibleTo(connection))
 				writer.ChannelInfo(channel.Name, channel.Topic, channel.Members.Count);
 			writer.ChannelInfoEnd();
 			foreach (var (other, stats) in others)
@@ -137,12 +135,6 @@ internal sealed class StableLogin(
 			}
 		});
 		return [.. welcome, .. outbox.Drain(connection)];
-	}
-
-	private static bool ReadableBy(GeneralChannel channel, UserPrivileges roles)
-	{
-		var read = channel.Record.Value.ReadPrivileges;
-		return channel.Record.Value.Visible && roles.Allows(read);
 	}
 
 	private static (string Token, byte[] Reply) Fail(LoginFailureReason reason, string? notification = null)

@@ -8,6 +8,7 @@ namespace Basil.Application.Chat.Registry;
 
 public sealed class ChannelDirectory
 {
+	private readonly TimeProvider _clock;
 	private readonly GeneralChannelRegistry _general;
 	private readonly Lobby _lobby;
 	private readonly PmChannels _pmChannels;
@@ -16,14 +17,27 @@ public sealed class ChannelDirectory
 	private readonly SpectatorChannels _spectatorChannels;
 
 	internal ChannelDirectory(GeneralChannelRegistry general, Lobby lobby, RoomChannels roomChannels,
-		SpectatorChannels spectatorChannels, PmChannels pmChannels, SessionRegistry registry)
+		SpectatorChannels spectatorChannels, PmChannels pmChannels, SessionRegistry registry, TimeProvider clock)
 	{
+		_clock = clock;
 		_general = general;
 		_lobby = lobby;
 		_roomChannels = roomChannels;
 		_spectatorChannels = spectatorChannels;
 		_pmChannels = pmChannels;
 		_registry = registry;
+	}
+
+	/// <summary>Gets the channels the session may see: the general channels it may read and the rooms it takes part in.</summary>
+	public IEnumerable<Channel> VisibleTo(Session actor)
+	{
+		foreach (var channel in _general.VisibleTo(actor))
+			yield return channel;
+
+		var privileges = actor.EffectivePrivileges(_clock.GetUtcNow());
+		foreach (var room in _lobby.Rooms.Values)
+			if (!room.IsClosed && room.Involves(actor, privileges))
+				yield return _roomChannels.Of(room);
 	}
 
 	public Channel? Find(ChatTarget target, Session viewer)
