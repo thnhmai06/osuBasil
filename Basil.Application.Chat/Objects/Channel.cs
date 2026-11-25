@@ -124,7 +124,7 @@ public abstract class Channel
 		if (!MutableMembers.Remove(connection)) return ChannelJoinResult.NotMember;
 		var lastOfUser = !Members.Any(member => ReferenceEquals(member.User, connection.User));
 		Context.Events.Publish(new ChannelMemberParted(this, connection, false, lastOfUser,
-			!connection.Siblings.IsOnline));
+			Context.Quitted.TryGetValue(connection, out _)));
 		return ChannelJoinResult.Ok;
 	}
 

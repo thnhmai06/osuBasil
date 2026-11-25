@@ -29,7 +29,7 @@ public sealed record ChannelMemberJoined(Channel Channel, Session Member, Sessio
 	: ChannelMembershipEvent(Channel);
 
 /// <param name="LastOfUser">Whether no other session of the member's user remains in the channel.</param>
-/// <param name="UserOffline">Whether the member's user is offline; the departure is then announced by <see cref="ChatQuit"/>.</param>
+/// <param name="UserOffline">Whether the member's user went offline and the departure was already announced by <see cref="ChatQuit"/>; no PART is shown then.</param>
 public sealed record ChannelMemberParted(Channel Channel, Session Member, bool Kicked, bool LastOfUser, bool UserOffline)
 	: ChannelMembershipEvent(Channel);
 

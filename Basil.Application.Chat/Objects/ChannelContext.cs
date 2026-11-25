@@ -1,7 +1,9 @@
+using System.Runtime.CompilerServices;
 using Basil.Application.Chat.Objects.Events;
 using Basil.Application.Chat.Persistence;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Shared.Events;
+using Basil.Application.Sessions.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Chat;
 
@@ -14,6 +16,9 @@ public sealed record ChannelContext(
 	RelationshipRegistry Relationships,
 	IChannelRepository Channels)
 {
+	// The closed sessions whose user's quit was announced: their later parts show no PART.
+	internal ConditionalWeakTable<Session, object> Quitted { get; } = new();
+
 	public GeneralChannel? OpenGeneral(GeneralChannelRecord record)
 	{
 		var channel = new GeneralChannel(record, this);

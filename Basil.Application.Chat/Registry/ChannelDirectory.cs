@@ -14,6 +14,7 @@ namespace Basil.Application.Chat.Registry;
 public sealed class ChannelDirectory
 {
 	private readonly TimeProvider _clock;
+	private readonly ChannelContext _context;
 	private readonly IEventPublisher<ChatEvent> _events;
 	private readonly GeneralChannelRegistry _general;
 	private readonly Lobby _lobby;
@@ -24,8 +25,9 @@ public sealed class ChannelDirectory
 
 	internal ChannelDirectory(GeneralChannelRegistry general, Lobby lobby, RoomChannels roomChannels,
 		SpectatorChannels spectatorChannels, PmChannels pmChannels, SessionRegistry registry, TimeProvider clock,
-		IEventPublisher<ChatEvent> events)
+		IEventPublisher<ChatEvent> events, ChannelContext context)
 	{
+		_context = context;
 		_clock = clock;
 		_events = events;
 		_general = general;
@@ -64,7 +66,9 @@ public sealed class ChannelDirectory
 	/// <summary>Announces that the user of a closed session went offline to the users who shared a channel with it; nothing is announced when none did.</summary>
 	public void Quit(Session closed, SessionEndReason reason)
 	{
+		// The audience is taken before the mark: a part in between shows a PART as well, never neither.
 		var audience = PeersOf(closed);
+		_context.Quitted.AddOrUpdate(closed, closed);
 		if (audience.Count > 0) _events.Publish(new ChatQuit(closed, reason, audience));
 	}
 
