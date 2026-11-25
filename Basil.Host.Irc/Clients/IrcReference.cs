@@ -19,7 +19,7 @@ public sealed class IrcReference(IOptions<IrcOptions> options) : IDocumentPage
 		("QUIT", false, "Close the connection."),
 		("PRIVMSG", true, "Send a message to a channel or a user, or a command to BasilBot."),
 		("NOTICE", true, "Send a notice; handled like `PRIVMSG`."),
-		("JOIN", true, "Join a channel you may read."),
+		("JOIN", true, "Join a channel you may read; spectator channels (`#spec_`) are not offered over IRC."),
 		("PART", true, "Leave a channel."),
 		("NAMES", true, "List who is in a channel."),
 		("LIST", true, "List the channels you may see."),
