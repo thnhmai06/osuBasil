@@ -2,9 +2,10 @@
 
 ## Overview
 
-Basil writes operational log files to `Logs/` next to the executable and shows the same events in the dashboard (or on
-stdout, as plain text without colour, with `--console 0`, which is what a container without a terminal runs). There,
-`docker compose logs` shows the system log.
+Basil writes operational log files to `Logs/` beside `Data/` and shows the same events in the dashboard (or on
+stdout, as plain text without colour, with `--console 0`). In the Compose deployment `Logs/` is `docker-data/Logs/` on
+the host, and that is where to read the system log: the `basil` container owns a terminal for the dashboard, so
+`docker compose logs basil` shows the dashboard, not the log.
 
 The folder is created when the server starts.
 
@@ -75,10 +76,9 @@ A non-zero count means the log is incomplete for that period.
 
 ### Logs are missing
 
-1. The server can create and write `Logs/` next to the executable.
-2. You are looking beside the executable, not in the source tree.
-3. In Docker, `Logs/` is bind-mounted (the Compose file does it) if you need the files after the container is removed.
-4. `docker compose logs -f` shows stdout.
+1. The server can create and write `Logs/` (in Docker, the host folder belongs to user `1654`).
+2. You are looking in the folder the server runs from (`docker-data/Logs/` in Docker), not in the source tree.
+3. In Docker, `Logs/` is bind-mounted (the Compose file does it), so the files survive the container.
 
 ### There is not enough detail
 

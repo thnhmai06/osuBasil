@@ -37,7 +37,7 @@ Basil.Infrastructure.Persistence    Npgsql design-time factories and all        
                                  PostgreSQL migrations;                              module Infrastructure projects
                                  only Basil references it
 Basil.Protocol.Game.Stable / .Irc     the translation language of each wire            -> Domain / nothing
-Basil.Gateway                    (target) admission control                       -> (nothing but the rate-limiting library)
+Basil.Gateway                    admission control                                -> (nothing but the rate-limiting library)
 Basil.Host.Shared                views and outcome-to-error mapping               -> Application projects
 Basil.Host.Stable/.Irc/.Rest/.Cli  transports                                     -> Host.Shared, Protocol, Gateway, Application
 Basil                            composition root -> everything
@@ -239,16 +239,18 @@ privileges. This rule is checked in review.
 
 ### Gateway: admission control
 
-`Basil.Gateway` **(target)** is a leaf project that answers one question about each incoming request, `Allow` or `Deny`
-(with a reason code and a retry delay), from facts that exist before business logic: size, rate, concurrency and load. It
+`Basil.Gateway` is a leaf project that answers one question about each incoming request, `Allow` or `Deny`
+(with a reason code and a retry delay), from facts that exist before business logic: rate, concurrency and load. It
 translates nothing, dispatches nothing and knows no business concept; it references no user type and has no bans or
-restrictions. The host enforces the answer in its protocol. The design is in [`gateway.md`](gateway.md).
+restrictions. The host enforces the answer in its protocol. Every per-address rule, the size a body declares and TLS belong
+to nginx in front of Basil, not to the Gateway. The design is in [`gateway.md`](gateway.md), the split with nginx in
+[`edge.md`](edge.md).
 
 ### Server: the way to run it
 
 The project `Basil` is the composition root: it builds dependency injection, binds
-configuration, chooses Kestrel, ports, TLS and the database provider, wires hosts, gateway and modules, owns logging and
-the lifecycle (start, stop, restart) and `Program.cs`. It calls `AddMediator` once so the generated code finds every
+configuration, chooses Kestrel and its plain-HTTP ports, wires hosts, gateway and modules, owns logging and
+the lifecycle (start and stop) and `Program.cs`. It holds no certificate: nginx ends TLS. It calls `AddMediator` once so the generated code finds every
 handler. It sees the whole system in order to run it, but means nothing to the hosts or the gateway: none of them knows it
 exists. It contains no business object, no recovery logic and no admission policy.
 
@@ -264,8 +266,9 @@ exists. It contains no business object, no recovery logic and no admission polic
 * Hosts reference `Host.Shared`, Protocol, Gateway and Application projects; they never reference Infrastructure or another
   host. Rest and Cli never reference `Protocol.Game.Stable`. **(target)** for the Infrastructure part.
 * Only the Server references everything.
-* Options belong to the project that defines them: that project binds them (`Add<Module>...(IConfiguration)`). **(target)**;
-  today the composition root binds all configuration and hands `IOptions<T>` over.
+* Options belong to the project that defines them: that project binds them (`Add<Module>...(IConfiguration)`), keeping
+  every key path. `Basil` binds only what it defines (server, logging, telemetry, updates); see
+  [`migration-status.md`](migration-status.md).
 
 ## Object capabilities
 
@@ -324,7 +327,7 @@ that root. The first event is a snapshot. See [`sse.md`](sse.md).
 * A notification is never awaited under a lock; objects enqueue, a dispatcher publishes.
 * A capability lives for one request.
 * Only the Sessions module creates a `Session`; every business message carries one.
-* Every entry point declares an admission policy **(target)**.
+* Every request is admitted by the Gateway before a module sees it; an entry point declares its work class, and one that declares none is `Interactive`.
 * Performance points are display-only; they never affect ranking or gameplay.
 * User-visible reply strings are centralized in the production type that owns them.
 
@@ -335,7 +338,7 @@ that root. The first event is a snapshot. See [`sse.md`](sse.md).
 * `Basil.Application.<Module>/`, `Basil.Infrastructure.<Module>/` — module contracts, objects and implementations.
 * `Basil.Protocol.Game.Stable/`, `Basil.Protocol.Irc/` — the translation language of each wire.
 * `Basil.Host.Shared/`, `Basil.Host.{Stable,Irc,Rest,Cli}/` — views and the transports.
-* `Basil/` — the composition root (`Lifetime/` for start, restart and shutdown, `Http/` for its middleware).
+* `Basil/` — the composition root (`Lifetime/` for start and shutdown, `Http/` for its middleware).
 * `Basil.Gateway/` — admission control in `Admission/`, `Limits/` and `RateLimiting/`.
 * Each module's Infrastructure project keeps its OpenTelemetry meter in `Metrics/`.
 
@@ -343,6 +346,7 @@ that root. The first event is a snapshot. See [`sse.md`](sse.md).
 
 | Topic | Documentation |
 |---|---|
+| The edge (nginx) and the roles in front of the Application | [`edge.md`](edge.md) |
 | Admission control | [`gateway.md`](gateway.md) |
 | Diagnostics | [`diagnostics.md`](diagnostics.md) |
 | osu! (stable) packet dispatch | [`osu-stable.md`](osu-stable.md) |

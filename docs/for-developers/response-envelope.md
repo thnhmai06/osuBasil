@@ -29,7 +29,7 @@ API route
     │
     ├── file or image response ────────────────► unchanged
     │
-    └── /live SSE response ────────────────────► unchanged
+    └── SSE stream ────────────────────────────► unchanged
 ```
 
 `Envelope<T>` is `{ success, code, message, data, meta, errors, timestamp }`:
@@ -51,7 +51,7 @@ member; no such test exists yet.
 | JSON `200` / `201`  | Yes      |
 | JSON error response | Yes      |
 | File or image       | No       |
-| `/live` SSE stream  | No       |
+| SSE stream          | No       |
 | `204 No Content`    | Not used |
 
 A route that produces JSON returns one of the `Api` results. It does not write JSON of its own.
@@ -75,7 +75,7 @@ The OpenAPI document is generated from the endpoint metadata and shaped by `Open
 
 * the schema `Envelope` is declared once, with the members above;
 * an operation transformer removes the handler's own `2xx` response and describes the success answer as an `Envelope`
-  (or as an event stream for a `/live` route), adds the `Bearer` security requirement and the `401` and `403` answers of a
+  (or as an event stream for a stream route), adds the `Bearer` security requirement and the `401` and `403` answers of a
   token route, and adds the shared `404`, `409`, `422` and `429` answers;
 * `.WithSummary` and `.WithDescription` document the public contract (see `AGENTS.md`, Rule 5), not the implementation.
 
@@ -145,9 +145,9 @@ Do not wrap a result in an `Envelope<T>` by hand and do not add endpoint-specifi
 A route that writes its own JSON bytes (or returns `Results.Json` with a different shape) breaks the envelope contract
 and is invisible to the OpenAPI transformer. Use `Api`.
 
-### Adding an SSE endpoint without following the `/live` convention
+### Adding an SSE endpoint that negotiates its answer
 
-A streaming endpoint has its own `/live` route, marked with `.Sse()`, and does not negotiate between JSON and SSE with
+A streaming endpoint is a route of its own, marked with `.Sse()`, and does not negotiate between JSON and SSE with
 the `Accept` header. A failure that happens before the stream starts is still a normal enveloped JSON response. See
 [`sse.md`](sse.md).
 

@@ -8,28 +8,38 @@ the server locally.
 * The [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet).
 * A PostgreSQL server. Basil keeps its records in PostgreSQL, so a development instance needs one; the simplest is a
   container (see [Clone and run](#clone-and-run)). Docker is also what database-backed tests use when no `BASIL_TEST_POSTGRES` server is set (see [Run tests](#run-tests)).
-* [FFmpeg](https://ffmpeg.org), on `PATH`, for beatmapset audio previews. See
-  [`deployment.md`](../for-technicians/deployment.md).
+* [FFmpeg](https://ffmpeg.org), on `PATH`, for beatmapset audio previews (the container image includes it).
+* Docker with Compose, for PostgreSQL and for the stack with nginx.
 
 ## Clone and run
 
-Clone the repository, start a PostgreSQL server and point Basil at it:
+Two ways to run Basil from a checkout, each for a purpose:
+
+* `dotnet run` runs the server alone, on plain HTTP. It is the loop for changing code and calling the API.
+* The Compose stack runs the server behind nginx, as a deployment does. It is the way to try an osu! client (which needs
+  HTTPS) or an IRC client (which needs TLS and a PROXY header).
+
+### `dotnet run`
+
+Clone the repository, start a PostgreSQL server and give Basil its connection string. The server stops at start with one
+line when `ConnectionStrings__Write` is missing, because the shipped settings hold no secret and no database address:
 
 ```bash
 git clone https://github.com/thnhmai06/osuBasil.git
 cd osuBasil
-docker run -d --name basil-pg -e POSTGRES_PASSWORD=basil -e POSTGRES_DB=basil -p 5432:5432 postgres:17-alpine
+docker run -d --name basil-pg -e POSTGRES_USER=basil -e POSTGRES_PASSWORD=basil -e POSTGRES_DB=basil \
+  -p 5432:5432 postgres:17-alpine
+export ConnectionStrings__Write="Host=localhost;Port=5432;Database=basil;Username=basil;Password=basil"
 dotnet run --project Basil -- --console 0
 ```
 
-The default connection string in
-[`appsettings.json`](../../Basil/Data/appsettings.json) is
-`Host=localhost;Port=5432;Database=basil;Username=basil;Password=basil`; create that role, or override the
-setting as described below. Database migrations run when the server starts.
+The role in the connection string must exist; `POSTGRES_USER=basil` creates it. Database migrations run when the server
+starts, and the server listens on `http://0.0.0.0:8080` (plain HTTP, the `Kestrel:Endpoints:Http:Url` setting).
 
-On the first run Basil creates its `Data/` directory next to the build output
-(`Basil/bin/Debug/net10.0/Data/`). The server never creates an account by itself; make the first
-administrator with the console, which runs the command against the storage without starting the server:
+On the first run Basil creates its `Data/` directory beside the build output (`Basil/bin/Debug/net10.0/Data/`), with
+`Cache/`, `Logs/` and `Temp/` beside it. The server never creates an account by itself; make the first administrator with
+the console, which runs the command against the storage without starting the server (the same
+`ConnectionStrings__Write` must be set in that shell):
 
 ```bash
 dotnet run --project Basil -- users create --username admin --password change-me --admin
@@ -37,6 +47,21 @@ dotnet run --project Basil -- users create --username admin --password change-me
 
 The console commands are specified in [`console.md`](../for-technicians/console.md). Without `--console 0` the server shows
 the terminal dashboard; when stdin or stdout is redirected it falls back to `--console 0` by itself.
+
+### The Compose stack
+
+From the repository root:
+
+```bash
+cp .env.example .env          # set POSTGRES_PASSWORD
+mkdir -p docker-data/{Data,Cache,Logs}
+chown -R 1654:1654 docker-data/Data docker-data/Cache docker-data/Logs
+docker compose up --build -d
+```
+
+This builds the image from your checkout and starts nginx, Basil and PostgreSQL. nginx publishes `80`, `443` and `6697`;
+Basil publishes no port. [`docker.md`](../for-technicians/docker.md) describes the stack and
+[`deployment.md`](../for-technicians/deployment.md) the steps after it starts (the calculation stack, the first account).
 
 ## Development configuration
 
@@ -49,37 +74,25 @@ Data/appsettings.json
 Data/appsettings.{Environment}.json   optional overlay, selected by ASPNETCORE_ENVIRONMENT
 ```
 
-A setting can also be overridden for one run on the command line of the server, for example
-`--Kestrel:Endpoints:Https:Url=http://127.0.0.1:8443`. A console command given on the command line does not take such options; for those,
-put the settings in an `appsettings.{Environment}.json` overlay and set `ASPNETCORE_ENVIRONMENT` to its name. Do not
-commit an overlay that holds a local connection string.
+A setting can also come from an environment variable (`Basil__Server__Domain`, a double underscore for `:`) or be
+overridden for one run on the command line of the server, for example `--Kestrel:Endpoints:Http:Url=http://127.0.0.1:8081`.
+A console command given on the command line does not take such options; for those, use environment variables or put the
+settings in an `appsettings.{Environment}.json` overlay and set `ASPNETCORE_ENVIRONMENT` to its name. Do not commit an
+overlay that holds a local connection string. Port `0` picks a free port.
 
-The defaults bind port `443` for HTTPS and `6667` for IRC. On a development machine without the privilege to bind `443`,
-pick another port with `--Kestrel:Endpoints:Https:Url=https://0.0.0.0:8443`; port `0` picks a free port. An `http://`
-URL (which needs no certificate)
-serves plain HTTP, which is enough for the API and the image hosts when you address them with a `Host` header.
-
-For local osu! client testing, set the domain:
-
-```json
-{
-  "Basil": {
-    "Server": {
-      "Domain": "basil.local"
-    }
-  }
-}
-```
-
-Replace `basil.local` with the local domain you intend to use. See
+The shipped domain is `basil.local`, which is what the osu! client and the sample names in these documents use. To
+develop against another domain, set `Basil__Server__Domain`. See
 [`configuration.md`](../for-technicians/configuration.md) for the complete reference.
 
 ### IRC
 
-The IRC gateway listens on port `6667` by default (`Basil:Server:Irc:Port`). For example, using an IRC client:
+Basil's IRC listener (`Basil:Server:Irc:Port`, default `6667`) closes every connection that does not open with a PROXY
+protocol header from a trusted proxy (loopback by default), so a plain IRC client cannot connect to `dotnet run` directly.
+Use the Compose stack and connect to `irc.basil.local` on `6697` with TLS (see
+[`irc-client.md`](../for-client/irc-client.md)), or write the header yourself from a script:
 
-```text
-/server basil.local 6667
+```bash
+{ printf 'PROXY TCP4 127.0.0.1 127.0.0.1 50000 6667\r\n'; cat; } | nc 127.0.0.1 6667
 ```
 
 Authenticate with your account password, sent as the connection password or through SASL `PLAIN`. See
@@ -87,9 +100,9 @@ Authenticate with your account password, sent as the connection password or thro
 
 ### Resetting the development database
 
-The server has not been deployed yet, so each module's `InitialCreate` migration is edited in place instead of adding
-a new migration. A development database that already applied an older `InitialCreate` fails to migrate: drop it
-(and let the server create it again) after pulling a change that touches a migration.
+The server has not been released, so each module's baseline migration is edited in place instead of adding a new
+migration. A development database that already applied an older baseline fails to migrate: drop it (and let the server
+create it again) after pulling a change that touches a migration.
 
 ## Trying the running server
 
@@ -98,15 +111,14 @@ want; the sub-domains are listed in [`configuration.md`](../for-technicians/conf
 
 ```bash
 TOKEN=$(curl -s -H "Host: api.basil.local" -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"change-me"}' http://127.0.0.1:8443/v1/auth/login \
+  -d '{"username":"admin","password":"change-me"}' http://127.0.0.1:8080/v1/auth/login \
   | python3 -c 'import json,sys; print(json.load(sys.stdin)["data"]["token"])')
-curl -s -H "Host: api.basil.local" -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8443/v1/channels
+curl -s -H "Host: api.basil.local" -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8080/v1/channels
 ```
 
-(This assumes `--Kestrel:Endpoints:Https:Url=http://127.0.0.1:8443`.) Run the real executable at least once before calling
-a change to the hosts, the shutdown or the configuration done, because in-process hosting in tests does not exercise the
-`Program` entry point: log in, chat over IRC, send `SIGTERM` and check that the exit code
-is `0`.
+Run the real executable at least once before calling a change to the hosts, the shutdown or the configuration done,
+because in-process hosting in tests does not exercise the `Program` entry point: log in, chat over IRC, send `SIGTERM`
+and check that the exit code is `0`.
 
 ## Running an osu! client against a development server
 
@@ -117,44 +129,36 @@ deployment:
 2. Hosts entries mapping those hostnames to your development machine.
 
 The osu! client does not distinguish between a development and production server. From the client's perspective, both
-must satisfy the same HTTPS and hostname requirements.
+must satisfy the same HTTPS and hostname requirements, and Basil itself serves no HTTPS: run the Compose stack, whose nginx
+ends TLS on `443`.
 
 ### Local certificate
 
-The repository includes a development certificate (`data/certs/basil.local.pfx`, copied to
-`Configurations/basil.local.pfx` in the build output) with the password:
-
-```text
-basil
-```
-
-The certificate covers the required `basil.local` subdomains, so the default local configuration can be used without
-generating another certificate.
+The repository includes a certificate for local development in `docker/nginx/certs/` (`basil.local.crt` and
+`basil.local.key`), which the Compose stack mounts into nginx. It covers `basil.local`, `*.basil.local` and
+`irc.basil.local`, so the default local configuration can be used without generating another certificate. Trust
+`basil.local.crt` on the machine that runs the client; [`getting-started.md`](../for-client/osu-stable/getting-started.md)
+shows how.
 
 For a different domain, generate an appropriate certificate using the commands in
-[`https.md`](../for-technicians/https.md), then configure:
-
-```text
-Kestrel:Certificates:Default:Path
-Kestrel:Certificates:Default:Password
-```
+[`https.md`](../for-technicians/https.md) and mount it over the two files nginx reads.
 
 > [!IMPORTANT]
-> The bundled certificate and password exist only as development conveniences. They are suitable for local development
-and private LAN testing, but must not be used for a production or publicly exposed server. See
-[`https.md`](../for-technicians/https.md).
+> The bundled certificate exists only as a development convenience: its private key is in the repository. It is suitable
+> for local development and private LAN testing, but must not be used for a production or publicly exposed server. See
+> [`https.md`](../for-technicians/https.md).
 
 ### Hosts entries
 
 Add the required hostnames to your system's hosts file and then launch the osu! client.
 
 The client-side setup is documented in [`getting-started.md`](../for-client/osu-stable/getting-started.md). The same client
-configuration applies whether Basil is running from a development checkout or from a deployed release.
+configuration applies whether Basil is running from a development checkout or from a deployed image.
 
 ### Client IP handling
 
-A local development server normally runs without a reverse proxy, and the client address is the address of the
-connection. Forwarding headers (`X-Forwarded-For`, `X-Real-IP`) are honoured only on requests from an address listed in
+`dotnet run` normally runs without a reverse proxy, and the client address is the address of the connection. The
+`X-Real-IP` header, the country header and `X-Forwarded-Proto` are honoured only on requests from an address listed in
 `Basil:Server:TrustedProxies`, which defaults to loopback; see [`configuration.md`](../for-technicians/configuration.md).
 
 ## Run tests
@@ -176,33 +180,18 @@ Testcontainers container (Docker; set `DOCKER_HOST` when the daemon is not on th
 See [`testing.md`](testing.md) for test-writing conventions and [`AGENTS.md`](../../AGENTS.md) for the repository's
 development workflow.
 
-## Build a standalone executable
+## Build the container image
 
-You can produce the same kind of self-contained output used by the release pipeline:
+Basil ships only as a container image. The `Dockerfile` publishes the server self-contained for `linux-x64` or
+`linux-arm64` and adds `ffmpeg`; `docker compose up --build` uses it. To build the image alone:
 
 ```bash
-dotnet publish Basil \
-  -c Release \
-  -r win-x64 \
-  --self-contained true \
-  -o publish/win-x64
+docker build -t basil:dev .
 ```
 
-Change `-r` to the target runtime identifier, for example:
-
-```text
-win-x64
-linux-x64
-osx-arm64
-```
-
-and any other RID supported by the release matrix.
-
-The resulting executable (`Basil`) is self-contained and does not require the .NET runtime to be installed on the
-target machine.
-
-`ffmpeg` remains an external runtime dependency for beatmapset audio previews. See
-[`deployment.md`](../for-technicians/deployment.md).
+`dotnet publish Basil -c Release -r linux-x64 --self-contained true -o publish` makes the same executable without the
+image. It does not need the .NET runtime on the machine that runs it, but `ffmpeg` remains an external dependency for
+beatmapset audio previews, and Basil still expects an nginx in front of it for HTTPS and IRC.
 
 ## Before changing the code
 

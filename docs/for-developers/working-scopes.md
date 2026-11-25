@@ -49,7 +49,8 @@ This includes:
 * general, room and spectator channels and private messages
 * the embedded IRC gateway
 
-The IRC gateway allows real IRC clients and tools such as osu-ahr to connect alongside osu! clients.
+The IRC gateway allows real IRC clients and bots to connect alongside osu! clients, over TLS only (nginx ends it); a tool
+that can only speak plain text IRC cannot connect.
 
 Chat commands (`!mp`, `!help`, `!roll`, `!where`, `!faq`, and the staff commands) and chat announcements (anticheat
 warnings, round and room notices) are part of the server, provided by BasilBot: a fixed user (id 1) that nobody can
@@ -120,12 +121,10 @@ The routes themselves are listed by the generated osu! (stable) reference, not h
 ### Account creation and operator console
 
 New accounts receive only the default privileges; being the first account grants no special privileges. The first
-administrator is created by the operator through a console command. The console is planned for the Host phase in
-`Basil.Cli`; it is not implemented yet. The design has no administrator key or bootstrap credentials. Account
-registration remains part of the supported game-client workflow, subject to `ServerSettings.LockedCreation`.
-
-The hosts have not been migrated to the new Application contracts, so do not treat the planned console or the
-redesigned account-creation rules as already integrated into every transport.
+administrator is created by the operator through a console command (`users create --admin`, see
+[`console.md`](../for-technicians/console.md)); the console is `Basil.Host.Cli`, a terminal dashboard and a shell
+command that skip the privilege checks. The design has no administrator key or bootstrap credentials. Account
+registration remains part of the supported game-client workflow, subject to the `accounts` lock of the server settings.
 
 ### Friends and private messages
 
@@ -154,7 +153,7 @@ The following features are deliberately not part of Basil's supported surface.
 | `!reconnect`, `!changename`, `!apikey`                                           | ❌ Out of scope | These are personal account commands outside Basil's multiplayer and tournament scope. (`!block` and `!unblock` are in scope.)                                 |
 | Multi-account detection, hardware bans, client hash checks, the `Verified` grant | ❌ Out of scope | The server does not judge who owns which account.                                                                                                             |
 | Blocking old osu! clients (`DISALLOW_OLD_CLIENTS`)                               | ❌ Out of scope | The server does not decide which client versions may sign in; score submission still checks the version it received at login.                                 |
-| Updating a country from the IP at login, or any third-party geolocation service | ❌ Out of scope | The stored country is the source. Only registration through the game client takes a country from the host (proxy header or an offline GeoLite2 file).        |
+| Updating a country from the IP at login, or any geolocation service            | ❌ Out of scope | The stored country is the source. Only registration through the game client takes a country, from the country header the reverse proxy forwards (set behind Cloudflare). |
 | PM to an offline user (`mail`, `osu-markasread.php`)                             | ❌ Out of scope | A message to someone offline is not kept.                                                                                                                     |
 | Seating or hosting through the API                                                | ❌ Out of scope | Taking a slot or becoming host requires an osu! client; the API manages rooms using the caller's own privileges but does not play.                                 |
 | `ApiKey` on `User` / `UpdateApiKeyAsync`                                         | ❌ Out of scope | Clients sign in with the account's password and receive a session token; a separate API-key model has no use.                                             |
@@ -163,6 +162,8 @@ The following features are deliberately not part of Basil's supported surface.
 | Discord audit webhook                                                            | ❌ Out of scope | No current requirement exists for this integration.                                                                                                           |
 | Datadog / osu-stable metrics such as `osu-stable.online_players` and `osu-stable.login_time` | ❌ Out of scope | Basil does not use the corresponding Datadog integration.                                                                                                     |
 | `/matches` and `/online` debug HTML pages                                        | ❌ Out of scope | These pages are administrative/debug views that are not consumed by the game client.                                                                          |
+| TLS, certificates, HSTS and per-address rate limits inside Basil                 | ❌ Removed      | nginx in front of Basil ends TLS and holds the per-address limits; Basil serves plain HTTP and plain IRC inside the Compose network.                          |
+| mDNS advertising, native archives, Velopack and Basil's own restart or update    | ❌ Removed      | Basil ships only as a container image. The server reports a newer release and the operator updates the image.                                                 |
 
 ## Compatibility stubs
 
@@ -171,7 +172,7 @@ represent implemented features, although they exist and authenticate the caller.
 
 | Endpoint                | Status  | Behavior                                                                                        |
 |-------------------------|---------|-------------------------------------------------------------------------------------------------|
-| `osu-screenshot.php`    | ⚠️ Pending | Still returns HTTP 400 with `not available`; screenshots are stored by `IScreenshotStorage` once the host is migrated. |
+| `bancho_connect.php`, `check-updates.php`, `osu-markasread.php` | ⚠️ Stub | Answer an empty body.                                                      |
 | `osu-getfavourites.php` | ⚠️ Stub | Returns an empty favourite list.                                                                |
 | `osu-addfavourite.php`  | ⚠️ Stub | No favourite functionality is implemented.                                                      |
 | `osu-rate.php`          | ⚠️ Stub | Returns `not ranked`, matching the expected real-osu-stable response for the unsupported operation. |
@@ -229,8 +230,8 @@ Removing chat completely was therefore an overcorrection.
 Basil first reintroduced `BanchoBot` as a special session inside the server. The identity redesign
 moved the commands out to BasilBot as a separate client. The 2026-10-16 redesign brought them back as a server entry point: BasilBot is a
 fixed user (id 1) that nobody can sign in as, commands run using the typist's connection, and the bot only replies
-and announces. The command and announcement handlers are implemented in `Basil.Infrastructure.Bot`; transport
-integration remains planned for the Host phase; the bot's own connections are kept by the server. The earlier "special session" failed
+and announces. The command and announcement handlers are implemented in `Basil.Infrastructure.Bot`, and the hosts hand chat messages to
+them; the bot's own connections are kept by the server. The earlier "special session" failed
 because commands acted with the bot's own privileges; that does not return: commands use the typist's privileges, and the bot
 only speaks for the server.
 

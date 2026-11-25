@@ -170,7 +170,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
 * **Capability ports.** A capability with business meaning whose implementation needs external libraries
   or resources is a public interface in a module's Ports folder (with the data it exchanges) that the module's Infrastructure project implements
   (`IBeatmapAnalyser`, `IBeatmapCalculator`, `IBeatmapsetReader`, `IBeatmapAssets`, `IScreenshotInspector`), even
-  when only the hosts use it. Pure plumbing (logging, diagnostics, metrics, SSE hub, TLS, mDNS, update checks,
+  when only the hosts use it. Pure plumbing (logging, diagnostics, metrics, SSE hub, update checks,
   OpenAPI, the response envelope) gets no contract. Whatever kind of file a client sends, trust a known extension
   and probe the content only when it is unknown or when its size is needed: an image with ImageSharp
   (header only, never decoded; a screenshot is always identified because its pixel size is capped), audio with

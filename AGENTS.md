@@ -274,16 +274,14 @@ Tests are what verify the software for the owner, who reads the code only for pa
 
 User-visible chat text is public behavior.
 
-Each chat surface owns its reply constants.
-
-Examples:
-
-* `MpReplies` for `!mp`
-* `IrcReplies` for IRC responses
+Each chat surface owns its replies. BasilBot and IRC declare each reply as a member of a reply enum with its default
+wording (`BotReply`, `IrcReply`; `MpReplies` maps a `!mp` outcome onto a `BotReply` member), read through
+`IReplies<TReply>` from `Data/Localizations/<surface>.json`, so an operator can reword it. The osu! client's texts are
+constants (`StableReplies`, `OsuWebReplies`).
 
 Do not scatter user-visible strings across handlers.
 
-Changing the wording of a user-visible response is a contract change. Update the named production constant and its tests deliberately.
+Changing the wording of a user-visible response is a contract change. Update the named enum member or constant and its tests deliberately.
 
 Internal diagnostics and logs are not subject to this rule.
 
@@ -373,7 +371,7 @@ Basil.Protocol.Game.Stable       the translation language of the osu! wire,     
                                  score submission cipher (BouncyCastle)
 Basil.Protocol.Irc               the translation language of IRC                 -> (nothing)
 Basil.Gateway                    admission control: Allow/Deny from size, rate,  -> the rate-limiting library
-                                 concurrency and load (hosts enforce: target)
+                                 concurrency and load
 Basil.Host.Shared                views and outcome-to-error mapping              -> Application projects
 Basil.Host.Stable / .Irc /       transports: translate the wire to messages and  -> Host.Shared, Protocol, Gateway,
 .Rest / .Cli                     send them through Mediator                         Application projects
@@ -435,9 +433,9 @@ Every project is a folder at the repository root named after its project: `Basil
 `Basil.Application.Users.Tests.csproj`; shared fixtures go under `tests/Support/`, and tests that run several hosts go under
 `tests/Hosts/`). The repository has no test projects yet, so these are the places new tests belong.
 
-The project that defines an options type binds it (`Add<Module>...(IConfiguration)`) **(target)**; the composition root
-only chooses what to run (Kestrel, ports, the database provider, logging, lifecycle). Until the migration reaches a
-project, `Basil` still binds its configuration and hands it over as `IOptions<T>`. Application reads no configuration.
+The project that defines an options type binds it (`Add<Module>...(IConfiguration)`), keeping every key path; the
+composition root only chooses what to run (Kestrel, ports, logging, lifecycle) and binds only the options it defines
+(server, logging, telemetry, updates). Application reads no configuration.
 
 `Application.Shared` owns `IActor`, `ScopedPrivileges`, shared query values and event contracts/queue; it depends
 on Domain and external packages. `Infrastructure.Shared` owns shared database, memory and file implementations and the
@@ -447,7 +445,7 @@ Inside a module Application project each folder owns one kind of type. **Objects
 they do: runtime objects, their parts, the contexts they take their collaborators from, the outcome enum of each
 object, and the records of its events (`Objects/Events/`); every coordination between objects lives here, and it
 publishes the events that are left to the handlers. **Registry/** holds what keeps live objects in RAM and hands them
-out (`UserRegistry`, `Lobby`, the channel registries) and owns the operations on what it holds. **Capabilities/**
+out (`UserRegistry`, `RelationshipRegistry`, `Lobby`, the channel registries) and owns the operations on what it holds. **Capabilities/**
 holds only the `Scoped*` views (the object's behaviour as one connection may do it). **Ports/** holds the ports to
 external computation (a capability with business meaning whose implementation needs external libraries: beatmapset
 reader, analyser, assets, screenshot inspector; these interfaces and the data they exchange are the only public
@@ -483,12 +481,16 @@ system; no host or gateway knows it exists.
   module creates a `Session`.
 * Every transport references `Basil.Host.Shared` and never another transport. Rest and Cli never reference
   `Protocol.Game.Stable`. This is checked in review.
-* `Basil.Gateway` (enforcement by the hosts: **target**) is a leaf project that answers `Allow` or `Deny` for each incoming request from size, rate,
+* `Basil.Gateway` is a leaf project that answers `Allow` or `Deny` for each incoming request from size, rate,
   concurrency and load (a signed-in user also meets an allowance per kind of work; the opaque
   `AdmissionSubject` is mapped by `Host.Shared` from the `Session`, and a request without a user meets only the server's capacity, because nginx holds every per-address limit). It has no user types and no business facts. Every
   entry point declares a policy. See [`docs/for-developers/gateway.md`](docs/for-developers/gateway.md).
-* The project that defines an options type binds it **(target)**; BasilBot's reply file is bound with the bot
+* The project that defines an options type binds it; BasilBot's reply file is read with the bot
   (`Data/Localizations/bot.json`, written with the defaults when missing).
+* nginx stands in front of Basil in every deployment and holds what is about the network (TLS, every per-address limit,
+  the size a body declares, stored files through `X-Accel-Redirect`). Basil serves plain HTTP and plain IRC, believes a
+  forwarded address only from `Basil:Server:TrustedProxies`, and accepts an IRC connection only after a PROXY header from
+  that peer. See [`docs/for-developers/edge.md`](docs/for-developers/edge.md).
 * Live HTTP streams use the one hub in `Basil.Host.Rest`; see [`docs/for-developers/sse.md`](docs/for-developers/sse.md).
 * The console is the one entry point that skips privilege checks (`OperatorSession`); a chat command still uses the
   typist's privileges. See [`docs/for-agents/identity-privileges.md`](docs/for-agents/identity-privileges.md).
@@ -571,7 +573,7 @@ See [`docs/for-developers/multiplayer.md`](docs/for-developers/multiplayer.md) b
 A behaviour that can be refused returns the outcome enum of the object that owns it (`RoomActionResult`, `UserActionResult`), or a tuple of
 the outcome and the data. Every outcome enum has `Denied = 0` (the caller lacks the privileges the action needs; the refusal
 does not say which) and `Ok = 1`; the other members start at 2. A business refusal (a valid request the rules do not
-allow) is an outcome. A business error (data that breaks a rule of the domain; target) is an exception defined in Domain or
+allow) is an outcome. A business error (data that breaks a rule of the domain) is an exception defined in Domain or
 Application, and a broken precondition stays a BCL exception. Room roles (`RoomPrivileges`) are derived per room from
 the roles and are separate from the account's `UserPrivileges`. See [`docs/for-agents/application-design.md`](docs/for-agents/application-design.md).
 
@@ -608,11 +610,19 @@ Do not introduce pp-dependent gameplay behavior.
 
 `appsettings.json` holds only how the application behaves and is safe to publish. A value that depends on the
 deployment, above all a secret (connection strings, passwords, keys, tokens), comes from an environment variable and
-never from `appsettings.json` (owner decision 2026-11-24).
+never from `appsettings.json` (owner decision 2026-11-24). Basil holds no certificate and speaks no TLS: nginx ends it.
+
+#### Data layout
+
+`Data/` is the one persistent volume, at a fixed place beside the executable (`/app/Data` in the container), and holds the
+configuration files, `metadata.json`, `Localizations/`, `Rulesets/` and every stored file. `Cache/` (rebuilt on demand),
+`Logs/` and `Temp/` sit beside it. A shipped file is copied into `Data/` only where it is missing and is never
+overwritten, and a start is refused on a `Data/` layout or a database migration newer than the program knows. See
+[`docs/for-technicians/configuration.md`](docs/for-technicians/configuration.md).
 
 #### Optional features never stop the server
 
-An optional feature (mDNS advertising, ffmpeg previews, the update check, and any other the server can run without)
+An optional feature (ffmpeg previews, the update check, the osu! calculation stack, and any other the server can run without)
 that fails logs the failure and turns itself off; it never stops or crashes the server (owner decision 2026-11-24).
 
 #### Stable protocol

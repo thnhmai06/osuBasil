@@ -106,11 +106,10 @@ The osu! client requests some images using bare paths. The sizes are fixed, and 
 
 The sizes are best-effort approximations; no verified osu! web dimensions were available.
 
-The Beatmaps module makes a variant from the set's background on its first request, as a JPEG in the `covers` folder
-of the set's own folder. One request makes it while the others wait for it; the file is written under a temporary name
+The Beatmaps module makes a variant from the set's background on its first request, as a JPEG in `Cache/Covers/<set id>/`. One request makes it while the others wait for it; the file is written under a temporary name
 and moved into place. Only PNG and JPEG backgrounds up to 8192 pixels per side are decoded (backgrounds come from
-uploaded archives); any other background has no cover (`404`). The `covers` folder goes away with the set's folder
-(delete, reimport) and is cleared when the set's files are cleared or a background is saved; a variant older than the
+uploaded archives); any other background has no cover (`404`). The set's covers go away with the set
+(delete, reimport) and are cleared when the set's files are cleared or a background is saved; a variant older than the
 background it was made from is made again.
 
 The osu! client never sends a size: there is no command for it, so there is no cost a client can multiply.

@@ -144,20 +144,20 @@ reached, a command that needs it says where it looked and how to start the serve
 
 | The server is...  | What happens                                                                                           |
 |-------------------|--------------------------------------------------------------------------------------------------------|
-| running           | the command is forwarded over the local socket `Data/basil.sock` and the output streams back           |
+| running           | the command is forwarded over the local socket `Temp/basil.sock` and the output streams back           |
 | not running       | only commands with **P = yes** run, directly against the storage; any other command fails with code 3  |
 
 ### The local socket
 
-* A Unix domain socket at `Data/basil.sock`, readable and writable by the account that runs the server only (mode `0600`).
+* A Unix domain socket at `Temp/basil.sock`, readable and writable by the account that runs the server only (mode `0600`).
   It also works on Windows 10 and later.
 * It exists only while the server runs. On startup the server first tries to connect to an existing file: if something
   answers, another server is running and this one refuses to start with a clear error; only if the connection is
   refused is the leftover file of a crashed server deleted and replaced. A client treats a refused connection as "the
   server is not running".
-* The path of a Unix socket is limited to about 108 bytes. When the data directory is so deep that `basil.sock` would
-  not fit, the socket is created in the temporary directory instead, under a short name made from the data directory;
-  the server and the shell choose the same path. When no socket can be created the server logs a clear error and runs
+* The path of a Unix socket is limited to about 108 bytes. When the folder is so deep that `basil.sock` would not fit,
+  the socket is created instead in the user's runtime directory (`XDG_RUNTIME_DIR`, or the system temporary directory
+  when it is not set), under a short name made from that folder; the server and the shell choose the same path. When no socket can be created the server logs a clear error and runs
   without it (shell commands then fall back to offline mode, which is unsafe while the server runs).
 * The protocol is one request and one streamed reply: the client sends the argument list as one UTF-8 line (a JSON array
   of strings); the server runs it as the operator and streams the plain text output framed per line: every output line
@@ -460,7 +460,7 @@ There is no command that shows diagnostics; the dashboard shows them. There are 
 | `diagnostics caches clear`   | `POST /v1/diagnostics/caches/clear`          | yes |
 | `diagnostics exceptions reset` | `POST /v1/diagnostics/exceptions/reset`    | no  |
 
-## Shutdown and restart
+## Shutdown
 
 `shutdown` has no HTTP route and no chat command. It runs the graceful shutdown of the server. Typed in
 the dashboard without `--now` they ask `y/N` in the command box. Given on the command line of a running server without
@@ -471,11 +471,11 @@ the dashboard without `--now` they ask `y/N` in the command box. Given on the co
 * Commands run as BasilBot with the operator's connection, which skips the privilege checks; this exists only on the
   console path. BasilBot's own connections and the chat commands keep their normal limits.
 * Every command is built from the same Application behaviours as the HTTP route it mirrors, and prints the same record
-  view. A test requires a command for every route, except the ones listed under the mapping rule.
+  view. Every route has a command, except the ones listed under the mapping rule.
 * A password, a new password or a key never appears in the log, the history, the suggestions or the output.
 
 ## Related code
 
 * `Basil.Host.Cli` - the dashboard, the command parser, the runner and the socket.
 * `Basil.Host.Shared` - the record views and the outcome table both HTTP and console use.
-* [`configuration.md`](configuration.md) - the data directory the socket lives in.
+* [`configuration.md`](configuration.md) - the folders beside the executable, including `Temp/` where the socket lives.

@@ -87,13 +87,13 @@ with the typist's privileges, never with the bot's.
 
 ## Related code
 
-* [`UserPrivileges.cs`](../../src/Domain/Users/UserPrivileges.cs): the privilege flags, `Allows`, the default set
-* [`UserRecord.cs`](../../src/Domain/Users/UserRecord.cs): the account data, its privileges and `SilencedEnd`
+* [`UserPrivileges.cs`](../../Basil.Domain/Users/UserPrivileges.cs): the privilege flags, `Allows`, the default set
+* [`UserRecord.cs`](../../Basil.Domain/Users/UserRecord.cs): the account data, its privileges and `SilencedEnd`
 * [`ScopedUser.cs`](../../Basil.Application.Users/Capabilities/ScopedUser.cs),
   [`ScopedUserSilence.cs`](../../Basil.Application.Users/Capabilities/ScopedUserSilence.cs),
   [`ScopedUserPrivileges.cs`](../../Basil.Application.Users/Capabilities/ScopedUserPrivileges.cs): account actions
 * [`UserSilence.cs`](../../Basil.Application.Users/Objects/UserSilence.cs): the silence of an account
-* [`UserActionResult.cs`](../../Basil.Application.Users/Objects/UserActionResult.cs): account-operation outcomes
+* [`UserActionResult.cs`](../../Basil.Domain/Users/UserActionResult.cs): account-operation outcomes
 
 ## See also
 

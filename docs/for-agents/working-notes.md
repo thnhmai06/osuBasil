@@ -107,8 +107,8 @@ Proposals from the modular-monolith redesign, for the owner to merge into the sk
 * **An architecture test over source text needs a positive control.** The ban on `MemoryStream` in Application scans
   `src/Application/**/*.cs` (reflection cannot see a local variable) and a temporary file that contains it proves the
   scan can fail.
-* **Keep what validation refused, briefly.** A refused upload moves to a quarantine under a name of the server's own
-  and is swept after a week, so an operator can look at it and the disk cannot fill with it.
+* **Log what validation refused; do not keep it.** A refused upload is only logged (caller, address, route, reason and
+  declared size). A quarantine folder was tried and removed: it held bytes nobody read and could fill the disk.
 * **A listing that only decides "seen or not" asks for ids.** The scanner lists ids bounded by the list ceiling and
   loads only the few rows it forgets.
 

@@ -108,7 +108,7 @@ sees them. Keep `irc.<domain>` DNS-only (grey cloud) because Cloudflare does not
 ## Generate a certificate for a private LAN
 
 Replace `basil.local` with your domain. The certificate must include every name listed under
-[Requirements](#requirements).
+[Why and how](#why-and-how).
 
 ### Windows
 

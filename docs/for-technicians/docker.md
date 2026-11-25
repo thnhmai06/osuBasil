@@ -1,8 +1,9 @@
 # Docker
 
-Basil publishes its container image to Docker Hub: [thanhmai06/osubasil](https://hub.docker.com/r/thanhmai06/osubasil)
-
-Each release is published with a version tag.
+Basil ships only as a container image, published to the GitHub Container Registry as `ghcr.io/thnhmai06/osubasil`. Each
+release is published under its version tag (`v1.x.y`) and, unless it is a pre-release, under `latest`. The tag scheme, the
+path of `Data/` inside the container and the environment variable names do not change within 1.x, so an operator updates
+with `docker compose pull` and changes nothing else.
 
 The image contains the Basil application, .NET runtime, and `ffmpeg`. It does not contain the database (Basil keeps its
 records in PostgreSQL) or the web front: Basil only speaks plain HTTP and plain IRC, on ports that only the Compose
@@ -63,14 +64,13 @@ Persistent data is stored on the host under:
 
 ```text
 docker-data/
-├── Postgres/
 ├── Data/
 ├── Cache/
 └── Logs/
 ```
 
-These directories are bind-mounted into the containers. They survive container recreation and should be included in
-backups as appropriate.
+These directories are bind-mounted into the `basil` container, and nginx reads `Data/` and `Cache/` from them. They
+survive container recreation. PostgreSQL keeps its files in the named volume `postgres`, not under `docker-data/`.
 
 ### 3. Install the calculation stack
 
@@ -99,10 +99,12 @@ works against a stopped server, with `docker compose run --rm basil ./Basil user
 
 ### 5. Check the logs
 
-Follow the container logs:
+The `basil` container runs with a terminal for the dashboard, so `docker compose logs basil` shows the dashboard, not
+the log. The system log is in `docker-data/Logs/` on the host (see [`logging.md`](logging.md)). The other services
+write to the container log:
 
 ```bash
-docker compose logs -f
+docker compose logs -f nginx postgres
 ```
 
 Stop the deployment:
@@ -136,17 +138,31 @@ Follow the Compose file as the reference for all of these.
 To update a Compose deployment:
 
 ```bash
-docker compose down
+git fetch --tags && git checkout <tag>
 docker compose up --build -d
-docker compose logs -f
 ```
 
-Keep the existing `docker-data/` directory. Back up first (see below). The server only reports in its logs and dashboard when a newer release
-exists; it never updates itself.
+Keep the existing `docker-data/` directory and the `postgres` volume. Back up first (see below). The server only reports
+in its logs and dashboard when a newer release exists; it never updates itself.
 
 Basil applies database migrations and the `Data/` layout steps automatically when the new version starts. Before each
-`docker compose pull`, take a `pg_dump` backup and copy `docker-data/Data`: migrations cannot be rolled back, so the
-backup is the only way back. An older Basil refuses to start on the data of a newer one.
+update, take a `pg_dump` backup and copy `docker-data/Data`: migrations cannot be rolled back, so the backup is the only
+way back. An older Basil refuses to start on the data of a newer one.
+
+Changes to the Compose file or to the nginx configuration may come with a release within 1.x; they are written in that
+release's notes in [`CHANGELOG.md`](../../CHANGELOG.md).
+
+### Using the published image
+
+A deployment that does not build the image replaces `build: .` in the `basil` service with
+`image: ghcr.io/thnhmai06/osubasil:v1.x.y` (or `latest`). An update is then:
+
+```bash
+docker compose pull basil
+docker compose up -d
+```
+
+with the same backup first. Keep the Compose file and `docker/nginx/` from the same release.
 
 **Never replace `docker-data/Data/` or the database volume with an empty one during an upgrade.** They hold the stored
 files and every record of the server.
@@ -174,9 +190,9 @@ the PostgreSQL data directory
 Users, rooms, scores and the server policy settings are records in the PostgreSQL database. Back up the database with
 `pg_dump` and `Data/` together, because records and files refer to each other.
 
-`Logs/` contains operational history, including one file per connection session in `Logs/Sessions/`. Persist it if logs
-need to survive container recreation; it is not required to preserve Basil's application state. The system log also goes
-to standard output, so `docker compose logs` shows it.
+`Logs/` contains operational history, including one file per connection session in `Logs/Sessions/`. The Compose file
+mounts it on the host, and that is where to read the system log: the `basil` container owns a terminal for the
+dashboard, so `docker compose logs basil` is not a log view. It is not required to preserve Basil's application state.
 
 `Cache/` (covers, difficulty attributes, audio previews) can be deleted when Basil is stopped. It is regenerated when
 required. It is mounted so that nginx can serve covers from it.
@@ -196,7 +212,7 @@ Basil holds no certificate. nginx ends TLS for HTTPS and for IRC (port `6697`) w
 
 Docker changes how Basil is packaged and run. It does not change how clients connect to Basil.
 
-The following remain the same as a normal executable deployment:
+The following do not depend on the container:
 
 * Basil domain and subdomains
 * DNS or hosts-file configuration
@@ -207,11 +223,11 @@ The following remain the same as a normal executable deployment:
 * osu! client configuration
 * persistent server data
 
-For the complete deployment procedure, see [`deployment.md`](deployment.md).
+For the order of steps from an empty machine to a running server, see [`deployment.md`](deployment.md).
 
 ## See also
 
-* [`deployment.md`](deployment.md): manual executable deployment
+* [`deployment.md`](deployment.md): the steps from an empty machine to a running server
 * [`configuration.md`](configuration.md): configuration and persistent data
 * [`console.md`](console.md): the console commands, exit codes and shutdown
 * [`https.md`](https.md): TLS certificates and HTTPS

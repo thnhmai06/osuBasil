@@ -14,7 +14,7 @@ Basil separates settings by who owns them and when they may change:
 | Deployment | `Data/appsettings*.json` | the operator, on the machine | at start, or at once for `Logging:LogLevel` and `Basil:Updates` |
 | Policy | `ServerSettings` in the database | the API, the console | at once |
 
-Deployment settings describe this machine: the domain, ports, certificate, database and log files. Policy describes
+Deployment settings describe this machine: the domain, ports, trusted proxies, database and log files. Policy describes
 how the running server behaves for users: locks, rate limits, upload limits, session lifetimes, the bot prefix, CORS
 and the time allowed to calculate a score's pp. Policy is edited through the generated API (`GET /v1/settings`, `GET`/`PATCH
 /v1/settings/{category}`) or the console (`settings <category> show`, `settings <category> set --field value`) and needs
@@ -74,8 +74,12 @@ under `Basil`.
 
 The connection strings are deployment values and secrets, so the shipped file has none: set the environment variables
 `ConnectionStrings__Write` and, to read from a replica, `ConnectionStrings__Read` (the Compose file builds both from
-`POSTGRES_PASSWORD` in `.env`). Without `Write`, Basil refuses to start and names the variable. `Basil:Server:Domain` and
-`Basil:Server:TrustedProxies` are deployment values too.
+`POSTGRES_PASSWORD` in `.env`). Without `Write`, Basil refuses to start and names the variable. `Basil:Server:Domain`,
+`Basil:Server:TrustedProxies` and `Basil:Server:Files:AccelPrefix` are deployment values too (the Compose file sets the
+last two from the environment). The shipped `appsettings.json` holds only how the application behaves and is safe to
+publish: it never holds a secret, and a deployment value in it is a default that an environment variable overrides. The
+environment variable names (`ConnectionStrings__Write`, `Basil__Server__Domain` and the rest) are as frozen at 1.0 as
+the keys they spell.
 
 Pool size and timeouts are Npgsql settings and belong in the connection string, from `.env`: `Maximum Pool Size`,
 `Timeout` (seconds to open a connection) and `Command Timeout` (seconds per command), for example
@@ -87,7 +91,7 @@ Basil setting for them beyond `Basil:Database:Read:PoolSize` and `Write:PoolSize
 The server watches the configuration files.
 
 * `Logging:LogLevel` and `Basil:Updates` apply while the server runs.
-* `Kestrel`, `ConnectionStrings`, `OpenTelemetry`, `Logging:File`, `Basil:Server`, `Basil:Database`, `Basil:Storage` and `Basil:Assets`
+* `Kestrel`, `ConnectionStrings`, `OpenTelemetry`, `Logging:File`, `Basil:Server`, `Basil:Database` and `Basil:Assets`
   are read once at start. A change is logged as "applied after the server restarts" and takes effect at the next start.
 
 No rebuild is required.
@@ -106,44 +110,17 @@ Basil <command>       run one console command (in the running server, or offline
 When stdin or stdout is redirected, the server falls back to `--console 0`. A setting can be overridden per run with
 `--Kestrel:Endpoints:Http:Url=http://0.0.0.0:8081`.
 
-## Upgrading from v1.0.0-alpha.1
-
-The settings moved to the standard .NET sections. Rename these keys in `Data/appsettings.json` (and in any
-environment variable or command-line argument, where `:` is `__` in variables); the old keys are no longer read.
-
-| Old | New |
-|---|---|
-| `Basil:Server:Bind`, `Basil:Server:Ports:Https` | the URL of `Kestrel:Endpoints:Http:Url`, for example `http://0.0.0.0:8080` |
-| `Basil:Server:Certificate:*` | removed: nginx holds every certificate |
-| `--urls`, `ASPNETCORE_URLS` | `Kestrel:Endpoints:<name>:Url` (it now wins over `--urls` when both are set) |
-| `Basil:Server:Ports:Irc` | `Basil:Server:Irc:Port` |
-| `Basil:Server:LanAdvertise`, `Basil:Server:Multicast:*` | removed: Basil no longer advertises the domain over multicast DNS |
-| (new) | `Basil:Server:Name` |
-| `Basil:Storage:DataDirectory`, `Basil:Storage:Location` | removed: `Data` is always beside the executable |
-| `Basil:Database:ConnectionString` | `ConnectionStrings:Write` (and `ConnectionStrings:Read`, which falls back to `Write`) |
-| `Basil:Database:WriteConnections` | `Basil:Database:Write:PoolSize` |
-| (new) | `Basil:Database:Read:PoolSize` |
-| `Basil:Logging:MinimumLevel` | `Logging:LogLevel:Default` |
-| `Basil:Logging:Overrides:<source>` | `Logging:LogLevel:<source>` |
-| `Basil:Logging:Directory` | `Logging:File:Location` |
-| `Basil:Logging:RetentionPeriod` | `Logging:File:Retention:MaxAge` (new: `MaxFiles`, `MaxSize`) |
-| a 256 MB size roll | `Logging:File:Rolling:MaxSize` (default `100MB`; new: `Interval`) |
-| `Basil:Logging:QueueCapacity` | `Logging:QueueCapacity` |
-| `Basil:Telemetry:*` | `OpenTelemetry:*` |
-
-Levels are now the .NET names (`Trace`, `Debug`, `Information`, `Warning`, `Error`, `Critical`, `None`).
-
 ## Name resolution on a LAN
 
 Every client must resolve the domain and each served subdomain to the server:
 
 ```text
 <domain>   c.<domain>   ce.<domain>  c4.<domain>  c5.<domain>  c6.<domain>
-osu.<domain>   b.<domain>   a.<domain>   api.<domain>   assets.<domain>
+osu.<domain>   b.<domain>   a.<domain>   api.<domain>   assets.<domain>   irc.<domain>
 ```
 
-Basil does not advertise these names: add them to the hosts file of each client (below) or to your DNS. The `ppy.sh`
-hosts are served for redirected clients but never advertised.
+`irc.<domain>` is needed only by IRC clients. Basil does not advertise these names: add them to the hosts file of each
+client (below) or to your DNS.
 
 For the hosts file, add one line per name on each client and on the server, for example:
 
@@ -151,6 +128,7 @@ For the hosts file, add one line per name on each client and on the server, for 
 192.168.1.10  basil.local
 192.168.1.10  c.basil.local
 192.168.1.10  api.basil.local
+192.168.1.10  irc.basil.local
 ```
 
 See [`https.md`](https.md) for the certificate those names require.
@@ -159,7 +137,7 @@ See [`https.md`](https.md) for the certificate those names require.
 
 The startup check reports whether a newer release exists. It never downloads or installs anything, gives up after 15
 seconds, and does not delay the server. A feed that cannot be reached is a warning, not a failure. Basil does not
-restart itself: install a new release the same way the current one was installed.
+restart itself: update the image as [`docker.md`](docker.md#updating-a-docker-deployment) describes.
 
 ## Reply text
 
@@ -216,17 +194,16 @@ A standalone `.osu` file is not imported. Uploads go through `POST /v1/beatmapse
 ## Upgrading a server
 
 Basil migrates the database and `Data/` forward at start and does not back them up first. Before each
-`docker compose pull`:
+update:
 
 1. Dump the database: `docker compose exec postgres pg_dump -U basil basil > basil.sql`.
 2. Copy the `Data/` volume (`docker-data/Data`) while Basil is stopped.
-3. Pull the new image and start it, then check the startup log.
+3. Update the image as [`docker.md`](docker.md#updating-a-docker-deployment) describes and start it, then check the
+   startup log.
 
 To go back, stop Basil, restore both, and start the previous image. `Cache/` and `Logs/` need no backup.
 
-**Never replace `Data/` with an empty folder during an upgrade.** It holds the stored files and the configuration. A
-development database that already applied an older `InitialCreate` must be dropped: the project edits migrations in place
-while it is not deployed.
+**Never replace `Data/` with an empty folder during an upgrade.** It holds the stored files and the configuration.
 
 ## See also
 

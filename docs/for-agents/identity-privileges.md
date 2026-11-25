@@ -116,7 +116,7 @@ touching users, connections, privileges, silences or the bot.
   A refusal is `LoginFailure.AlreadyOnline`: the osu! client gets bancho.py's "User already logged in." notice, IRC a
   `464` plus `ERROR`, the API a `409`. BasilBot's sessions are fixed at one Stable and one Irc. Refusals are counted in
   diagnostics (`basil.connections.rejected`, tags `type` and `reason=already_online`). Open live streams (SSE) have a
-  per-user ceiling equal to the per-address one and answer `429`. This is a business rule of Sessions, not an admission
+  per-user ceiling (`rateLimits.connections.streamsPerUser`) and answer `429`. This is a business rule of Sessions, not an admission
   policy of the gateway. An API session is no chat presence: it joins no channel, and an account that holds only API sessions is neither in `NAMES` nor in the osu! presence. In a channel, a new session of an exclusive type takes the place of the user's closed one of
   that type.
 * **Logging out ends the session, not saved passwords.** Closing any session ends it and its token; the client can
@@ -128,5 +128,5 @@ touching users, connections, privileges, silences or the bot.
   channel). BasilBot's two sessions are never presented by a client, cannot be signed in as and are never
   closed by idle sweeps; transports skip them when delivering.
 * **No third party in the core.** The server uses no third-party service.
-  Country at registration comes from the host (a trusted proxy header or an offline GeoLite2 file); Domain and
+  Country at registration comes from the host (the country header a trusted proxy forwards); Domain and
   Application receive the country as an input.

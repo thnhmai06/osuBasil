@@ -79,6 +79,16 @@ Authorization: Bearer <token>
 * A few routes are public and need no token, for example retrieving an account or an image.
 * `GET /v1/auth/session` tells you which user the token belongs to; `POST /v1/auth/logout` ends the session.
 
+For example, sign in and then list the channels you may see:
+
+```bash
+TOKEN=$(curl -s https://api.<domain>/v1/auth/login -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"change-me"}' | python3 -c 'import json,sys; print(json.load(sys.stdin)["data"]["token"])')
+curl -s https://api.<domain>/v1/channels -H "Authorization: Bearer $TOKEN"
+```
+
+A server with a self-signed certificate needs `curl -k` (or the certificate trusted on your machine).
+
 There is no shared key and no mode in which the API is open. The server creates no account by itself: the first
 administrator is made with the console (`users create --admin`), see
 [`console.md`](../../for-technicians/console.md). Clients built on Basil sign in as ordinary users.

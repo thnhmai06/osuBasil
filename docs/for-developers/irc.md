@@ -136,8 +136,8 @@ nickname `502`, and a change `501`. There are no user modes and no `+o`/`+v`: no
 * `JOIN` of an unknown or closed channel is `403`; of a channel the connection may not read `473`. Joining a channel the
   connection is already in does nothing.
 * A room channel can be read by a connection that takes part in the room: a seated player, an observing osu!tourney
-  client, the creator or a referee whose privileges include `Player`, or an account with `Tournament` or
-  `Tournament`. Writing needs the same involvement or `Tournament`. `JOIN #mp_5` is `473` when the room exists and
+  client, the creator or a referee whose privileges include `Player`, or an account with `Tournament`. Writing needs
+  the same involvement. `JOIN #mp_5` is `473` when the room exists and
   the caller may not enter, `403` when it does not exist. `LIST` lists only the room channels the connection could join.
 * A creator or referee joins the room channel with an ordinary `JOIN` and stays in it after leaving a slot.
 * `LIST` shows the visible general channels the connection may read, and the joinable room channels.
@@ -149,27 +149,30 @@ exist.
 
 ### Sending and receiving
 
-* A message goes through `ScopedChannel.PostAsync` for a channel or a nickname; the result is mapped below. IRC does not
-  echo a message to its sender unless `echo-message` is on. A message reaches every other member of the channel,
+* A message to a channel or a nickname is posted with the sender's own privileges, and the outcome is answered as
+  tabled below. A sender without the `Player` privilege may not chat. IRC does not echo a message to its sender unless
+  `echo-message` is on. A message reaches every other member of the channel,
   including the same user's osu! (stable) client, and an osu! user's message reaches IRC members the same way.
 * A message longer than 450 characters is cut to 450, as for the osu! client. Chat is limited per account by the
   server's chat rate limit, shared with the osu! client; when it is exceeded the message is dropped and the client
   gets `FAIL PRIVMSG RATE_LIMITED` (with `standard-replies`) or a `NOTICE`.
 * A message may contain CR or LF, which a line cannot. Every message the server delivers (chat, BasilBot replies,
   away replies) is split at line breaks into one `PRIVMSG` or `NOTICE` per non-empty line, and a line longer than the
-  protocol allows is split further. An announcement from BasilBot is a `NOTICE`.
+  protocol allows is split further. Everything BasilBot says (replies, announcements and countdown marks alike) arrives as
+  a `PRIVMSG`; a `NOTICE` reaches other clients only when its sender wrote a `NOTICE`.
 * A private message to a user whose "away" message is set makes the sender receive `301`.
 
-| Application result | IRC reply |
+| Situation | IRC reply |
 | --- | --- |
-| `Ok`, `AlreadyMember` (join) | nothing extra |
-| `Closed` | `403` |
-| `AccessDenied` on join | `473` |
-| `NotMember` on part | `442` |
-| `AccessDenied`, `NotMember`, `Blocked`, `TargetSilenced` on send, or a missing `Player`/`Player` | `404` with a text that names the reason |
-| unknown nickname | `401` |
-| `EmptyMessageException` | `412` |
-| `InvalidMessageException` | not caught by the IRC host, so it sends no numeric reply of its own |
+| A join or a send succeeds, or the connection is already in the channel | nothing extra |
+| The channel is closed or does not exist | `403` |
+| A join to a channel the connection may not read | `473` with a text that names the reason |
+| A part from a channel the connection is not in | `442` |
+| A send to a channel the connection is not in or may not write in, to a user who blocks the sender, or to a silenced user | `404` with a text that names the reason |
+| A send by an account without the `Player` privilege | `404`, "You are not allowed to chat" |
+| An unknown nickname | `401` |
+| Empty text | `412` |
+| Text that holds control characters | `400` |
 
 ### Presence
 
@@ -204,7 +207,8 @@ On shutdown the server refuses new IRC connections, sends every client a `NOTICE
 ### Host rules
 
 * The host takes the actor from the connection that opened the socket and works through scopes
-  (`channel.ScopeTo(connection)`); it holds no chat rule of its own.
+  (`channel.ScopeTo(connection)`); it holds no chat rule of its own. A message is posted with `ScopedChannel.PostAsync`,
+  which checks the sender's privileges and answers with a `ChannelJoinResult` that the host maps to the table above.
 * One handler class per event type delivers chat to IRC (message, join, part, closed channel, configured channel,
   closed connection), like the osu! (stable) host. Delivery is done by the event dispatcher, not by the command that caused it,
   so a command only calls the Application and answers errors. The one exception is `away-notify`: changing the away

@@ -53,7 +53,7 @@ Projects that need PostgreSQL use Docker by default. Point the client at the dae
 socket:
 
 ```bash
-export DOCKER_HOST=unix:///home/haith/.docker/desktop/docker.sock
+export DOCKER_HOST=unix:///path/to/docker.sock
 ```
 
 To use an existing server instead of a container, set `BASIL_TEST_POSTGRES` to a connection string.
@@ -95,7 +95,7 @@ structure (every branch and guard). Coverage is used only to find branches no ca
 ### Contract strings
 
 User-visible reply text is public behaviour but its wording belongs to the operator. Production types own reply
-constants (`MpReplies`, `IrcReplies`); tests reference those constants instead of duplicating literals, and assert the
+constants (the `BotReply` and `IrcReply` members, `StableReplies`); tests reference those constants instead of duplicating literals, and assert the
 reply's key or rendered pattern, not a copy of the current English sentence.
 
 ## Architecture tests

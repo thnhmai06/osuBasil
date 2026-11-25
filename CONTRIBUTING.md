@@ -72,7 +72,7 @@ docs/
 ```
 
 Basil is a layered monolith split by module. `Basil` sits at the outermost layer, while dependencies point inward
-toward the domain. The dependency direction is enforced by [`tests/Architecture`](tests/Architecture).
+toward the domain. The dependency direction is checked in review; no architecture test enforces it yet.
 
 See [`docs/for-developers/architecture.md`](docs/for-developers/architecture.md) for the responsibilities of each
 project and guidance on where new code belongs.
@@ -101,16 +101,17 @@ The basic rule is:
 
 See [`docs/for-developers/testing.md`](docs/for-developers/testing.md) for the complete testing policy.
 
-Every source project has a test project of its own, and the folders under `tests/` mirror the project folders (for
-example `tests/Application/Users` tests `Basil.Application.Users`).
+A source project has a test project of its own, and the folders under `tests/` mirror the project folders (for
+example `tests/Application/Users` tests `Basil.Application.Users`). The repository has no test projects at present; see
+[`docs/for-developers/testing.md`](docs/for-developers/testing.md).
 
-During development, run the smallest relevant test project first:
+When test projects exist, run the smallest relevant one first:
 
 ```bash
 dotnet test tests/Application/Users
 ```
 
-Before opening a pull request, run every test project listed in `Basil.slnx`, one at a time. Do not pass the solution to
+Before opening a pull request, run every test project, one at a time. Do not pass the solution to
 `dotnet test`: the projects that start a PostgreSQL container do not run reliably together.
 
 ## Documentation

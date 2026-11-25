@@ -116,7 +116,10 @@ Common reasons include:
 
 * invalid username or password;
 * invalid or incomplete client information;
-* the account being blocked by a hardware-ban check.
+* too many failed attempts for the account;
+* the account already being signed in elsewhere;
+* a tournament client (`osu!tourney`) on an account without the privilege to use one;
+* the server stopping.
 
 A failed login does not create an authenticated session.
 
@@ -135,22 +138,19 @@ Tourney spectator clients are an exception and may run alongside the player's no
 
 ### Session lifetime
 
-Sessions are recorded in the database, not only in server memory.
-
-A session ends with a server restart. A client that presents a token the server does not hold, as after a restart, or
-whose session has ended, is told to restart and logs in again with its saved password.
+An osu! session lives in server memory. It ends after 60 seconds without a request from the client, and with a server
+restart. A client that presents a token the server does not hold, as after a restart, or whose session has ended, is told
+to restart and logs in again with its saved password.
 
 ---
 
 ## Hardware information
 
-The login request contains hardware information used by the server for account protection.
+The login request carries the client version and the client's hardware hashes.
 
-Basil can compare the supplied hardware information with hardware associated with banned accounts.
-
-This check is primarily intended to prevent a newly created account from bypassing an existing hardware ban.
-
-Established verified accounts are not rejected solely because their hardware matches a banned account. This avoids incorrectly blocking legitimate players using shared hardware or networks, such as players at LAN tournaments.
+Basil keeps them with the session, as part of the login history that moderators can read. It does not compare them with
+other accounts and never refuses a login because of them: Basil has no hardware ban and does not judge who owns which
+account, so players on shared hardware or networks, such as a LAN tournament, sign in as usual.
 
 ---
 

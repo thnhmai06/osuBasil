@@ -51,13 +51,8 @@ The client must be able to resolve all Basil subdomains to the server.
 
 For a public deployment, configure normal DNS records.
 
-For a LAN or local deployment, the server advertises its own domain over multicast DNS by default,
-so a client on the same network usually resolves it with nothing to configure. That only applies to
-domains ending in `.local`, which includes the default `basil.local`; ask the server operator if
-you are unsure which domain is in use.
-
-If the domain does not resolve on its own -- it is outside `.local`, the network blocks multicast,
-or this machine ignores it -- add entries to the client's hosts file.
+For a LAN or local deployment, Basil does not advertise its names, so add entries to the client's hosts file (below).
+Ask the server operator for the domain in use and the server's address.
 
 On Windows:
 
@@ -85,7 +80,10 @@ For example:
 <server-ip> a.basil.local
 <server-ip> api.basil.local
 <server-ip> assets.basil.local
+<server-ip> irc.basil.local
 ```
+
+`irc.basil.local` is needed only by an IRC client; the osu! client does not use it.
 
 Replace `basil.local` with the value configured in `Basil:Server:Domain`.
 
@@ -106,8 +104,8 @@ There are two ways to create an account.
 3. Choose a username and password. The email field is not used.
 4. Complete registration.
 
-Registration can be refused while account creation is locked, or when too many accounts were registered from your
-address; ask the server's operator to create the account in that case. See
+Registration can be refused while account creation is locked, when the server has reached its registration limit, or
+when too many registrations came from your address; ask the server's operator to create the account in that case. See
 [`configuration.md`](../../for-technicians/configuration.md).
 
 ### Admin API

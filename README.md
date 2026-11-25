@@ -46,7 +46,7 @@ requiring third-party online services.
   the same with or without them.
 * **Privileges**: every account acts under its own identity and privileges, osu!-style silences
   included; the privileges are the ones an osu! client sees.
-* **Live state in memory, durable in PostgreSQL**: live objects run in memory and records are stored in [PostgreSQL](https://www.postgresql.org/) (today written behind the scenes; target: awaited writes with cache-aside reads); stored files live in a local `Data/` directory.
+* **Live state in memory, durable in PostgreSQL**: live objects run in memory and records are stored in [PostgreSQL](https://www.postgresql.org/) (awaited writes, cache-aside reads); stored files live in a local `Data/` directory.
 * **Offline operation**: core gameplay does not depend on the [osu!api](https://osu.ppy.sh/wiki/en/osu%21api) or
   any external beatmap source; beatmaps are served only from the local `Data/` directory.
 * **User-centric HTTP API**: clients sign in as users and get HTTP and SSE endpoints for rooms, chat, match reports,
@@ -62,14 +62,14 @@ For the complete supported and excluded feature set, see
 
 | Layer          | Choice                                                                                                                                                                   |
 |----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Runtime        | [.NET](https://dot.net/) 10 with [ASP.NET Core](https://asp.net/), distributed as self-contained executables and supported in [Docker](https://docker.com)               |
+| Runtime        | [.NET](https://dot.net/) 10 with [ASP.NET Core](https://asp.net/), shipped as a [Docker](https://docker.com) image (self-contained, behind [nginx](https://nginx.org/))              |
 | Database       | [PostgreSQL](https://www.postgresql.org/), accessed through [Entity Framework Core](https://learn.microsoft.com/ef/core/) (Npgsql) with EF migrations |
 | API            | [OpenAPI](https://spec.openapis.org/oas/latest.html) generation with interactive documentation powered by [Scalar](https://scalar.com/)                       |
 | Star rating    | Official osu! difficulty and performance calculation algorithms from [osu!lazer](https://github.com/ppy/osu)                                                             |
 | Beatmap assets | Covers and thumbnails cut to fixed sizes with [ImageSharp](https://sixlabors.com/products/imagesharp/); audio previews generated with [FFMpegCore](https://github.com/rosenbjerg/FFMpegCore) |
 | Security       | Passwords hashed with [BCrypt.Net](https://github.com/BcryptNet/bcrypt.net)                                                                                              |
 | Logging        | Structured logging with [Serilog](https://serilog.net/)                                                                                                                  |
-| Testing        | [xUnit v3](https://xunit.net/), [NSubstitute](https://nsubstitute.github.io/), [NetArchTest](https://github.com/BenMorris/NetArchTest) and [Testcontainers](https://dotnet.testcontainers.org/) for PostgreSQL                                  |
+| Testing        | [xUnit v3](https://xunit.net/), [NSubstitute](https://nsubstitute.github.io/), [NetArchTest](https://github.com/BenMorris/NetArchTest) and [Testcontainers](https://dotnet.testcontainers.org/) for PostgreSQL (the policy; the repository holds no test projects yet, see [`testing.md`](docs/for-developers/testing.md)) |
 
 ## 📖 Getting Started
 
@@ -83,18 +83,21 @@ For connecting an osu! client or using Basil's HTTP/SSE interfaces:
 * Browse the published API documentation on [GitHub Pages](https://thnhmai06.github.io/osuBasil/).
 * See [`docs/for-client/osu-stable/getting-started.md`](docs/for-client/osu-stable/getting-started.md) for connecting an osu!
   client.
+* See [`docs/for-client/irc-client.md`](docs/for-client/irc-client.md) for connecting an IRC client (TLS on port 6697).
 
 ### Server operator
 
 To deploy and operate a Basil server:
 
-* See [`docs/for-technicians/deployment.md`](docs/for-technicians/deployment.md) for deployment
-* See [`docs/for-technicians/docker.md`](docs/for-technicians/docker.md) for Docker deployment
+* See [`docs/for-technicians/deployment.md`](docs/for-technicians/deployment.md) for the steps from an empty machine to a
+  running server
+* See [`docs/for-technicians/docker.md`](docs/for-technicians/docker.md) for the Docker stack, updates and backups
 
 ### Developer
 
 To work on Basil itself:
 
+* See [`docs/for-developers/development.md`](docs/for-developers/development.md) for running Basil from a checkout
 * See [`docs/for-developers/architecture.md`](docs/for-developers/architecture.md) for system architecture
 * See [`docs/for-developers/working-scopes.md`](docs/for-developers/working-scopes.md) for supported and excluded
   functionality

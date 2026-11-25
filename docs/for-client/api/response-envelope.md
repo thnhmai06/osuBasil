@@ -77,7 +77,9 @@ For an operation that does not return data:
 }
 ```
 
-Basil uses `200 OK` with `data: null` for operations that would traditionally return `204 No Content`.
+Basil uses `200 OK` with `data: null` for operations that would traditionally return `204 No Content`. The one `204` of
+the API is outside the envelope: a live stream that has already ended answers it to a reconnecting browser (see
+[`sse.md`](sse.md)). An operation accepted for work that finishes later answers `202`, and a created resource `201`.
 
 ---
 
@@ -106,9 +108,22 @@ A failed answer also names the failure in `errors`, which is the stable, machine
   "errors": { "code": "privilegeDenied" }, "timestamp": "2026-08-03T12:00:00Z" }
 ```
 
-`errors.code` is a camelCase code such as `notFound`, `locked`, `systemAccount`, `wrongPassword`, `rateLimited` or `invalid`. The table that maps outcomes to codes and HTTP statuses is in [ADR-009](../../adr/ADR-009-rest-v1.md).
+`errors.code` is a stable camelCase code such as `notFound`, `locked`, `systemAccount`, `wrongPassword`, `rateLimited` or `invalid`. A refusal by the rules of the system carries the name of the refusal as its code, for example `roomClosed` or `nameTaken`. The status says the kind of failure:
 
-A parameter or JSON body that cannot be read (a query value that is not a number, a number out of range, malformed JSON) is answered with 400 and `invalid`; a request body above the size limit is 413 and `tooLarge`. A number in the path that does not fit an integer is 422 and `invalid`.
+| Status | Meaning | `errors.code` |
+| --- | --- | --- |
+| `401` | A valid Bearer token is required, or the sign-in credentials are wrong. | `unauthorized`, `invalidCredentials` |
+| `403` | The caller lacks the privilege, the room role or the right to act on that account, or the password is wrong. | `privilegeDenied`, `wrongPassword` and the name of the refusal |
+| `404` | The thing does not exist, or the caller may not see it. | `notFound` |
+| `409` | The state of the system does not allow it, or an area is locked. | `locked`, `systemAccount` and the name of the refusal |
+| `410` | The room or channel is closed. | the name of the refusal |
+| `413` | The body is larger than the route allows. | `tooLarge` |
+| `422` | The input is not valid; `message` names the field. | `invalid`, or a specific code such as `invalidName` |
+| `429` | Too many requests; `Retry-After` says when to try again. | `rateLimited` |
+| `500` | An unexpected failure; the answer carries no detail. | `internalError` |
+| `503` | The server is stopping; `Retry-After` says when to try again. | `shuttingDown` |
+
+A body that is missing, is not a JSON object, lacks a required field or holds a mistyped one is answered with `422` and `invalid`, and `message` names the field. A parameter that cannot be read (a query value that is not a number, or a number out of range) is answered with `400` and `invalid`. A page request outside `offset >= 0` and `limit` from 1 to 100 is `422`. The generated reference lists the statuses each route can answer.
 
 Clients should use the HTTP status code or `code` field to determine whether the request succeeded.
 

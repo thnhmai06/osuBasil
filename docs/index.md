@@ -104,12 +104,14 @@ When two documents disagree, the authoritative document wins.
 | Topic                                                  | Authoritative document             |
 | ------------------------------------------------------ | ---------------------------------- |
 | Scope decisions: what exists and what was removed      | [`for-developers/working-scopes.md`](for-developers/working-scopes.md) |
-| Configuration surface and data directories              | [`for-technicians/configuration.md`](for-technicians/configuration.md) |
-| HTTPS and certificates                                 | [`for-technicians/https.md`](for-technicians/https.md)                 |
+| Configuration surface, the `Data/` layout and what is a deployment value | [`for-technicians/configuration.md`](for-technicians/configuration.md) |
+| Reply wording of BasilBot and IRC (`Data/Localizations/`) | [`for-technicians/configuration.md`](for-technicians/configuration.md) |
+| HTTPS, certificates, IRC over TLS and Cloudflare       | [`for-technicians/https.md`](for-technicians/https.md)                 |
+| The edge: roles of nginx, the root, the Gateway and the hosts; the client address and the PROXY header; stored files through `X-Accel-Redirect`; the order in which an upload is judged | [`for-developers/edge.md`](for-developers/edge.md) |
 | Console commands, local socket, exit codes            | [`for-technicians/console.md`](for-technicians/console.md)             |
 | Privilege flags and their meanings                     | [`for-developers/privileges.md`](for-developers/privileges.md)         |
 | System architecture                                    | [`for-developers/architecture.md`](for-developers/architecture.md)     |
-| Admission control (rate, size, concurrency, load)      | [`for-developers/gateway.md`](for-developers/gateway.md)               |
+| Admission control (per user, per kind of work, server capacity) | [`for-developers/gateway.md`](for-developers/gateway.md)               |
 | Migration status (target vs. code)                     | [`for-developers/migration-status.md`](for-developers/migration-status.md) |
 | Module layout (folders of Application and Infrastructure) | [`for-agents/module-layout.md`](for-agents/module-layout.md)           |
 | Working notes (lessons for agents)                     | [`for-agents/working-notes.md`](for-agents/working-notes.md)           |
@@ -129,8 +131,10 @@ When two documents disagree, the authoritative document wins.
 | Logging                                                | [`for-developers/logging.md`](for-developers/logging.md)               |
 | Development workflow                                   | [`for-developers/development.md`](for-developers/development.md)       |
 | Documentation rules                                    | [`for-developers/docs-guideline.md`](for-developers/docs-guideline.md) |
-| Deployment                                             | [`for-technicians/deployment.md`](for-technicians/deployment.md)       |
-| Docker deployment                                      | [`for-technicians/docker.md`](for-technicians/docker.md)               |
+| Deployment: from an empty machine to a running server  | [`for-technicians/deployment.md`](for-technicians/deployment.md)       |
+| The Docker stack (nginx, Basil, PostgreSQL), updates, backups and persistent data | [`for-technicians/docker.md`](for-technicians/docker.md) |
+| Connecting an osu! stable client (`-devserver`)        | [`for-client/osu-stable/getting-started.md`](for-client/osu-stable/getting-started.md) |
+| Connecting an IRC client (TLS on 6697, sample Irssi and WeeChat setup) | [`for-client/irc-client.md`](for-client/irc-client.md) |
 | Troubleshooting                                        | [`for-technicians/troubleshooting.md`](for-technicians/troubleshooting.md) |
 
 Other documents may link to or summarize these topics, but they must not silently establish a conflicting definition.
@@ -165,6 +169,7 @@ This prevents the documentation from developing multiple competing versions of t
 
 * [`for-developers/architecture.md`](for-developers/architecture.md): system architecture and dependency direction
 * [`for-developers/assets.md`](for-developers/assets.md): the `assets.<domain>` host and image serving
+* [`for-developers/edge.md`](for-developers/edge.md): what nginx does in front of Basil and what Basil does behind it
 * [`for-developers/gateway.md`](for-developers/gateway.md): the admission policies every request passes before it reaches a module
 * [`for-developers/diagnostics.md`](for-developers/diagnostics.md): the diagnostics module's intake and feed, live streams, and shared per-tick collection
 * [`for-developers/working-scopes.md`](for-developers/working-scopes.md): supported and excluded functionality

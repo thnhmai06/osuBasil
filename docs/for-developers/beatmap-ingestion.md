@@ -15,7 +15,7 @@ The ingestion pipeline accepts **beatmapsets**, not individual difficulty files.
 * A `.osz` placed in `Beatmapsets/` is automatically detected, moved into a folder of its own as the beatmapset's permanent storage, analyzed, and synchronized with the database. No restart or manual action is required.
 * A standalone `.osu` file placed directly in `Beatmapsets/` is ignored. Without the containing beatmapset, Basil cannot reliably determine its ownership and does not attempt to infer one.
 * `POST /v1/beatmapsets` accepts `.osz` files only and uses the same ingestion pipeline as filesystem ingestion.
-* Star rating, BPM, length, and object counts are calculated once during ingestion and persisted with the beatmap metadata.
+* Star rating, BPM, length, and object counts are calculated once during ingestion and persisted with the beatmap metadata. Reading the beatmap files needs the osu! calculation stack in `Data/Rulesets/`; without it an import is refused (`rulesetsMissing`) and a waiting `.osz` stays where it is (see below).
 * Reading a beatmap never triggers difficulty recalculation.
 
 ### `ffmpeg` is optional
@@ -24,7 +24,7 @@ The ingestion pipeline accepts **beatmapsets**, not individual difficulty files.
 
 If it is unavailable or preview generation fails:
 
-* the preview endpoint returns `503 Service Unavailable`;
+* the preview does not exist, so its endpoint returns `404`;
 * the failure is logged;
 * the rest of beatmap ingestion and serving continues normally.
 
@@ -141,7 +141,7 @@ is nothing and the difficulty stays `null`; an import is refused with `rulesetsM
 everything as it is, so a waiting `.osz` is taken in by the scan that follows the installation.
 
 The difficulty attributes of a beatmap file under a mode and a set of difficulty-affecting mods are kept as files in
-`<Data>/Rulesets/Attributes`, one per combination: the first request for a combination calculates and writes it, later
+`Cache/Attributes`, one per combination: the first request for a combination calculates and writes it, later
 requests read it. A file written by another ruleset version or damaged is calculated again; the files are a cache and
 outlive the set. Concurrent requests for the same combination share one calculation, and calculations of different
 combinations are limited to the number of processor cores.

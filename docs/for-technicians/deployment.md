@@ -1,290 +1,128 @@
 # Deployment
 
-*For containerized deployments, see [`docker.md`](docker.md).*
-
 ## Overview
 
-Basil runs as a single process and keeps its records in a PostgreSQL database that you provide. There is no cache
-service to install.
+Basil is deployed as a Docker Compose stack of three services: `nginx`, `basil` and `postgres`. nginx is the only
+service that publishes ports. It ends TLS for HTTP (ports `80` and `443`) and for IRC (port `6697`), holds the
+per-address protection and serves the stored files. Basil speaks plain HTTP and plain IRC to nginx inside the Compose
+network and keeps its records in PostgreSQL.
 
-Settings and the certificate live in `Configurations/` next to the executable. Stored files (replays, avatars,
-beatmapsets, screenshots) are under `Data/`. Logs are under `Logs/`. These directories are created automatically when
-Basil starts for the first time; Basil creates its schema and applies migrations itself, but the database must already
-exist.
+This is the only supported way to run a server. The reasons are in [`docker.md`](docker.md): one image for every
+platform, no certificate or per-address rule inside Basil, and an update that is one `docker compose pull`.
+[`docker.md`](docker.md) explains how the stack is built and how to update it; this page is the order of steps from an
+empty machine to a server that clients can sign in to. Running from source is for contributors; see
+[`development.md`](../for-developers/development.md).
 
-This guide covers a manual deployment where clients connect to Basil over a LAN or the public internet.
+The settings and the stored files live in `Data/`, which is the one folder a backup needs besides the database. See
+[`configuration.md`](configuration.md).
 
 ---
 
 ## Prerequisites
 
-Before deploying Basil, make sure you have:
-
-* A supported operating system and architecture.
-* A PostgreSQL server and an empty database with a role that may create tables in it (the test suite runs against
-  PostgreSQL 16 and 17). One database belongs to one Basil process.
-* `ffmpeg` installed. *(optional)*
-* A hostname or domain that clients can resolve to the server.
-* A TLS certificate covering the Basil hostname and its required subdomains.
-* Privilege to bind to the configured HTTPS port.
-* Firewall access for the configured Basil ports (HTTPS, and IRC if you use it).
-
-Basil releases are self-contained and include the required .NET runtime. **You do not need to install .NET separately.**
-
-Supported release platforms:
-
-* `win-x64`
-* `win-arm64`
-* `linux-x64`
-* `linux-arm64`
-* `osx-x64`
-* `osx-arm64`
-
-### Install ffmpeg
-
-`ffmpeg` is required for beatmap audio previews. Without it, audio preview requests return `503 Service Unavailable`;
-Basil itself continues running.
-
-Install it using the appropriate package manager:
-
-```bash
-# Debian / Ubuntu
-sudo apt install ffmpeg
-
-# Windows
-winget install ffmpeg
-
-# macOS
-brew install ffmpeg
-```
-
-See [`beatmap-ingestion.md`](../for-developers/beatmap-ingestion.md) for details.
+* A Linux, Windows or macOS machine with Docker Engine and Docker Compose v2. The image is built for `amd64` and
+  `arm64`. You do not install .NET, PostgreSQL, nginx or `ffmpeg` yourself: they are in the stack.
+* A domain name that clients can resolve to the machine, or a LAN where you can edit each client's hosts file.
+* A TLS certificate covering the domain and the subdomains listed in [`https.md`](https.md). The stack ships a
+  self-signed certificate for `basil.local` that is enough for a LAN and must not be used on the Internet.
+* Inbound access to ports `80`, `443` and `6697` (the last only if you use IRC).
 
 ---
 
 ## Deployment
 
-### 1. Download Basil
+### 1. Get the stack
 
-Download the latest release for the target platform from
-the [latest releases](https://github.com/thnhmai06/osuBasil/releases/latest).
+The Compose file and the nginx configuration are in the repository. Check out the tag of the release you want:
 
-Extract:
-
-```text
-Basil-{version}-{platform}.zip
+```bash
+git clone --branch <tag> https://github.com/thnhmai06/osuBasil.git
+cd osuBasil
 ```
 
-to the directory where Basil will run.
-
-For example:
-
-```text
-/opt/basil/
-├── Basil
-└── Configurations/
-    ├── appsettings.json
-    ├── appsettings.schema.json
-    ├── basil.local.pfx
-    └── Templates/
-```
-
-`Data/` and `Logs/` are created on first startup.
-
-If you are building Basil yourself instead of using a release, see [`development.md`](../for-developers/development.md).
-
----
+The image of each release is published to `ghcr.io/thnhmai06/osubasil` under its version tag and `latest`. The Compose
+file builds the image from the checkout; [`docker.md`](docker.md#using-the-published-image) shows how to use the
+published image instead.
 
 ### 2. Configure Basil
 
-Edit [`Configurations/appsettings.json`](../../Basil/Configurations/appsettings.json) beside the executable.
-Settings can also be given on the command line (`--Basil:Server:Domain=tourney.example`), which wins over the file.
-
-See [`configuration.md`](configuration.md) for the complete configuration reference.
-
-Most deployments need to configure at least:
-
-#### Server domain
-
-Set:
-
-```text
-Basil:Server:Domain
-```
-
-to the hostname clients will use to connect to Basil.
-
-Examples:
-
-```text
-tourney.example
-```
-
-or, for a LAN deployment:
-
-```text
-basil.local
-```
-
-Basil derives its required service subdomains from this value.
-
-#### Database
-
-Set:
-
-```text
-ConnectionStrings:Write
-ConnectionStrings:Read
-```
-
-to the Npgsql connection strings of the PostgreSQL database that belongs to this Basil process: `Write` stores changes and
-migrates, `Read` serves reads (it may point at a replica; leave it empty to read from `Write`). Basil applies its
-migrations when it starts.
-
-#### Optional settings
-
-The following are normally optional:
-
-```text
-Kestrel:Endpoints:Https:Url
-Basil:Server:Irc:Port
-Basil:Server:TrustedProxies
-Logging:LogLevel:Default
-```
-
-Policy that users feel while the server runs (locks, rate limits, upload limits, session lifetimes, the bot prefix) is
-not in this file: it is stored in the database and changed through the API or the console without a restart. See
+Copy [`.env.example`](../../.env.example) to `.env` and set `POSTGRES_PASSWORD`. Every secret and every value that
+depends on the deployment comes from the environment, never from `appsettings.json`; see
 [`configuration.md`](configuration.md).
 
----
+Give the `basil` container's user the folders it writes, then start the stack once so Basil writes its settings:
+
+```bash
+mkdir -p docker-data/{Data,Cache,Logs}
+chown -R 1654:1654 docker-data/Data docker-data/Cache docker-data/Logs
+docker compose up --build -d
+```
+
+Set `BASIL_DOMAIN` in `.env` before the first start: the hostname clients use, from which Basil derives its
+subdomains. nginx's `server_name` and the certificate must match it. For a LAN the default `basil.local` works as it
+is.
 
 ### 3. Configure HTTPS
 
-Basil requires HTTPS for osu! stable clients.
-
-Configure a TLS certificate covering the Basil domain and all required service subdomains.
-
-Configure:
-
-```text
-Kestrel:Certificates:Default:Path
-Kestrel:Certificates:Default:Password
-```
-
-when Basil is responsible for TLS termination.
-
-**By default, Basil ships with a TLS certificate for local and LAN development in `Configurations/basil.local.pfx`.**
-No certificate configuration is required for a basic LAN deployment.
-
-For a public deployment, replace the bundled certificate with a certificate issued for your server's domain and all
-required subdomains. See [`https.md`](https.md) for certificate requirements and configuration.
-
-If TLS is terminated by a reverse proxy, give the endpoint an `http://` URL and remove the certificate so that Basil serves plain HTTP behind the
-proxy, and list the proxy in `Basil:Server:TrustedProxies` so that the client address is taken from its forwarding
-headers.
-
----
+osu! stable requires HTTPS, and IRC is TLS only. nginx holds the certificate, never Basil. For a LAN or a trial the
+default certificate for `basil.local` needs no change. For a server on the Internet, mount a certificate that covers
+the domain and every subdomain over the two files nginx reads. [`https.md`](https.md) lists the names and shows how,
+including the setup behind Cloudflare.
 
 ### 4. Configure DNS or hosts files
 
-Every machine that connects to Basil must be able to resolve all required service subdomains to the Basil server.
+Every machine that connects must resolve the domain and each subdomain to the server:
 
-- For a public deployment, create the appropriate DNS records.
+```text
+<domain>   c.<domain>   ce.<domain>   c4.<domain>   c5.<domain>   c6.<domain>
+osu.<domain>   b.<domain>   a.<domain>   api.<domain>   assets.<domain>   irc.<domain>
+```
 
-- For a LAN deployment, the server advertises its own domain over multicast DNS by default, so
-  clients on the same network resolve it with no configuration. This only applies to domains ending
-  in `.local`, which includes the default `basil.local`.
+* For a public deployment, create the DNS records (a wildcard record covers them all).
+* For a LAN, Basil does not advertise its names. Add the names to the hosts file of each client and of the server, or to
+  your own DNS. See [Name resolution on a LAN](configuration.md#name-resolution-on-a-lan) for the list and an example.
 
-- Otherwise — a domain outside `.local`, a network that blocks multicast, or a client that ignores
-  it — add the required entries to the hosts file on each client and on the server itself.
+The `irc.` name is needed only by IRC clients, and an IRC client connects to nginx directly, so behind Cloudflare that
+record must stay DNS only. See [`https.md`](https.md#irc).
 
-See [Name resolution on a LAN](configuration.md#name-resolution-on-a-lan) for both methods and the
-exact list of names, and [`getting-started.md`](../for-client/osu-stable/getting-started.md) for the
-client-side configuration.
+### 5. Install the calculation stack
 
----
-
-### 5. Create the first account
-
-The server never creates an account by itself, and the first administrator is made with the console, which works on
-the storage while the server is stopped:
+The image carries none of the osu! libraries Basil uses to calculate star rating and pp. The server runs without them,
+but ratings and pp stay empty and beatmapset imports are refused. Install them once:
 
 ```bash
-./Basil users create --username admin --password change-me --admin
+docker compose exec basil ./Basil ruleset update
+```
+
+See [`docker.md`](docker.md#3-install-the-calculation-stack) for what the command downloads and how to install it with no
+network.
+
+### 6. Create the first account
+
+The server never creates an account by itself. Make the first administrator with the console command inside the running
+container:
+
+```bash
+docker compose exec basil ./Basil users create --username admin --password change-me --admin
 ```
 
 `--admin` gives the account every privilege. The console commands are specified in [`console.md`](console.md).
 
----
-
-### 6. Start Basil
-
-The HTTPS port is controlled by the URL of:
-
-```text
-Kestrel:Endpoints:Https:Url
-```
-
-The default is `443`. **This is the port that osu! client will connect to, so don't change it unless you are sure you
-know what you are doing.**
-
-On Linux and macOS, binding to a port below `1024` normally requires elevated privileges or an appropriate capability
-configuration.
-
-Start Basil from its executable directory:
-
-```bash
-./Basil
-```
-
-The server shows a terminal dashboard. Under a service manager (systemd, Docker) stdin and stdout are redirected and it
-falls back to plain log lines by itself; use `--console 0` to ask for that explicitly. `SIGTERM` starts a graceful shutdown.
-Under systemd or a container runtime, the exit code `75` asks the manager to start the server again (the `restart`
-command), while `0` is a normal stop; see [`console.md`](console.md).
-
-A minimal systemd unit for a server installed under `/opt/basil`:
-
-```ini
-[Unit]
-Description=Basil
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-User=basil
-WorkingDirectory=/opt/basil
-ExecStart=/opt/basil/Basil --console 0
-Restart=on-failure
-
-[Install]
-WantedBy=multi-user.target
-```
-
-On Windows, run the published executable normally or through the service mechanism used by your deployment environment.
-
-If a firewall is enabled, allow inbound traffic to the configured Basil ports.
-
----
-
 ### 7. Verify the server
 
-From the server or another machine that can reach it, run:
+From a machine that resolves the names, run:
 
 ```bash
 curl -k https://api.<domain>/v1/users/1
 ```
 
-A healthy server should answer HTTP `200 OK` with the account of BasilBot.
+A healthy server answers HTTP `200 OK` with the account of BasilBot. If this fails, check in order:
 
-If this fails, check:
-
-1. Basil is running.
-2. The configured port is reachable.
-3. The firewall allows the port.
-4. DNS or hosts entries resolve correctly.
-5. The TLS certificate is valid for the requested hostname.
-6. Basil's startup log for configuration, database or binding errors.
+1. `docker compose ps` shows the three services running, and `basil` healthy.
+2. Ports `80`, `443` and `6697` are open in the firewall.
+3. DNS or hosts entries resolve every name to the server.
+4. The certificate covers the requested hostname (`docker compose logs nginx` names a file nginx cannot read).
+5. The system log in `docker-data/Logs/` for configuration, database or binding errors.
 
 ---
 
@@ -298,8 +136,8 @@ If this fails, check:
 4. Choose the username and password. The email field is not used.
 5. Complete registration.
 
-New accounts receive the default privilege set. Registration is limited for the whole server by the registration
-rate limit (the reverse proxy limits it per address), and while the **accounts** lock is on only account managers can create accounts; see
+New accounts receive the default privilege set. Registration is limited for the whole server by the registration rate
+limit (nginx limits it per address), and while the **accounts** lock is on only account managers can create accounts; see
 [`configuration.md`](configuration.md). See [`getting-started.md`](../for-client/osu-stable/getting-started.md).
 
 ### Console or API
@@ -307,7 +145,7 @@ rate limit (the reverse proxy limits it per address), and while the **accounts**
 An administrator can create an account with the console:
 
 ```bash
-./Basil users create --username Player1 --password hunter2 --country vn
+docker compose exec basil ./Basil users create --username Player1 --password hunter2 --country vn
 ```
 
 or through the `api.<domain>` host, with the Bearer token of an account that may manage users (sign in with
@@ -320,64 +158,42 @@ curl -X POST https://api.<domain>/v1/users \
   -d '{"username":"Player1","password":"hunter2","country":"vn"}'
 ```
 
-`username` and `password` are required; `country` is a two-letter code and `privileges` is an optional bitmask
-(default: the default privileges). See [`privileges.md`](../for-developers/privileges.md) for the privilege reference.
+`username` and `password` are required; `country` is a two-letter code and `privileges` is an optional list of privilege
+names (default: the default privileges). See [`privileges.md`](../for-developers/privileges.md) for the privilege reference.
 
 ---
 
 ## Moving Basil to another machine
 
-Basil's deployment consists of these categories:
+A deployment consists of these categories:
 
-| Item             | Purpose                                              | Copy during migration?                          |
-|------------------|------------------------------------------------------|-------------------------------------------------|
-| Executable files | Basil application                                    | If the target machine doesn't have them         |
-| `Configurations/`| deployment settings, certificate, templates          | Yes                                             |
-| `Data/`          | stored files: replays, avatars, beatmapsets          | If the source state should be migrated          |
-| PostgreSQL       | all records                                          | Yes (`pg_dump` and restore)                     |
-| `Logs/`          | Operational history                                  | Normally no                                     |
+| Item | Purpose | Copy during migration? |
+|---|---|---|
+| The checkout | `docker-compose.yml`, `.env`, `docker/nginx/` (and your own certificate files) | Yes |
+| `docker-data/Data/` | settings, reply wording, stored files: replays, avatars, beatmapsets | Yes |
+| PostgreSQL | all records, in the `postgres` volume | Yes (`pg_dump` and restore) |
+| `docker-data/Cache/` | rebuilt on demand | No |
+| `docker-data/Logs/` | operational history | Normally no |
 
-### Full migration
+To move an existing server:
 
-To move an existing Basil server to another machine:
-
-1. Stop Basil on the source machine.
-2. Dump the database with `pg_dump` and restore it on the target; copy `Configurations/` and `Data/` with the
-   executable. Records and files refer to each other, so take them together. `Logs/` does not need to be copied.
-3. Verify the configuration on the target, especially:
-	* `Basil:Server:Domain`
-	* HTTPS certificate settings
-	* `Kestrel:Endpoints:Https:Url`
-	* `ConnectionStrings:Write`
-4. Start Basil on the target.
-5. Verify the server using the connectivity check above.
+1. Stop the stack on the source machine with `docker compose down`.
+2. Dump the database with `pg_dump` (start only the `postgres` service for this) and restore it on the target. Copy the
+   checkout and `docker-data/Data/`. Records and files refer to each other, so take them together.
+3. Copy `.env`, and check `BASIL_DOMAIN`, the certificate files and the DNS records of the new machine.
+4. Start the stack on the target and verify the server as in step 7.
 
 **Do not omit the database or `Data/` if the intention is to preserve the existing server.**
 
-### Upgrade an existing installation
-
-If the target already contains a Basil installation:
-
-1. Stop Basil.
-2. Back up the database with `pg_dump`. Basil applies migrations automatically when the new version starts, and
-   migrations cannot be rolled back.
-3. Replace the application files with the new release.
-4. Keep the existing `Configurations/` and `Data/` directories (unless configuration changes are required).
-5. Start Basil.
-6. Check the startup log for errors.
-
-Do **not** replace `Configurations/` or `Data/` with the ones from a release archive.
-
-Basil performs database migrations automatically when it starts. Keep the backup until the new version has started
-cleanly: the previous schema cannot be restored without it.
+Updating a running server is in [`docker.md`](docker.md#updating-a-docker-deployment).
 
 ---
 
 ## See also
 
+* [`docker.md`](docker.md): the stack, updates and persistent data
 * [`configuration.md`](configuration.md): configuration and persistent data
 * [`console.md`](console.md): the console commands, exit codes and shutdown
 * [`https.md`](https.md): TLS certificates and HTTPS
-* [`docker.md`](docker.md): Docker deployment
 * [`getting-started.md`](../for-client/osu-stable/getting-started.md): configuring an osu! client
 * [`troubleshooting.md`](troubleshooting.md): common deployment problems and fixes

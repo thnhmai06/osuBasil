@@ -166,16 +166,16 @@ This applies to code, documentation, tests, and new APIs.
 
 User-visible replies are centralized.
 
-For multiplayer `!mp` replies, use:
+For BasilBot replies (`!mp` included), use a member of:
 
 ```text
-MpReplies
+BotReply
 ```
 
-For IRC replies, use:
+For IRC replies, use a member of:
 
 ```text
-IrcReplies
+IrcReply
 ```
 
 Do not introduce duplicate string literals for existing user-visible replies.

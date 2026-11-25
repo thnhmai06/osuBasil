@@ -3,14 +3,15 @@
 ## Overview
 
 The gateway is the admission control of Basil: for every request that wants to enter the system it answers `Allow` or
-`Deny`, using only facts that exist before any business logic runs. A request that is oversized, too frequent, too
-concurrent or arriving while the server is overloaded never reaches a module.
+`Deny`, using only facts that exist before any business logic runs. A request that is too frequent, too concurrent
+or arriving while the server is overloaded never reaches a module.
 
-> **Migration status.** The rate limiter (`System.Threading.RateLimiting`, one registration), the login-attempt guard and
-> `Admission` live in `Basil.Gateway`, with the load policies below (bulkhead, shedding, health). The Rest, Stable and IRC
-> hosts call `Admit` before they handle a request and `Release` when it ends; `Basil.Host.Shared` maps a `Session` to an
-> `AdmissionSubject`. `RuntimeSampler` reports the load to the gateway at every sample. The Stable and Rest hosts still
-> have their own upload limit (they depend on ASP.NET Core and the runtime settings, so they cannot move as they are).
+The rate limiter (`System.Threading.RateLimiting`, one registration), the login-attempt guard and `Admission` live in
+`Basil.Gateway`, with the load policies below (bulkhead, shedding, health). The Rest, Stable and IRC hosts call `Admit`
+before they handle a request and `Release` when it ends; `Basil.Host.Shared` maps a `Session` to an `AdmissionSubject`.
+`RuntimeSampler` reports the load to the gateway at every sample. The size of an upload is not a gateway decision: nginx
+refuses a declared length above the route's ceiling, and the hosts read the body as a guarded stream (see
+[`edge.md`](edge.md)).
 
 ## Why
 
@@ -39,7 +40,6 @@ purpose: a ban or a restriction is a business fact, decided at login and by capa
 
 | Policy | Limits | Keyed by |
 |---|---|---|
-| Size | bytes of a body or upload, pixels of an image, length of a line | the entry point |
 | Rate | requests or attempts per window | the signed-in user, or the account for sign-in attempts |
 | Concurrency | requests in flight | the kind of work (a bulkhead), the user |
 | Load | refuse or shed work while the server is overloaded | the priority of the work |
@@ -145,9 +145,10 @@ runtime-configurable.
 
 * [`RateLimiter.cs`](../../Basil.Gateway/RateLimiting/RateLimiter.cs) and [`LoginAttemptGuard.cs`](../../Basil.Gateway/RateLimiting/LoginAttemptGuard.cs) — the limiter and login guard.
 * [`Admission.cs`](../../Basil.Gateway/Admission/Admission.cs) and [`GatewayLimits.cs`](../../Basil.Gateway/Limits/GatewayLimits.cs) — admission and its swappable limits snapshot.
-* [`UploadRequest.cs`](../../Basil.Host.Shared/Http/UploadRequest.cs) and [`UploadForm.cs`](../../Basil.Host.Shared/Http/UploadForm.cs) — the limit, minimum data rate and streaming read of an upload, set per route by its kind. They stay in the hosts: they depend on ASP.NET and the stored settings, so they do not move to the gateway.
+* [`UploadRequest.cs`](../../Basil.Host.Shared/Http/UploadRequest.cs) and [`UploadForm.cs`](../../Basil.Host.Shared/Http/UploadForm.cs) — the limit, minimum data rate and streaming read of an upload, set per route by its kind. They stay in the hosts: they depend on ASP.NET and the stored settings, so they are not gateway policies.
 
 ## See also
 
 * [`architecture.md`](architecture.md): where the gateway sits
+* [`edge.md`](edge.md): what nginx holds in front of it
 * [`diagnostics.md`](diagnostics.md): rejected requests are counted there

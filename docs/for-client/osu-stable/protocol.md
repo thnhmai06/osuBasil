@@ -16,14 +16,14 @@ osu! stable does not maintain a persistent socket connection to the osu! (stable
 
 Instead, the client repeatedly sends:
 
-```http id="v2l7fq"
+```http
 POST /
 osu-token: <session-token>
 ```
 
 to one of the osu! (stable) hosts:
 
-```text id="k0sj7m"
+```text
 c.<domain>
 ce.<domain>
 c4.<domain>
@@ -47,7 +47,7 @@ The request body consists of zero or more osu! (stable) packets concatenated tog
 
 Each packet has the following structure:
 
-```text id="q4g2jc"
+```text
 uint16  Packet ID
 uint8   Reserved
 uint32  Payload length
@@ -56,7 +56,7 @@ bytes   Payload
 
 Multiple packets are placed directly next to each other:
 
-```text id="qf1g3v"
+```text
 [packet][packet][packet]...
 ```
 
@@ -72,7 +72,7 @@ The response uses the same packet framing as the request.
 
 A response may contain multiple packets:
 
-```text id="l0c5av"
+```text
 [packet][packet][packet]...
 ```
 
@@ -95,7 +95,7 @@ An empty response body is valid and means that there are no pending packets.
 
 Every request after authentication must include the session token returned by the server during login:
 
-```http id="l9khb4"
+```http
 osu-token: <session-token>
 ```
 
@@ -134,7 +134,7 @@ See [`privileges.md`](../../for-developers/privileges.md) for account privilege 
 
 ## Protocol flow
 
-```text id="f8m2ys"
+```text
 Client                              Basil
   |                                   |
   | POST /                            |
