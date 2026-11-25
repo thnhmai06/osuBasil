@@ -8,9 +8,7 @@ internal sealed class RoomSlotLockChangedHandler(RoomChannels channels) : INotif
 {
 	public ValueTask Handle(RoomSlotLockChanged @event, CancellationToken ct)
 	{
-		if (@event.Evicted is { } evicted && channels.Find(@event.Room) is { } channel &&
-		    !@event.Room.IsManagedBy(evicted.Record))
-			channel.ScopeTo(evicted).Part();
+		if (@event.Evicted is { } evicted && channels.Find(@event.Room) is { } channel) channel.Release(evicted);
 
 		return ValueTask.CompletedTask;
 	}

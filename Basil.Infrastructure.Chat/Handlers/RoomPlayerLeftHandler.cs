@@ -8,8 +8,7 @@ internal sealed class RoomPlayerLeftHandler(RoomChannels channels) : INotificati
 {
 	public ValueTask Handle(RoomPlayerLeft @event, CancellationToken ct)
 	{
-		if (channels.Find(@event.Room) is { } channel && !@event.Room.IsManagedBy(@event.Player.Record))
-			channel.ScopeTo(@event.Player).Part();
+		if (channels.Find(@event.Room) is { } channel) channel.Release(@event.Player);
 
 		return ValueTask.CompletedTask;
 	}

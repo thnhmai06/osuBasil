@@ -8,8 +8,7 @@ internal sealed class RoomPlayerKickedHandler(RoomChannels channels) : INotifica
 {
 	public ValueTask Handle(RoomPlayerKicked @event, CancellationToken ct)
 	{
-		if (channels.Find(@event.Room) is { } channel && !@event.Room.IsManagedBy(@event.Player.Record))
-			channel.ScopeTo(@event.Player).Part();
+		if (channels.Find(@event.Room) is { } channel) channel.Release(@event.Player);
 
 		return ValueTask.CompletedTask;
 	}
