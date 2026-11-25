@@ -22,8 +22,9 @@ purpose: a ban or a restriction is a business fact, decided at login and by capa
 
 ## What
 
-* **A leaf project.** `Basil.Gateway` references nothing of Basil, only the rate-limiting library of the platform. The four
-  hosts reference it; it references no user type.
+* **A guard.** `Basil.Gateway` references the rate-limiting library of the platform and, to protect per object (a user,
+  a session, a room), the Application services and capabilities it guards with (owner decision 2026-11-25). The hosts
+  reference it. It never processes a request: it lets it in or keeps it out.
 * **Allow or Deny only.** A decision carries a reason code and, when useful, a retry delay. It does not translate, route or
   dispatch.
 * **The host enforces.** The host reports a denial in its own protocol. On Rest and on the web and game endpoints of

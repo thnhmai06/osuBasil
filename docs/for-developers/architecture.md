@@ -254,10 +254,10 @@ privileges. This rule is checked in review.
 
 ### Gateway: admission control
 
-`Basil.Gateway` is a leaf project that answers one question about each incoming request, `Allow` or `Deny`
-(with a reason code and a retry delay), from facts that exist before business logic: rate, concurrency and load. It
-translates nothing, dispatches nothing and knows no business concept; it references no user type and has no bans or
-restrictions. The host enforces the answer in its protocol. Every per-address rule, the size a body declares and TLS belong
+`Basil.Gateway` is the guard of the system. It answers one question about each incoming request, `Allow` or `Deny`
+(with a reason code and a retry delay), from rate, concurrency and load. To protect per object (a user, a session, a
+room) it may use the Application services and capabilities (owner decision 2026-11-25), but it only guards: it
+translates nothing, dispatches nothing and never processes the request itself. The host enforces the answer in its protocol. Every per-address rule, the size a body declares and TLS belong
 to nginx in front of Basil, not to the Gateway. The design is in [`gateway.md`](gateway.md), the split with nginx in
 [`edge.md`](edge.md).
 

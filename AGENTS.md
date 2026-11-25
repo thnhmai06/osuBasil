@@ -370,8 +370,9 @@ Basil.Infrastructure.Persistence    Npgsql design-time factories and all        
 Basil.Protocol.Game.Stable       the translation language of the osu! wire,      -> Domain, external libraries
                                  score submission cipher (BouncyCastle)
 Basil.Protocol.Irc               the translation language of IRC                 -> (nothing)
-Basil.Gateway                    admission control: Allow/Deny from size, rate,  -> the rate-limiting library
-                                 concurrency and load
+Basil.Gateway                    the guard: blocks and rate-limits each request  -> the rate-limiting library,
+                                 (Allow/Deny from rate, concurrency, load), per     the Application services and
+                                 object through Application services/capabilities   capabilities it guards with
 Basil.Host.Shared                views and outcome-to-error mapping              -> Application projects
 Basil.Host.Stable / .Irc /       transports: translate the wire to messages and  -> Host.Shared, Protocol, Gateway,
 .Rest / .Cli                     send them through Mediator                         Application projects
@@ -487,9 +488,10 @@ system; no host or gateway knows it exists.
   module creates a `Session`.
 * Every transport references `Basil.Host.Shared` and never another transport. Rest and Cli never reference
   `Protocol.Game.Stable`. This is checked in review.
-* `Basil.Gateway` is a leaf project that answers `Allow` or `Deny` for each incoming request from size, rate,
-  concurrency and load (a signed-in user also meets an allowance per kind of work; the opaque
-  `AdmissionSubject` is mapped by `Host.Shared` from the `Session`, and a request without a user meets only the server's capacity, because nginx holds every per-address limit). It has no user types and no business facts. Every
+* `Basil.Gateway` is the guard: it answers `Allow` or `Deny` for each incoming request from rate, concurrency and load
+  (a signed-in user also meets an allowance per kind of work; a request without a user meets only the server's capacity,
+  because nginx holds every per-address limit). To protect per object (a user, a session, a room) it may use the
+  Application services and capabilities (owner decision 2026-11-25); it only guards, never processes the request. Every
   entry point declares a policy. See [`docs/for-developers/gateway.md`](docs/for-developers/gateway.md).
 * The project that defines an options type binds it; BasilBot's reply file is read with the bot
   (`Data/Localizations/bot.json`, written with the defaults when missing).
