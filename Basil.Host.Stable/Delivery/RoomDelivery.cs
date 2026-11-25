@@ -30,7 +30,7 @@ internal sealed class RoomAudience(Lobby lobby, Outbox outbox)
 		outbox.Send(room.Players,
 			writer => writer.UpdateMatch(match));
 		outbox.Send(room.Members.Observers, writer => writer.UpdateMatch(match, false));
-		if (!room.Settings.IsPrivate) outbox.Send(lobby.Watchers, writer => writer.UpdateMatch(match, false));
+		outbox.Send(lobby.WatchersOf(room), writer => writer.UpdateMatch(match, false));
 	}
 }
 
@@ -146,7 +146,7 @@ internal sealed class LobbyRoomOpenedDelivery(Lobby lobby, Outbox outbox) : INot
 	public ValueTask Handle(LobbyRoomOpened notification, CancellationToken ct)
 	{
 		var match = StableView.Match(notification.Room);
-		if (!notification.Room.Settings.IsPrivate) outbox.Send(lobby.Watchers, writer => writer.NewMatch(match, false));
+		outbox.Send(lobby.WatchersOf(notification.Room), writer => writer.NewMatch(match, false));
 		if (notification.Host is { } host) outbox.Send(host, writer => writer.MatchJoinSuccess(match));
 		return ValueTask.CompletedTask;
 	}
@@ -166,8 +166,7 @@ internal sealed class LobbyWatcherDelivery(Lobby lobby, Outbox outbox) : INotifi
 {
 	public ValueTask Handle(LobbyWatcherJoined notification, CancellationToken ct)
 	{
-		var matches = lobby.Rooms.Values.Where(room => room is { IsClosed: false, Settings.IsPrivate: false })
-			.Select(StableView.Match).ToList();
+		var matches = lobby.ListedRooms.Select(StableView.Match).ToList();
 		outbox.Send(notification.Watcher, writer =>
 		{
 			foreach (var match in matches) writer.NewMatch(match, false);
@@ -181,10 +180,7 @@ internal sealed class RoundStartedDelivery(RoomAudience audience, Outbox outbox)
 	public ValueTask Handle(RoomRoundStarted notification, CancellationToken ct)
 	{
 		var match = StableView.Match(notification.Room);
-		// bancho.py leaves out the players without the beatmap (they do not play).
-		var room = notification.Room;
-		var started = room.Slots.Where(slot => slot.Status is not Basil.Domain.Multiplayer.Room.RoomSlotStatus.NoMap)
-			.Select(room.PlayerAt).OfType<Session>().Concat(room.Members.Observers);
+		var started = notification.Players.Cast<Session>().Concat(notification.Room.Members.Observers);
 		outbox.Send(started, writer => writer.MatchStart(match));
 		audience.Refresh(notification.Room);
 		return ValueTask.CompletedTask;

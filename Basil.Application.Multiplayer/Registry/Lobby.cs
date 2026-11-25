@@ -48,6 +48,16 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 
 	internal ISet<StableSession> MutableWatchers => _watchers;
 
+	/// <summary>Gets the rooms the lobby shows to its watchers: the open rooms that are not private.</summary>
+	public IEnumerable<Room> ListedRooms => _rooms.Values.Where(room => room is { IsClosed: false, Settings.IsPrivate: false });
+
+	/// <summary>Gets the lobby watchers who are told about changes of a room: none when the room is private.</summary>
+	/// <param name="room">The room.</param>
+	public IReadOnlyCollection<StableSession> WatchersOf(Room room)
+	{
+		return room.Settings.IsPrivate ? [] : _watchers;
+	}
+
 	Room? IRoomLobbyPort.RoomOf(StableSession player)
 	{
 		return RoomOf(player);

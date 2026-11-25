@@ -24,7 +24,6 @@ namespace Basil.Host.Irc.Commands;
 
 [AdmissionPolicy]
 internal sealed partial class IrcCommands(
-	SessionRegistry registry,
 	Server server,
 	GeneralChannelRegistry general,
 	ChannelDirectory directory,

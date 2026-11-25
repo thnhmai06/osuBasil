@@ -25,7 +25,6 @@ using UserSessions = Basil.Application.Sessions.Objects.UserSessions;
 namespace Basil.Host.Stable.Login;
 
 internal sealed class StableLogin(
-	SessionRegistry registry,
 	GeneralChannelRegistry channels,
 	Outbox outbox,
 	SignInGate signIns,
