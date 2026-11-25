@@ -14,10 +14,15 @@ public sealed partial class Room
 	/// <returns>Whether the frame was relayed.</returns>
 	internal bool RelayScore(Session actor, ScoreFrame frame)
 	{
-		if (actor is not StableSession player || SlotOf(player) is not { } slot || !Rounds.InProgress) return false;
+		if (actor is not StableSession player) return false;
 
-		Emit(new RoomScoreRelayed(this, slot.Index, frame, [.. Players, .. Members.Observers]));
-		return true;
+		using (Enter())
+		{
+			if (SlotOf(player) is not { } slot || !Rounds.InProgress) return false;
+
+			Emit(new RoomScoreRelayed(this, slot.Index, frame, [.. Players, .. Members.Observers]));
+			return true;
+		}
 	}
 
 	internal RoomActionResult ReceiveScore(ScoreRecord score, UserRecord player)
