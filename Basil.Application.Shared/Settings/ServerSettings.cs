@@ -245,6 +245,12 @@ public sealed record ServerSettings
 			init => field = Positive(value);
 		} = 10L * 1024 * 1024;
 
+		public long MenuImageMaxSize
+		{
+			get;
+			init => field = Positive(value);
+		} = 10L * 1024 * 1024;
+
 		public int ScreenshotMaxSide
 		{
 			get;

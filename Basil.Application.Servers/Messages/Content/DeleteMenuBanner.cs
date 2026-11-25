@@ -5,4 +5,4 @@ using Mediator;
 
 namespace Basil.Application.Servers.Messages.Content;
 
-public sealed record DeleteMenuBanner(Session Actor, MenuBanner Banner) : IRequest<ServerActionResult>;
+public sealed record DeleteMenuBanner(Session Actor, string Image) : IRequest<ServerActionResult>;

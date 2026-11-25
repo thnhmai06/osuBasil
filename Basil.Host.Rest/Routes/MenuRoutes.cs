@@ -15,8 +15,6 @@ namespace Basil.Host.Rest.Routes;
 
 internal static class MenuRoutes
 {
-	private const long MaxImageBytes = 10L * 1024 * 1024;
-
 	public static void MapMenu(this RouteGroupBuilder v1)
 	{
 		var faqs = v1.MapGroup("/faqs").WithTags("Faqs");
@@ -41,7 +39,7 @@ internal static class MenuRoutes
 			.WithDescription("""
 			                 The multipart form carries the picture in `image` and the HTTP or HTTPS address it opens in `url`. `begins` and `expires` are optional ISO 8601 times; a banner without them is always current.
 
-			                 An image over 10 MB is refused with 413 and the error code `tooLarge` when its size is declared, and by closing the connection otherwise; content that is not a PNG, JPEG, GIF or WebP picture closes the connection.
+			                 An image over the size limit for menu images (10 MB by default) is refused with 413 and the error code `tooLarge` when its size is declared, and by closing the connection otherwise; content that is not a PNG, JPEG, GIF or WebP picture closes the connection.
 			                 """);
 		menu.MapDelete("/banners/{image}", DeleteBannerAsync).RequireToken().WithSummary("Delete a main-menu banner.")
 			.WithDescription("The banner is named by the file name of its `image`.");
@@ -55,7 +53,7 @@ internal static class MenuRoutes
 			.WithDescription("""
 			                 The multipart form carries the picture in `image`.
 
-			                 An image over 10 MB is refused with 413 and the error code `tooLarge` when its size is declared, and by closing the connection otherwise; content that is not a PNG, JPEG, GIF or WebP picture closes the connection.
+			                 An image over the size limit for menu images (10 MB by default) is refused with 413 and the error code `tooLarge` when its size is declared, and by closing the connection otherwise; content that is not a PNG, JPEG, GIF or WebP picture closes the connection.
 			                 """);
 		menu.MapDelete("/seasonals/{image}", DeleteSeasonalAsync).RequireToken()
 			.WithSummary("Delete a seasonal background.")
@@ -72,7 +70,7 @@ internal static class MenuRoutes
 			.WithDescription("""
 			                 The multipart form carries an optional picture in `image` and an optional HTTP or HTTPS address in `url`. Without `image` the current picture stays; without `url` the icon has no link.
 
-			                 An image over 10 MB is refused with 413 and the error code `tooLarge` when its size is declared, and by closing the connection otherwise; content that is not a PNG, JPEG, GIF or WebP picture closes the connection.
+			                 An image over the size limit for menu images (10 MB by default) is refused with 413 and the error code `tooLarge` when its size is declared, and by closing the connection otherwise; content that is not a PNG, JPEG, GIF or WebP picture closes the connection.
 			                 """);
 		menu.MapDelete("/icon", async (HttpContext context, ISender sender) =>
 				(await sender.Send(new ClearMenuIcon(context.Session()), context.RequestAborted)).Answer())
@@ -117,20 +115,22 @@ internal static class MenuRoutes
 	// Judges a menu upload before its body is read: the size it declares, then who asks.
 	private static async Task<IResult?> EarlyAsync(HttpContext context, ISender sender, ApiSession session)
 	{
-		if (!UploadRequest.Accept(context, MaxImageBytes))
+		var limit = (await sender.Send(new ReadSettings(), context.RequestAborted)).Uploads.MenuImageMaxSize;
+		if (!UploadRequest.Accept(context, limit))
 			return Api.Error(StatusCodes.Status413PayloadTooLarge, "tooLarge", "The image is too large.");
 
 		var early = await sender.Send(new MayChangeMenu(session), context.RequestAborted);
 		return early == ServerActionResult.Ok ? null : early.Refusal();
 	}
 
-	private static Task<UploadForm> ReadImageAsync(HttpContext context, params string[] fields)
+	private static async Task<UploadForm> ReadImageAsync(HttpContext context, ISender sender, params string[] fields)
 	{
-		return UploadForm.ReadAsync(context, "image", UploadSignature.Image, MaxImageBytes, fields, false,
+		var limit = (await sender.Send(new ReadSettings(), context.RequestAborted)).Uploads.MenuImageMaxSize;
+		return await UploadForm.ReadAsync(context, "image", UploadSignature.Image, limit, fields, false,
 			context.RequestAborted);
 	}
 
-	private static async Task<IResult> AddBannerAsync(HttpContext context, ISender sender)
+	private static async Task<IResult> AddBannerAsync(HttpContext context, ISender sender, TimeProvider clock)
 	{
 		if (!context.Request.HasFormContentType) return Api.Invalid("A multipart form is required.");
 
@@ -140,7 +140,7 @@ internal static class MenuRoutes
 		return await UploadRequest.GuardAsync(context, "POST /v1/menu/banners", $"user {session.Record.Id}",
 			async () =>
 			{
-				await using var form = await ReadImageAsync(context, "url", "begins", "expires");
+				await using var form = await ReadImageAsync(context, sender, "url", "begins", "expires");
 				if (form.File is null) return Api.Invalid("The image field is missing.");
 				if (!Uri.TryCreate(form.Field("url"), UriKind.Absolute, out var url))
 					return Api.Invalid("url is not valid.");
@@ -151,8 +151,7 @@ internal static class MenuRoutes
 					new AddMenuBanner(session, form.FileName!, form.File, url, begins, expires),
 					context.RequestAborted);
 				return result == ServerActionResult.Ok
-					? Api.Created(new BannerView(Path.GetFileName(banner!.Image.Value), banner.Url.AbsoluteUri,
-						banner.StartsAt, banner.EndsAt, true))
+					? Api.Created(BannerView.Of(banner!, clock.GetUtcNow()))
 					: result.Refusal();
 			});
 	}
@@ -169,13 +168,7 @@ internal static class MenuRoutes
 
 	private static async Task<IResult> DeleteBannerAsync(HttpContext context, string image, ISender sender)
 	{
-		var banner =
-			(await sender.Send(new ListBanners(), context.RequestAborted)).FirstOrDefault(b =>
-				Path.GetFileName(b.Image.Value) == image);
-		return banner is null
-			? Api.NotFound("No such banner.")
-			: (await sender.Send(new DeleteMenuBanner(context.Session(), banner), context.RequestAborted))
-			.Answer();
+		return (await sender.Send(new DeleteMenuBanner(context.Session(), image), context.RequestAborted)).Answer();
 	}
 
 	private static async Task<IResult> AddSeasonalAsync(HttpContext context, ISender sender)
@@ -188,7 +181,7 @@ internal static class MenuRoutes
 		return await UploadRequest.GuardAsync(context, "POST /v1/menu/seasonals", $"user {session.Record.Id}",
 			async () =>
 			{
-				await using var form = await ReadImageAsync(context);
+				await using var form = await ReadImageAsync(context, sender);
 				if (form.File is null) return Api.Invalid("The image field is missing.");
 
 				var (result, image) = await sender.Send(new AddMenuSeasonal(session, form.FileName!, form.File),
@@ -201,12 +194,7 @@ internal static class MenuRoutes
 
 	private static async Task<IResult> DeleteSeasonalAsync(HttpContext context, string image, ISender sender)
 	{
-		var reference = (await sender.Send(new ListSeasonals(), context.RequestAborted)).Cast<ContentReference?>()
-			.FirstOrDefault(r => Path.GetFileName(r!.Value.Value) == image);
-		return reference is null
-			? Api.NotFound("No such background.")
-			: (await sender.Send(new DeleteMenuSeasonal(context.Session(), reference.Value), context.RequestAborted))
-			.Answer();
+		return (await sender.Send(new DeleteMenuSeasonal(context.Session(), image), context.RequestAborted)).Answer();
 	}
 
 	private static async Task<IResult> SetIconAsync(HttpContext context, ISender sender)
@@ -219,7 +207,7 @@ internal static class MenuRoutes
 		return await UploadRequest.GuardAsync(context, "PUT /v1/menu/icon", $"user {session.Record.Id}",
 			async () =>
 			{
-				await using var form = await ReadImageAsync(context, "url");
+				await using var form = await ReadImageAsync(context, sender, "url");
 				Uri? url = null;
 				if (form.Field("url") is { Length: > 0 } text && !Uri.TryCreate(text, UriKind.Absolute, out url))
 					return Api.Invalid("url is not valid.");

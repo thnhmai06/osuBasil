@@ -28,7 +28,7 @@ public readonly struct ScopedServerSeasonals
 		return await _scoped.Server.Seasonals.CreateAsync(name, image);
 	}
 
-	public async Task<ServerActionResult> DeleteAsync(ContentReference image)
+	public async Task<ServerActionResult> DeleteAsync(string image)
 	{
 		if (Denied() is { } denied) return denied;
 

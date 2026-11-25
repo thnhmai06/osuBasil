@@ -93,9 +93,13 @@ public sealed partial class Server
 		return NotifyCore(text, to);
 	}
 
-	public int Notify(string text, IReadOnlyCollection<int> userIds)
+	public async Task<(int Sent, IReadOnlyList<int> Missing)> NotifyAsync(string text, IReadOnlyCollection<int> userIds,
+		CancellationToken ct = default)
 	{
-		return NotifyCore(text, [.. Context.Connections.Registry.Online.Keys.Where(user => userIds.Contains(user.Id))]);
+		var ids = userIds.Distinct().ToList();
+		var found = await Context.Users.GetManyAsync(ids, ct);
+		IReadOnlyList<int> missing = [.. ids.Where(id => found.All(user => user.Id != id))];
+		return missing.Count > 0 ? (0, missing) : (NotifyCore(text, found), []);
 	}
 
 	public int NotifyAll(string text)

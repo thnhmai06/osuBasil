@@ -100,37 +100,23 @@ internal static class ContentRoutes
 			return all == ServerActionResult.Ok ? Api.Ok(new AnnounceResponse(sent)) : all.Refusal();
 		}
 
-		var recipients = new List<int>();
-		foreach (var id in ids.Distinct())
-		{
-			if (await sender.Send(new GetUser(id), context.RequestAborted) is not { } user)
-				return Api.NotFound($"No such user: {id}.");
-			recipients.Add(user.Id);
-		}
+		var (some, count, missing) = await sender.Send(new NotifyUsers(actor, request.Text, ids), context.RequestAborted);
+		if (some != ServerActionResult.Ok) return some.Refusal();
 
-		var (some, count) = await sender.Send(new NotifyUsers(actor, request.Text, recipients), context.RequestAborted);
-		return some == ServerActionResult.Ok ? Api.Ok(new AnnounceResponse(count)) : some.Refusal();
+		return missing.Count > 0 ? Api.NotFound($"No such user: {missing[0]}.") : Api.Ok(new AnnounceResponse(count));
 	}
 
 	private static async Task<IResult> ListScreenshotsAsync(HttpContext context, ISender sender)
 	{
 		var (result, list) = await sender.Send(new ListScreenshots(context.Session()), context.RequestAborted);
 		return result == ServerActionResult.Ok
-			? Api.Ok(list.Select(reference => new ScreenshotView(Path.GetFileName(reference.Value))).ToList())
+			? Api.Ok(list.Items.Select(reference => new ScreenshotView(Path.GetFileName(reference.Value))).ToList())
 			: result.Refusal();
 	}
 
 	private static async Task<IResult> DeleteScreenshotAsync(HttpContext context, string id, ISender sender)
 	{
-		var actor = context.Session();
-		var (listed, list) = await sender.Send(new ListScreenshots(actor), context.RequestAborted);
-		if (listed != ServerActionResult.Ok) return listed.Refusal();
-
-		var match = list.Where(reference => Path.GetFileName(reference.Value) == id).Cast<ContentReference?>()
-			.FirstOrDefault();
-		return match is null
-			? Api.NotFound("No such screenshot.")
-			: (await sender.Send(new DeleteScreenshot(actor, match.Value), context.RequestAborted)).Answer();
+		return (await sender.Send(new DeleteScreenshot(context.Session(), id), context.RequestAborted)).Answer();
 	}
 
 	public sealed record AnnounceRequest(string? Text, int[]? To);

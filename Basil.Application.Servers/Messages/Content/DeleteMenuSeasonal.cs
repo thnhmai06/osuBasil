@@ -5,4 +5,4 @@ using Mediator;
 
 namespace Basil.Application.Servers.Messages.Content;
 
-public sealed record DeleteMenuSeasonal(Session Actor, ContentReference Image) : IRequest<ServerActionResult>;
+public sealed record DeleteMenuSeasonal(Session Actor, string Image) : IRequest<ServerActionResult>;

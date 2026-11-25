@@ -28,10 +28,10 @@ public readonly struct ScopedServerBanners
 		return await _scoped.Server.Banners.CreateAsync(name, image, url, startsAt, endsAt);
 	}
 
-	public async Task<ServerActionResult> DeleteAsync(MenuBanner banner)
+	public async Task<ServerActionResult> DeleteAsync(string image)
 	{
 		if (Denied() is { } denied) return denied;
 
-		return await _scoped.Server.Banners.DeleteAsync(banner);
+		return await _scoped.Server.Banners.DeleteAsync(image);
 	}
 }

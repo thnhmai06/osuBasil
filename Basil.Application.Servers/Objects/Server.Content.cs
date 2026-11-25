@@ -77,9 +77,10 @@ public readonly struct ServerBanners
 		}
 	}
 
-	internal async Task<ServerActionResult> DeleteAsync(MenuBanner banner)
+	internal async Task<ServerActionResult> DeleteAsync(string image)
 	{
-		if (await _server.Context.Banners.GetAsync(banner.Image) is null) return ServerActionResult.NotFound;
+		var banner = (await _server.Context.Banners.ListAsync()).FirstOrDefault(b => b.Image.FileName == image);
+		if (banner is null) return ServerActionResult.NotFound;
 
 		await _server.Context.Banners.DeleteAsync(banner);
 		await _server.Context.BannerImages.DeleteAsync(banner.Image);
@@ -101,11 +102,13 @@ public readonly struct ServerSeasonals
 		return (ServerActionResult.Ok, await _server.Context.Seasonals.SaveAsync(name, image));
 	}
 
-	internal async Task<ServerActionResult> DeleteAsync(ContentReference image)
+	internal async Task<ServerActionResult> DeleteAsync(string image)
 	{
-		if (!(await _server.Context.Seasonals.ListAsync()).Contains(image)) return ServerActionResult.NotFound;
+		var reference = (await _server.Context.Seasonals.ListAsync()).Cast<ContentReference?>()
+			.FirstOrDefault(r => r!.Value.FileName == image);
+		if (reference is null) return ServerActionResult.NotFound;
 
-		await _server.Context.Seasonals.DeleteAsync(image);
+		await _server.Context.Seasonals.DeleteAsync(reference.Value);
 		return ServerActionResult.Ok;
 	}
 }

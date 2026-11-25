@@ -1,3 +1,4 @@
+using Basil.Application.Shared.Paging;
 using Basil.Application.Servers.Objects;
 using Basil.Domain.Content;
 using Basil.Domain.Users;
@@ -22,20 +23,20 @@ public readonly struct ScopedServerScreenshots
 		return await _scoped.Server.Screenshots.UploadAsync(content, ct);
 	}
 
-	public async Task<(ServerActionResult Result, IReadOnlyList<ContentReference> Screenshots)> ListAsync(
-		CancellationToken ct = default)
+	public async Task<(ServerActionResult Result, Page<ContentReference> Screenshots)> ListAsync(
+		PageRequest? page = null, CancellationToken ct = default)
 	{
 		if (_scoped.Lacks(UserPrivileges.Moderator))
-			return (ServerActionResult.Denied, []);
+			return (ServerActionResult.Denied, new Page<ContentReference>([], false));
 
-		return (ServerActionResult.Ok, await _scoped.Server.Screenshots.ListAsync(ct));
+		return (ServerActionResult.Ok, await _scoped.Server.Screenshots.ListAsync(page, ct));
 	}
 
-	public async Task<ServerActionResult> DeleteAsync(ContentReference screenshot)
+	public async Task<ServerActionResult> DeleteAsync(string name)
 	{
 		if (_scoped.Lacks(UserPrivileges.Moderator))
 			return ServerActionResult.Denied;
 
-		return await _scoped.Server.Screenshots.DeleteAsync(screenshot);
+		return await _scoped.Server.Screenshots.DeleteAsync(name);
 	}
 }

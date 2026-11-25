@@ -222,12 +222,7 @@ internal static class ContentCommands
 	private static async Task<int> DeleteBannerAsync(CommandCall call)
 	{
 		var image = call.Word("image");
-		var banner = (await call.Get<ISender>().Send(new ListBanners(), call.CancellationToken))
-			.FirstOrDefault(b => Path.GetFileName(b.Image.Value) == image);
-		return banner is null
-			? call.NotFound("banner")
-			: call.Report(await SendAsync(call, actor => new DeleteMenuBanner(actor, banner)),
-				"Banner deleted.");
+		return call.Report(await SendAsync(call, actor => new DeleteMenuBanner(actor, image)), "Banner deleted.");
 	}
 
 	private static async Task<int> ListSeasonalsAsync(CommandCall call)
@@ -252,14 +247,8 @@ internal static class ContentCommands
 	private static async Task<int> DeleteSeasonalAsync(CommandCall call)
 	{
 		var image = call.Word("image");
-		var reference = (await call.Get<ISender>().Send(new ListSeasonals(), call.CancellationToken))
-			.Cast<ContentReference?>()
-			.FirstOrDefault(r => Path.GetFileName(r!.Value.Value) == image);
-		return reference is null
-			? call.NotFound("background")
-			: call.Report(
-				await SendAsync(call, actor => new DeleteMenuSeasonal(actor, reference.Value)),
-				"Background deleted.");
+		return call.Report(await SendAsync(call, actor => new DeleteMenuSeasonal(actor, image)),
+			"Background deleted.");
 	}
 
 	private static async Task<int> ShowIconAsync(CommandCall call)
@@ -443,20 +432,17 @@ internal static class ContentCommands
 			return all == ServerActionResult.Ok ? Announced(call, sent) : call.Refuse(all);
 		}
 
-		var recipients = new List<int>();
-		foreach (var id in ids.Select(item =>
-			         int.TryParse(item, out var parsed)
-				         ? parsed
-				         : throw CommandException.Invalid("--to must be user ids.")).Distinct())
-		{
-			if (await call.Get<ISender>().Send(new GetUser(id), call.CancellationToken) is not
-			    { } user)
-				throw CommandException.NotFound($"No such user: {id}.");
-			recipients.Add(user.Id);
-		}
+		var recipients = ids.Select(item =>
+			int.TryParse(item, out var parsed)
+				? parsed
+				: throw CommandException.Invalid("--to must be user ids.")).ToList();
 
-		var (some, count) = await SendAsync(call, actor => new NotifyUsers(actor, text, recipients));
-		return some == ServerActionResult.Ok ? Announced(call, count) : call.Refuse(some);
+		var (some, count, missing) = await SendAsync(call, actor => new NotifyUsers(actor, text, recipients));
+		if (some != ServerActionResult.Ok) return call.Refuse(some);
+
+		return missing.Count > 0
+			? throw CommandException.NotFound($"No such user: {missing[0]}.")
+			: Announced(call, count);
 	}
 
 	private static int Announced(CommandCall call, int sent)
@@ -468,27 +454,19 @@ internal static class ContentCommands
 	private static async Task<int> ListScreenshotsAsync(CommandCall call)
 	{
 		var page = call.Page();
-		var (result, list) = await SendAsync(call, actor => new ListScreenshots(actor));
+		var (result, list) = await SendAsync(call, actor => new ListScreenshots(actor, page));
 		if (result != ServerActionResult.Ok) return call.Refuse(result);
 
-		var views = list.Select(reference => new ScreenshotView(Path.GetFileName(reference.Value))).ToList();
 		call.PrintPage(
-			new Page<ScreenshotView>([.. views.Skip(page.Offset).Take(page.Limit)],
-				page.Offset + page.Limit < views.Count), page);
+			new Page<ScreenshotView>(
+				[.. list.Items.Select(reference => new ScreenshotView(Path.GetFileName(reference.Value)))],
+				list.HasNext), page);
 		return ExitCodes.Success;
 	}
 
 	private static async Task<int> DeleteScreenshotAsync(CommandCall call)
 	{
-		var (listed, list) = await SendAsync(call, actor => new ListScreenshots(actor));
-		if (listed != ServerActionResult.Ok) return call.Refuse(listed);
-
 		var id = call.Word("id");
-		var match = list.Where(reference => Path.GetFileName(reference.Value) == id).Cast<ContentReference?>()
-			.FirstOrDefault();
-		return match is null
-			? call.NotFound("screenshot")
-			: call.Report(await SendAsync(call, actor => new DeleteScreenshot(actor, match.Value)),
-				"Screenshot deleted.");
+		return call.Report(await SendAsync(call, actor => new DeleteScreenshot(actor, id)), "Screenshot deleted.");
 	}
 }

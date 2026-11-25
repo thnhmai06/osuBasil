@@ -1,4 +1,5 @@
 using Basil.Application.Shared.Diagnostics;
+using Basil.Application.Shared.Paging;
 using Basil.Domain.Content;
 
 namespace Basil.Application.Servers.Objects;
@@ -37,16 +38,21 @@ public readonly struct ServerScreenshots
 		return (reference, ServerActionResult.Ok);
 	}
 
-	internal async Task<IReadOnlyList<ContentReference>> ListAsync(CancellationToken ct)
+	internal async Task<Page<ContentReference>> ListAsync(PageRequest? page, CancellationToken ct)
 	{
-		return [.. await _server.Context.Screenshots.ListAsync(ct)];
+		var all = (await _server.Context.Screenshots.ListAsync(ct)).ToList();
+		if (page is null) return new Page<ContentReference>(all, false);
+
+		return new Page<ContentReference>([.. all.Skip(page.Offset).Take(page.Limit)], page.Offset + page.Limit < all.Count);
 	}
 
-	internal async Task<ServerActionResult> DeleteAsync(ContentReference screenshot)
+	internal async Task<ServerActionResult> DeleteAsync(string name)
 	{
-		if (!(await _server.Context.Screenshots.ListAsync()).Contains(screenshot)) return ServerActionResult.NotFound;
+		var screenshot = (await _server.Context.Screenshots.ListAsync()).Cast<ContentReference?>()
+			.FirstOrDefault(r => r!.Value.FileName == name);
+		if (screenshot is null) return ServerActionResult.NotFound;
 
-		await _server.Context.Screenshots.DeleteAsync(screenshot);
+		await _server.Context.Screenshots.DeleteAsync(screenshot.Value);
 		return ServerActionResult.Ok;
 	}
 }

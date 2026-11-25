@@ -5,4 +5,4 @@ using Mediator;
 
 namespace Basil.Application.Servers.Messages.Content;
 
-public sealed record DeleteScreenshot(Session Actor, ContentReference Screenshot) : IRequest<ServerActionResult>;
+public sealed record DeleteScreenshot(Session Actor, string Name) : IRequest<ServerActionResult>;

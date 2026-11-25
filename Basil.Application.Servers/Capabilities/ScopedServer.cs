@@ -56,9 +56,13 @@ public readonly struct ScopedServer
 		return Denied() is { } denied ? (denied, 0) : (ServerActionResult.Ok, Server.Notify(text, to));
 	}
 
-	public (ServerActionResult Result, int Sent) Notify(string text, IReadOnlyCollection<int> to)
+	public async Task<(ServerActionResult Result, int Sent, IReadOnlyList<int> Missing)> NotifyAsync(string text,
+		IReadOnlyCollection<int> to, CancellationToken ct = default)
 	{
-		return Denied() is { } denied ? (denied, 0) : (ServerActionResult.Ok, Server.Notify(text, to));
+		if (Denied() is { } denied) return (denied, 0, []);
+
+		var (sent, missing) = await Server.NotifyAsync(text, to, ct);
+		return (ServerActionResult.Ok, sent, missing);
 	}
 
 	public (ServerActionResult Result, int Sent) NotifyAll(string text)

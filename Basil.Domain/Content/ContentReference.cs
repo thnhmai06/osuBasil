@@ -32,6 +32,9 @@ public readonly record struct ContentReference : IParsable<ContentReference>, IF
 	/// <summary>The address or the path the reference holds; <see langword="null" /> only on a default value.</summary>
 	public string Value { get; }
 
+	/// <summary>The file name the reference ends in, which names the asset to the people who manage it.</summary>
+	public string FileName => Path.GetFileName(Value);
+
 	/// <summary>Whether the reference names a stored asset rather than an online address.</summary>
 	public bool IsOffline => Value is not null && !IsOnline(Value);
 

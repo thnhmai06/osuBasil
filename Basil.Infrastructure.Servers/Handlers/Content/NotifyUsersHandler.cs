@@ -5,10 +5,11 @@ using Mediator;
 namespace Basil.Infrastructure.Servers.Handlers.Content;
 
 internal sealed class NotifyUsersHandler(Server server)
-	: IRequestHandler<NotifyUsers, (ServerActionResult Result, int Sent)>
+	: IRequestHandler<NotifyUsers, (ServerActionResult Result, int Sent, IReadOnlyList<int> Missing)>
 {
-	public ValueTask<(ServerActionResult Result, int Sent)> Handle(NotifyUsers request, CancellationToken ct)
+	public async ValueTask<(ServerActionResult Result, int Sent, IReadOnlyList<int> Missing)> Handle(
+		NotifyUsers request, CancellationToken ct)
 	{
-		return ValueTask.FromResult(server.ScopeTo(request.Actor).Notify(request.Text, request.To));
+		return await server.ScopeTo(request.Actor).NotifyAsync(request.Text, request.To, ct);
 	}
 }

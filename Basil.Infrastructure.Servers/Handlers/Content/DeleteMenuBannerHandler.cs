@@ -8,6 +8,6 @@ internal sealed class DeleteMenuBannerHandler(Server server) : IRequestHandler<D
 {
 	public async ValueTask<ServerActionResult> Handle(DeleteMenuBanner request, CancellationToken ct)
 	{
-		return await server.ScopeTo(request.Actor).Banners.DeleteAsync(request.Banner);
+		return await server.ScopeTo(request.Actor).Banners.DeleteAsync(request.Image);
 	}
 }
