@@ -8,12 +8,25 @@ namespace Basil.Tests.LoadTests.Soak;
 /// <summary>Soak test: holds 70 % of N for 6 hours (configurable), split into per-hour windows with full SLO thresholds.</summary>
 public sealed class SoakTest : ILoadTest
 {
+	private static readonly TimeSpan WarmUp = TimeSpan.FromSeconds(30);
+
 	public string Name => "soak";
 
 	public string ReportName(LoadTestOptions options)
 	{
 		var soakN = SoakSessions(options);
 		return $"soak-n{soakN}-{(int)Math.Ceiling(options.SoakDuration.TotalHours)}h-s{options.Seed}";
+	}
+
+	public RunPlan Plan(LoadTestOptions options)
+	{
+		var soakN = SoakSessions(options);
+		var ramp = options.RampDuration(soakN);
+		var rampDown = TimeSpan.FromSeconds(Math.Max(15, ramp.TotalSeconds / 2));
+		var windows = SplitWindows(options.SoakDuration, TimeSpan.FromHours(1));
+		var levels = new List<(string, int, TimeSpan)> { ("ramp", soakN, ramp) };
+		levels.AddRange(windows.Select((window, i) => ($"hour {i + 1}", soakN, window)));
+		return RunPlan.Create(WarmUp, rampDown, [.. levels]);
 	}
 
 	public IReadOnlyList<ScenarioProps> BuildScenarios(LoadTestOptions options, WorkloadContext workload,
@@ -37,12 +50,9 @@ public sealed class SoakTest : ILoadTest
 				sims.Add(Simulation.RampingConstant(0, rampDown));
 				return [.. sims];
 			},
-			pick =>
-			[
-				Simulation.Inject(pick(alloc), TimeSpan.FromMinutes(1), ramp + options.SoakDuration + rampDown)
-			],
+			pick => [Injection.PerMinute(pick(alloc), ramp + options.SoakDuration + rampDown)],
 			enforceSlo: true,
-			warmUp: TimeSpan.FromSeconds(30));
+			warmUp: WarmUp);
 	}
 
 	private static int SoakSessions(LoadTestOptions options)

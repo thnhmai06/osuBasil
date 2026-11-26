@@ -90,6 +90,7 @@ public sealed class Seeder(HttpClient http)
 			var accounts = BuildAccountList(options);
 			var created = 0;
 			var existing = 0;
+			var existingByRole = new Dictionary<string, SeedAccount>();
 			var restored = false;
 
 			try
@@ -112,6 +113,7 @@ public sealed class Seeder(HttpClient http)
 					else if (reply.Status == HttpStatusCode.Conflict)
 					{
 						existing++;
+						existingByRole.TryAdd(account.Role, account);
 					}
 					else
 					{
@@ -137,6 +139,10 @@ public sealed class Seeder(HttpClient http)
 
 			if (!restored)
 				throw new InvalidOperationException("Failed to restore rateLimits.rest.mutations to its default value.");
+
+			// An account left by an earlier seed keeps its old password: prove the new accounts.csv still signs in.
+			foreach (var account in existingByRole.Values)
+				await VerifySignInAsync(options.Endpoint, account, ct);
 
 			// 6. Discover beatmaps with exact md5 and storyboard md5 from the public API archives.
 			var discoveredSets = new List<SeedBeatmapset>(sets.Count);
@@ -168,6 +174,26 @@ public sealed class Seeder(HttpClient http)
 			{
 				// Best effort.
 			}
+		}
+	}
+
+	private async Task VerifySignInAsync(Endpoint endpoint, SeedAccount account, CancellationToken ct)
+	{
+		var check = new RestClient(endpoint, http);
+		var reply = await check.SignInAsync(account.Name, account.Password, ct);
+		if (!reply.Success)
+			throw new InvalidOperationException(
+				$"Account '{account.Name}' ({account.Role}) already exists with a different password ({(int)reply.Status}). " +
+				"It was created by an earlier seed with another --seed value: seed with that value again, or reset the database.");
+
+		try
+		{
+			using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+			await check.SignOutAsync(timeout.Token);
+		}
+		catch (Exception)
+		{
+			// Best effort.
 		}
 	}
 
@@ -352,7 +378,7 @@ public sealed class Seeder(HttpClient http)
 	{
 		var reply = await rest.GetAsync(path, ct);
 		if (!reply.Success || reply.Data.ValueKind != JsonValueKind.Array) return [];
-		return [.. reply.Data.EnumerateArray().Select(e => e.GetString()).Where(s => !string.IsNullOrWhiteSpace(s))!];
+		return [.. reply.Data.EnumerateArray().Select(e => e.GetString()).OfType<string>().Where(s => !string.IsNullOrWhiteSpace(s))];
 	}
 
 	private static void WriteAccountsCsv(string path, IReadOnlyList<SeedAccount> accounts)

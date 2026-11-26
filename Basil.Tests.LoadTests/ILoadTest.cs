@@ -13,6 +13,9 @@ public interface ILoadTest
 	/// <summary>Gets the report file prefix for this run.</summary>
 	string ReportName(LoadTestOptions options);
 
+	/// <summary>Lays out the load levels of the run on its timeline, so reports can be split per step and the runner can tell how long the run lasts.</summary>
+	RunPlan Plan(LoadTestOptions options);
+
 	/// <summary>Builds the NBomber scenarios, load simulations and SLO thresholds for this test.</summary>
 	IReadOnlyList<ScenarioProps> BuildScenarios(LoadTestOptions options, WorkloadContext workload,
 		DiagnosticsMonitor? monitor);

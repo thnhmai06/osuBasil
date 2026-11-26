@@ -15,14 +15,31 @@ public sealed class SpikeTest : ILoadTest
 		return $"spike-n{options.TargetSessions}-s{options.Seed}";
 	}
 
+	private static readonly TimeSpan SpikeHold = TimeSpan.FromMinutes(2);
+	private static readonly TimeSpan PostSpike = TimeSpan.FromMinutes(2);
+	private static readonly TimeSpan Settle = TimeSpan.FromSeconds(15);
+
+	private static readonly MatchRoomConfig RoomConfig = new(MinPlayers: 4, MaxPlayers: 4, RoundsPerCycle: 1,
+		TourneyClusters: 1, SpectatorsPerRoom: 1, OverlayViewersPerRoom: 2);
+
+	public RunPlan Plan(LoadTestOptions options)
+	{
+		var background = BackgroundSessions(options);
+		return RunPlan.Create(TimeSpan.Zero, Settle,
+			("ramp", options.TargetSessions, options.RampDuration(options.TargetSessions)),
+			("spike", options.TargetSessions, SpikeHold),
+			("back to background", background, Settle),
+			("background", background, PostSpike));
+	}
+
 	public IReadOnlyList<ScenarioProps> BuildScenarios(LoadTestOptions options, WorkloadContext workload,
 		DiagnosticsMonitor? monitor)
 	{
-		var bgAlloc = PersonaAllocation.ForSessions(Math.Max(10, options.TargetSessions / 4));
-		var spikeAlloc = PersonaAllocation.ForSessions(options.TargetSessions);
+		var bgAlloc = PersonaAllocation.ForSessions(BackgroundSessions(options), RoomConfig);
+		var spikeAlloc = PersonaAllocation.ForSessions(options.TargetSessions, RoomConfig);
 		var preSpike = options.RampDuration(options.TargetSessions);
-		var spikeHold = TimeSpan.FromMinutes(2);
-		var postSpike = TimeSpan.FromMinutes(2);
+		var spikeHold = SpikeHold;
+		var postSpike = PostSpike;
 
 		return ScenarioCatalog.BuildFullSuite(
 			workload,
@@ -35,20 +52,24 @@ public sealed class SpikeTest : ILoadTest
 				[
 					Simulation.RampingConstant(peak, preSpike),
 					Simulation.KeepConstant(peak, spikeHold),
-					Simulation.RampingConstant(bg, TimeSpan.FromSeconds(15)),
+					Simulation.RampingConstant(bg, Settle),
 					Simulation.KeepConstant(bg, postSpike),
-					Simulation.RampingConstant(0, TimeSpan.FromSeconds(15))
+					Simulation.RampingConstant(0, Settle)
 				];
 			},
 			pick =>
 			[
-				Simulation.Inject(pick(bgAlloc), TimeSpan.FromMinutes(1), preSpike),
-				Simulation.Inject(pick(spikeAlloc), TimeSpan.FromMinutes(1), spikeHold),
-				Simulation.Inject(pick(bgAlloc), TimeSpan.FromMinutes(1), postSpike + TimeSpan.FromSeconds(30))
+				Injection.PerMinute(pick(bgAlloc), preSpike),
+				Injection.PerMinute(pick(spikeAlloc), spikeHold),
+				Injection.PerMinute(pick(bgAlloc), postSpike + TimeSpan.FromSeconds(30))
 			],
 			enforceSlo: false,
 			warmUp: TimeSpan.Zero,
-			matchRoomConfig: new MatchRoomConfig(MinPlayers: 4, MaxPlayers: 4, RoundsPerCycle: 1,
-				TourneyClusters: 1, SpectatorsPerRoom: 1, OverlayViewersPerRoom: 2));
+			matchRoomConfig: RoomConfig);
+	}
+
+	private static int BackgroundSessions(LoadTestOptions options)
+	{
+		return Math.Max(10, options.TargetSessions / 4);
 	}
 }

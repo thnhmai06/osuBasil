@@ -9,6 +9,7 @@ using Basil.Tests.LoadTests.Soak;
 using Basil.Tests.LoadTests.Spike;
 using Basil.Tests.LoadTests.Stress;
 using Basil.Tests.Shared.Clients;
+using Basil.Tests.Shared.Environment.Checks;
 using Basil.Tests.Shared.Environment.Monitor;
 using Basil.Tests.Shared.Environment.Seed;
 using Basil.Tests.Shared.Workload.Outcomes;
@@ -17,21 +18,54 @@ using Basil.Tests.Shared.Workload.World;
 using NBomber.Contracts.Stats;
 using NBomber.CSharp;
 
+// Exit codes: 0 the SLO held, 3 the run was sound and the SLO broke, 1 the run itself broke (bad options, lockout
+// guard, server restart, crash). Capacity, pilot and stress are meant to break the SLO, so the runner treats 3 as success there.
+const int ExitSloMet = 0;
+const int ExitRunBroken = 1;
+const int ExitSloBroken = 3;
+
 var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true };
 
+var planOnly = args.Length > 1 && args[0] == "plan";
 LoadTestOptions options;
 try
 {
-	options = LoadTestOptions.Parse(args);
+	options = LoadTestOptions.Parse(planOnly ? args[1..] : args);
 }
-catch (ArgumentException ex)
+catch (Exception ex) when (ex is ArgumentException or FormatException or OverflowException)
 {
 	PrintUsage(ex.Message == "help" ? null : ex.Message);
-	return ex.Message == "help" ? 0 : 2;
+	return ex.Message == "help" ? 0 : ExitRunBroken;
 }
 
 if (options.Test == "pilot")
 	options = options with { Test = "capacity", Pilot = true };
+
+ILoadTest[] tests =
+[
+	new LoadTest(),
+	new StressTest(),
+	new SpikeTest(),
+	new SoakTest(),
+	new CapacityTest(),
+	new ScalabilityTest(),
+	new SmokeTest()
+];
+
+var selected = tests.FirstOrDefault(t => t.Name == options.Test);
+
+if (planOnly)
+{
+	// Prints the planned duration in whole seconds, so the runner can size the control probe to the same length.
+	if (selected is null)
+	{
+		PrintUsage($"Unknown test '{options.Test}'.");
+		return ExitRunBroken;
+	}
+
+	Console.WriteLine((long)Math.Ceiling(selected.Plan(options).Total.TotalSeconds));
+	return 0;
+}
 
 using var http = Endpoint.CreateHttpClient(TimeSpan.FromSeconds(30));
 
@@ -39,8 +73,8 @@ if (options.Test == "seed")
 {
 	if (string.IsNullOrEmpty(options.OwnerPassword))
 	{
-		Console.Error.WriteLine("--owner-pass is required for seed.");
-		return 2;
+		Console.Error.WriteLine($"The owner password is required for seed: set {LoadTestOptions.OwnerPasswordVariable}.");
+		return ExitRunBroken;
 	}
 
 	var seeder = new Seeder(http);
@@ -57,7 +91,7 @@ if (options.Test == "seed")
 		options.Seed), CancellationToken.None);
 
 	Console.WriteLine(JsonSerializer.Serialize(report, jsonOptions));
-	return report.RateLimitRestored ? 0 : 1;
+	return report.RateLimitRestored ? 0 : ExitRunBroken;
 }
 
 var worldData = WorldData.Load(options.WorldPath);
@@ -85,22 +119,10 @@ if (options.Test == "control")
 	return 0;
 }
 
-ILoadTest[] tests =
-[
-	new LoadTest(),
-	new StressTest(),
-	new SpikeTest(),
-	new SoakTest(),
-	new CapacityTest(),
-	new ScalabilityTest(),
-	new SmokeTest()
-];
-
-var selected = tests.FirstOrDefault(t => t.Name == options.Test);
 if (selected is null)
 {
 	PrintUsage($"Unknown test '{options.Test}'.");
-	return 2;
+	return ExitRunBroken;
 }
 
 var reportName = selected.ReportName(options);
@@ -142,12 +164,44 @@ await using var monitor = developer is null
 
 var scenarios = selected.BuildScenarios(options, workload, monitor);
 
-var stats = NBomberRunner
-	.RegisterScenarios([.. scenarios])
-	.WithReportFileName(reportName)
-	.WithReportFolder(reportFolder)
-	.WithReportFormats(ReportFormat.Html, ReportFormat.Csv, ReportFormat.Md, ReportFormat.Txt)
-	.Run();
+var plan = selected.Plan(options);
+var runStartedAt = DateTimeOffset.UtcNow;
+NodeStats stats;
+try
+{
+	stats = NBomberRunner
+		.RegisterScenarios([.. scenarios])
+		.WithReportFileName(reportName)
+		.WithReportFolder(reportFolder)
+		.WithReportFormats(ReportFormat.Html, ReportFormat.Csv, ReportFormat.Md, ReportFormat.Txt)
+		.Run();
+}
+catch (Exception ex)
+{
+	Console.Error.WriteLine($"CRASH: {ex}");
+	await File.WriteAllTextAsync(Path.Combine(reportFolder, "run-meta.json"),
+		JsonSerializer.Serialize(new { test = selected.Name, crashed = true, error = ex.ToString() }, jsonOptions),
+		new UTF8Encoding(false));
+	return ExitRunBroken;
+}
+
+// Plan T8: the server-side checks of the smoke run, made only through the public REST API.
+IReadOnlyList<CheckResult> checks = [];
+if (selected.Name == "smoke")
+{
+	var submitted = outcomes.Snapshot().GetValueOrDefault(Channels.Submit)?.GetValueOrDefault("ok") ?? 0;
+	try
+	{
+		checks = developer is null
+			? [new CheckResult("sign-in", false, "accounts.csv has no developer account for the checks.")]
+			: await new SmokeChecks(options.Endpoint, http, developer.Name, developer.Password)
+				.RunAsync(runStartedAt, submitted, SmokeTest.Rooms, monitor, TimeSpan.FromSeconds(30), CancellationToken.None);
+	}
+	catch (Exception ex)
+	{
+		checks = [new CheckResult("server-side checks", false, ex.Message)];
+	}
+}
 
 var serverSummary = monitor?.Summary();
 var failedThresholds = stats.Thresholds
@@ -155,18 +209,65 @@ var failedThresholds = stats.Thresholds
 	.Select(t => new { t.ScenarioName, t.StepName, t.CheckExpression, t.ErrorCount })
 	.ToArray();
 
+// CPU is also judged after the run from the monitor, so the verdict does not depend on one sampled value.
+var judgesSlo = options.Test is not ("stress" or "spike");
+var cpuBroken = judgesSlo && serverSummary is { MaxCpuPercent: > SloThresholds.MaxServerCpuPercent };
+var checksBroken = checks.Any(c => !c.Passed);
+var sloBroken = failedThresholds.Length > 0 || cpuBroken || checksBroken;
+var restarted = serverSummary?.RestartDetected ?? false;
+var runBroken = lockoutGuard.IsTripped || restarted;
+var exitCode = runBroken ? ExitRunBroken : sloBroken ? ExitSloBroken : ExitSloMet;
+
 var meta = new
 {
 	test = selected.Name,
 	pilot = options.Pilot,
 	reportName,
 	startedAtUtc = timestamp,
+	runStartedAt,
 	seed = options.Seed,
 	endpoint = options.Endpoint,
 	ircPort = options.IrcPort,
 	targetSessions = options.TargetSessions,
 	basilCores = options.BasilCores,
 	lockoutAborted = lockoutGuard.IsTripped,
+	serverRestarted = restarted,
+	verdict = new
+	{
+		exitCode,
+		sloMet = !sloBroken,
+		runBroken,
+		failedThresholds = failedThresholds.Length,
+		cpuMaxPercent = serverSummary?.MaxCpuPercent,
+		cpuLimitPercent = SloThresholds.MaxServerCpuPercent,
+		cpuBroken
+	},
+	// Measured by the server's diagnostics: the sessions it really held beside the target N.
+	usersOnline = serverSummary is null
+		? null
+		: new
+		{
+			target = options.TargetSessions, peak = serverSummary.PeakUsersOnline,
+			baseline = serverSummary.BaselineUsersOnline, final = serverSummary.FinalUsersOnline
+		},
+	// Offsets count from the end of the warm-up, which starts at runStartedAt plus the scenario init; split
+	// the NBomber timeline and diagnostics.jsonl (it stamps every sample with its UTC time) with them.
+	plan = new
+	{
+		warmUpSeconds = plan.WarmUp.TotalSeconds,
+		tailSeconds = plan.Tail.TotalSeconds,
+		totalSeconds = plan.Total.TotalSeconds,
+		steps = plan.Steps.Select(step => new
+		{
+			step.Index,
+			step.Name,
+			step.TargetSessions,
+			startSeconds = step.Start.TotalSeconds,
+			endSeconds = step.End.TotalSeconds
+		})
+	},
+	accountPoolMisses = pool.Misses,
+	serverChecks = checks,
 	outcomes = outcomes.Snapshot(),
 	totals = new
 	{
@@ -186,11 +287,15 @@ await File.WriteAllTextAsync(
 	new UTF8Encoding(false));
 
 Console.WriteLine($"Report folder: {reportFolder}");
-Console.WriteLine($"Seed: {options.Seed} | Errors: {outcomes.Total(Outcome.Error)} | Failed thresholds: {failedThresholds.Length}");
+Console.WriteLine($"Seed: {options.Seed} | Errors: {outcomes.Total(Outcome.Error)} | Failed thresholds: {failedThresholds.Length} | Exit: {exitCode}");
+foreach (var check in checks)
+	Console.WriteLine($"Check {(check.Passed ? "ok" : "FAILED")}: {check.Name} - {check.Detail}");
 if (lockoutGuard.IsTripped)
 	Console.Error.WriteLine("ABORTED: Login lockout guard tripped on refused login burst.");
+if (restarted)
+	Console.Error.WriteLine("ABORTED: The server restarted during the run.");
 
-return failedThresholds.Length > 0 || lockoutGuard.IsTripped || (serverSummary?.RestartDetected ?? false) ? 1 : 0;
+return exitCode;
 
 static void PrintUsage(string? error)
 {
@@ -209,6 +314,9 @@ static void PrintUsage(string? error)
 	                    capacity      Steps of +ΔN every 5 minutes until SLO breaks
 	                    scalability   Capacity run tagged with --cores (1, 2 or 4)
 	                    control       Steady low-rate control probe (for espresso)
+	                    plan <test>   Print the planned duration of a test in seconds
+
+	                  Exit codes: 0 SLO met, 3 SLO broken, 1 the run itself broke (bad options, lockout guard, server restart, crash).
 
 	                  Options:
 	                    --connect <ip>         Target host IP (default: 192.168.27.124)
@@ -227,7 +335,7 @@ static void PrintUsage(string? error)
 	                    --duration <dur>       Steady/control duration, e.g. 10m, 2m, 30s
 	                    --soak-duration <dur>  Soak duration, e.g. 6h
 	                    --owner-user <name>    Owner username for seed (default: admin)
-	                    --owner-pass <pass>    Owner password for seed
+	                    (the seed owner password is read from the environment variable BASIL_OWNER_PASSWORD)
 	                    --players <n>          Player accounts to seed (default: 1500)
 	                    --referees <n>         Referee accounts to seed (default: 100)
 	                    --tourneys <n>         Tourney accounts to seed (default: 400)

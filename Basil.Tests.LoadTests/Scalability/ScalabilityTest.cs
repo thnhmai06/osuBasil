@@ -17,6 +17,11 @@ public sealed class ScalabilityTest : ILoadTest
 		return $"scalability-c{options.BasilCores}-d{options.StepDelta}-x{options.StepCount}-s{options.Seed}";
 	}
 
+	public RunPlan Plan(LoadTestOptions options)
+	{
+		return _capacity.Plan(options);
+	}
+
 	public IReadOnlyList<ScenarioProps> BuildScenarios(LoadTestOptions options, WorkloadContext workload,
 		DiagnosticsMonitor? monitor)
 	{

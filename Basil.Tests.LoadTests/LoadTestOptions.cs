@@ -5,6 +5,9 @@ namespace Basil.Tests.LoadTests;
 /// <summary>Parsed command-line options for running a load test, seeding, or running the control probe.</summary>
 public sealed record LoadTestOptions
 {
+	/// <summary>The name of the environment variable that holds the owner password for <c>seed</c>.</summary>
+	public const string OwnerPasswordVariable = "BASIL_OWNER_PASSWORD";
+
 	public string Test { get; init; } = "load";
 
 	public string Connect { get; init; } = "192.168.27.124";
@@ -46,7 +49,8 @@ public sealed record LoadTestOptions
 	// Seed-only options.
 	public string OwnerUser { get; init; } = "admin";
 
-	public string OwnerPassword { get; init; } = string.Empty;
+	/// <summary>Gets the owner password; it comes from the <c>BASIL_OWNER_PASSWORD</c> environment variable, never from the command line, so it stays out of process lists and shell history.</summary>
+	public string OwnerPassword { get; init; } = Environment.GetEnvironmentVariable(OwnerPasswordVariable) ?? string.Empty;
 
 	public int PlayerCount { get; init; } = 1500;
 
@@ -59,7 +63,11 @@ public sealed record LoadTestOptions
 	/// <summary>Builds the target <see cref="Endpoint"/>.</summary>
 	public Endpoint Endpoint => new(Connect, Port, Domain);
 
-	/// <summary>Computes the bcrypt-safe ramp duration: <c>N * 0.145 / (cores * 0.5)</c>, floored at 15 s.</summary>
+	/// <summary>
+	/// Computes the bcrypt-safe ramp duration: <c>N * 0.145 / (cores * 0.5)</c>, floored at 15 s. <paramref name="sessions"/>
+	/// counts every client that signs in, tourney child clients included, because each sign-in costs about 145 ms of
+	/// server CPU and a session signs in once for the life of its copy.
+	/// </summary>
 	public TimeSpan RampDuration(int sessions)
 	{
 		var cores = Math.Max(1, BasilCores);
@@ -105,7 +113,8 @@ public sealed record LoadTestOptions
 				"--poll" => options with { PollInterval = ParseDuration(Next()) },
 				"--pilot" => options with { Pilot = true },
 				"--owner-user" => options with { OwnerUser = Next() },
-				"--owner-pass" => options with { OwnerPassword = Next() },
+				"--owner-pass" => throw new ArgumentException(
+					$"--owner-pass is not accepted: it would show in the process list and the shell history. Set {OwnerPasswordVariable} instead."),
 				"--players" => options with { PlayerCount = int.Parse(Next()) },
 				"--referees" => options with { RefereeCount = int.Parse(Next()) },
 				"--tourneys" => options with { TourneyCount = int.Parse(Next()) },

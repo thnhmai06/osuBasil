@@ -10,6 +10,8 @@ public sealed class StressTest : ILoadTest
 {
 	private static readonly double[] Multipliers = [1.0, 1.25, 1.5, 1.75, 2.0, 0.5];
 
+	private static readonly TimeSpan WarmUp = TimeSpan.FromSeconds(20);
+
 	public string Name => "stress";
 
 	public string ReportName(LoadTestOptions options)
@@ -17,11 +19,17 @@ public sealed class StressTest : ILoadTest
 		return $"stress-n{options.TargetSessions}-s{options.Seed}";
 	}
 
+	public RunPlan Plan(LoadTestOptions options)
+	{
+		var (stepDuration, rampStep) = Shape(options);
+		return RunPlan.Create(WarmUp, rampStep,
+			[.. Multipliers.Select(m => ($"{m}x", (int)Math.Round(options.TargetSessions * m), rampStep + stepDuration))]);
+	}
+
 	public IReadOnlyList<ScenarioProps> BuildScenarios(LoadTestOptions options, WorkloadContext workload,
 		DiagnosticsMonitor? monitor)
 	{
-		var stepDuration = TimeSpan.FromMinutes(Math.Max(1, options.StepMinutes));
-		var rampStep = TimeSpan.FromSeconds(Math.Max(20, options.RampDuration(options.TargetSessions / 4).TotalSeconds));
+		var (stepDuration, rampStep) = Shape(options);
 		var allocations = Multipliers
 			.Select(m => PersonaAllocation.ForSessions((int)Math.Round(options.TargetSessions * m)))
 			.ToArray();
@@ -46,13 +54,17 @@ public sealed class StressTest : ILoadTest
 			{
 				var sims = new List<LoadSimulation>();
 				foreach (var alloc in allocations)
-				{
-					sims.Add(Simulation.Inject(pick(alloc), TimeSpan.FromMinutes(1), rampStep + stepDuration));
-				}
+					sims.Add(Injection.PerMinute(pick(alloc), rampStep + stepDuration));
 
 				return [.. sims];
 			},
 			enforceSlo: false,
-			warmUp: TimeSpan.FromSeconds(20));
+			warmUp: WarmUp);
+	}
+
+	private static (TimeSpan StepDuration, TimeSpan RampStep) Shape(LoadTestOptions options)
+	{
+		return (TimeSpan.FromMinutes(Math.Max(1, options.StepMinutes)),
+			TimeSpan.FromSeconds(Math.Max(20, options.RampDuration(options.TargetSessions / 4).TotalSeconds)));
 	}
 }

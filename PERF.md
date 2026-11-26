@@ -28,11 +28,16 @@ Seed once against the running stack through the public REST API (raises `rest.mu
 referee, tourney and developer accounts, restores the default rate limit, and writes `accounts.csv` and `world-data.json`):
 
 ```bash
-dotnet run --project Basil.Tests.LoadTests -c Release -- \
+BASIL_OWNER_PASSWORD=<password> dotnet run --project Basil.Tests.LoadTests -c Release -- \
   seed --connect 192.168.27.124 --port 8443 --domain basil.local \
-  --owner-user admin --owner-pass <password> \
+  --owner-user admin \
   --accounts accounts.csv --world world-data.json
 ```
+
+The owner password is read from the `BASIL_OWNER_PASSWORD` environment variable only (a flag would show in `ps` and the shell
+history). When an account already exists from an earlier seed, the seeder signs in once with one account of each role and
+stops with a clear message if the password in the new `accounts.csv` is wrong (seed again with the same `--seed`, or reset
+the database).
 
 `accounts.csv`, `world-data.json`, database dumps and `reports/` hold credentials or generated outputs: keep them out of git.
 
@@ -54,7 +59,13 @@ dotnet run --project Basil.Tests.LoadTests -c Release -- \
 ```
 
 Available test commands: `seed`, `smoke`, `pilot`, `load`, `stress`, `spike`, `soak`, `capacity`, `scalability`, `control`.
-The exit code is 1 when any SLO threshold fails, the login lockout guard trips, or a server restart is detected.
+Exit codes: `0` the SLO held, `3` the run was sound and the SLO broke (a failed threshold, server CPU above 80 %, or a failed
+server-side check of the smoke run), `1` the run itself broke (bad options, the login lockout guard tripped, the server
+restarted, a crash). Capacity, pilot, stress and scalability are meant to break the SLO, so the k3s runner reports `3` as a
+successful run for them. `run-meta.json` carries the verdict, the step schedule (`plan.steps`: index, target N, start and end
+offset in seconds from the end of the warm-up, for splitting the NBomber timeline and `diagnostics.jsonl` per step), the users
+online the server measured beside the target N, and, for smoke, the server-side checks (matches have finished rounds, each
+score is stored once, no room or session is left over). `plan <test> [options]` prints the planned duration in seconds.
 
 On the k3s bench (`docker/loadtests/`), one script deploys the stack, resets state between runs, publishes and copies the
 binary, runs both the generator Job (`cappuccino`) and the control/ping/iperf3 Job (`espresso`), and gathers every report and
@@ -62,11 +73,16 @@ infrastructure log into `reports/<test>-<timestamp>/`:
 
 ```bash
 ./docker/loadtests/run.sh deploy
-./docker/loadtests/run.sh seed --owner-pass <password>
+BASIL_OWNER_PASSWORD=<password> ./docker/loadtests/run.sh seed
 ./docker/loadtests/run.sh run smoke
 ./docker/loadtests/run.sh run load --n 200 --seed 20261125
 ./docker/loadtests/run.sh scalability --step-delta 50 --steps 6
 ```
+
+Before every run the script restores the baseline database and clears `Replays/`, `Screenshots/`, uploaded `Avatars/`,
+`Cache/`, `Logs/` and the nginx load log with a throwaway root pod on the same host paths; it stops if anything is left. The
+control probe on `espresso` lasts as long as the test plans to (plus three minutes), and the script waits for the Job to
+succeed or fail instead of for success only.
 
 ## SLO targets
 

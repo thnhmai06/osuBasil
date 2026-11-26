@@ -8,6 +8,8 @@ namespace Basil.Tests.LoadTests.Capacity;
 /// <summary>Capacity test: adds <c>+ΔN</c> every 5 minutes until the SLO breaks; the pilot is a shorter Capacity run.</summary>
 public sealed class CapacityTest : ILoadTest
 {
+	private static readonly TimeSpan WarmUp = TimeSpan.FromSeconds(15);
+
 	public string Name => "capacity";
 
 	public string ReportName(LoadTestOptions options)
@@ -16,14 +18,17 @@ public sealed class CapacityTest : ILoadTest
 		return $"{prefix}-d{options.StepDelta}-x{options.StepCount}-s{options.Seed}";
 	}
 
+	public RunPlan Plan(LoadTestOptions options)
+	{
+		var (stepHold, stepCount, stepDelta, rampStep) = Shape(options);
+		return RunPlan.Create(WarmUp, rampStep,
+			[.. Enumerable.Range(1, stepCount).Select(step => ($"step {step}", step * stepDelta, rampStep + stepHold))]);
+	}
+
 	public IReadOnlyList<ScenarioProps> BuildScenarios(LoadTestOptions options, WorkloadContext workload,
 		DiagnosticsMonitor? monitor)
 	{
-		var stepMinutes = options.Pilot ? Math.Min(2, options.StepMinutes) : options.StepMinutes;
-		var stepHold = TimeSpan.FromMinutes(Math.Max(1, stepMinutes));
-		var stepCount = Math.Max(1, options.StepCount);
-		var stepDelta = Math.Max(10, options.StepDelta);
-		var rampStep = options.RampDuration(stepDelta);
+		var (stepHold, stepCount, stepDelta, rampStep) = Shape(options);
 
 		var allocations = Enumerable.Range(1, stepCount)
 			.Select(step => PersonaAllocation.ForSessions(step * stepDelta))
@@ -49,10 +54,18 @@ public sealed class CapacityTest : ILoadTest
 			{
 				var sims = new List<LoadSimulation>();
 				foreach (var alloc in allocations)
-					sims.Add(Simulation.Inject(pick(alloc), TimeSpan.FromMinutes(1), rampStep + stepHold));
+					sims.Add(Injection.PerMinute(pick(alloc), rampStep + stepHold));
 				return [.. sims];
 			},
 			enforceSlo: true,
-			warmUp: TimeSpan.FromSeconds(15));
+			warmUp: WarmUp);
+	}
+
+	private static (TimeSpan StepHold, int StepCount, int StepDelta, TimeSpan RampStep) Shape(LoadTestOptions options)
+	{
+		var stepMinutes = options.Pilot ? Math.Min(2, options.StepMinutes) : options.StepMinutes;
+		var stepDelta = Math.Max(10, options.StepDelta);
+		return (TimeSpan.FromMinutes(Math.Max(1, stepMinutes)), Math.Max(1, options.StepCount), stepDelta,
+			options.RampDuration(stepDelta));
 	}
 }

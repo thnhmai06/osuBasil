@@ -18,12 +18,39 @@ public readonly record struct PersonaAllocation(
 	int ChurnRatePerMinute,
 	int EdgeCaseRatePerMinute)
 {
+	/// <summary>
+	/// Gets the expected number of concurrent sessions one match room holds: the players, the referee, the spectators,
+	/// the tourney clusters (each one manager plus one child client per player) and the overlay viewers that sign in.
+	/// </summary>
+	/// <remarks>
+	/// Players are 2, 4 or 8 with equal chance inside <c>[MinPlayers, MaxPlayers]</c>. The referee is one session over IRC
+	/// or REST. Without a fixed cluster count a room has 0 to 2 clusters at random, one on average. Of the overlay viewers
+	/// every second one watches <c>/v1/rooms/{id}/live</c>; it signs in as an extra session only when the referee is on
+	/// IRC, which is half of the rooms unless the referee is forced. The default configuration gives about 12.8 sessions.
+	/// </remarks>
+	/// <param name="matchRoom">The room configuration; <see langword="null"/> means the defaults.</param>
+	public static double SessionsPerMatchRoom(MatchRoomConfig? matchRoom = null)
+	{
+		var config = matchRoom ?? new MatchRoomConfig();
+		var sizes = new[] { 2, 4, 8 }.Where(size => size >= config.MinPlayers && size <= config.MaxPlayers).ToArray();
+		var players = sizes.Length == 0 ? Math.Max(2, config.MinPlayers) : sizes.Average();
+
+		int? fixedClusters = config.TourneyClusters;
+		var clusters = fixedClusters ?? 1.0;
+
+		var liveViewers = config.OverlayViewersPerRoom / 2;
+		var ircReferee = config.ForceIrcReferee is { } forced ? forced ? 1.0 : 0.0 : 0.5;
+
+		return players + 1 + config.SpectatorsPerRoom + clusters * (1 + players) + liveViewers * ircReferee;
+	}
+
 	/// <summary>Computes a realistic live-tournament workload mix for <paramref name="targetSessions"/> concurrent sessions.</summary>
-	public static PersonaAllocation ForSessions(int targetSessions)
+	/// <param name="targetSessions">The concurrent sessions <c>N</c> the whole mix should hold, tourney child clients included.</param>
+	/// <param name="matchRoom">The room configuration the match rooms use; <see langword="null"/> means the defaults.</param>
+	public static PersonaAllocation ForSessions(int targetSessions, MatchRoomConfig? matchRoom = null)
 	{
 		var n = Math.Max(10, targetSessions);
-		// One MatchRoom holds ~10 concurrent sessions (2-8 players + ref + tourney cluster + spectator + overlays).
-		var matchRooms = Math.Max(1, (int)Math.Round(n * 0.55 / 10.0));
+		var matchRooms = Math.Max(1, (int)Math.Round(n * 0.55 / SessionsPerMatchRoom(matchRoom)));
 		var freePlayers = Math.Max(1, (int)Math.Round(n * 0.20));
 		var casualRooms = Math.Max(1, (int)Math.Round(n * 0.08 / 2.0));
 		var spectators = Math.Max(1, (int)Math.Round(n * 0.06));
@@ -64,8 +91,10 @@ public static class ScenarioCatalog
 		var churn = new ChurnPersona(workload);
 		var edgeCases = new EdgeCasesPersona(workload);
 
-		ScenarioProps Configure(ScenarioProps s, LoadSimulation[] sims, Threshold[] thresholds, bool attachMonitor = false)
+		ScenarioProps Configure(ScenarioProps s, LoadSimulation[] sims, Threshold[] thresholds, Func<Task> shutdown,
+			bool attachMonitor = false)
 		{
+			s = s.WithClean(_ => shutdown());
 			s = warmUp is { } w && w > TimeSpan.Zero ? s.WithWarmUpDuration(w) : s.WithoutWarmUp();
 			s = s.WithLoadSimulations(sims);
 			if (enforceSlo && thresholds.Length > 0) s = s.WithThresholds(thresholds);
@@ -93,6 +122,7 @@ public static class ScenarioCatalog
 				closedSimulations(a => a.MatchRooms),
 				SloThresholds.ForScenario(includePoll: true, includeSubmit: true, includeRest: true,
 					includeLogin: true, includeServerCpu: monitor is not null),
+				matchRoom.ShutdownAsync,
 				attachMonitor: true),
 
 			Configure(
@@ -103,7 +133,8 @@ public static class ScenarioCatalog
 				}),
 				closedSimulations(a => a.FreePlayers),
 				SloThresholds.ForScenario(includePoll: true, includeSubmit: true, includeGetScores: true,
-					includeLogin: true)),
+					includeLogin: true),
+				freePlayer.ShutdownAsync),
 
 			Configure(
 				Scenario.Create("casual_room", async ctx =>
@@ -112,7 +143,8 @@ public static class ScenarioCatalog
 					return Response.Ok();
 				}),
 				closedSimulations(a => a.CasualRooms),
-				SloThresholds.ForScenario(includePoll: true, includeSubmit: true, includeLogin: true)),
+				SloThresholds.ForScenario(includePoll: true, includeSubmit: true, includeLogin: true),
+				casualRoom.ShutdownAsync),
 
 			Configure(
 				Scenario.Create("spectator", async ctx =>
@@ -121,7 +153,8 @@ public static class ScenarioCatalog
 					return Response.Ok();
 				}),
 				closedSimulations(a => a.Spectators),
-				SloThresholds.ForScenario(includePoll: true, includeLogin: true)),
+				SloThresholds.ForScenario(includePoll: true, includeLogin: true),
+				spectator.ShutdownAsync),
 
 			Configure(
 				Scenario.Create("tourney_cluster", async ctx =>
@@ -130,7 +163,8 @@ public static class ScenarioCatalog
 					return Response.Ok();
 				}),
 				closedSimulations(a => a.TourneyClusters),
-				SloThresholds.ForScenario(includePoll: true, includeLogin: true)),
+				SloThresholds.ForScenario(includePoll: true, includeLogin: true),
+				tourney.ShutdownAsync),
 
 			Configure(
 				Scenario.Create("overlay_viewer", async ctx =>
@@ -139,7 +173,8 @@ public static class ScenarioCatalog
 					return Response.Ok();
 				}),
 				closedSimulations(a => a.OverlayViewers),
-				SloThresholds.ForScenario(includeLogin: true)),
+				SloThresholds.ForScenario(includeLogin: true),
+				overlay.ShutdownAsync),
 
 			Configure(
 				Scenario.Create("irc_chatter", async ctx =>
@@ -148,7 +183,8 @@ public static class ScenarioCatalog
 					return Response.Ok();
 				}),
 				closedSimulations(a => a.IrcChatters),
-				SloThresholds.ForScenario()),
+				SloThresholds.ForScenario(),
+				irc.ShutdownAsync),
 
 			Configure(
 				Scenario.Create("background", async ctx =>
@@ -157,7 +193,8 @@ public static class ScenarioCatalog
 					return Response.Ok();
 				}),
 				openSimulations(a => a.BackgroundRatePerMinute),
-				SloThresholds.ForScenario(includeGetScores: true, includeRest: true)),
+				SloThresholds.ForScenario(includeGetScores: true, includeRest: true),
+				background.ShutdownAsync),
 
 			Configure(
 				Scenario.Create("churn", async ctx =>
@@ -166,7 +203,8 @@ public static class ScenarioCatalog
 					return Response.Ok();
 				}),
 				openSimulations(a => a.ChurnRatePerMinute),
-				SloThresholds.ForScenario(includeLogin: true, includeRest: true)),
+				SloThresholds.ForScenario(includeLogin: true, includeRest: true),
+				churn.ShutdownAsync),
 
 			Configure(
 				Scenario.Create("edge_cases", async ctx =>
@@ -175,7 +213,8 @@ public static class ScenarioCatalog
 					return Response.Ok();
 				}),
 				openSimulations(a => a.EdgeCaseRatePerMinute),
-				SloThresholds.ForScenario())
+				SloThresholds.ForScenario(),
+				edgeCases.ShutdownAsync)
 		];
 	}
 }

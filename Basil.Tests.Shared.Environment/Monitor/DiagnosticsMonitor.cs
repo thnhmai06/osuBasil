@@ -8,7 +8,7 @@ using NBomber.CSharp;
 
 namespace Basil.Tests.Shared.Environment.Monitor;
 
-/// <summary>Summary of server-side metrics collected from Basil's diagnostics SSE during a run.</summary>
+/// <summary>Summary of server-side metrics collected from Basil's diagnostics SSE during a run; baseline is the first sample (only the monitor signed in), final the latest.</summary>
 public sealed record ServerMetricsSummary(
 	int Samples,
 	double AvgCpuPercent,
@@ -26,7 +26,10 @@ public sealed record ServerMetricsSummary(
 	double MaxDbP95Us,
 	long MaxEventsPending,
 	long TotalEventFailures,
-	bool RestartDetected);
+	bool RestartDetected,
+	long BaselineUsersOnline,
+	long FinalUsersOnline,
+	long FinalOpenRooms);
 
 /// <summary>Streams Basil's <c>/v1/diagnostics</c> SSE feed into NBomber custom gauges and writes <c>diagnostics.jsonl</c> and <c>server-summary.json</c> beside the report.</summary>
 public sealed class DiagnosticsMonitor(
@@ -78,6 +81,9 @@ public sealed class DiagnosticsMonitor(
 	private long _totalEventFailures;
 	private long _lastUptimeSeconds = -1;
 	private bool _restartDetected;
+	private long _baselineUsers = -1;
+	private long _finalUsers;
+	private long _finalRooms;
 
 	/// <summary>Registers every server gauge on an NBomber scenario init context.</summary>
 	public void RegisterMetrics(IScenarioInitContext context)
@@ -136,7 +142,10 @@ public sealed class DiagnosticsMonitor(
 				Math.Round(_maxDbP95, 2),
 				_maxEventsPending,
 				_totalEventFailures,
-				_restartDetected);
+				_restartDetected,
+				Math.Max(0, _baselineUsers),
+				_finalUsers,
+				_finalRooms);
 		}
 	}
 
@@ -297,6 +306,9 @@ public sealed class DiagnosticsMonitor(
 			_maxDbP95 = Math.Max(_maxDbP95, dbP95);
 			_maxEventsPending = Math.Max(_maxEventsPending, evPending);
 			_totalEventFailures = Math.Max(_totalEventFailures, evFailures);
+			if (_baselineUsers < 0) _baselineUsers = users;
+			_finalUsers = users;
+			_finalRooms = rooms;
 			if (uptime >= 0 && _lastUptimeSeconds >= 0 && uptime < _lastUptimeSeconds)
 				_restartDetected = true;
 			if (uptime >= 0) _lastUptimeSeconds = uptime;

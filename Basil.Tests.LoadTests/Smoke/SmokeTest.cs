@@ -8,6 +8,17 @@ namespace Basil.Tests.LoadTests.Smoke;
 /// <summary>T8 smoke run: two 2v2 tournament rooms (one IRC referee, one REST referee), 20 free players and edge cases for two minutes with zero errors.</summary>
 public sealed class SmokeTest : ILoadTest
 {
+	/// <summary>The number of rooms the smoke run plays at once; the server-side checks expect that many matches with rounds.</summary>
+	public const int Rooms = 2;
+
+	private const int FreePlayers = 20;
+	private static readonly TimeSpan Ramp = TimeSpan.FromSeconds(15);
+	private static readonly TimeSpan RampDown = TimeSpan.FromSeconds(10);
+
+	private static readonly MatchRoomConfig RoomConfig = new(
+		MinPlayers: 4, MaxPlayers: 4, RoundsPerCycle: 2,
+		TourneyClusters: 0, SpectatorsPerRoom: 1, OverlayViewersPerRoom: 2);
+
 	public string Name => "smoke";
 
 	public string ReportName(LoadTestOptions options)
@@ -15,17 +26,18 @@ public sealed class SmokeTest : ILoadTest
 		return $"smoke-s{options.Seed}";
 	}
 
+	public RunPlan Plan(LoadTestOptions options)
+	{
+		var sessions = (int)Math.Round(Rooms * PersonaAllocation.SessionsPerMatchRoom(RoomConfig) + FreePlayers);
+		return RunPlan.Create(TimeSpan.Zero, RampDown, ("smoke", sessions, Ramp + Duration(options)));
+	}
+
 	public IReadOnlyList<ScenarioProps> BuildScenarios(LoadTestOptions options, WorkloadContext workload,
 		DiagnosticsMonitor? monitor)
 	{
-		var duration = options.SteadyDuration == TimeSpan.FromMinutes(10)
-			? TimeSpan.FromMinutes(2)
-			: options.SteadyDuration;
-		var ramp = TimeSpan.FromSeconds(15);
+		var duration = Duration(options);
 
-		var matchRoom = new MatchRoomPersona(workload, new MatchRoomConfig(
-			MinPlayers: 4, MaxPlayers: 4, RoundsPerCycle: 2,
-			TourneyClusters: 0, SpectatorsPerRoom: 1, OverlayViewersPerRoom: 2));
+		var matchRoom = new MatchRoomPersona(workload, RoomConfig);
 		var freePlayer = new FreePlayerPersona(workload);
 		var edgeCases = new EdgeCasesPersona(workload);
 
@@ -35,10 +47,11 @@ public sealed class SmokeTest : ILoadTest
 				return Response.Ok();
 			})
 			.WithoutWarmUp()
+			.WithClean(_ => matchRoom.ShutdownAsync())
 			.WithLoadSimulations(
-				Simulation.RampingConstant(2, ramp),
-				Simulation.KeepConstant(2, duration),
-				Simulation.RampingConstant(0, TimeSpan.FromSeconds(10)))
+				Simulation.RampingConstant(Rooms, Ramp),
+				Simulation.KeepConstant(Rooms, duration),
+				Simulation.RampingConstant(0, RampDown))
 			.WithThresholds(SloThresholds.ForScenario(includePoll: true, includeSubmit: true, includeRest: true,
 				includeLogin: true, includeServerCpu: monitor is not null, maxErrorPercent: 0.01));
 
@@ -58,10 +71,11 @@ public sealed class SmokeTest : ILoadTest
 				return Response.Ok();
 			})
 			.WithoutWarmUp()
+			.WithClean(_ => freePlayer.ShutdownAsync())
 			.WithLoadSimulations(
-				Simulation.RampingConstant(20, ramp),
-				Simulation.KeepConstant(20, duration),
-				Simulation.RampingConstant(0, TimeSpan.FromSeconds(10)))
+				Simulation.RampingConstant(FreePlayers, Ramp),
+				Simulation.KeepConstant(FreePlayers, duration),
+				Simulation.RampingConstant(0, RampDown))
 			.WithThresholds(SloThresholds.ForScenario(includePoll: true, includeSubmit: true, includeGetScores: true,
 				includeLogin: true, maxErrorPercent: 0.01));
 
@@ -71,9 +85,15 @@ public sealed class SmokeTest : ILoadTest
 				return Response.Ok();
 			})
 			.WithoutWarmUp()
-			.WithLoadSimulations(Simulation.Inject(2, TimeSpan.FromMinutes(1), ramp + duration))
+			.WithClean(_ => edgeCases.ShutdownAsync())
+			.WithLoadSimulations(Injection.PerMinute(2, Ramp + duration))
 			.WithThresholds(SloThresholds.ForScenario(maxErrorPercent: 0.01));
 
 		return [roomsScenario, freeScenario, edgeScenario];
+	}
+
+	private static TimeSpan Duration(LoadTestOptions options)
+	{
+		return options.SteadyDuration == TimeSpan.FromMinutes(10) ? TimeSpan.FromMinutes(2) : options.SteadyDuration;
 	}
 }

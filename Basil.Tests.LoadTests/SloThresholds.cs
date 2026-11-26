@@ -8,6 +8,9 @@ namespace Basil.Tests.LoadTests;
 /// <summary>Declares the W15 SLO thresholds shared across load test modules.</summary>
 public static class SloThresholds
 {
+	/// <summary>The highest server CPU, in percent, the SLO allows; the run verdict checks the same limit after the run.</summary>
+	public const double MaxServerCpuPercent = 80.0;
+
 	/// <summary>Returns the standard per-channel and error-rate SLO thresholds for a scenario.</summary>
 	public static Threshold[] ForScenario(bool includePoll = false, bool includeSubmit = false,
 		bool includeGetScores = false, bool includeRest = false, bool includeLogin = false,
@@ -38,7 +41,7 @@ public static class SloThresholds
 
 		if (includeServerCpu)
 			thresholds.Add(Threshold.Create(
-				metric => (metric.Gauges.Find(DiagnosticsMonitor.CpuGaugeName)?.Value ?? 0) <= 80.0,
+				metric => metric.Gauges.Get(DiagnosticsMonitor.CpuGaugeName).Value <= MaxServerCpuPercent,
 				startCheckAfter: TimeSpan.FromSeconds(15)));
 
 		return [.. thresholds];
