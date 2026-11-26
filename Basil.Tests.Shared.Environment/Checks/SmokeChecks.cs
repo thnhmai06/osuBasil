@@ -41,11 +41,17 @@ public sealed class SmokeChecks(
 	public async Task<IReadOnlyList<CheckResult>> RunAsync(DateTimeOffset runStart, long scoresAccepted,
 		int minMatchesWithRounds, DiagnosticsMonitor? monitor, TimeSpan settle, CancellationToken ct)
 	{
-		var rest = new RestClient(endpoint, http);
-		var login = await rest.SignInAsync(user, password, ct);
-		if (!login.Success)
-			return
-				[new CheckResult("sign-in", false, $"The checking account could not sign in ({(int)login.Status}).")];
+		var shared = monitor?.Client;
+		var rest = shared ?? new RestClient(endpoint, http);
+		if (shared is null)
+		{
+			var login = await rest.SignInAsync(user, password, ct);
+			if (!login.Success)
+				return
+				[
+					new CheckResult("sign-in", false, $"The checking account could not sign in ({(int)login.Status}).")
+				];
+		}
 
 		try
 		{
@@ -59,15 +65,17 @@ public sealed class SmokeChecks(
 		}
 		finally
 		{
-			try
-			{
-				using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-				await rest.SignOutAsync(timeout.Token);
-			}
-			catch (Exception)
-			{
-				// Best effort.
-			}
+			// The monitor signs its own session out.
+			if (shared is null)
+				try
+				{
+					using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+					await rest.SignOutAsync(timeout.Token);
+				}
+				catch (Exception)
+				{
+					// Best effort.
+				}
 		}
 	}
 

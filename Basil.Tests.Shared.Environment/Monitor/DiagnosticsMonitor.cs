@@ -89,6 +89,12 @@ public sealed class DiagnosticsMonitor(
 	private double _sumCpu;
 	private long _totalEventFailures;
 
+	/// <summary>
+	///     Gets the signed-in client of the monitor, or <see langword="null" /> while it has none; the developer account
+	///     may hold only one API session, so other readers of it share this one.
+	/// </summary>
+	public RestClient? Client { get; private set; }
+
 	/// <summary>Stops streaming and writes <c>server-summary.json</c>.</summary>
 	public async ValueTask DisposeAsync()
 	{
@@ -191,6 +197,7 @@ public sealed class DiagnosticsMonitor(
 					continue;
 				}
 
+				Client = rest;
 				using var stream = await rest.OpenStreamAsync("/v1/diagnostics", true, ct);
 				await foreach (var ev in stream.ReadAsync(ct))
 				{
@@ -221,6 +228,7 @@ public sealed class DiagnosticsMonitor(
 			}
 			finally
 			{
+				Client = null;
 				if (rest.Token is not null)
 					try
 					{
