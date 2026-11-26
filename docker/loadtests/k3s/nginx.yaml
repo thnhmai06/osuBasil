@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: basil-load
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: mocha
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: nginx
+          image: nginx:stable-alpine
+          ports:
+            - containerPort: 8443
+              hostPort: 8443
+            - containerPort: 6697
+              hostPort: 6697
+          resources:
+            requests:
+              cpu: "1"
+              memory: 1Gi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          volumeMounts:
+            - name: conf
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx-load.conf
+              readOnly: true
+            - name: conf
+              mountPath: /etc/nginx/proxy.conf
+              subPath: proxy.conf
+              readOnly: true
+            - name: conf
+              mountPath: /etc/nginx/real-ip.conf
+              subPath: real-ip.conf
+              readOnly: true
+            - name: certs
+              mountPath: /etc/nginx/certs
+              readOnly: true
+            - name: data
+              mountPath: /data
+              readOnly: true
+            - name: cache
+              mountPath: /cache
+              readOnly: true
+            - name: nginx-logs
+              mountPath: /var/log/nginx
+      volumes:
+        - name: conf
+          configMap:
+            name: nginx-load-conf
+        - name: certs
+          configMap:
+            name: nginx-certs
+        - name: data
+          hostPath:
+            path: /home/haith/Desktop/osuBasil Data
+            type: Directory
+        - name: cache
+          hostPath:
+            path: /tmp/basil-load/Cache
+            type: DirectoryOrCreate
+        - name: nginx-logs
+          hostPath:
+            path: /tmp/basil-load/nginx-logs
+            type: DirectoryOrCreate

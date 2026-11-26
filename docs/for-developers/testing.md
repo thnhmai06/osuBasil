@@ -13,9 +13,23 @@ If not, the test is coupled to an implementation detail.
 
 ## Current state
 
-The repository has no test projects at present. The `tests/` folder holds sample content (`tests/Assets`) and empty
-project folders, and `Basil.slnx` lists no test project. The layout below is the rule for the tests written from now
-on, not an inventory of what exists.
+The repository has no xUnit test projects at present. The `tests/` folder holds sample content (`tests/Assets`) and empty
+project folders. Four black-box load test projects live flat at the repository root under the `/Tests/` solution folder in
+`Basil.slnx`:
+
+* `Basil.Tests.Shared.Clients` — simulated osu! (stable), osu-web, IRC and REST/SSE clients. References only
+  `Basil.Protocol.Game.Stable` and `Basil.Protocol.Irc` and carries no NBomber dependency, so future host and end-to-end
+  tests can share it.
+* `Basil.Tests.Shared.Workload` — shared world state, tournament/casual/background/edge-case personas and outcome
+  classification (`Clients`, NBomber).
+* `Basil.Tests.Shared.Environment` — public-API seeder (`accounts.csv`, `world-data.json`), diagnostics SSE monitor and
+  control probe (`Clients`, NBomber).
+* `Basil.Tests.LoadTests` — executable NBomber harness with six test modules (`Load`, `Stress`, `Spike`, `Soak`, `Capacity`,
+  `Scalability`) plus `Smoke`, `Seed` and `Control`.
+
+They are not under `tests/` because they are outside black-box clients and an executable load harness rather than xUnit
+projects mirroring production layers, so `dotnet test` never runs them. The layout below is the rule for xUnit tests written
+from now on, not an inventory of what exists.
 
 ## Test layers
 

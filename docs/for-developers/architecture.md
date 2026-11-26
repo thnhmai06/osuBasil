@@ -355,6 +355,7 @@ that root. The first event is a snapshot. See [`sse.md`](sse.md).
 * `Basil.Host.Shared/`, `Basil.Host.{Stable,Irc,Rest,Cli}/` — views and the transports.
 * `Basil/` — the composition root (`Lifetime/` for start and shutdown, `Http/` for its middleware).
 * `Basil.Gateway/` — admission control in `Admission/`, `Limits/` and `RateLimiting/`.
+* `Basil.Tests.Shared.{Clients,Workload,Environment}/` and `Basil.Tests.LoadTests/` — black-box simulated clients and NBomber load test suite, kept flat at the repository root (not under `tests/`, which mirrors production source projects for xUnit tests) and listed under `/Tests/` in `Basil.slnx`. They act as an outside client over the network and reach Basil only through `Basil.Protocol.Game.Stable` and `Basil.Protocol.Irc` (via `Basil.Tests.Shared.Clients`, which has no NBomber dependency); no production project references them.
 * Each module's Infrastructure project keeps its OpenTelemetry meter in `Metrics/`.
 
 ## Where to go from here
