@@ -29,7 +29,7 @@ referee, tourney and developer accounts, restores the default rate limit, and wr
 
 ```bash
 BASIL_OWNER_PASSWORD=<password> dotnet run --project Basil.Tests.LoadTests -c Release -- \
-  seed --connect 192.168.27.124 --port 8443 --domain basil.local \
+  seed --connect 172.29.0.5 --port 8443 --domain basil.local \
   --owner-user admin \
   --accounts accounts.csv --world world-data.json
 ```
@@ -55,35 +55,37 @@ Run a single test locally:
 
 ```bash
 dotnet run --project Basil.Tests.LoadTests -c Release -- \
-  smoke --connect 192.168.27.124 --port 8443 --irc-port 6697 --domain basil.local \
+  smoke --connect 172.29.0.5 --port 8443 --irc-port 6697 --domain basil.local \
   --accounts accounts.csv --world world-data.json --seed 20261125
 ```
 
 Available test commands: `seed`, `smoke`, `pilot`, `load`, `stress`, `spike`, `soak`, `capacity`, `scalability`, `control`.
-Exit codes: `0` the SLO held, `3` the run was sound and the SLO broke (a failed threshold, server CPU above 80 %, or a failed
+Exit codes: `0` the SLO held, `3` the run was sound and the SLO broke (a failed threshold, server CPU above 80 % while a step holds its load, or a failed
 server-side check of the smoke run), `1` the run itself broke (bad options, the login lockout guard tripped, the server
-restarted, a crash). Capacity, pilot, stress and scalability are meant to break the SLO, so the k3s runner reports `3` as a
+restarted, a crash). Capacity, pilot, stress and scalability are meant to break the SLO, so the runner reports `3` as a
 successful run for them. `run-meta.json` carries the verdict, the step schedule (`plan.steps`: index, target N, start and end
 offset in seconds from the end of the warm-up, for splitting the NBomber timeline and `diagnostics.jsonl` per step), the users
 online the server measured beside the target N, and, for smoke, the server-side checks (matches have finished rounds, each
 score is stored once, no room or session is left over). `plan <test> [options]` prints the planned duration in seconds.
 
-On the k3s bench (`docker/loadtests/`), one script deploys the stack, resets state between runs, publishes and copies the
-binary through the cluster (no SSH to the workers), runs both the generator Job (`cappuccino`) and the control/ping/iperf3 Job (`espresso`), and gathers every report and
-infrastructure log into `reports/<test>-<timestamp>/`:
+On the Docker bench (`docker/loadtests/compose.yaml`, everything on one machine) one script builds HEAD, resets state,
+runs the generator and the control probe in containers and gathers every report and infrastructure log into
+`reports/<test>-<timestamp>/`:
 
 ```bash
-./docker/loadtests/run.sh deploy
-BASIL_OWNER_PASSWORD=<password> ./docker/loadtests/run.sh seed
-./docker/loadtests/run.sh run smoke
-./docker/loadtests/run.sh run load --n 200 --seed 20261125
-./docker/loadtests/run.sh scalability --step-delta 50 --steps 6
+./docker/loadtests/run-docker.sh build
+./docker/loadtests/run-docker.sh reset
+./docker/loadtests/run-docker.sh run smoke
+./docker/loadtests/run-docker.sh run load --n 200 --seed 20261125
+./docker/loadtests/run-docker.sh scalability --step-delta 50 --steps 6
 ```
 
 Before every run the script restores the baseline database and clears `Replays/`, `Screenshots/`, uploaded `Avatars/`,
-`Cache/`, `Logs/` and the nginx load log with a throwaway root pod on the same host paths; it stops if anything is left. The
-control probe on `espresso` lasts as long as the test plans to (plus three minutes), and the script waits for the Job to
-succeed or fail instead of for success only.
+`Cache/`, `Logs/` and the nginx load log with a throwaway root container; it stops if anything is left. The control probe
+lasts as long as the test plans to, plus three minutes. The bench runs from the folder `~/basil-load` (server data, cache,
+logs and nginx log); its layout, CPU pinning and limits are in
+[`plans/implementation/W15-load-test.md`](plans/implementation/W15-load-test.md). `docker/loadtests/run.sh` and `k3s/`
+run the earlier three-node k3s bench.
 
 ## SLO targets
 
@@ -95,7 +97,7 @@ succeed or fail instead of for success only.
 | REST read (`rest`) | p95 <= 300 ms |
 | login (`login`) | p95 <= 2 s |
 | real errors (`error`) | < 0.5 % |
-| server | CPU <= 80 %, no OOM, no restart |
+| server | CPU <= 80 % while a step holds its load, no OOM, no restart |
 
 `/d/` downloads (`download`) and uploads (`upload`) are reported separately and are not judged against latency targets.
 

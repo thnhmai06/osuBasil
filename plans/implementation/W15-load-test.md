@@ -14,13 +14,9 @@ writes the report and attaches the raw NBomber reports and the server metrics as
 **Claim.** "Basil serves N concurrent online sessions during a live tournament and still meets its SLO." N is set after
 the pilot, at about 70–80 % of the measured ceiling. N counts sessions, not people.
 
-**Fixed infrastructure.** Every test flow uses the LAN address of mocha (192.168.27.124), never Tailscale.
-
-| Node | Hardware | Link to mocha | Role |
-|---|---|---|---|
-| mocha | i7-11370H 8c, 16 GB | wired 1 Gb/s | the whole stack (nginx, Basil, Postgres), pinned cores |
-| cappuccino (192.168.27.151) | 4c, 3.4 GB | Wi‑Fi, RTT 2.7–23 ms, mean 8.5 ms | NBomber generator (requests 3 CPU) |
-| espresso (192.168.27.150) | 4c, 3.4 GB | Wi‑Fi, RTT 1.5–20 ms, mean 8.1 ms | control load, ping and iperf3 during every run |
+**Fixed infrastructure** (owner decision 2026-11-26, replaces the three-node k3s bench): every part runs in Docker
+on mocha (i7-11370H, 4 cores / 8 threads, 16 GB), CPU governor `performance`. The two workers are no longer used: their
+Wi‑Fi carried 3–21 Mbit/s when measured on 2026-11-26.
 
 **Workload.** The unit is a tournament room:
 
@@ -154,70 +150,84 @@ Other design points:
 
 ## Infrastructure
 
-Every run goes through k3s: the server stack, the generator and the control load are Kubernetes workloads pinned to
-their nodes, and the manifests are the written record of the fixed infrastructure (node, CPUs, memory, ports, images).
-SSH to the workers only places the published binary on the node and serves system checks.
+`docker/loadtests/compose.yaml` is the written record of the fixed infrastructure; `docker/loadtests/run-docker.sh`
+builds, resets, runs and collects. k3s is disabled on mocha; its manifests and `run.sh` stay in the repository as the
+record of the earlier bench.
 
-**Cluster facts (2026-11-25).** k3s v1.37.2; mocha is the control plane, cappuccino and espresso are workers; the
-default storage class is `local-path`. Flannel runs over the Tailscale addresses (100.100.x), so pod traffic between
-nodes would go through WireGuard; traefik's service load balancer holds 80 and 443 on every node.
+| Part | CPU threads (physical core) | Memory |
+|---|---|---|
+| Basil | 1, 2, 5, 6 (cores 1 and 2) | 4 GB |
+| PostgreSQL 17 | 3 (core 3) | 2 GB |
+| nginx (TLS, `load` access log) | 7 (core 3) | 512 MB |
+| NBomber generator | 0, 4 (core 0) | 2 GB |
+| control probe | not pinned, at most 1 CPU | 1 GB |
 
-**Placement** (`docker/loadtests/k3s/`, namespace `basil-load`):
+* **Network:** one Docker bridge (`172.29.0.0/24`). The generator connects to nginx's bridge address, so no published
+  port or proxy sits in the path. Basil trusts only nginx's address.
+* **Image:** `git archive HEAD` built into `basil:load`; each report records the commit, the image id, the uncommitted
+  changes, every cpuset and `lscpu`.
+* **Reset before every run:** restore `basil-seeded.dump`, clear `Replays/`, `Screenshots/`, uploaded avatars,
+  `Cache/`, `Logs/` and the nginx log, wait until every service is healthy.
+* **Collected per run:** NBomber reports and `run-meta.json`, `diagnostics.jsonl`, `docker stats`, temperature, clock,
+  governor and memory every 15 s, `pg_stat_activity`, the nginx log, Basil's logs, the control trace.
+* The control probe signs in as the first player account; the generator gets the account list without it.
 
-| Workload | Node | Network | Resources |
+**What this bench cannot show** (state it in the report):
+
+* no real network latency or bandwidth limit;
+* the generator shares the CPU package (last-level cache, memory bandwidth, turbo budget) with the server;
+* "4 CPUs" for Basil are 4 threads on 2 physical cores; PostgreSQL and nginx share one core;
+* the generator has two threads: check its CPU in every run before blaming the server;
+* mocha is also the owner's workstation: close heavy applications.
+
+## Runs
+
+Every command is `./docker/loadtests/run-docker.sh …`.
+
+| # | Command | Planned | Status (2026-11-26) |
 |---|---|---|---|
-| `postgres` StatefulSet, `local-path` volume | mocha | cluster | Guaranteed, 1 CPU |
-| `basil` Deployment (1 replica), `Data/` as a hostPath of the prepared data folder | mocha | cluster | Guaranteed, 4 CPU (1 and 2 for Scalability) |
-| `nginx` Deployment, `nginx-load.conf` as a ConfigMap | mocha | `hostNetwork`, ports 8443 (HTTPS) and 6697 (IRC TLS) | Guaranteed, 1 CPU |
-| `loadtests` Job, one test per Job | cappuccino | `hostNetwork`, `--connect 192.168.27.124 --port 8443` | 3 CPU (4 allocatable, svclb takes a share) |
-| `control` Job (control load, ping, iperf3) | espresso | `hostNetwork` | 1 CPU |
-| `iperf3` server | mocha | `hostNetwork` | — |
+| 1 | `run smoke` | 2.5 min | ran once: no error, 3/3 server checks; CPU peak and one `getscores` threshold broke in the first 15 s |
+| 2 | `run pilot --step-delta 150 --steps 2` | 5 min | completed: IRC fix holds (1 IRC timeout), 63 errors, see findings |
+| 3 | `run pilot --step-delta 150 --steps 8` | 19 min | finds the ceiling |
+| 4 | owner sets N (70–80 % of the ceiling) | – | open |
+| 5 | `run load --n N`, three times | 11 min each at N = 100 | open |
+| 6 | `run capacity --step-delta D --steps S` | 32 min | open |
+| 7 | `run stress --n <ceiling>` | 33 min | open |
+| 8 | `run spike --n N`, twice | 5 min each | open |
+| 9 | `scalability --step-delta D --steps S` (Basil on 1, 2, 4 threads) | 32 min each | open, run last |
+| – | `run soak --n N` (6 h at 70 % of N) | 6 h | deferred until the owner says |
 
-* `hostNetwork` on the generator, the control and nginx keeps every measured hop on the LAN (192.168.27.x) instead of
-  the Tailscale overlay; nginx reaches Basil inside mocha. nginx stays off 443 because traefik holds it.
-* Guaranteed pods with whole CPUs get exclusive cores once mocha's kubelet runs the static CPU manager, which is the
-  Kubernetes form of the core pinning. Basil 4 + Postgres 1 + nginx 1 leaves 2 shared cores (one reserved) for the
-  desktop, the k3s control plane, containerd and the monitor. Scalability changes only Basil's CPU count.
-* nginx does all the TLS on one core and may reach its ceiling before Basil; its CPU is watched in the pilot so the
-  Capacity bottleneck is attributed correctly.
-* Basil runs headless in the pod (compose gives it a tty); `terminationGracePeriodSeconds` is 90, as compose's stop
-  grace period.
-* `Basil:Server:TrustedProxies` names the address Basil actually sees nginx come from (likely mocha's `cni0`, checked in
-  T1), so the forwarded address and the PROXY header are believed; T1 proves one IRC registration and one forwarded
-  address.
-* Logging is set to Information through the Deployment's environment.
+Durations grow with N. If late: Scalability drops to two sizes, then Spike drops to one run. Load, Capacity, Stress and
+Soak are never cut.
 
-**Images**
+**CPU verdict** (owner decision 2026-11-26): the 80 % limit is judged only while a step holds its load (from 5 s after
+its ramp ends); the whole-run peak and the peak of each step are reported beside it.
 
-* Basil: `docker build` on mocha, then imported into k3s's containerd on mocha (`k3s ctr images import`, root), with
-  `imagePullPolicy: Never`.
-* The generator and the control load: the public `mcr.microsoft.com/dotnet/runtime-deps` image with the self-contained
-  publish mounted from a hostPath (`~/loadtests/bin` on the node, copied there with `scp`). The workers need no
-  registry, no root and no restart.
+## Findings so far
 
-**Data and reports**
+| Finding | Cause | Kind | State |
+|---|---|---|---|
+| Room list, live stream and room commands answered 500 for a room with a host and an empty slot (about 28 % of requests in the first smoke) | null player dereferenced in the room view | **server defect** | fixed in `91cf8dd8e`; no regression test (no xUnit project yet) |
+| Smoke server checks always failed with 409 | second API sign-in of the developer account | harness | fixed in `031189503` |
+| Pilot stopped after about 63 s with 13 661 IRC errors | the chatter sent about 200 lines a minute against an allowance of 120 and was disconnected; NBomber restarts a failed iteration by default, so the persona spun on the dead connection | harness | fixed, verified by the two-step pilot, not committed |
+| The CPU limit failed on the ramp alone | whole-run maximum | method | steady-load rule above |
+| 503 waves when the load starts | the server sheds during the sign-in bursts; `casual_room` retried without a pause (5573 of the 5713 shed polls NBomber measured) | server behaviour under test, amplified by a harness retry loop | fixed |
+| A chat message failed to reach IRC recipients once (`IndexOutOfRangeException` in `ConcurrentSet.CopyTo`) | copying a set sized the array from the count and then enumerated a set that may have grown; reproduced outside the server | **server defect** | fixed, race check passes, no regression test (no test project) |
+| 56 `sse_dropped` errors in the two-step pilot | most live streams that ended early ended because their room closed or the match was already finished; the watcher counted every server end as a drop; 7 are unexplained | harness | fixed, the 7 remain open |
+| 549,635 of 633,326 503s were `GET /v1/matches/{id}` (pilot `20261126-112909`) | a refused match report viewer reopened its stream at once | harness | fixed: one stream per viewing window |
+| The same pilot ran out of memory in the generator at step 8 | the lockout guard counted `already logged in` refusals under overload and cancelled the run; every persona cycle then returned without waiting | harness | fixed; the run is invalid |
+| 355 exceptions in the overlay viewer in that pilot | the stream end check read a JSON array as an object | harness | fixed |
+| The bench server wrote several log lines for every request | `~/basil-load/Data/appsettings.json` set every level to `Trace` (a local override carried into the bench); the shipped file already logs `Information` | bench configuration | bench set to the shipped levels on 2026-11-26 |
+| Pilot `20261126-115718` (8 steps, at `Trace`) completed | 503: 101,442 in all; shed share about 1% up to 450 sessions, 8% at 600, 20% at 750, 38% at 1200; 2455 errors not yet analysed | measurement | before the log level change, so not comparable with later runs |
+| `getscores` p95 above 500 ms in the smoke | suspected cold start (empty cache, first sign-ins) | open | measure in the next runs |
+| Earlier k3s bench: firewall blocked 8443 and 5201, AppArmor crashed the generator, weak Wi‑Fi | worker infrastructure | environment | gone with the Docker bench |
 
-* `/home/haith/Desktop/osuBasil Data` is prepared once on mocha:
-  * `Mapsets/*` to `Beatmapsets/`;
-  * `Seasonals/` to `Menu/Seasonals/`;
-  * `Faqs/` to `Faqs/`.
-* The osu! calculation stack is installed into `Data/Rulesets/` (`ruleset update`, an internet download); without it pp
-  is off, the score wait never runs and the heavy maps stop mattering.
-* **Reset between runs.** After seeding, `pg_dump` the database. Before every measured run: restore the dump, clear
-  `Replays/`, `Screenshots/`, uploaded avatars and `Logs/`, restart the Basil pod. Every run starts from the same state.
-* Each Job writes its report folder to a hostPath on its node. `run.sh` waits for the Job, copies the folder back to
-  `reports/<test>-<timestamp>/` on mocha, and adds the infrastructure record (manifests, `kubectl top`, node CPU
-  temperature and clock).
-
-**Owner actions (root on mocha, once)**
-
-* Enable the static CPU manager on mocha's kubelet: `--kubelet-arg=cpu-manager-policy=static` and
-  `--kubelet-arg=reserved-cpus=0`, delete `/var/lib/rancher/k3s/agent/kubelet/cpu_manager_state` (kubelet refuses to
-  start after a policy change otherwise), then restart k3s.
-* Import the Basil image (`sudo k3s ctr images import`), again after each rebuild.
-* Set the CPU governor to `performance`.
+The first pilot (`reports/pilot-20261126-110132`) is **invalid** and gives no ceiling.
 
 ## Tasks
+
+The tasks, verification and risks below were written for the k3s bench; they are kept as the record of how the suite was
+built. The current bench and plan are the sections above.
 
 Order: T0 ‖ T1, then T2 ‖ T3, T4, T5, then T6 ‖ T7, then T8, built as a **vertical slice first**: Clients, then
 MatchRoom (players and one IRC referee), FreePlayer and Spectator, then the Load module and a smoke run. Tourney,
