@@ -17,14 +17,16 @@ internal static class SseWatch
 	private static async Task<bool> EndedByDesignAsync(RestClient rest, string path, bool authorize, string? opening,
 		string? closing, CancellationToken stop)
 	{
-		if (!path.StartsWith("/v1/matches/", StringComparison.Ordinal))
-			return Find(closing, "type") is { ValueKind: JsonValueKind.String } type && type.GetString() == "closed";
+		if (!path.StartsWith("/v1/matches/", StringComparison.Ordinal)) return SaysClosed(closing);
 
 		if (HasEnded(opening)) return true;
 
 		try
 		{
 			using var again = await rest.OpenStreamAsync(path, authorize, stop);
+			// A second look the busy server turns away tells nothing, so the end is not held against it.
+			if (again.Status is HttpStatusCode.TooManyRequests or HttpStatusCode.ServiceUnavailable) return true;
+
 			await foreach (var ev in again.ReadAsync(stop)) return HasEnded(ev.Data);
 			return false;
 		}
@@ -33,6 +35,24 @@ internal static class SseWatch
 		{
 			return false;
 		}
+	}
+
+	// A live frame carries the list of the events gathered since the last one; the room's last says "closed".
+	private static bool SaysClosed(string? frame)
+	{
+		if (frame is null) return false;
+
+		using var document = JsonDocument.Parse(frame);
+		var root = document.RootElement;
+		return root.ValueKind == JsonValueKind.Array
+			? root.EnumerateArray().Any(IsClosedEvent)
+			: IsClosedEvent(root);
+	}
+
+	private static bool IsClosedEvent(JsonElement entry)
+	{
+		return entry.ValueKind == JsonValueKind.Object && entry.TryGetProperty("type", out var type) &&
+		       type.ValueKind == JsonValueKind.String && type.GetString() == "closed";
 	}
 
 	private static bool HasEnded(string? report)

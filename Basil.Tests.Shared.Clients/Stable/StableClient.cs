@@ -30,6 +30,9 @@ public sealed class StableClient(Endpoint endpoint, HttpClient http, StableIdent
 	/// <returns>The answer; <see cref="StableLoginResult.Accepted" /> tells whether a session started.</returns>
 	public async Task<StableLoginResult> LoginAsync(CancellationToken ct)
 	{
+		// Packets left over from an earlier session, such as a refused sign-out, do not belong to the new one.
+		TakeQueue();
+
 		using var request = NewRequest(null);
 		request.Content = new StringContent(identity.LoginBody(), new UTF8Encoding(false));
 		using var response = await http.SendAsync(request, ct);
@@ -57,9 +60,19 @@ public sealed class StableClient(Endpoint endpoint, HttpClient http, StableIdent
 	}
 
 	/// <summary>Sends the queued packets, or a keep-alive when none are queued, and reads the packets of the answer.</summary>
+	/// <remarks>Packets of a poll the server turned away (429 or 503) stay queued for the next one.</remarks>
 	public async Task<StableExchange> PollAsync(CancellationToken ct)
 	{
-		return await ExchangeAsync(TakeQueue(), ct);
+		var packets = TakeQueue();
+		var exchange = await ExchangeAsync(
+			packets.Length == 0 ? ClientPackets.Ping() : [.. packets.SelectMany(packet => packet)], ct);
+		if (exchange.Status is HttpStatusCode.TooManyRequests or HttpStatusCode.ServiceUnavailable)
+			lock (_queue)
+			{
+				_queue.InsertRange(0, packets);
+			}
+
+		return exchange;
 	}
 
 	/// <summary>Queues packets and polls at once.</summary>
@@ -106,15 +119,13 @@ public sealed class StableClient(Endpoint endpoint, HttpClient http, StableIdent
 		return exchange;
 	}
 
-	private byte[] TakeQueue()
+	private byte[][] TakeQueue()
 	{
 		lock (_queue)
 		{
-			if (_queue.Count == 0) return ClientPackets.Ping();
-
-			var body = _queue.SelectMany(packet => packet).ToArray();
+			byte[][] packets = [.. _queue];
 			_queue.Clear();
-			return body;
+			return packets;
 		}
 	}
 
