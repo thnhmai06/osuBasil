@@ -1,9 +1,11 @@
 using System.Drawing;
+using System.Runtime.CompilerServices;
 using Basil.Domain.Scores;
 using Basil.Domain.Spectating;
 using Basil.Protocol.Game.Stable.Models.Users;
 using Basil.Tests.Shared.Clients;
 using Basil.Tests.Shared.Clients.OsuWeb;
+using Basil.Tests.Shared.Clients.Rest;
 using Basil.Tests.Shared.Clients.Stable;
 using Basil.Tests.Shared.Workload.Outcomes;
 using Basil.Tests.Shared.Workload.World;
@@ -25,7 +27,10 @@ public sealed class WorkloadContext(
 	int seed,
 	CancellationToken abortToken)
 {
+	private static readonly TimeSpan SignOutTimeout = TimeSpan.FromSeconds(5);
+
 	private readonly IReadOnlyList<BeatmapEntry> _beatmaps = worldData.AllBeatmaps;
+	private readonly ConditionalWeakTable<StableClient, object?> _dropped = new();
 
 	/// <summary>Gets the server endpoint.</summary>
 	public Endpoint Endpoint => endpoint;
@@ -91,33 +96,50 @@ public sealed class WorkloadContext(
 		return worldData.Beatmapsets[random.Next(worldData.Beatmapsets.Count)];
 	}
 
-	/// <summary>Signs an osu! client in inside a <c>login</c> step and feeds the lockout guard on unexpected refusals.</summary>
+	/// <summary>Signs an osu! client in inside a <c>login</c> step; an unexpected refusal feeds the lockout guard and quarantines the leased account.</summary>
 	public async Task<StableLoginResult?> LoginStableAsync(StableClient client, IScenarioContext context,
-		CancellationToken ct, bool refusalExpected = false)
+		CancellationToken ct, bool refusalExpected = false, AccountLease? lease = null)
 	{
 		var (outcome, result) = await StepExecution.RunAsync(Channels.Login, context, outcomes, async () =>
 		{
 			var reply = await client.LoginAsync(ct);
 			var classified = OutcomeClassifier.FromStableLogin(reply, refusalExpected);
-			if (!refusalExpected && !reply.Accepted && classified.Outcome == Outcome.Error)
-				lockoutGuard.RecordRefusedLogin();
+			if (!refusalExpected && !reply.Accepted && (int)reply.Status is >= 200 and < 300)
+			{
+				lease?.Quarantine();
+				lockoutGuard.RecordRefusedLogin(client.Identity.Name, context);
+			}
+
 			return (classified, reply);
 		}, ct);
 
 		if (result is { Accepted: true })
+		{
+			_dropped.Remove(client);
 			world.PutOnline(new OnlineUser(result.UserId, client.Identity.Name, false, string.Empty));
+		}
+
 		return outcome.Outcome == Outcome.Ok || refusalExpected ? result : null;
 	}
 
-	/// <summary>Polls an osu! client inside a <c>poll</c> step.</summary>
+	/// <summary>Polls an osu! client inside a <c>poll</c> step; a client the server has dropped is marked and is not polled again.</summary>
 	public async Task<StableExchange?> PollStableAsync(StableClient client, IScenarioContext context, CancellationToken ct)
 	{
+		if (IsDropped(client)) return null;
+
 		var (_, exchange) = await StepExecution.RunAsync(Channels.Poll, context, outcomes, async () =>
 		{
 			var reply = await client.PollAsync(ct);
 			return (OutcomeClassifier.FromStableExchange(reply), reply);
 		}, ct);
+		if (exchange is not null && OutcomeClassifier.IsDropped(exchange)) _dropped.TryAdd(client, null);
 		return exchange;
+	}
+
+	/// <summary>Gets whether the server dropped the session of an osu! client, so it has to sign in again.</summary>
+	public bool IsDropped(StableClient client)
+	{
+		return _dropped.TryGetValue(client, out _);
 	}
 
 	/// <summary>Polls an osu! client until a matching packet arrives, measuring each poll as a <c>poll</c> step.</summary>
@@ -128,7 +150,7 @@ public sealed class WorkloadContext(
 		while (!ct.IsCancellationRequested)
 		{
 			var exchange = await PollStableAsync(client, context, ct);
-			if (exchange is null || !exchange.IsSuccess) return null;
+			if (exchange is null || !exchange.IsSuccess || IsDropped(client)) return null;
 
 			var found = exchange.Packets.OfType<T>().FirstOrDefault(packet => match is null || match(packet));
 			if (found is not null) return found;
@@ -140,7 +162,7 @@ public sealed class WorkloadContext(
 		return null;
 	}
 
-	/// <summary>Signs an osu! client out cleanly and removes it from <see cref="World"/>.</summary>
+	/// <summary>Signs an osu! client out inside a <c>logout</c> step and removes it from <see cref="World"/>; the sign-out is sent even when the run is being cancelled.</summary>
 	public async Task LogoutStableAsync(StableClient client, IScenarioContext context)
 	{
 		if (client.Token is null) return;
@@ -148,20 +170,66 @@ public sealed class WorkloadContext(
 		var userId = client.UserId;
 		try
 		{
-			using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-			await StepExecution.RunAsync(Channels.Poll, context, outcomes, async () =>
+			using var timeout = new CancellationTokenSource(SignOutTimeout);
+			await StepExecution.RunAsync(Channels.Logout, context, outcomes, async () =>
 			{
 				var reply = await client.LogoutAsync(timeout.Token);
-				return OutcomeClassifier.FromStableExchange(reply);
-			}, timeout.Token);
-		}
-		catch (OperationCanceledException)
-		{
-			// Shutting down; ignore late cancel.
+				return OutcomeClassifier.FromHttpStatus(reply.Status);
+			}, CancellationToken.None);
 		}
 		finally
 		{
 			if (userId > 0) world.RemoveOnline(userId);
+		}
+	}
+
+	/// <summary>Signs a REST client out inside a <c>logout</c> step; the sign-out is sent even when the run is being cancelled.</summary>
+	public async Task LogoutRestAsync(RestClient rest, IScenarioContext context)
+	{
+		if (rest.Token is null) return;
+
+		using var timeout = new CancellationTokenSource(SignOutTimeout);
+		await StepExecution.RunAsync(Channels.Logout, context, outcomes, async () =>
+		{
+			var reply = await rest.SignOutAsync(timeout.Token);
+			return OutcomeClassifier.FromRest(reply);
+		}, CancellationToken.None);
+	}
+
+	/// <summary>Signs an osu! client out without measuring it, for shutdown; never throws.</summary>
+	public async Task SignOutQuietAsync(StableClient client)
+	{
+		if (client.Token is null) return;
+
+		var userId = client.UserId;
+		try
+		{
+			using var timeout = new CancellationTokenSource(SignOutTimeout);
+			await client.LogoutAsync(timeout.Token);
+		}
+		catch (Exception)
+		{
+			// Best effort: the server ends a silent session by itself.
+		}
+		finally
+		{
+			if (userId > 0) world.RemoveOnline(userId);
+		}
+	}
+
+	/// <summary>Signs a REST client out without measuring it, for shutdown; never throws.</summary>
+	public static async Task SignOutQuietAsync(RestClient rest)
+	{
+		if (rest.Token is null) return;
+
+		try
+		{
+			using var timeout = new CancellationTokenSource(SignOutTimeout);
+			await rest.SignOutAsync(timeout.Token);
+		}
+		catch (Exception)
+		{
+			// Best effort: the server ends a silent session by itself.
 		}
 	}
 

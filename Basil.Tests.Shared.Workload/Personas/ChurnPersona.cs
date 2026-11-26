@@ -39,10 +39,16 @@ public sealed class ChurnPersona(WorkloadContext workload)
 		}
 	}
 
+	/// <summary>Does nothing: every cycle signs itself out, so no session outlives it.</summary>
+	public Task ShutdownAsync()
+	{
+		return Task.CompletedTask;
+	}
+
 	private async Task ChurnStableAsync(AccountLease lease, IScenarioContext context, CancellationToken ct)
 	{
 		var client = new StableClient(workload.Endpoint, workload.Http, lease.Identity());
-		var login = await workload.LoginStableAsync(client, context, ct);
+		var login = await workload.LoginStableAsync(client, context, ct, lease: lease);
 		if (login is not { Accepted: true }) return;
 
 		try
@@ -81,14 +87,7 @@ public sealed class ChurnPersona(WorkloadContext workload)
 		}
 		finally
 		{
-			if (rest.Token is not null)
-			{
-				await StepExecution.RunAsync(Channels.Rest, context, workload.Outcomes, async () =>
-				{
-					var reply = await rest.SignOutAsync(ct);
-					return OutcomeClassifier.FromRest(reply);
-				}, ct);
-			}
+			await workload.LogoutRestAsync(rest, context);
 		}
 	}
 

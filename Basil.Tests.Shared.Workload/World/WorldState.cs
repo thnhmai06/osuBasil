@@ -1,4 +1,7 @@
 using System.Collections.Concurrent;
+using System.Security.Cryptography;
+using System.Text;
+using NBomber.Contracts;
 
 namespace Basil.Tests.Shared.Workload.World;
 
@@ -166,41 +169,49 @@ public sealed class TournamentClock
 	}
 }
 
-/// <summary>Aborts the run on the first burst of unexpected refused logins to avoid triggering a 15-minute IP lockout cascade.</summary>
+/// <summary>Stops the run when many distinct accounts are refused at sign-in within a short window, which means the account list no longer matches the server.</summary>
+/// <remarks>
+/// The server keeps a failed attempt only for wrong credentials, per address and account, so one account refused again and again
+/// (for example <c>AlreadyOnline</c> after a slow sign-out) is not a lockout risk and does not count towards the burst.
+/// </remarks>
 public sealed class LoginLockoutGuard(CancellationTokenSource runAbort, int burstThreshold = 10, TimeSpan? window = null)
 {
-	private readonly ConcurrentQueue<DateTimeOffset> _failures = new();
+	private readonly ConcurrentDictionary<string, DateTimeOffset> _lastRefusal = new(StringComparer.OrdinalIgnoreCase);
 	private readonly TimeSpan _window = window ?? TimeSpan.FromSeconds(60);
 	private int _tripped;
 
 	/// <summary>Gets whether the lockout guard has tripped and cancelled the run.</summary>
 	public bool IsTripped => Volatile.Read(ref _tripped) != 0;
 
-	/// <summary>Records an unexpected refused sign-in; cancels the run when the burst threshold is reached.</summary>
-	public void RecordRefusedLogin()
+	/// <summary>Records an unexpected refused sign-in of <paramref name="account"/>; stops the run when enough distinct accounts were refused within the window.</summary>
+	/// <param name="account">The refused account name.</param>
+	/// <param name="context">The scenario context used to stop NBomber as well as cancel the run token.</param>
+	public void RecordRefusedLogin(string account, IScenarioContext? context = null)
 	{
 		var now = DateTimeOffset.UtcNow;
-		_failures.Enqueue(now);
+		_lastRefusal[account] = now;
 		var cutoff = now - _window;
-		while (_failures.TryPeek(out var oldest) && oldest < cutoff)
-			_failures.TryDequeue(out _);
+		var distinct = 0;
+		foreach (var (name, at) in _lastRefusal)
+		{
+			if (at < cutoff) _lastRefusal.TryRemove(name, out _);
+			else distinct++;
+		}
 
-		if (_failures.Count >= burstThreshold && Interlocked.Exchange(ref _tripped, 1) == 0)
-			runAbort.Cancel();
+		if (distinct < burstThreshold || Interlocked.Exchange(ref _tripped, 1) != 0) return;
+
+		runAbort.Cancel();
+		context?.StopCurrentTest($"{distinct} distinct accounts were refused at sign-in within {_window.TotalSeconds:0} s; accounts.csv does not match the server.");
 	}
 }
 
 /// <summary>Creates deterministic <see cref="Random"/> instances from the fixed run seed.</summary>
 public static class SeededRandom
 {
-	/// <summary>Creates a deterministic generator for one copy and invocation of a scenario.</summary>
+	/// <summary>Creates a generator that is the same in every process for the same run seed, scenario, copy and invocation.</summary>
 	public static Random For(int runSeed, string scenario, int instanceNumber, long invocationNumber)
 	{
-		var hash = new HashCode();
-		hash.Add(runSeed);
-		hash.Add(scenario, StringComparer.Ordinal);
-		hash.Add(instanceNumber);
-		hash.Add(invocationNumber);
-		return new Random(hash.ToHashCode());
+		var hash = SHA256.HashData(Encoding.UTF8.GetBytes($"{runSeed}:{scenario}:{instanceNumber}:{invocationNumber}"));
+		return new Random(BitConverter.ToInt32(hash, 0));
 	}
 }

@@ -11,6 +11,12 @@ namespace Basil.Tests.Shared.Workload.Personas;
 /// <summary>Exercises deliberate business-rule refusals and verifies each gets the expected refusal rather than an error.</summary>
 public sealed class EdgeCasesPersona(WorkloadContext workload)
 {
+	/// <summary>Does nothing: every cycle signs itself out, so no session outlives it.</summary>
+	public Task ShutdownAsync()
+	{
+		return Task.CompletedTask;
+	}
+
 	/// <summary>Runs one cycle covering MatchJoinFail, duplicate score submission, second login within 30 s and forbidden/missing REST calls.</summary>
 	public async Task RunCycleAsync(IScenarioContext context)
 	{
@@ -29,7 +35,7 @@ public sealed class EdgeCasesPersona(WorkloadContext workload)
 		{
 			var identity = lease.Identity();
 			var stable = new StableClient(workload.Endpoint, workload.Http, identity);
-			var login = await workload.LoginStableAsync(stable, context, ct);
+			var login = await workload.LoginStableAsync(stable, context, ct, lease: lease);
 			if (login is not { Accepted: true }) return;
 
 			var rest = new RestClient(workload.Endpoint, workload.Http);
@@ -37,16 +43,10 @@ public sealed class EdgeCasesPersona(WorkloadContext workload)
 			{
 				// 1. MatchJoinFail: attempt to join a non-existent room id.
 				stable.Enqueue(ClientPackets.JoinMatch(999_999, "wrong-password"));
-				await StepExecution.RunAsync(Channels.Poll, context, workload.Outcomes, async () =>
-				{
-					var wait = await stable.PollUntilAsync<MatchJoinFailed>(null, workload.PollInterval,
-						workload.WaitTimeout, ct);
-					var http = OutcomeClassifier.FromHttpStatus(wait.Status);
-					if (http.Outcome != Outcome.Ok) return http;
-					return wait.Match is not null
-						? StepOutcome.Refused("match_join_fail")
-						: StepOutcome.Error("expected_match_join_fail");
-				}, ct);
+				var failed = await workload.PollUntilAsync<MatchJoinFailed>(stable, null, workload.WaitTimeout, context, ct);
+				await StepExecution.RunAsync(Channels.Edge, context, workload.Outcomes, () => Task.FromResult(failed is not null
+					? StepOutcome.Refused("match_join_fail")
+					: StepOutcome.Error("expected_match_join_fail")), ct);
 
 				// 2. Duplicate score submission: submit the exact same play twice; second must be refused.
 				var map = workload.PickBeatmap(random);
@@ -119,24 +119,12 @@ public sealed class EdgeCasesPersona(WorkloadContext workload)
 							: StepOutcome.Error($"expected_403_got_{(int)stream.Status}");
 					}, ct);
 
-					await rest.SignOutAsync(ct);
+					await workload.LogoutRestAsync(rest, context);
 				}
 			}
 			finally
 			{
-				if (rest.Token is not null)
-				{
-					try
-					{
-						using var outTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-						await rest.SignOutAsync(outTimeout.Token);
-					}
-					catch (Exception)
-					{
-						// Cleanup.
-					}
-				}
-
+				await workload.LogoutRestAsync(rest, context);
 				await workload.LogoutStableAsync(stable, context);
 			}
 		}

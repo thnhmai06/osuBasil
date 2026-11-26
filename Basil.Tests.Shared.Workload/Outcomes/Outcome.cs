@@ -1,5 +1,9 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net;
+using System.Net.Sockets;
+using System.Security.Authentication;
+using Basil.Protocol.Irc.Models;
 using Basil.Tests.Shared.Clients.Irc;
 using Basil.Tests.Shared.Clients.Rest;
 using Basil.Tests.Shared.Clients.Stable;
@@ -47,6 +51,27 @@ public static class Channels
 	public const string Download = "download";
 
 	public const string Upload = "upload";
+
+	/// <summary>Osu-web reads that are not leaderboards: friends, seasonals, search, search-set and difficulty-rating.</summary>
+	public const string OsuWeb = "osuweb";
+
+	/// <summary>Replay reads.</summary>
+	public const string Replay = "replay";
+
+	/// <summary>Reads from the asset hosts: avatar, cover, thumbnail, preview, menu image and screenshot.</summary>
+	public const string Asset = "asset";
+
+	/// <summary>Every sign-out.</summary>
+	public const string Logout = "logout";
+
+	/// <summary>Deliberate refusal checks of the edge-case persona.</summary>
+	public const string Edge = "edge";
+
+	/// <summary>Gets the step that holds the throttled and shed answers of a channel, so their fast latency never enters the channel's own percentiles.</summary>
+	public static string Limited(string channel)
+	{
+		return $"{channel}.limited";
+	}
 }
 
 /// <summary>Result of one measured channel step.</summary>
@@ -147,10 +172,17 @@ public static class OutcomeClassifier
 			: StepOutcome.Error($"login_refused_{result.UserId}");
 	}
 
-	/// <summary>Classifies an osu! stable poll response.</summary>
+	/// <summary>Classifies an osu! stable poll response; a restart answer means the server dropped the session and is an <see cref="Outcome.Error"/>.</summary>
 	public static StepOutcome FromStableExchange(StableExchange exchange)
 	{
-		return FromHttpStatus(exchange.Status);
+		var http = FromHttpStatus(exchange.Status);
+		return http.Outcome == Outcome.Ok && IsDropped(exchange) ? StepOutcome.Error("session_dropped") : http;
+	}
+
+	/// <summary>Gets whether the server answered a poll with the restart packet, which it sends for a token it does not know or has closed.</summary>
+	public static bool IsDropped(StableExchange exchange)
+	{
+		return exchange.Packets.OfType<ServerRestarting>().Any();
 	}
 
 	/// <summary>Classifies a REST API reply.</summary>
@@ -202,11 +234,18 @@ public static class OutcomeClassifier
 	}
 }
 
+
 /// <summary>Runs one action as an NBomber step on the named channel and records its classified outcome.</summary>
 public static class StepExecution
 {
-	/// <summary>Executes <paramref name="action"/> inside an NBomber step named <paramref name="channel"/>.</summary>
-	/// <remarks>Only <see cref="Outcome.Error"/> is reported as a failed NBomber response, so NBomber's failure percentage matches the SLO definition.</remarks>
+	/// <summary>Executes <paramref name="action"/> and reports it to NBomber under <paramref name="channel"/>.</summary>
+	/// <remarks>
+	/// The action is timed here and its real latency is reported afterwards, so a throttled or shed answer can go to
+	/// <see cref="Channels.Limited"/> without its fast latency entering the percentiles of the judged channel.
+	/// Only <see cref="Outcome.Error"/> is reported as a failed NBomber response, so NBomber's failure percentage matches the SLO definition.
+	/// Nothing runs or is recorded when <paramref name="ct"/> is already cancelled, and a cancellation during the action is not recorded;
+	/// both return an <see cref="Outcome.Error"/> tagged <c>cancelled</c> that is not part of the tally.
+	/// </remarks>
 	public static async Task<(StepOutcome Outcome, T? Value)> RunAsync<T>(
 		string channel,
 		IScenarioContext context,
@@ -214,42 +253,40 @@ public static class StepExecution
 		Func<Task<(StepOutcome Outcome, T? Value)>> action,
 		CancellationToken ct)
 	{
-		StepOutcome recorded = default;
+		if (ct.IsCancellationRequested) return (StepOutcome.Error("cancelled"), default);
+
+		StepOutcome recorded;
 		T? captured = default;
+		var started = Stopwatch.GetTimestamp();
 
-		await Step.Run(channel, context, async () =>
+		try
 		{
-			try
-			{
-				var (outcome, value) = await action();
-				recorded = outcome;
-				captured = value;
-			}
-			catch (OperationCanceledException) when (ct.IsCancellationRequested)
-			{
-				recorded = StepOutcome.Ok("cancelled");
-				return Response.Ok(statusCode: "cancelled");
-			}
-			catch (TimeoutException)
-			{
-				recorded = StepOutcome.Error("timeout");
-			}
-			catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidDataException
-				                           or TaskCanceledException)
-			{
-				recorded = StepOutcome.Error(ex.GetType().Name);
-			}
+			(recorded, captured) = await action();
+		}
+		catch (OperationCanceledException) when (ct.IsCancellationRequested)
+		{
+			return (StepOutcome.Error("cancelled"), default);
+		}
+		catch (TimeoutException)
+		{
+			recorded = StepOutcome.Error("timeout");
+		}
+		catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidDataException
+			                           or SocketException or AuthenticationException or OperationCanceledException)
+		{
+			recorded = StepOutcome.Error(ex.GetType().Name);
+		}
 
-			tally.Record(channel, recorded.Outcome);
-			var size = (int)Math.Clamp(recorded.Bytes, 0, int.MaxValue);
-			var tag = string.IsNullOrEmpty(recorded.Detail)
-				? recorded.Outcome.ToString().ToLowerInvariant()
-				: $"{recorded.Outcome.ToString().ToLowerInvariant()}:{recorded.Detail}";
+		var latencyMs = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+		tally.Record(channel, recorded.Outcome);
+		var size = (int)Math.Clamp(recorded.Bytes, 0, int.MaxValue);
+		var name = recorded.Outcome.ToString().ToLowerInvariant();
+		var tag = string.IsNullOrEmpty(recorded.Detail) ? name : $"{name}:{recorded.Detail}";
+		var step = recorded.Outcome is Outcome.Throttled or Outcome.Shed ? Channels.Limited(channel) : channel;
 
-			return recorded.Outcome == Outcome.Error
-				? Response.Fail(statusCode: tag, message: recorded.Detail)
-				: Response.Ok(statusCode: tag, sizeBytes: size);
-		});
+		await Step.Run(step, context, () => Task.FromResult(recorded.Outcome == Outcome.Error
+			? Response.Fail(statusCode: tag, message: recorded.Detail, customLatencyMs: latencyMs)
+			: Response.Ok(statusCode: tag, sizeBytes: size, customLatencyMs: latencyMs)));
 
 		return (recorded, captured);
 	}

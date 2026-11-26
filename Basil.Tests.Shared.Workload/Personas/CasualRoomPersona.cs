@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Basil.Tests.Shared.Clients.OsuWeb;
 using Basil.Tests.Shared.Clients.Stable;
 using Basil.Tests.Shared.Workload.Outcomes;
@@ -6,82 +7,134 @@ using NBomber.Contracts;
 
 namespace Basil.Tests.Shared.Workload.Personas;
 
-/// <summary>Simulates a casual in-game multiplayer room created by a player host with one or more guests.</summary>
+/// <summary>Simulates a casual in-game multiplayer room: each scenario copy creates the room and signs its players in once, keeps them, and every invocation plays one round.</summary>
 public sealed class CasualRoomPersona(WorkloadContext workload, int playersPerRoom = 2)
 {
-	/// <summary>Runs one casual room cycle from in-game creation through one round to teardown.</summary>
+	private readonly ConcurrentDictionary<int, Room> _rooms = new();
+	private volatile bool _closing;
+
+	/// <summary>Plays one round in the copy's room, creating the room and signing its players in first when the copy has none.</summary>
 	public async Task RunCycleAsync(IScenarioContext context)
 	{
+		if (_closing) return;
+
 		using var linked = workload.LinkToken(context);
 		var ct = linked.Token;
-		var random = SeededRandom.For(workload.Seed, context.ScenarioInfo.ScenarioName,
-			context.ScenarioInfo.InstanceNumber, context.InvocationNumber);
+		var instance = context.ScenarioInfo.InstanceNumber;
+		var random = SeededRandom.For(workload.Seed, context.ScenarioInfo.ScenarioName, instance, context.InvocationNumber);
 
-		var count = Math.Max(2, playersPerRoom);
-		if (!workload.Accounts.TryAcquireMany(AccountRole.Player, count, out var leases))
+		var room = await EnsureRoomAsync(instance, random, context, ct);
+		if (room is null)
 		{
 			await WorkloadContext.SafeDelayAsync(TimeSpan.FromSeconds(1), ct);
 			return;
 		}
 
-		var clients = new List<StableClient>(count);
-		var roomId = 0;
+		var round = room.Rounds++;
+		var clients = room.Clients;
+		var host = clients[0];
 
-		try
+		// Everyone readies up, then the host starts.
+		await Task.WhenAll(clients.Select(async client =>
 		{
-			var map = workload.PickBeatmap(random);
-			var host = new StableClient(workload.Endpoint, workload.Http, leases[0].Identity());
-			var hostLogin = await workload.LoginStableAsync(host, context, ct);
-			if (hostLogin is not { Accepted: true }) return;
-			clients.Add(host);
+			client.Enqueue(ClientPackets.MatchHasBeatmap(), ClientPackets.MatchReady());
+			await workload.PollStableAsync(client, context, ct);
+		}));
+		if (ct.IsCancellationRequested) return;
 
-			var roomName = $"Casual {context.ScenarioInfo.InstanceNumber}-{context.InvocationNumber}";
-			var blank = ClientPackets.BlankRoom(roomName, mode: map.Mode, mapMd5: map.Md5, mapId: map.Id, mapName: map.Version);
-			host.Enqueue(ClientPackets.JoinLobby(), ClientPackets.CreateMatch(blank));
-			var created = await workload.PollUntilAsync<MatchJoined>(host, null, workload.WaitTimeout, context, ct);
-			if (created is null || ct.IsCancellationRequested) return;
+		host.Enqueue(ClientPackets.MatchStart());
+		await workload.PollStableAsync(host, context, ct);
 
-			roomId = created.Room.Id;
-			workload.World.PutRoom(new LiveRoom(roomId, roomName, string.Empty, map.Id, map.Md5, false, false, [host.UserId]));
+		await Task.WhenAll(clients.Select((client, slot) =>
+			PlayCasualRoundAsync(client, slot, room.Map,
+				SeededRandom.For(workload.Seed, "casual", room.RoomId * 16 + slot, round), context, ct)));
+	}
 
-			// Guests join, ready up, and play with the host.
-			for (var i = 1; i < leases.Count && !ct.IsCancellationRequested; i++)
+	/// <summary>Closes every room this persona still holds, signs its players out and returns every account lease; best effort, never throws.</summary>
+	public async Task ShutdownAsync()
+	{
+		_closing = true;
+		var all = _rooms.Values.ToArray();
+		_rooms.Clear();
+		await Task.WhenAll(all.Select(CloseAsync));
+	}
+
+	private async Task<Room?> EnsureRoomAsync(int instance, Random random, IScenarioContext context, CancellationToken ct)
+	{
+		if (_rooms.TryGetValue(instance, out var existing))
+		{
+			if (!existing.Clients.Any(workload.IsDropped)) return existing;
+
+			_rooms.TryRemove(instance, out _);
+			await CloseAsync(existing);
+		}
+
+		var count = Math.Max(2, playersPerRoom);
+		if (!workload.Accounts.TryAcquireMany(AccountRole.Player, count, out var leases)) return null;
+
+		var room = new Room(leases, workload.PickBeatmap(random));
+		var host = new StableClient(workload.Endpoint, workload.Http, leases[0].Identity());
+		var hostLogin = await workload.LoginStableAsync(host, context, ct, lease: leases[0]);
+		if (hostLogin is not { Accepted: true })
+		{
+			await CloseAsync(room);
+			return null;
+		}
+
+		room.Clients.Add(host);
+		var map = room.Map;
+		var roomName = $"Casual {context.ScenarioInfo.InstanceNumber}-{context.InvocationNumber}";
+		var blank = ClientPackets.BlankRoom(roomName, mode: map.Mode, mapMd5: map.Md5, mapId: map.Id, mapName: map.Version);
+		host.Enqueue(ClientPackets.JoinLobby(), ClientPackets.CreateMatch(blank));
+		var created = await workload.PollUntilAsync<MatchJoined>(host, null, workload.WaitTimeout, context, ct);
+		if (created is null)
+		{
+			await CloseAsync(room);
+			return null;
+		}
+
+		room.RoomId = created.Room.Id;
+		workload.World.PutRoom(new LiveRoom(room.RoomId, roomName, string.Empty, map.Id, map.Md5, false, false, [host.UserId]));
+
+		// Guests join and ready up.
+		for (var i = 1; i < leases.Count && !ct.IsCancellationRequested; i++)
+		{
+			var guest = new StableClient(workload.Endpoint, workload.Http, leases[i].Identity());
+			var login = await workload.LoginStableAsync(guest, context, ct, lease: leases[i]);
+			if (login is not { Accepted: true }) continue;
+
+			guest.Enqueue(ClientPackets.JoinMatch(room.RoomId));
+			var joined = await workload.PollUntilAsync<MatchJoined>(guest, null, workload.WaitTimeout, context, ct);
+			if (joined is null)
 			{
-				var guest = new StableClient(workload.Endpoint, workload.Http, leases[i].Identity());
-				var login = await workload.LoginStableAsync(guest, context, ct);
-				if (login is not { Accepted: true }) continue;
-
-				clients.Add(guest);
-				guest.Enqueue(ClientPackets.JoinMatch(roomId));
-				var joined = await workload.PollUntilAsync<MatchJoined>(guest, null, workload.WaitTimeout, context, ct);
-				if (joined is null) continue;
-
-				guest.Enqueue(ClientPackets.MatchHasBeatmap(), ClientPackets.MatchReady());
-				await workload.PollStableAsync(guest, context, ct);
+				await workload.SignOutQuietAsync(guest);
+				continue;
 			}
 
-			if (clients.Count < 2 || ct.IsCancellationRequested) return;
-
-			host.Enqueue(ClientPackets.MatchHasBeatmap(), ClientPackets.MatchReady(), ClientPackets.MatchStart());
-			await workload.PollStableAsync(host, context, ct);
-
-			await Task.WhenAll(clients.Select((client, slot) =>
-				PlayCasualRoundAsync(client, slot, map, SeededRandom.For(workload.Seed, "casual", roomId * 16 + slot, 0),
-					context, ct)));
+			room.Clients.Add(guest);
 		}
-		finally
+
+		if (room.Clients.Count < 2 || ct.IsCancellationRequested)
 		{
-			if (roomId > 0) workload.World.RemoveRoom(roomId);
-			await Task.WhenAll(clients.Select(async client =>
-			{
-				if (client.Token is not null)
-				{
-					client.Enqueue(ClientPackets.PartMatch(), ClientPackets.PartLobby());
-					await workload.LogoutStableAsync(client, context);
-				}
-			}));
-			foreach (var lease in leases) lease.Dispose();
+			await CloseAsync(room);
+			return null;
 		}
+
+		_rooms[instance] = room;
+		return room;
+	}
+
+	private async Task CloseAsync(Room room)
+	{
+		if (room.RoomId > 0) workload.World.RemoveRoom(room.RoomId);
+		await Task.WhenAll(room.Clients.Select(async client =>
+		{
+			if (client.Token is null) return;
+
+			client.Enqueue(ClientPackets.PartMatch(), ClientPackets.PartLobby());
+			await workload.SignOutQuietAsync(client);
+		}));
+		foreach (var lease in room.Leases) lease.Dispose();
 	}
 
 	private async Task PlayCasualRoundAsync(StableClient client, int slot, BeatmapEntry map, Random random,
@@ -115,5 +168,20 @@ public sealed class CasualRoomPersona(WorkloadContext workload, int playersPerRo
 			var reply = await web.SubmitScoreAsync(score, SampleFiles.Replay(random), ct);
 			return OutcomeClassifier.FromScoreSubmission(reply.Status, reply.Body);
 		}, ct);
+
+		await workload.PollUntilAsync<MatchCompleted>(client, null, workload.WaitTimeout, context, ct);
+	}
+
+	private sealed class Room(List<AccountLease> leases, BeatmapEntry map)
+	{
+		public List<AccountLease> Leases { get; } = leases;
+
+		public BeatmapEntry Map { get; } = map;
+
+		public List<StableClient> Clients { get; } = [];
+
+		public int RoomId { get; set; }
+
+		public int Rounds { get; set; }
 	}
 }
