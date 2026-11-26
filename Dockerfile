@@ -9,8 +9,8 @@ RUN rid=$([ "$TARGETARCH" = arm64 ] && echo arm64 || echo x64) \
 
 FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine
 # The Alpine base turns globalization off and carries no ICU or time zone data; Basil needs cultures, region names
-# and the TZ setting.
-RUN apk add --no-cache ffmpeg curl icu-libs icu-data-full tzdata
+# and the TZ setting. The database driver loads the Kerberos library.
+RUN apk add --no-cache ffmpeg curl icu-libs icu-data-full tzdata krb5-libs
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 
 WORKDIR /app
