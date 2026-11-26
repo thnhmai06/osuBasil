@@ -23,7 +23,9 @@ public sealed class StressTest : ILoadTest
 	{
 		var (stepDuration, rampStep) = Shape(options);
 		return RunPlan.Create(WarmUp, rampStep,
-			[.. Multipliers.Select(m => ($"{m}x", (int)Math.Round(options.TargetSessions * m), rampStep + stepDuration))]);
+		[
+			.. Multipliers.Select(m => ($"{m}x", (int)Math.Round(options.TargetSessions * m), rampStep + stepDuration))
+		]);
 	}
 
 	public IReadOnlyList<ScenarioProps> BuildScenarios(LoadTestOptions options, WorkloadContext workload,
@@ -58,8 +60,8 @@ public sealed class StressTest : ILoadTest
 
 				return [.. sims];
 			},
-			enforceSlo: false,
-			warmUp: WarmUp);
+			false,
+			WarmUp);
 	}
 
 	private static (TimeSpan StepDuration, TimeSpan RampStep) Shape(LoadTestOptions options)

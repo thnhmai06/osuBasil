@@ -13,7 +13,10 @@ public static class LeaderboardText
 
 	/// <summary>Reads a leaderboard.</summary>
 	/// <param name="text">The body of the getscores answer.</param>
-	/// <returns>The leaderboard, or <see langword="null"/> when the server does not know the beatmap or the text is not a leaderboard.</returns>
+	/// <returns>
+	///     The leaderboard, or <see langword="null" /> when the server does not know the beatmap or the text is not a
+	///     leaderboard.
+	/// </returns>
 	public static LeaderboardReply? Parse(string text)
 	{
 		if (text == OsuWebWriter.LeaderboardNotFound) return null;

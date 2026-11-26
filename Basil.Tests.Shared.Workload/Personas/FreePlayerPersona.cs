@@ -9,7 +9,10 @@ using NBomber.Contracts;
 
 namespace Basil.Tests.Shared.Workload.Personas;
 
-/// <summary>Simulates a solo player: each scenario copy signs in once and keeps the session, then every invocation reads leaderboards, plays one beatmap, submits the score with its replay, reads the replay and chats.</summary>
+/// <summary>
+///     Simulates a solo player: each scenario copy signs in once and keeps the session, then every invocation reads
+///     leaderboards, plays one beatmap, submits the score with its replay, reads the replay and chats.
+/// </summary>
 public sealed class FreePlayerPersona(WorkloadContext workload)
 {
 	private readonly ConcurrentDictionary<int, Held> _held = new();
@@ -23,7 +26,8 @@ public sealed class FreePlayerPersona(WorkloadContext workload)
 		using var linked = workload.LinkToken(context);
 		var ct = linked.Token;
 		var instance = context.ScenarioInfo.InstanceNumber;
-		var random = SeededRandom.For(workload.Seed, context.ScenarioInfo.ScenarioName, instance, context.InvocationNumber);
+		var random = SeededRandom.For(workload.Seed, context.ScenarioInfo.ScenarioName, instance,
+			context.InvocationNumber);
 
 		var held = await EnsureSessionAsync(instance, context, ct);
 		if (held is null)
@@ -51,7 +55,8 @@ public sealed class FreePlayerPersona(WorkloadContext workload)
 		stable.Enqueue(ClientPackets.ChangeAction(WorkloadContext.PlayingAction(map)));
 		workload.World.PutOnline(new OnlineUser(stable.UserId, identity.Name, true, map.Md5));
 
-		var ticks = Math.Max(2, (int)(workload.RoundDuration.TotalSeconds / Math.Max(0.5, workload.PollInterval.TotalSeconds)));
+		var ticks = Math.Max(2,
+			(int)(workload.RoundDuration.TotalSeconds / Math.Max(0.5, workload.PollInterval.TotalSeconds)));
 		for (var tick = 0; tick < ticks && !ct.IsCancellationRequested; tick++)
 		{
 			var action = tick == 0 ? SpectatorAction.NewSong : SpectatorAction.Standard;
@@ -63,14 +68,15 @@ public sealed class FreePlayerPersona(WorkloadContext workload)
 		if (ct.IsCancellationRequested) return;
 
 		stable.Enqueue(
-			ClientPackets.SpectateFrames(WorkloadContext.BuildSpectatorBundle(ticks, 0, random, SpectatorAction.Completion)),
+			ClientPackets.SpectateFrames(
+				WorkloadContext.BuildSpectatorBundle(ticks, 0, random, SpectatorAction.Completion)),
 			ClientPackets.ChangeAction(WorkloadContext.IdleAction()));
 		await workload.PollStableAsync(stable, context, ct);
 		workload.World.PutOnline(new OnlineUser(stable.UserId, identity.Name, false, string.Empty));
 
 		// Submit score with replay.
-		var score = PlayedScore.Generate(random, map.Md5, passed: true, mode: map.Mode, mods: 0,
-			storyboardMd5: map.StoryboardMd5);
+		var score = PlayedScore.Generate(random, map.Md5, true, map.Mode, 0,
+			map.StoryboardMd5);
 		var replay = SampleFiles.Replay(random);
 		await StepExecution.RunAsync(Channels.Submit, context, workload.Outcomes, async () =>
 		{
@@ -94,8 +100,8 @@ public sealed class FreePlayerPersona(WorkloadContext workload)
 			await StepExecution.RunAsync(Channels.Replay, context, workload.Outcomes, async () =>
 			{
 				var reply = await web.GetReplayAsync(scoreId, ct);
-				return OutcomeClassifier.FromHttpStatus(reply.Status, refusalExpected: reply.Status == HttpStatusCode.NotFound,
-					bytes: reply.Body);
+				return OutcomeClassifier.FromHttpStatus(reply.Status, reply.Status == HttpStatusCode.NotFound,
+					reply.Body);
 			}, ct);
 		}
 

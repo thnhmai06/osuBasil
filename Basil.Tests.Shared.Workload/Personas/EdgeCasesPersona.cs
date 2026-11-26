@@ -12,12 +12,15 @@ namespace Basil.Tests.Shared.Workload.Personas;
 public sealed class EdgeCasesPersona(WorkloadContext workload)
 {
 	/// <summary>Does nothing: every cycle signs itself out, so no session outlives it.</summary>
-	public Task ShutdownAsync()
+	public static Task ShutdownAsync()
 	{
 		return Task.CompletedTask;
 	}
 
-	/// <summary>Runs one cycle covering MatchJoinFail, duplicate score submission, second login within 30 s and forbidden/missing REST calls.</summary>
+	/// <summary>
+	///     Runs one cycle covering MatchJoinFail, duplicate score submission, second login within 30 s and
+	///     forbidden/missing REST calls.
+	/// </summary>
 	public async Task RunCycleAsync(IScenarioContext context)
 	{
 		using var linked = workload.LinkToken(context);
@@ -43,16 +46,18 @@ public sealed class EdgeCasesPersona(WorkloadContext workload)
 			{
 				// 1. MatchJoinFail: attempt to join a non-existent room id.
 				stable.Enqueue(ClientPackets.JoinMatch(999_999, "wrong-password"));
-				var failed = await workload.PollUntilAsync<MatchJoinFailed>(stable, null, workload.WaitTimeout, context, ct);
-				await StepExecution.RunAsync(Channels.Edge, context, workload.Outcomes, () => Task.FromResult(failed is not null
-					? StepOutcome.Refused("match_join_fail")
-					: StepOutcome.Error("expected_match_join_fail")), ct);
+				var failed =
+					await workload.PollUntilAsync<MatchJoinFailed>(stable, null, workload.WaitTimeout, context, ct);
+				await StepExecution.RunAsync(Channels.Edge, context, workload.Outcomes, () =>
+					Task.FromResult(failed is not null
+						? StepOutcome.Refused("match_join_fail")
+						: StepOutcome.Error("expected_match_join_fail")), ct);
 
 				// 2. Duplicate score submission: submit the exact same play twice; second must be refused.
 				var map = workload.PickBeatmap(random);
 				var web = new OsuWebClient(workload.Endpoint, workload.Http, identity);
-				var score = PlayedScore.Generate(random, map.Md5, passed: true, mode: map.Mode, mods: 0,
-					storyboardMd5: map.StoryboardMd5);
+				var score = PlayedScore.Generate(random, map.Md5, true, map.Mode, 0,
+					map.StoryboardMd5);
 				var replay = SampleFiles.Replay(random);
 
 				var first = await StepExecution.RunAsync(Channels.Submit, context, workload.Outcomes, async () =>
@@ -62,27 +67,28 @@ public sealed class EdgeCasesPersona(WorkloadContext workload)
 				}, ct);
 
 				if (first.Outcome == Outcome.Ok)
-				{
 					await StepExecution.RunAsync(Channels.Submit, context, workload.Outcomes, async () =>
 					{
 						var reply = await web.SubmitScoreAsync(score, replay, ct);
-						var classified = OutcomeClassifier.FromScoreSubmission(reply.Status, reply.Body, refusalExpected: true);
+						var classified = OutcomeClassifier.FromScoreSubmission(reply.Status, reply.Body, true);
 						return classified.Outcome == Outcome.Refused
 							? classified
 							: StepOutcome.Error("expected_duplicate_refusal");
 					}, ct);
-				}
 
 				// 3. Second login within 30 s while the first session is active (AlreadyOnline; does not trip lockout).
 				var duplicateClient = new StableClient(workload.Endpoint, workload.Http, identity);
 				await StepExecution.RunAsync(Channels.Login, context, workload.Outcomes, async () =>
 				{
 					var reply = await duplicateClient.LoginAsync(ct);
-					if (reply.Status == HttpStatusCode.TooManyRequests) return StepOutcome.Throttled("429");
-					if (reply.Status == HttpStatusCode.ServiceUnavailable) return StepOutcome.Shed("503");
-					return !reply.Accepted && reply.UserId < 0
-						? StepOutcome.Refused("already_online")
-						: StepOutcome.Error("expected_already_online");
+					return reply.Status switch
+					{
+						HttpStatusCode.TooManyRequests => StepOutcome.Throttled(),
+						HttpStatusCode.ServiceUnavailable => StepOutcome.Shed(),
+						_ => reply is { Accepted: false, UserId: < 0 }
+							? StepOutcome.Refused("already_online")
+							: StepOutcome.Error("expected_already_online")
+					};
 				}, ct);
 
 				// 4. REST: second login within 30 s -> 409, missing user -> 404, diagnostics without Developer -> 403.
@@ -100,7 +106,7 @@ public sealed class EdgeCasesPersona(WorkloadContext workload)
 						var reply = await secondRest.SignInAsync(lease.Account.Name, lease.Account.Password, ct);
 						return reply.Status == HttpStatusCode.Conflict
 							? StepOutcome.Refused("rest_already_online")
-							: OutcomeClassifier.FromRest(reply, refusalExpected: true);
+							: OutcomeClassifier.FromRest(reply, true);
 					}, ct);
 
 					await StepExecution.RunAsync(Channels.Rest, context, workload.Outcomes, async () =>
@@ -113,7 +119,7 @@ public sealed class EdgeCasesPersona(WorkloadContext workload)
 
 					await StepExecution.RunAsync(Channels.Rest, context, workload.Outcomes, async () =>
 					{
-						using var stream = await rest.OpenStreamAsync("/v1/diagnostics", authorize: true, ct);
+						using var stream = await rest.OpenStreamAsync("/v1/diagnostics", true, ct);
 						return stream.Status == HttpStatusCode.Forbidden
 							? StepOutcome.Refused("403")
 							: StepOutcome.Error($"expected_403_got_{(int)stream.Status}");

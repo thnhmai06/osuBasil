@@ -22,7 +22,9 @@ public sealed class CapacityTest : ILoadTest
 	{
 		var (stepHold, stepCount, stepDelta, rampStep) = Shape(options);
 		return RunPlan.Create(WarmUp, rampStep,
-			[.. Enumerable.Range(1, stepCount).Select(step => ($"step {step}", step * stepDelta, rampStep + stepHold))]);
+		[
+			.. Enumerable.Range(1, stepCount).Select(step => ($"step {step}", step * stepDelta, rampStep + stepHold))
+		]);
 	}
 
 	public IReadOnlyList<ScenarioProps> BuildScenarios(LoadTestOptions options, WorkloadContext workload,
@@ -57,8 +59,8 @@ public sealed class CapacityTest : ILoadTest
 					sims.Add(Injection.PerMinute(pick(alloc), rampStep + stepHold));
 				return [.. sims];
 			},
-			enforceSlo: true,
-			warmUp: WarmUp);
+			true,
+			WarmUp);
 	}
 
 	private static (TimeSpan StepHold, int StepCount, int StepDelta, TimeSpan RampStep) Shape(LoadTestOptions options)

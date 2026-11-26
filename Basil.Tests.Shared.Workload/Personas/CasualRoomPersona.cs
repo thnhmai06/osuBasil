@@ -7,7 +7,10 @@ using NBomber.Contracts;
 
 namespace Basil.Tests.Shared.Workload.Personas;
 
-/// <summary>Simulates a casual in-game multiplayer room: each scenario copy creates the room and signs its players in once, keeps them, and every invocation plays one round.</summary>
+/// <summary>
+///     Simulates a casual in-game multiplayer room: each scenario copy creates the room and signs its players in
+///     once, keeps them, and every invocation plays one round.
+/// </summary>
 public sealed class CasualRoomPersona(WorkloadContext workload, int playersPerRoom = 2)
 {
 	private readonly ConcurrentDictionary<int, Room> _rooms = new();
@@ -21,7 +24,8 @@ public sealed class CasualRoomPersona(WorkloadContext workload, int playersPerRo
 		using var linked = workload.LinkToken(context);
 		var ct = linked.Token;
 		var instance = context.ScenarioInfo.InstanceNumber;
-		var random = SeededRandom.For(workload.Seed, context.ScenarioInfo.ScenarioName, instance, context.InvocationNumber);
+		var random = SeededRandom.For(workload.Seed, context.ScenarioInfo.ScenarioName, instance,
+			context.InvocationNumber);
 
 		await ReapIdleAsync(instance);
 
@@ -64,7 +68,10 @@ public sealed class CasualRoomPersona(WorkloadContext workload, int playersPerRo
 				SeededRandom.For(workload.Seed, "casual", room.RoomId * 16 + slot, round), context, ct)));
 	}
 
-	/// <summary>Closes every room this persona still holds, signs its players out and returns every account lease; best effort, never throws.</summary>
+	/// <summary>
+	///     Closes every room this persona still holds, signs its players out and returns every account lease; best
+	///     effort, never throws.
+	/// </summary>
 	public async Task ShutdownAsync()
 	{
 		_closing = true;
@@ -73,7 +80,10 @@ public sealed class CasualRoomPersona(WorkloadContext workload, int playersPerRo
 		await Task.WhenAll(all.Select(CloseAsync));
 	}
 
-	/// <summary>Closes the rooms of the other scenario copies that have not run for longer than <see cref="WorkloadContext.IdleReapAfter"/>; never throws.</summary>
+	/// <summary>
+	///     Closes the rooms of the other scenario copies that have not run for longer than
+	///     <see cref="WorkloadContext.IdleReapAfter" />; never throws.
+	/// </summary>
 	private async Task ReapIdleAsync(int instance)
 	{
 		foreach (var pair in _rooms)
@@ -92,7 +102,8 @@ public sealed class CasualRoomPersona(WorkloadContext workload, int playersPerRo
 		}
 	}
 
-	private async Task<Room?> EnsureRoomAsync(int instance, Random random, IScenarioContext context, CancellationToken ct)
+	private async Task<Room?> EnsureRoomAsync(int instance, Random random, IScenarioContext context,
+		CancellationToken ct)
 	{
 		if (_rooms.TryGetValue(instance, out var existing))
 		{
@@ -125,7 +136,8 @@ public sealed class CasualRoomPersona(WorkloadContext workload, int playersPerRo
 		room.Clients.Add(host);
 		var map = room.Map;
 		var roomName = $"Casual {context.ScenarioInfo.InstanceNumber}-{context.InvocationNumber}";
-		var blank = ClientPackets.BlankRoom(roomName, mode: map.Mode, mapMd5: map.Md5, mapId: map.Id, mapName: map.Version);
+		var blank = ClientPackets.BlankRoom(roomName, mode: map.Mode, mapMd5: map.Md5, mapId: map.Id,
+			mapName: map.Version);
 		host.Enqueue(ClientPackets.JoinLobby(), ClientPackets.CreateMatch(blank));
 		var created = await workload.PollUntilAsync<MatchJoined>(host, null, workload.WaitTimeout, context, ct);
 		if (created is null)
@@ -135,7 +147,8 @@ public sealed class CasualRoomPersona(WorkloadContext workload, int playersPerRo
 		}
 
 		room.RoomId = created.Room.Id;
-		workload.World.PutRoom(new LiveRoom(room.RoomId, roomName, string.Empty, map.Id, map.Md5, false, false, [host.UserId]));
+		workload.World.PutRoom(new LiveRoom(room.RoomId, roomName, string.Empty, map.Id, map.Md5, false, false,
+			[host.UserId]));
 
 		// Guests join and ready up.
 		for (var i = 1; i < leases.Count && !ct.IsCancellationRequested; i++)
@@ -184,11 +197,13 @@ public sealed class CasualRoomPersona(WorkloadContext workload, int playersPerRo
 		var started = await workload.PollUntilAsync<MatchStarted>(client, null, workload.WaitTimeout, context, ct);
 		if (started is null || ct.IsCancellationRequested) return;
 
-		client.Enqueue(ClientPackets.ChangeAction(WorkloadContext.PlayingAction(map)), ClientPackets.MatchLoadComplete());
+		client.Enqueue(ClientPackets.ChangeAction(WorkloadContext.PlayingAction(map)),
+			ClientPackets.MatchLoadComplete());
 		await workload.PollUntilAsync<MatchAllPlayersLoaded>(client, null, workload.WaitTimeout, context, ct);
 		if (ct.IsCancellationRequested) return;
 
-		var ticks = Math.Max(2, (int)(workload.RoundDuration.TotalSeconds / Math.Max(0.5, workload.PollInterval.TotalSeconds)));
+		var ticks = Math.Max(2,
+			(int)(workload.RoundDuration.TotalSeconds / Math.Max(0.5, workload.PollInterval.TotalSeconds)));
 		for (var tick = 0; tick < ticks && !ct.IsCancellationRequested; tick++)
 		{
 			client.Enqueue(ClientPackets.MatchScoreUpdate(WorkloadContext.BuildScoreFrame(tick, slot, random)));
@@ -202,8 +217,8 @@ public sealed class CasualRoomPersona(WorkloadContext workload, int playersPerRo
 		await workload.PollStableAsync(client, context, ct);
 
 		var web = new OsuWebClient(workload.Endpoint, workload.Http, client.Identity);
-		var score = PlayedScore.Generate(random, map.Md5, passed: true, mode: map.Mode, mods: 0,
-			storyboardMd5: map.StoryboardMd5);
+		var score = PlayedScore.Generate(random, map.Md5, true, map.Mode, 0,
+			map.StoryboardMd5);
 		await StepExecution.RunAsync(Channels.Submit, context, workload.Outcomes, async () =>
 		{
 			var reply = await web.SubmitScoreAsync(score, SampleFiles.Replay(random), ct);

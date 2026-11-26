@@ -4,7 +4,6 @@ using Basil.Domain.Scores;
 using Basil.Domain.Spectating;
 using Basil.Protocol.Game.Stable.Models.Users;
 using Basil.Tests.Shared.Clients;
-using Basil.Tests.Shared.Clients.OsuWeb;
 using Basil.Tests.Shared.Clients.Rest;
 using Basil.Tests.Shared.Clients.Stable;
 using Basil.Tests.Shared.Workload.Outcomes;
@@ -74,7 +73,11 @@ public sealed class WorkloadContext(
 	/// <summary>Gets or sets the timeout for waiting on server responses.</summary>
 	public TimeSpan WaitTimeout { get; init; } = TimeSpan.FromSeconds(15);
 
-	/// <summary>Gets how long a scenario copy's held sessions may sit unused before another invocation of the same persona signs them out: three rounds including their waits, so a copy that NBomber removed on ramp-down stops loading the server while a copy between two invocations is never reaped.</summary>
+	/// <summary>
+	///     Gets how long a scenario copy's held sessions may sit unused before another invocation of the same persona
+	///     signs them out: three rounds including their waits, so a copy that NBomber removed on ramp-down stops loading the
+	///     server while a copy between two invocations is never reaped.
+	/// </summary>
 	public TimeSpan IdleReapAfter => 3 * (RoundDuration + WaitTimeout);
 
 	/// <summary>Creates a token linked to both NBomber's scenario cancellation and the run abort guard.</summary>
@@ -83,7 +86,7 @@ public sealed class WorkloadContext(
 		return CancellationTokenSource.CreateLinkedTokenSource(context.ScenarioCancellationToken, abortToken);
 	}
 
-	/// <summary>Picks a beatmap deterministically using <paramref name="random"/>.</summary>
+	/// <summary>Picks a beatmap deterministically using <paramref name="random" />.</summary>
 	public BeatmapEntry PickBeatmap(Random random)
 	{
 		if (_beatmaps.Count == 0)
@@ -91,7 +94,7 @@ public sealed class WorkloadContext(
 		return _beatmaps[random.Next(_beatmaps.Count)];
 	}
 
-	/// <summary>Picks a beatmapset deterministically using <paramref name="random"/>.</summary>
+	/// <summary>Picks a beatmapset deterministically using <paramref name="random" />.</summary>
 	public BeatmapsetEntry PickBeatmapset(Random random)
 	{
 		if (worldData.Beatmapsets.Count == 0)
@@ -99,7 +102,10 @@ public sealed class WorkloadContext(
 		return worldData.Beatmapsets[random.Next(worldData.Beatmapsets.Count)];
 	}
 
-	/// <summary>Signs an osu! client in inside a <c>login</c> step; an unexpected refusal feeds the lockout guard and quarantines the leased account.</summary>
+	/// <summary>
+	///     Signs an osu! client in inside a <c>login</c> step; an unexpected refusal feeds the lockout guard and
+	///     quarantines the leased account.
+	/// </summary>
 	public async Task<StableLoginResult?> LoginStableAsync(StableClient client, IScenarioContext context,
 		CancellationToken ct, bool refusalExpected = false, AccountLease? lease = null)
 	{
@@ -125,8 +131,12 @@ public sealed class WorkloadContext(
 		return outcome.Outcome == Outcome.Ok || refusalExpected ? result : null;
 	}
 
-	/// <summary>Polls an osu! client inside a <c>poll</c> step; a client the server has dropped is marked and is not polled again.</summary>
-	public async Task<StableExchange?> PollStableAsync(StableClient client, IScenarioContext context, CancellationToken ct)
+	/// <summary>
+	///     Polls an osu! client inside a <c>poll</c> step; a client the server has dropped is marked and is not polled
+	///     again.
+	/// </summary>
+	public async Task<StableExchange?> PollStableAsync(StableClient client, IScenarioContext context,
+		CancellationToken ct)
 	{
 		if (IsDropped(client)) return null;
 
@@ -165,7 +175,10 @@ public sealed class WorkloadContext(
 		return null;
 	}
 
-	/// <summary>Signs an osu! client out inside a <c>logout</c> step and removes it from <see cref="World"/>; the sign-out is sent even when the run is being cancelled.</summary>
+	/// <summary>
+	///     Signs an osu! client out inside a <c>logout</c> step and removes it from <see cref="World" />; the sign-out is
+	///     sent even when the run is being cancelled.
+	/// </summary>
 	public async Task LogoutStableAsync(StableClient client, IScenarioContext context)
 	{
 		if (client.Token is null) return;
@@ -186,7 +199,10 @@ public sealed class WorkloadContext(
 		}
 	}
 
-	/// <summary>Signs a REST client out inside a <c>logout</c> step; the sign-out is sent even when the run is being cancelled.</summary>
+	/// <summary>
+	///     Signs a REST client out inside a <c>logout</c> step; the sign-out is sent even when the run is being
+	///     cancelled.
+	/// </summary>
 	public async Task LogoutRestAsync(RestClient rest, IScenarioContext context)
 	{
 		if (rest.Token is null) return;
@@ -236,19 +252,19 @@ public sealed class WorkloadContext(
 		}
 	}
 
-	/// <summary>Builds a valid <see cref="ChangeAction"/> packet for idle or playing.</summary>
+	/// <summary>Builds a valid <see cref="ChangeAction" /> packet for idle or playing.</summary>
 	public static ChangeAction PlayingAction(BeatmapEntry map, int mods = 0)
 	{
 		return new ChangeAction(2, $"{map.Version}", map.Md5, (uint)mods, (byte)map.Mode, map.Id);
 	}
 
-	/// <summary>Builds an idle <see cref="ChangeAction"/> packet.</summary>
+	/// <summary>Builds an idle <see cref="ChangeAction" /> packet.</summary>
 	public static ChangeAction IdleAction()
 	{
 		return new ChangeAction(0, string.Empty, string.Empty, 0, 0, 0);
 	}
 
-	/// <summary>Builds a realistic mid-play <see cref="ScoreFrame"/>.</summary>
+	/// <summary>Builds a realistic mid-play <see cref="ScoreFrame" />.</summary>
 	public static ScoreFrame BuildScoreFrame(int tick, int slotId, Random random)
 	{
 		var n300 = (tick + 1) * 12;
@@ -257,17 +273,18 @@ public sealed class WorkloadContext(
 		var miss = tick > 0 && tick % 7 == 0 ? 1 : 0;
 		var combo = (ushort)Math.Min(ushort.MaxValue, n300 + n100);
 		var score = (n300 * 300 + n100 * 100) * (1 + combo / 25);
-		var state = new ScoreState(new HitCounts(n300, n100, n50, n300 / 4, n100, miss), score, combo, combo, miss == 0);
+		var state = new ScoreState(new HitCounts(n300, n100, n50, n300 / 4, n100, miss), score, combo, combo,
+			miss == 0);
 		return new ScoreFrame(TimeSpan.FromSeconds(tick + 1), slotId, state, 200, 0, null);
 	}
 
-	/// <summary>Builds a <see cref="SpectatorBundle"/> carrying cursor frames and a score frame.</summary>
+	/// <summary>Builds a <see cref="SpectatorBundle" /> carrying cursor frames and a score frame.</summary>
 	public static SpectatorBundle BuildSpectatorBundle(int tick, int slotId, Random random, SpectatorAction action)
 	{
 		var frames = new List<ReplayFrame>(8);
 		for (var i = 0; i < 8; i++)
 		{
-			var time = TimeSpan.FromMilliseconds((tick * 1000) + (i * 120));
+			var time = TimeSpan.FromMilliseconds(tick * 1000 + i * 120);
 			var point = new PointF(random.Next(32, 480), random.Next(32, 352));
 			var keys = (i & 1) == 0 ? KeyState.Left2 : KeyState.Right2;
 			frames.Add(new ReplayFrame(keys, TaikoDrumState.None, point, time));
@@ -276,7 +293,7 @@ public sealed class WorkloadContext(
 		return new SpectatorBundle(action, frames, BuildScoreFrame(tick, slotId, random), tick);
 	}
 
-	/// <summary>Delays without throwing when <paramref name="ct"/> is cancelled.</summary>
+	/// <summary>Delays without throwing when <paramref name="ct" /> is cancelled.</summary>
 	public static async Task SafeDelayAsync(TimeSpan delay, CancellationToken ct)
 	{
 		if (delay <= TimeSpan.Zero || ct.IsCancellationRequested) return;

@@ -7,8 +7,8 @@ namespace Basil.Tests.Shared.Clients.OsuWeb;
 
 /// <summary>The web endpoints an osu! client calls on the <c>osu.</c> host, signed with the identity of its account.</summary>
 /// <remarks>
-/// Most calls only work while the account has an open <see cref="StableClient"/> session from the same address.
-/// A refused call is an answer; an upload the server refuses by cutting the connection throws a transport exception.
+///     Most calls only work while the account has an open <see cref="StableClient" /> session from the same address.
+///     A refused call is an answer; an upload the server refuses by cutting the connection throws a transport exception.
 /// </remarks>
 public sealed class OsuWebClient(Endpoint endpoint, HttpClient http, StableIdentity identity)
 {
@@ -17,9 +17,12 @@ public sealed class OsuWebClient(Endpoint endpoint, HttpClient http, StableIdent
 	/// <summary>Asks for the leaderboard of a beatmap.</summary>
 	/// <param name="beatmapMd5">The md5 of the beatmap.</param>
 	/// <param name="mode">The game mode number.</param>
-	/// <param name="mods">The mods, used when <paramref name="rankedType"/> is 3.</param>
+	/// <param name="mods">The mods, used when <paramref name="rankedType" /> is 3.</param>
 	/// <param name="rankedType">The kind of board: 1 for the top scores, 3 for those with the mods.</param>
-	/// <returns>The answer with the board, or <see langword="null"/> for a beatmap the server does not know; <see cref="Reply{T}.Status"/> tells a refusal.</returns>
+	/// <returns>
+	///     The answer with the board, or <see langword="null" /> for a beatmap the server does not know;
+	///     <see cref="Reply{T}.Status" /> tells a refusal.
+	/// </returns>
 	public async Task<Reply<LeaderboardReply?>> GetScoresAsync(string beatmapMd5, int mode, int mods,
 		int rankedType, CancellationToken ct)
 	{
@@ -30,7 +33,10 @@ public sealed class OsuWebClient(Endpoint endpoint, HttpClient http, StableIdent
 	}
 
 	/// <summary>Submits a finished play with its replay.</summary>
-	/// <returns>The answer text: the charts of an accepted play, or <c>error: no</c> for a refusal, which is an answer with status 200.</returns>
+	/// <returns>
+	///     The answer text: the charts of an accepted play, or <c>error: no</c> for a refusal, which is an answer with
+	///     status 200.
+	/// </returns>
 	public async Task<Reply<string>> SubmitScoreAsync(PlayedScore score, byte[] replay, CancellationToken ct)
 	{
 		using var request = endpoint.Request(HttpMethod.Post, Host, "/web/osu-submit-modular-selector.php");
@@ -42,7 +48,8 @@ public sealed class OsuWebClient(Endpoint endpoint, HttpClient http, StableIdent
 	/// <summary>Downloads the replay of a score and counts its bytes.</summary>
 	public async Task<Reply<long>> GetReplayAsync(long scoreId, CancellationToken ct)
 	{
-		using var request = Get($"/web/osu-getreplay.php?u={Escape(identity.Name)}&h={identity.PasswordMd5}&c={scoreId}");
+		using var request =
+			Get($"/web/osu-getreplay.php?u={Escape(identity.Name)}&h={identity.PasswordMd5}&c={scoreId}");
 		return await Exchange.DrainAsync(http, request, ct);
 	}
 
@@ -61,7 +68,8 @@ public sealed class OsuWebClient(Endpoint endpoint, HttpClient http, StableIdent
 	/// <summary>Reads the osu!direct line of one beatmapset.</summary>
 	public async Task<Reply<string>> SearchSetAsync(int setId, CancellationToken ct)
 	{
-		using var request = Get($"/web/osu-search-set.php?u={Escape(identity.Name)}&h={identity.PasswordMd5}&s={setId}");
+		using var request =
+			Get($"/web/osu-search-set.php?u={Escape(identity.Name)}&h={identity.PasswordMd5}&s={setId}");
 		return await Exchange.TextAsync(http, request, ct);
 	}
 
@@ -70,7 +78,8 @@ public sealed class OsuWebClient(Endpoint endpoint, HttpClient http, StableIdent
 	/// <param name="withVideo">Whether the archive keeps the video.</param>
 	public async Task<Reply<long>> DownloadSetAsync(int setId, bool withVideo, CancellationToken ct)
 	{
-		using var request = Get($"/d/{setId}{(withVideo ? string.Empty : "n")}?u={Escape(identity.Name)}&h={identity.PasswordMd5}");
+		using var request =
+			Get($"/d/{setId}{(withVideo ? string.Empty : "n")}?u={Escape(identity.Name)}&h={identity.PasswordMd5}");
 		return await Exchange.DrainAsync(http, request, ct);
 	}
 
@@ -96,7 +105,11 @@ public sealed class OsuWebClient(Endpoint endpoint, HttpClient http, StableIdent
 		using var request = Get($"/web/osu-getfriends.php?u={Escape(identity.Name)}&h={identity.PasswordMd5}");
 		var text = await Exchange.TextAsync(http, request, ct);
 		IReadOnlyList<int> ids = text.IsSuccess
-			? [.. text.Body.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(line => int.Parse(line, CultureInfo.InvariantCulture))]
+			?
+			[
+				.. text.Body.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+					.Select(line => int.Parse(line, CultureInfo.InvariantCulture))
+			]
 			: [];
 		return new Reply<IReadOnlyList<int>>(text.Status, ids);
 	}

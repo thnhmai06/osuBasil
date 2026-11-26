@@ -7,12 +7,83 @@ using Basil.Protocol.Game.Stable.Wire.Packets;
 
 namespace Basil.Tests.Shared.Clients.Stable;
 
-/// <summary>Builds the packets an osu! client sends; every method returns one complete packet, ready to queue for the next poll.</summary>
+/// <summary>
+///     Builds the packets an osu! client sends; every method returns one complete packet, ready to queue for the next
+///     poll.
+/// </summary>
 public static class ClientPackets
 {
 	private const int HeaderSize = 7;
 
 	private const int OpenSlot = 1;
+
+	private static byte[] Frame(ClientPacketType type, Action<BinaryWriter> payload)
+	{
+		using var body = new MemoryStream();
+		using (var writer = new BinaryWriter(body, Encoding.UTF8, true))
+		{
+			payload(writer);
+		}
+
+		return Header(type, body.ToArray());
+	}
+
+	private static byte[] Header(ClientPacketType type, ReadOnlySpan<byte> payload)
+	{
+		var packet = new byte[HeaderSize + payload.Length];
+		BitConverter.TryWriteBytes(packet.AsSpan(0, sizeof(ushort)), (ushort)type);
+		BitConverter.TryWriteBytes(packet.AsSpan(3, sizeof(int)), payload.Length);
+		payload.CopyTo(packet.AsSpan(HeaderSize));
+		return packet;
+	}
+
+	// The server's packets and the client's share their payload layouts for messages and rooms, so the server's encoder builds the payload and only the header changes.
+	private static byte[] Rewrap(ClientPacketType type, byte[] serverPacket)
+	{
+		return Header(type, serverPacket.AsSpan(HeaderSize));
+	}
+
+	private static byte[] FromMessage(ClientPacketType type, string text, string recipient)
+	{
+		return Rewrap(type, PacketWriter.Build(writer => writer.SendMessage(string.Empty, text, recipient, 0)));
+	}
+
+	private static byte[] FromRoom(ClientPacketType type, RoomPacket room)
+	{
+		return Rewrap(type, PacketWriter.Build(writer => writer.UpdateMatch(room)));
+	}
+
+	private static void WriteList(BinaryWriter writer, IReadOnlyList<int> values)
+	{
+		writer.Write(checked((ushort)values.Count));
+		foreach (var value in values) writer.Write(value);
+	}
+
+	private static void WriteString(BinaryWriter writer, string value)
+	{
+		if (value.Length == 0)
+		{
+			writer.Write((byte)0);
+			return;
+		}
+
+		var bytes = Encoding.UTF8.GetBytes(value);
+		writer.Write((byte)0x0B);
+		for (var rest = (uint)bytes.Length;;)
+		{
+			var part = (byte)(rest & 0x7F);
+			rest >>= 7;
+			if (rest == 0)
+			{
+				writer.Write(part);
+				break;
+			}
+
+			writer.Write((byte)(part | 0x80));
+		}
+
+		writer.Write(bytes);
+	}
 
 	#region Presence
 
@@ -94,7 +165,7 @@ public static class ClientPackets
 
 	#region Chat
 
-	/// <summary>Builds a message to a channel; <paramref name="channel"/> may be <c>#multiplayer</c> or <c>#spectator</c>.</summary>
+	/// <summary>Builds a message to a channel; <paramref name="channel" /> may be <c>#multiplayer</c> or <c>#spectator</c>.</summary>
 	public static byte[] SendPublicMessage(string channel, string text)
 	{
 		return FromMessage(ClientPacketType.SendPublicMessage, text, channel);
@@ -346,72 +417,4 @@ public static class ClientPackets
 	}
 
 	#endregion
-
-	private static byte[] Frame(ClientPacketType type, Action<BinaryWriter> payload)
-	{
-		using var body = new MemoryStream();
-		using (var writer = new BinaryWriter(body, Encoding.UTF8, true))
-		{
-			payload(writer);
-		}
-
-		return Header(type, body.ToArray());
-	}
-
-	private static byte[] Header(ClientPacketType type, ReadOnlySpan<byte> payload)
-	{
-		var packet = new byte[HeaderSize + payload.Length];
-		BitConverter.TryWriteBytes(packet.AsSpan(0, sizeof(ushort)), (ushort)type);
-		BitConverter.TryWriteBytes(packet.AsSpan(3, sizeof(int)), payload.Length);
-		payload.CopyTo(packet.AsSpan(HeaderSize));
-		return packet;
-	}
-
-	// The server's packets and the client's share their payload layouts for messages and rooms, so the server's encoder builds the payload and only the header changes.
-	private static byte[] Rewrap(ClientPacketType type, byte[] serverPacket)
-	{
-		return Header(type, serverPacket.AsSpan(HeaderSize));
-	}
-
-	private static byte[] FromMessage(ClientPacketType type, string text, string recipient)
-	{
-		return Rewrap(type, PacketWriter.Build(writer => writer.SendMessage(string.Empty, text, recipient, 0)));
-	}
-
-	private static byte[] FromRoom(ClientPacketType type, RoomPacket room)
-	{
-		return Rewrap(type, PacketWriter.Build(writer => writer.UpdateMatch(room)));
-	}
-
-	private static void WriteList(BinaryWriter writer, IReadOnlyList<int> values)
-	{
-		writer.Write(checked((ushort)values.Count));
-		foreach (var value in values) writer.Write(value);
-	}
-
-	private static void WriteString(BinaryWriter writer, string value)
-	{
-		if (value.Length == 0)
-		{
-			writer.Write((byte)0);
-			return;
-		}
-
-		var bytes = Encoding.UTF8.GetBytes(value);
-		writer.Write((byte)0x0B);
-		for (var rest = (uint)bytes.Length;;)
-		{
-			var part = (byte)(rest & 0x7F);
-			rest >>= 7;
-			if (rest == 0)
-			{
-				writer.Write(part);
-				break;
-			}
-
-			writer.Write((byte)(part | 0x80));
-		}
-
-		writer.Write(bytes);
-	}
 }

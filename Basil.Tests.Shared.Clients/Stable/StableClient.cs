@@ -4,11 +4,14 @@ using System.Text;
 
 namespace Basil.Tests.Shared.Clients.Stable;
 
-/// <summary>An osu! client on the <c>c.</c> host: signs in, then sends the packets it queued and reads what the server sends back, one poll at a time.</summary>
+/// <summary>
+///     An osu! client on the <c>c.</c> host: signs in, then sends the packets it queued and reads what the server
+///     sends back, one poll at a time.
+/// </summary>
 /// <remarks>
-/// A client is driven by one task; polls of one client must not overlap.
-/// A refusal is an answer (the status and the packets read), and only a transport failure throws.
-/// Packets queued for a poll that fails to reach the server are lost.
+///     A client is driven by one task; polls of one client must not overlap.
+///     A refusal is an answer (the status and the packets read), and only a transport failure throws.
+///     Packets queued for a poll that fails to reach the server are lost.
 /// </remarks>
 public sealed class StableClient(Endpoint endpoint, HttpClient http, StableIdentity identity)
 {
@@ -17,14 +20,14 @@ public sealed class StableClient(Endpoint endpoint, HttpClient http, StableIdent
 	/// <summary>Gets the identity this client signs in with.</summary>
 	public StableIdentity Identity => identity;
 
-	/// <summary>Gets the session token, or <see langword="null"/> while the client is not signed in.</summary>
+	/// <summary>Gets the session token, or <see langword="null" /> while the client is not signed in.</summary>
 	public string? Token { get; private set; }
 
 	/// <summary>Gets the id of the signed-in user, or 0 while the client is not signed in.</summary>
 	public int UserId { get; private set; }
 
 	/// <summary>Signs in.</summary>
-	/// <returns>The answer; <see cref="StableLoginResult.Accepted"/> tells whether a session started.</returns>
+	/// <returns>The answer; <see cref="StableLoginResult.Accepted" /> tells whether a session started.</returns>
 	public async Task<StableLoginResult> LoginAsync(CancellationToken ct)
 	{
 		using var request = NewRequest(null);
@@ -68,11 +71,14 @@ public sealed class StableClient(Endpoint endpoint, HttpClient http, StableIdent
 
 	/// <summary>Polls until a packet of the wanted kind arrives, the wait runs out, or the server refuses a poll.</summary>
 	/// <typeparam name="T">The kind of packet to wait for.</typeparam>
-	/// <param name="match">An extra test the packet must pass, or <see langword="null"/> for any packet of the kind.</param>
+	/// <param name="match">An extra test the packet must pass, or <see langword="null" /> for any packet of the kind.</param>
 	/// <param name="interval">The pause between polls.</param>
 	/// <param name="timeout">How long to wait in all.</param>
 	/// <param name="ct">Stops the wait.</param>
-	/// <returns>The packet that matched, or <see langword="null"/> in <see cref="StableWait{T}.Match"/>, with every packet read while waiting.</returns>
+	/// <returns>
+	///     The packet that matched, or <see langword="null" /> in <see cref="StableWait{T}.Match" />, with every packet
+	///     read while waiting.
+	/// </returns>
 	public async Task<StableWait<T>> PollUntilAsync<T>(Func<T, bool>? match, TimeSpan interval, TimeSpan timeout,
 		CancellationToken ct) where T : StablePacket
 	{
@@ -156,7 +162,7 @@ public sealed record StableLoginResult(
 /// <summary>The result of polling until a packet arrives.</summary>
 /// <typeparam name="T">The kind of packet waited for.</typeparam>
 /// <param name="Status">The status of the last poll.</param>
-/// <param name="Match">The packet that matched, or <see langword="null"/> when the wait ended without one.</param>
+/// <param name="Match">The packet that matched, or <see langword="null" /> when the wait ended without one.</param>
 /// <param name="Packets">Every packet read while waiting, the matching one included.</param>
 public sealed record StableWait<T>(HttpStatusCode Status, T? Match, IReadOnlyList<StablePacket> Packets)
 	where T : StablePacket;

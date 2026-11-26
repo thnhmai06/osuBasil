@@ -18,7 +18,8 @@ public sealed record RunPlan(TimeSpan WarmUp, IReadOnlyList<RunStep> Steps, Time
 	public TimeSpan Total => WarmUp + (Steps.Count == 0 ? TimeSpan.Zero : Steps[^1].End) + Tail;
 
 	/// <summary>Lays the given levels one after the other.</summary>
-	public static RunPlan Create(TimeSpan warmUp, TimeSpan tail, params (string Name, int Sessions, TimeSpan Duration)[] levels)
+	public static RunPlan Create(TimeSpan warmUp, TimeSpan tail,
+		params (string Name, int Sessions, TimeSpan Duration)[] levels)
 	{
 		var steps = new List<RunStep>(levels.Length);
 		var at = TimeSpan.Zero;

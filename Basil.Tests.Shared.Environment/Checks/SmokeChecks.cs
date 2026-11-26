@@ -12,8 +12,16 @@ namespace Basil.Tests.Shared.Environment.Checks;
 /// <param name="Detail">The numbers behind the verdict.</param>
 public sealed record CheckResult(string Name, bool Passed, string Detail);
 
-/// <summary>Server-side checks of a smoke run (plan T8), made through the public REST API and the diagnostics feed only: the matches played rounds, every accepted score is stored exactly once, and nothing is left behind.</summary>
-public sealed class SmokeChecks(Endpoint endpoint, HttpClient http, string user, string password, string accountPrefix = "load_")
+/// <summary>
+///     Server-side checks of a smoke run (plan T8), made through the public REST API and the diagnostics feed only:
+///     the matches played rounds, every accepted score is stored exactly once, and nothing is left behind.
+/// </summary>
+public sealed class SmokeChecks(
+	Endpoint endpoint,
+	HttpClient http,
+	string user,
+	string password,
+	string accountPrefix = "load_")
 {
 	private const int PageSize = 100;
 
@@ -24,7 +32,10 @@ public sealed class SmokeChecks(Endpoint endpoint, HttpClient http, string user,
 	/// <param name="runStart">When the run started, on the client's clock.</param>
 	/// <param name="scoresAccepted">How many score submissions the server answered with success.</param>
 	/// <param name="minMatchesWithRounds">How many matches must have at least one finished round.</param>
-	/// <param name="monitor">The diagnostics monitor that holds the users online before the run and now; <see langword="null"/> skips that part.</param>
+	/// <param name="monitor">
+	///     The diagnostics monitor that holds the users online before the run and now;
+	///     <see langword="null" /> skips that part.
+	/// </param>
 	/// <param name="settle">How long the server may take to close the rooms and sessions after the load stopped.</param>
 	/// <param name="ct">Stops the checks.</param>
 	public async Task<IReadOnlyList<CheckResult>> RunAsync(DateTimeOffset runStart, long scoresAccepted,
@@ -33,7 +44,8 @@ public sealed class SmokeChecks(Endpoint endpoint, HttpClient http, string user,
 		var rest = new RestClient(endpoint, http);
 		var login = await rest.SignInAsync(user, password, ct);
 		if (!login.Success)
-			return [new CheckResult("sign-in", false, $"The checking account could not sign in ({(int)login.Status}).")];
+			return
+				[new CheckResult("sign-in", false, $"The checking account could not sign in ({(int)login.Status}).")];
 
 		try
 		{
@@ -59,7 +71,8 @@ public sealed class SmokeChecks(Endpoint endpoint, HttpClient http, string user,
 		}
 	}
 
-	private async Task<CheckResult> MatchesAsync(RestClient rest, DateTimeOffset since, int minimum, CancellationToken ct)
+	private async Task<CheckResult> MatchesAsync(RestClient rest, DateTimeOffset since, int minimum,
+		CancellationToken ct)
 	{
 		var withRounds = 0;
 		var withoutRounds = 0;
@@ -85,7 +98,7 @@ public sealed class SmokeChecks(Endpoint endpoint, HttpClient http, string user,
 		// An ended match answers one snapshot event with its whole report, then the stream ends.
 		using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
 		timeout.CancelAfter(TimeSpan.FromSeconds(10));
-		using var stream = await rest.OpenStreamAsync($"/v1/matches/{matchId}", authorize: false, timeout.Token);
+		using var stream = await rest.OpenStreamAsync($"/v1/matches/{matchId}", false, timeout.Token);
 		await foreach (var ev in stream.ReadAsync(timeout.Token))
 		{
 			using var document = JsonDocument.Parse(ev.Data);
@@ -137,7 +150,8 @@ public sealed class SmokeChecks(Endpoint endpoint, HttpClient http, string user,
 
 			server = monitor?.Summary();
 			clean = openRooms == 0 && (server is null ||
-			                           (server.FinalUsersOnline <= server.BaselineUsersOnline && server.FinalOpenRooms == 0));
+			                           (server.FinalUsersOnline <= server.BaselineUsersOnline &&
+			                            server.FinalOpenRooms == 0));
 			if (clean || DateTimeOffset.UtcNow >= deadline) break;
 
 			await Task.Delay(TimeSpan.FromSeconds(2), ct);

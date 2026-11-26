@@ -34,7 +34,10 @@ public sealed record SeedReport(
 	int Faqs,
 	bool RateLimitRestored);
 
-/// <summary>Prepares the test bench strictly through Basil's public HTTP API: verifies health and rulesets, creates accounts, restores rate limits and writes <c>accounts.csv</c> and <c>world-data.json</c>.</summary>
+/// <summary>
+///     Prepares the test bench strictly through Basil's public HTTP API: verifies health and rulesets, creates
+///     accounts, restores rate limits and writes <c>accounts.csv</c> and <c>world-data.json</c>.
+/// </summary>
 public sealed class Seeder(HttpClient http)
 {
 	private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
@@ -59,10 +62,12 @@ public sealed class Seeder(HttpClient http)
 			// 3. Verify the osu! calculation stack is installed.
 			var ruleset = await rest.GetAsync("/v1/settings/ruleset/version", ct);
 			if (!ruleset.Success)
-				throw new InvalidOperationException($"Ruleset version check failed ({(int)ruleset.Status}): {ruleset.Message}");
+				throw new InvalidOperationException(
+					$"Ruleset version check failed ({(int)ruleset.Status}): {ruleset.Message}");
 			var state = ruleset.Data.TryGetProperty("state", out var stateProp) ? stateProp.GetString() : null;
 			if (!string.Equals(state, "installed", StringComparison.OrdinalIgnoreCase))
-				throw new InvalidOperationException($"The osu! calculation stack is not installed (state: '{state ?? "unknown"}').");
+				throw new InvalidOperationException(
+					$"The osu! calculation stack is not installed (state: '{state ?? "unknown"}').");
 
 			// 4. Wait until all expected beatmapsets are imported.
 			var sets = await WaitForBeatmapsetsAsync(rest, options.ExpectedBeatmapsets,
@@ -71,7 +76,8 @@ public sealed class Seeder(HttpClient http)
 			// 5. Read current rateLimits, raise rest.mutations temporarily, create accounts, then restore defaults.
 			var originalLimits = await rest.GetAsync("/v1/settings/rateLimits", ct);
 			if (!originalLimits.Success)
-				throw new InvalidOperationException($"Could not read rateLimits ({(int)originalLimits.Status}): {originalLimits.Message}");
+				throw new InvalidOperationException(
+					$"Could not read rateLimits ({(int)originalLimits.Status}): {originalLimits.Message}");
 
 			var originalCount = 60;
 			var originalWindow = "00:01:00";
@@ -79,13 +85,15 @@ public sealed class Seeder(HttpClient http)
 			    restNode.TryGetProperty("mutations", out var mutNode))
 			{
 				if (mutNode.TryGetProperty("count", out var c)) originalCount = c.GetInt32();
-				if (mutNode.TryGetProperty("window", out var w) && w.GetString() is { Length: > 0 } ws) originalWindow = ws;
+				if (mutNode.TryGetProperty("window", out var w) && w.GetString() is { Length: > 0 } ws)
+					originalWindow = ws;
 			}
 
 			var raise = await rest.PatchAsync("/v1/settings/rateLimits",
 				new { rest = new { mutations = new { count = 100_000, window = originalWindow } } }, ct);
 			if (!raise.Success)
-				throw new InvalidOperationException($"Could not raise rest.mutations ({(int)raise.Status}): {raise.Message}");
+				throw new InvalidOperationException(
+					$"Could not raise rest.mutations ({(int)raise.Status}): {raise.Message}");
 
 			var accounts = BuildAccountList(options);
 			var created = 0;
@@ -138,7 +146,8 @@ public sealed class Seeder(HttpClient http)
 			}
 
 			if (!restored)
-				throw new InvalidOperationException("Failed to restore rateLimits.rest.mutations to its default value.");
+				throw new InvalidOperationException(
+					"Failed to restore rateLimits.rest.mutations to its default value.");
 
 			// An account left by an earlier seed keeps its old password: prove the new accounts.csv still signs in.
 			foreach (var account in existingByRole.Values)
@@ -239,14 +248,13 @@ public sealed class Seeder(HttpClient http)
 			{
 				var reply = await rest.GetAsync($"/v1/beatmapsets?offset={offset}&limit={limit}", ct);
 				if (!reply.Success)
-					throw new InvalidOperationException($"Listing beatmapsets failed ({(int)reply.Status}): {reply.Message}");
+					throw new InvalidOperationException(
+						$"Listing beatmapsets failed ({(int)reply.Status}): {reply.Message}");
 
 				if (reply.Data.ValueKind == JsonValueKind.Array)
-				{
 					foreach (var item in reply.Data.EnumerateArray())
 						if (item.TryGetProperty("id", out var idProp))
 							ids.Add(idProp.GetInt32());
-				}
 
 				var hasNext = reply.Meta.ValueKind == JsonValueKind.Object &&
 				              reply.Meta.TryGetProperty("hasNext", out var nextProp) &&
@@ -258,7 +266,8 @@ public sealed class Seeder(HttpClient http)
 			if (ids.Count >= expectedCount || DateTimeOffset.UtcNow >= deadline)
 			{
 				if (ids.Count < expectedCount)
-					throw new TimeoutException($"Expected {expectedCount} beatmapsets but only {ids.Count} were imported.");
+					throw new TimeoutException(
+						$"Expected {expectedCount} beatmapsets but only {ids.Count} were imported.");
 				return ids;
 			}
 
@@ -275,7 +284,8 @@ public sealed class Seeder(HttpClient http)
 		var setNode = detail.Data.GetProperty("set");
 		var artist = setNode.GetProperty("artist").GetString() ?? string.Empty;
 		var title = setNode.GetProperty("title").GetString() ?? string.Empty;
-		var hasStoryboard = setNode.TryGetProperty("hasStoryboard", out var sbProp) && sbProp.ValueKind == JsonValueKind.True;
+		var hasStoryboard = setNode.TryGetProperty("hasStoryboard", out var sbProp) &&
+		                    sbProp.ValueKind == JsonValueKind.True;
 
 		// Download the no-video .osz through the public REST API to compute exact .osu and .osb MD5 hashes.
 		var (osuEntries, storyboardMd5) = await ReadArchiveHashesAsync(endpoint, rest.Token!, setId, ct);
@@ -318,15 +328,14 @@ public sealed class Seeder(HttpClient http)
 		}
 
 		memory.Position = 0;
-		using var zip = new ZipArchive(memory, ZipArchiveMode.Read, leaveOpen: false);
+		await using var zip = new ZipArchive(memory, ZipArchiveMode.Read, false);
 		var maps = new List<OsuArchiveEntry>();
 		string? storyboardMd5 = null;
 
 		foreach (var entry in zip.Entries)
-		{
 			if (entry.FullName.EndsWith(".osu", StringComparison.OrdinalIgnoreCase))
 			{
-				await using var entryStream = entry.Open();
+				await using var entryStream = await entry.OpenAsync(ct);
 				using var buffer = new MemoryStream();
 				await entryStream.CopyToAsync(buffer, ct);
 				var bytes = buffer.ToArray();
@@ -336,10 +345,9 @@ public sealed class Seeder(HttpClient http)
 			}
 			else if (storyboardMd5 is null && entry.FullName.EndsWith(".osb", StringComparison.OrdinalIgnoreCase))
 			{
-				await using var entryStream = entry.Open();
+				await using var entryStream = await entry.OpenAsync(ct);
 				storyboardMd5 = Convert.ToHexStringLower(await MD5.HashDataAsync(entryStream, ct));
 			}
-		}
 
 		return (maps, storyboardMd5);
 	}
@@ -350,14 +358,12 @@ public sealed class Seeder(HttpClient http)
 		var version = string.Empty;
 		using var reader = new StreamReader(new MemoryStream(bytes), Encoding.UTF8);
 		while (reader.ReadLine() is { } line)
-		{
 			if (line.StartsWith("BeatmapID:", StringComparison.OrdinalIgnoreCase))
 				_ = int.TryParse(line["BeatmapID:".Length..].Trim(), out beatmapId);
 			else if (line.StartsWith("Version:", StringComparison.OrdinalIgnoreCase))
 				version = line["Version:".Length..].Trim();
 			else if (line.StartsWith("[HitObjects]", StringComparison.OrdinalIgnoreCase))
 				break;
-		}
 
 		return (beatmapId, version);
 	}
@@ -378,7 +384,11 @@ public sealed class Seeder(HttpClient http)
 	{
 		var reply = await rest.GetAsync(path, ct);
 		if (!reply.Success || reply.Data.ValueKind != JsonValueKind.Array) return [];
-		return [.. reply.Data.EnumerateArray().Select(e => e.GetString()).OfType<string>().Where(s => !string.IsNullOrWhiteSpace(s))];
+		return
+		[
+			.. reply.Data.EnumerateArray().Select(e => e.GetString()).OfType<string>()
+				.Where(s => !string.IsNullOrWhiteSpace(s))
+		];
 	}
 
 	private static void WriteAccountsCsv(string path, IReadOnlyList<SeedAccount> accounts)

@@ -5,13 +5,19 @@ using NBomber.Contracts;
 
 namespace Basil.Tests.Shared.Workload.Personas;
 
-/// <summary>Simulates an in-game spectator: each scenario copy signs in once and keeps the session, then every invocation watches one real playing user for one round.</summary>
+/// <summary>
+///     Simulates an in-game spectator: each scenario copy signs in once and keeps the session, then every invocation
+///     watches one real playing user for one round.
+/// </summary>
 public sealed class SpectatorPersona(WorkloadContext workload)
 {
 	private readonly ConcurrentDictionary<int, Held> _held = new();
 	private volatile bool _closing;
 
-	/// <summary>Runs one spectating window for the copy's signed-in spectator, signing in first when the copy has no live session.</summary>
+	/// <summary>
+	///     Runs one spectating window for the copy's signed-in spectator, signing in first when the copy has no live
+	///     session.
+	/// </summary>
 	public async Task RunCycleAsync(IScenarioContext context)
 	{
 		if (_closing) return;
@@ -19,7 +25,8 @@ public sealed class SpectatorPersona(WorkloadContext workload)
 		using var linked = workload.LinkToken(context);
 		var ct = linked.Token;
 		var instance = context.ScenarioInfo.InstanceNumber;
-		var random = SeededRandom.For(workload.Seed, context.ScenarioInfo.ScenarioName, instance, context.InvocationNumber);
+		var random = SeededRandom.For(workload.Seed, context.ScenarioInfo.ScenarioName, instance,
+			context.InvocationNumber);
 
 		var held = await EnsureSessionAsync(instance, context, ct);
 		if (held is null)
@@ -39,7 +46,8 @@ public sealed class SpectatorPersona(WorkloadContext workload)
 		}
 
 		client.Enqueue(ClientPackets.StartSpectating(target.UserId));
-		var ticks = Math.Max(3, (int)(workload.RoundDuration.TotalSeconds / Math.Max(0.5, workload.PollInterval.TotalSeconds)));
+		var ticks = Math.Max(3,
+			(int)(workload.RoundDuration.TotalSeconds / Math.Max(0.5, workload.PollInterval.TotalSeconds)));
 		for (var tick = 0; tick < ticks && !ct.IsCancellationRequested; tick++)
 		{
 			if (tick == ticks / 2 && random.Next(3) == 0)

@@ -10,7 +10,7 @@ public abstract record StablePacket
 {
 	/// <summary>Reads the packets of one response body.</summary>
 	/// <param name="body">The bytes of the response.</param>
-	/// <returns>The packets in order; an id the clients do not follow is an <see cref="OtherPacket"/>.</returns>
+	/// <returns>The packets in order; an id the clients do not follow is an <see cref="OtherPacket" />.</returns>
 	/// <exception cref="InvalidDataException">The body is cut inside a packet or a packet is malformed.</exception>
 	public static IReadOnlyList<StablePacket> ReadAll(ReadOnlySpan<byte> body)
 	{
@@ -24,7 +24,8 @@ public abstract record StablePacket
 			var id = BitConverter.ToUInt16(body.Slice(offset, sizeof(ushort)));
 			var length = BitConverter.ToInt32(body.Slice(offset + 3, sizeof(int)));
 			offset += headerSize;
-			if (length < 0 || body.Length - offset < length) throw new InvalidDataException("The packet payload is cut.");
+			if (length < 0 || body.Length - offset < length)
+				throw new InvalidDataException("The packet payload is cut.");
 
 			try
 			{
@@ -93,7 +94,8 @@ public abstract record StablePacket
 			var status = state.SlotStatuses[index];
 			var mods = state.FreeMods ? state.SlotMods[index] : 0;
 			var occupied = new RoomSlotPacket(status, state.SlotTeams[index], mods, null).HasPlayer;
-			slots.Add(new RoomSlotPacket(status, state.SlotTeams[index], mods, occupied ? state.SlotIds[seated++] : null));
+			slots.Add(new RoomSlotPacket(status, state.SlotTeams[index], mods,
+				occupied ? state.SlotIds[seated++] : null));
 		}
 
 		return new RoomPacket(state.Id, state.InProgress, state.Mods, state.Name, state.Password, state.MapName,
@@ -105,7 +107,7 @@ public abstract record StablePacket
 /// <summary>The answer to a sign-in: the user id, or a negative failure code when the server refused it.</summary>
 public sealed record LoginReply(int UserId) : StablePacket;
 
-/// <summary>A room was announced (<paramref name="IsNew"/>) or changed.</summary>
+/// <summary>A room was announced (<paramref name="IsNew" />) or changed.</summary>
 public sealed record RoomUpdated(RoomPacket Room, bool IsNew) : StablePacket;
 
 /// <summary>A room was closed.</summary>
@@ -140,7 +142,7 @@ public sealed record SpectatorLeft(int UserId) : StablePacket;
 
 /// <summary>Frames of the player the client spectates.</summary>
 /// <param name="Raw">The payload as it came.</param>
-/// <param name="Bundle">The payload read as a bundle, or <see langword="null"/> when it is not one.</param>
+/// <param name="Bundle">The payload read as a bundle, or <see langword="null" /> when it is not one.</param>
 public sealed record SpectateFramesReceived(byte[] Raw, SpectatorBundle? Bundle) : StablePacket;
 
 /// <summary>A chat message, public or private.</summary>

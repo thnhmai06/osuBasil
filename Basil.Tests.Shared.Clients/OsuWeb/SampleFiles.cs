@@ -10,7 +10,10 @@ public static class SampleFiles
 		"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==");
 
 	/// <summary>Makes the replay file of a score submission: an LZMA header followed by random bytes.</summary>
-	/// <remarks>The server keeps the bytes as they are and serves them back; it never unpacks them, so the body is not a decodable LZMA stream.</remarks>
+	/// <remarks>
+	///     The server keeps the bytes as they are and serves them back; it never unpacks them, so the body is not a
+	///     decodable LZMA stream.
+	/// </remarks>
 	/// <param name="random">The source of the bytes.</param>
 	/// <param name="size">The size of the file; at least 24 bytes, below which the server keeps no replay.</param>
 	public static byte[] Replay(Random random, int size = 2048)

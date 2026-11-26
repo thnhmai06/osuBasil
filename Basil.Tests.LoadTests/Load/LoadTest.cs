@@ -47,8 +47,8 @@ public sealed class LoadTest : ILoadTest
 				var rate = pick(alloc);
 				return [Injection.PerMinute(rate, ramp + steady + rampDown)];
 			},
-			enforceSlo: true,
-			warmUp: WarmUp);
+			true,
+			WarmUp);
 	}
 
 	private static (TimeSpan Ramp, TimeSpan Steady, TimeSpan RampDown) Shape(LoadTestOptions options)

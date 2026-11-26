@@ -19,13 +19,16 @@ public sealed record LiveRoom(
 /// <summary>A live online user tracked by the shared world.</summary>
 public sealed record OnlineUser(int UserId, string Name, bool IsPlaying, string BeatmapMd5);
 
-/// <summary>Shared live state of the simulated world so every persona targets real rooms, playing users, online accounts and scores.</summary>
+/// <summary>
+///     Shared live state of the simulated world so every persona targets real rooms, playing users, online accounts
+///     and scores.
+/// </summary>
 public sealed class WorldState
 {
 	private const int MaxRecentItems = 512;
+	private readonly ConcurrentDictionary<int, OnlineUser> _online = new();
 
 	private readonly ConcurrentDictionary<int, LiveRoom> _rooms = new();
-	private readonly ConcurrentDictionary<int, OnlineUser> _online = new();
 	private readonly ConcurrentQueue<long> _scoreIds = new();
 	private readonly ConcurrentQueue<string> _screenshots = new();
 
@@ -84,7 +87,7 @@ public sealed class WorldState
 		return snapshot.Length == 0 ? null : snapshot[random.Next(snapshot.Length)];
 	}
 
-	/// <summary>Picks an online user who is currently playing, excluding <paramref name="excludeUserId"/>.</summary>
+	/// <summary>Picks an online user who is currently playing, excluding <paramref name="excludeUserId" />.</summary>
 	public OnlineUser? PickPlayingUser(Random random, int excludeUserId = 0)
 	{
 		var snapshot = _online.Values
@@ -93,7 +96,7 @@ public sealed class WorldState
 		return snapshot.Length == 0 ? null : snapshot[random.Next(snapshot.Length)];
 	}
 
-	/// <summary>Picks any online user, excluding <paramref name="excludeUserId"/>.</summary>
+	/// <summary>Picks any online user, excluding <paramref name="excludeUserId" />.</summary>
 	public OnlineUser? PickOnlineUser(Random random, int excludeUserId = 0)
 	{
 		var snapshot = _online.Values
@@ -102,7 +105,7 @@ public sealed class WorldState
 		return snapshot.Length == 0 ? null : snapshot[random.Next(snapshot.Length)];
 	}
 
-	/// <summary>Picks up to <paramref name="maxCount"/> online user ids.</summary>
+	/// <summary>Picks up to <paramref name="maxCount" /> online user ids.</summary>
 	public IReadOnlyList<int> PickOnlineUserIds(Random random, int maxCount)
 	{
 		var snapshot = _online.Keys.ToArray();
@@ -122,7 +125,7 @@ public sealed class WorldState
 		return snapshot.Length == 0 ? 0 : snapshot[random.Next(snapshot.Length)];
 	}
 
-	/// <summary>Picks a known uploaded screenshot filename, or <see langword="null"/> when none has been uploaded yet.</summary>
+	/// <summary>Picks a known uploaded screenshot filename, or <see langword="null" /> when none has been uploaded yet.</summary>
 	public string? PickScreenshot(Random random)
 	{
 		var snapshot = _screenshots.ToArray();
@@ -130,19 +133,25 @@ public sealed class WorldState
 	}
 }
 
-/// <summary>Shared tournament clock for Spike tests: every room's referee waits for the same UTC instant before starting its round.</summary>
+/// <summary>
+///     Shared tournament clock for Spike tests: every room's referee waits for the same UTC instant before starting
+///     its round.
+/// </summary>
 public sealed class TournamentClock
 {
 	private long _nextWaveTicks;
 
-	/// <summary>Creates a clock that fires at <paramref name="firstWaveAt"/> and repeats every <paramref name="waveInterval"/> when set.</summary>
+	/// <summary>
+	///     Creates a clock that fires at <paramref name="firstWaveAt" /> and repeats every
+	///     <paramref name="waveInterval" /> when set.
+	/// </summary>
 	public TournamentClock(DateTimeOffset? firstWaveAt = null, TimeSpan? waveInterval = null)
 	{
 		WaveInterval = waveInterval;
 		_nextWaveTicks = firstWaveAt?.UtcTicks ?? 0;
 	}
 
-	/// <summary>Gets the interval between synchronized waves, or <see langword="null"/> for one-shot or disabled clock.</summary>
+	/// <summary>Gets the interval between synchronized waves, or <see langword="null" /> for one-shot or disabled clock.</summary>
 	public TimeSpan? WaveInterval { get; }
 
 	/// <summary>Gets whether synchronized wave starts are active.</summary>
@@ -169,12 +178,20 @@ public sealed class TournamentClock
 	}
 }
 
-/// <summary>Stops the run when many distinct accounts are refused at sign-in within a short window, which means the account list no longer matches the server.</summary>
+/// <summary>
+///     Stops the run when many distinct accounts are refused at sign-in within a short window, which means the
+///     account list no longer matches the server.
+/// </summary>
 /// <remarks>
-/// The server keeps a failed attempt only for wrong credentials, per address and account, so one account refused again and again
-/// (for example <c>AlreadyOnline</c> after a slow sign-out) is not a lockout risk and does not count towards the burst.
+///     The server keeps a failed attempt only for wrong credentials, per address and account, so one account refused again
+///     and again
+///     (for example <c>AlreadyOnline</c> after a slow sign-out) is not a lockout risk and does not count towards the
+///     burst.
 /// </remarks>
-public sealed class LoginLockoutGuard(CancellationTokenSource runAbort, int burstThreshold = 10, TimeSpan? window = null)
+public sealed class LoginLockoutGuard(
+	CancellationTokenSource runAbort,
+	int burstThreshold = 10,
+	TimeSpan? window = null)
 {
 	private readonly ConcurrentDictionary<string, DateTimeOffset> _lastRefusal = new(StringComparer.OrdinalIgnoreCase);
 	private readonly TimeSpan _window = window ?? TimeSpan.FromSeconds(60);
@@ -183,7 +200,10 @@ public sealed class LoginLockoutGuard(CancellationTokenSource runAbort, int burs
 	/// <summary>Gets whether the lockout guard has tripped and cancelled the run.</summary>
 	public bool IsTripped => Volatile.Read(ref _tripped) != 0;
 
-	/// <summary>Records an unexpected refused sign-in of <paramref name="account"/>; stops the run when enough distinct accounts were refused within the window.</summary>
+	/// <summary>
+	///     Records an unexpected refused sign-in of <paramref name="account" />; stops the run when enough distinct
+	///     accounts were refused within the window.
+	/// </summary>
 	/// <param name="account">The refused account name.</param>
 	/// <param name="context">The scenario context used to stop NBomber as well as cancel the run token.</param>
 	public void RecordRefusedLogin(string account, IScenarioContext? context = null)
@@ -193,19 +213,18 @@ public sealed class LoginLockoutGuard(CancellationTokenSource runAbort, int burs
 		var cutoff = now - _window;
 		var distinct = 0;
 		foreach (var (name, at) in _lastRefusal)
-		{
 			if (at < cutoff) _lastRefusal.TryRemove(name, out _);
 			else distinct++;
-		}
 
 		if (distinct < burstThreshold || Interlocked.Exchange(ref _tripped, 1) != 0) return;
 
 		runAbort.Cancel();
-		context?.StopCurrentTest($"{distinct} distinct accounts were refused at sign-in within {_window.TotalSeconds:0} s; accounts.csv does not match the server.");
+		context?.StopCurrentTest(
+			$"{distinct} distinct accounts were refused at sign-in within {_window.TotalSeconds:0} s; accounts.csv does not match the server.");
 	}
 }
 
-/// <summary>Creates deterministic <see cref="Random"/> instances from the fixed run seed.</summary>
+/// <summary>Creates deterministic <see cref="Random" /> instances from the fixed run seed.</summary>
 public static class SeededRandom
 {
 	/// <summary>Creates a generator that is the same in every process for the same run seed, scenario, copy and invocation.</summary>

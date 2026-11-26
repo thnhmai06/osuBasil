@@ -12,7 +12,7 @@ using NBomber.CSharp;
 
 namespace Basil.Tests.Shared.Workload.Outcomes;
 
-/// <summary>The five outcome classes of a load test action; only <see cref="Error"/> counts against the SLO.</summary>
+/// <summary>The five outcome classes of a load test action; only <see cref="Error" /> counts against the SLO.</summary>
 public enum Outcome
 {
 	/// <summary>The request succeeded as expected.</summary>
@@ -67,7 +67,10 @@ public static class Channels
 	/// <summary>Deliberate refusal checks of the edge-case persona.</summary>
 	public const string Edge = "edge";
 
-	/// <summary>Gets the step that holds the throttled and shed answers of a channel, so their fast latency never enters the channel's own percentiles.</summary>
+	/// <summary>
+	///     Gets the step that holds the throttled and shed answers of a channel, so their fast latency never enters the
+	///     channel's own percentiles.
+	/// </summary>
 	public static string Limited(string channel)
 	{
 		return $"{channel}.limited";
@@ -139,10 +142,13 @@ public sealed class OutcomeTally
 	}
 }
 
-/// <summary>Classifies HTTP, osu! stable, REST and IRC answers into <see cref="StepOutcome"/>.</summary>
+/// <summary>Classifies HTTP, osu! stable, REST and IRC answers into <see cref="StepOutcome" />.</summary>
 public static class OutcomeClassifier
 {
-	/// <summary>Classifies a raw HTTP status code; 4xx (other than 429) is <see cref="Outcome.Refused"/> when expected, or <see cref="Outcome.Error"/> otherwise.</summary>
+	/// <summary>
+	///     Classifies a raw HTTP status code; 4xx (other than 429) is <see cref="Outcome.Refused" /> when expected, or
+	///     <see cref="Outcome.Error" /> otherwise.
+	/// </summary>
 	public static StepOutcome FromHttpStatus(HttpStatusCode status, bool refusalExpected = false, long bytes = 0)
 	{
 		var code = (int)status;
@@ -162,9 +168,15 @@ public static class OutcomeClassifier
 	public static StepOutcome FromStableLogin(StableLoginResult result, bool refusalExpected = false)
 	{
 		var code = (int)result.Status;
-		if (code == 429) return StepOutcome.Throttled("429");
-		if (code == 503) return StepOutcome.Shed("503");
-		if (code is < 200 or >= 300) return StepOutcome.Error($"http_{code}");
+		switch (code)
+		{
+			case 429:
+				return StepOutcome.Throttled();
+			case 503:
+				return StepOutcome.Shed();
+			case < 200 or >= 300:
+				return StepOutcome.Error($"http_{code}");
+		}
 
 		if (result.Accepted) return StepOutcome.Ok("200");
 		return refusalExpected
@@ -172,14 +184,20 @@ public static class OutcomeClassifier
 			: StepOutcome.Error($"login_refused_{result.UserId}");
 	}
 
-	/// <summary>Classifies an osu! stable poll response; a restart answer means the server dropped the session and is an <see cref="Outcome.Error"/>.</summary>
+	/// <summary>
+	///     Classifies an osu! stable poll response; a restart answer means the server dropped the session and is an
+	///     <see cref="Outcome.Error" />.
+	/// </summary>
 	public static StepOutcome FromStableExchange(StableExchange exchange)
 	{
 		var http = FromHttpStatus(exchange.Status);
 		return http.Outcome == Outcome.Ok && IsDropped(exchange) ? StepOutcome.Error("session_dropped") : http;
 	}
 
-	/// <summary>Gets whether the server answered a poll with the restart packet, which it sends for a token it does not know or has closed.</summary>
+	/// <summary>
+	///     Gets whether the server answered a poll with the restart packet, which it sends for a token it does not know
+	///     or has closed.
+	/// </summary>
 	public static bool IsDropped(StableExchange exchange)
 	{
 		return exchange.Packets.OfType<ServerRestarting>().Any();
@@ -189,8 +207,8 @@ public static class OutcomeClassifier
 	public static StepOutcome FromRest(RestReply reply, bool refusalExpected = false)
 	{
 		var code = (int)reply.Status;
-		if (code == 429) return StepOutcome.Throttled("429");
-		if (code == 503) return StepOutcome.Shed("503");
+		if (code == 429) return StepOutcome.Throttled();
+		if (code == 503) return StepOutcome.Shed();
 		if (code is >= 200 and < 300 && reply.Success) return StepOutcome.Ok(code.ToString());
 		if (code is >= 400 and < 500 && refusalExpected)
 			return StepOutcome.Refused(reply.ErrorCode ?? code.ToString());
@@ -225,7 +243,7 @@ public static class OutcomeClassifier
 	public static StepOutcome FromIrcReply(IrcMessage? reply, bool refusalExpected = false)
 	{
 		if (reply is null) return StepOutcome.Error("irc_timeout");
-		var isRefusal = reply.Command.Length == 3 && reply.Command[0] is '4' or '5';
+		var isRefusal = reply.Command is ['4' or '5', _, _];
 		if (!isRefusal) return StepOutcome.Ok(reply.Command);
 
 		return refusalExpected
@@ -237,13 +255,15 @@ public static class OutcomeClassifier
 /// <summary>Runs one action as an NBomber step on the named channel and records its classified outcome.</summary>
 public static class StepExecution
 {
-	/// <summary>Executes <paramref name="action"/> and reports it to NBomber under <paramref name="channel"/>.</summary>
+	/// <summary>Executes <paramref name="action" /> and reports it to NBomber under <paramref name="channel" />.</summary>
 	/// <remarks>
-	/// The action is timed here and its real latency is reported afterwards, so a throttled or shed answer can go to
-	/// <see cref="Channels.Limited"/> without its fast latency entering the percentiles of the judged channel.
-	/// Only <see cref="Outcome.Error"/> is reported as a failed NBomber response, so NBomber's failure percentage matches the SLO definition.
-	/// Nothing runs or is recorded when <paramref name="ct"/> is already cancelled, and a cancellation during the action is not recorded;
-	/// both return an <see cref="Outcome.Error"/> tagged <c>cancelled</c> that is not part of the tally.
+	///     The action is timed here and its real latency is reported afterwards, so a throttled or shed answer can go to
+	///     <see cref="Channels.Limited" /> without its fast latency entering the percentiles of the judged channel.
+	///     Only <see cref="Outcome.Error" /> is reported as a failed NBomber response, so NBomber's failure percentage matches
+	///     the SLO definition.
+	///     Nothing runs or is recorded when <paramref name="ct" /> is already cancelled, and a cancellation during the action
+	///     is not recorded;
+	///     both return an <see cref="Outcome.Error" /> tagged <c>cancelled</c> that is not part of the tally.
 	/// </remarks>
 	public static async Task<(StepOutcome Outcome, T? Value)> RunAsync<T>(
 		string channel,
@@ -285,12 +305,12 @@ public static class StepExecution
 
 		await Step.Run(step, context, () => Task.FromResult(recorded.Outcome == Outcome.Error
 			? Response.Fail(statusCode: tag, message: recorded.Detail, customLatencyMs: latencyMs)
-			: Response.Ok(statusCode: tag, sizeBytes: size, customLatencyMs: latencyMs)));
+			: Response.Ok(statusCode: tag, size, customLatencyMs: latencyMs)));
 
 		return (recorded, captured);
 	}
 
-	/// <summary>Executes a value-less action inside an NBomber step named <paramref name="channel"/>.</summary>
+	/// <summary>Executes a value-less action inside an NBomber step named <paramref name="channel" />.</summary>
 	public static async Task<StepOutcome> RunAsync(
 		string channel,
 		IScenarioContext context,

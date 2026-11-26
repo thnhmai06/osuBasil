@@ -17,7 +17,10 @@ public sealed record ControlSample(
 	bool Ok,
 	string Detail);
 
-/// <summary>Runs a steady low-rate control probe (poll, getscores, REST, IRC) from espresso alongside every measured run to distinguish server saturation from generator saturation.</summary>
+/// <summary>
+///     Runs a steady low-rate control probe (poll, getscores, REST, IRC) from espresso alongside every measured run
+///     to distinguish server saturation from generator saturation.
+/// </summary>
 public sealed class ControlProbe(
 	Endpoint endpoint,
 	int ircPort,
@@ -27,12 +30,16 @@ public sealed class ControlProbe(
 	string beatmapMd5,
 	int beatmapMode)
 {
-	/// <summary>Runs the probe for <paramref name="duration"/> and writes <c>control-trace.jsonl</c> into <paramref name="reportDirectory"/>.</summary>
+	/// <summary>
+	///     Runs the probe for <paramref name="duration" /> and writes <c>control-trace.jsonl</c> into
+	///     <paramref name="reportDirectory" />.
+	/// </summary>
 	public async Task RunAsync(TimeSpan duration, TimeSpan interval, string reportDirectory, CancellationToken ct)
 	{
 		Directory.CreateDirectory(reportDirectory);
 		var tracePath = Path.Combine(reportDirectory, "control-trace.jsonl");
-		await using var writer = new StreamWriter(tracePath, false, new UTF8Encoding(false)) { AutoFlush = true };
+		await using var writer = new StreamWriter(tracePath, false, new UTF8Encoding(false));
+		writer.AutoFlush = true;
 
 		var identity = StableIdentity.Create(username, password);
 		var stable = new StableClient(endpoint, http, identity);
@@ -65,22 +72,18 @@ public sealed class ControlProbe(
 				}
 
 				if (restLogin.Success)
-				{
 					await ProbeAsync(writer, "rest", async () =>
 					{
 						var r = await rest.GetAsync("/v1/rooms?limit=10", ct);
 						return (r.Success, ((int)r.Status).ToString());
 					});
-				}
 
 				if (ircReg.Welcomed)
-				{
 					await ProbeAsync(writer, "irc", async () =>
 					{
 						var r = await irc.TopicAsync("#osu", TimeSpan.FromSeconds(10), ct);
 						return (r is not null, r?.Command ?? "timeout");
 					});
-				}
 
 				await Task.Delay(interval, ct);
 			}

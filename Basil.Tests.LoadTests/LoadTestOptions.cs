@@ -1,3 +1,4 @@
+using System.Globalization;
 using Basil.Tests.Shared.Clients;
 
 namespace Basil.Tests.LoadTests;
@@ -49,8 +50,12 @@ public sealed record LoadTestOptions
 	// Seed-only options.
 	public string OwnerUser { get; init; } = "admin";
 
-	/// <summary>Gets the owner password; it comes from the <c>BASIL_OWNER_PASSWORD</c> environment variable, never from the command line, so it stays out of process lists and shell history.</summary>
-	public string OwnerPassword { get; init; } = Environment.GetEnvironmentVariable(OwnerPasswordVariable) ?? string.Empty;
+	/// <summary>
+	///     Gets the owner password; it comes from the <c>BASIL_OWNER_PASSWORD</c> environment variable, never from the
+	///     command line, so it stays out of process lists and shell history.
+	/// </summary>
+	public string OwnerPassword { get; init; } =
+		Environment.GetEnvironmentVariable(OwnerPasswordVariable) ?? string.Empty;
 
 	public int PlayerCount { get; init; } = 1500;
 
@@ -60,13 +65,14 @@ public sealed record LoadTestOptions
 
 	public int ExpectedBeatmapsets { get; init; } = 15;
 
-	/// <summary>Builds the target <see cref="Endpoint"/>.</summary>
+	/// <summary>Builds the target <see cref="Endpoint" />.</summary>
 	public Endpoint Endpoint => new(Connect, Port, Domain);
 
 	/// <summary>
-	/// Computes the bcrypt-safe ramp duration: <c>N * 0.145 / (cores * 0.5)</c>, floored at 15 s. <paramref name="sessions"/>
-	/// counts every client that signs in, tourney child clients included, because each sign-in costs about 145 ms of
-	/// server CPU and a session signs in once for the life of its copy.
+	///     Computes the bcrypt-safe ramp duration: <c>N * 0.145 / (cores * 0.5)</c>, floored at 15 s.
+	///     <paramref name="sessions" />
+	///     counts every client that signs in, tourney child clients included, because each sign-in costs about 145 ms of
+	///     server CPU and a session signs in once for the life of its copy.
 	/// </summary>
 	public TimeSpan RampDuration(int sessions)
 	{
@@ -85,6 +91,7 @@ public sealed record LoadTestOptions
 		for (var i = 1; i < args.Length; i++)
 		{
 			var flag = args[i];
+
 			string Next()
 			{
 				return i + 1 < args.Length
@@ -128,12 +135,12 @@ public sealed record LoadTestOptions
 
 	private static TimeSpan ParseDuration(string value)
 	{
-		if (value.EndsWith('h') && double.TryParse(value[..^1], out var hours))
+		if (value.EndsWith('h') && double.TryParse(value[..^1], CultureInfo.InvariantCulture, out var hours))
 			return TimeSpan.FromHours(hours);
-		if (value.EndsWith('m') && double.TryParse(value[..^1], out var mins))
+		if (value.EndsWith('m') && double.TryParse(value[..^1], CultureInfo.InvariantCulture, out var mins))
 			return TimeSpan.FromMinutes(mins);
-		if (value.EndsWith('s') && double.TryParse(value[..^1], out var secs))
+		if (value.EndsWith('s') && double.TryParse(value[..^1], CultureInfo.InvariantCulture, out var secs))
 			return TimeSpan.FromSeconds(secs);
-		return TimeSpan.Parse(value);
+		return TimeSpan.Parse(value, CultureInfo.InvariantCulture);
 	}
 }

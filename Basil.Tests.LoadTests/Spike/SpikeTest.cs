@@ -5,22 +5,25 @@ using NBomber.CSharp;
 
 namespace Basil.Tests.LoadTests.Spike;
 
-/// <summary>Spike test: background load while every tournament room synchronizes on the shared tournament clock and starts at the exact same instant, then returns to background.</summary>
+/// <summary>
+///     Spike test: background load while every tournament room synchronizes on the shared tournament clock and starts
+///     at the exact same instant, then returns to background.
+/// </summary>
 public sealed class SpikeTest : ILoadTest
 {
+	private static readonly TimeSpan SpikeHold = TimeSpan.FromMinutes(2);
+	private static readonly TimeSpan PostSpike = TimeSpan.FromMinutes(2);
+	private static readonly TimeSpan Settle = TimeSpan.FromSeconds(15);
+
+	private static readonly MatchRoomConfig RoomConfig = new(4, 4, 1,
+		1, 1, 2);
+
 	public string Name => "spike";
 
 	public string ReportName(LoadTestOptions options)
 	{
 		return $"spike-n{options.TargetSessions}-s{options.Seed}";
 	}
-
-	private static readonly TimeSpan SpikeHold = TimeSpan.FromMinutes(2);
-	private static readonly TimeSpan PostSpike = TimeSpan.FromMinutes(2);
-	private static readonly TimeSpan Settle = TimeSpan.FromSeconds(15);
-
-	private static readonly MatchRoomConfig RoomConfig = new(MinPlayers: 4, MaxPlayers: 4, RoundsPerCycle: 1,
-		TourneyClusters: 1, SpectatorsPerRoom: 1, OverlayViewersPerRoom: 2);
 
 	public RunPlan Plan(LoadTestOptions options)
 	{
@@ -63,9 +66,9 @@ public sealed class SpikeTest : ILoadTest
 				Injection.PerMinute(pick(spikeAlloc), spikeHold),
 				Injection.PerMinute(pick(bgAlloc), postSpike + TimeSpan.FromSeconds(30))
 			],
-			enforceSlo: false,
-			warmUp: TimeSpan.Zero,
-			matchRoomConfig: RoomConfig);
+			false,
+			TimeSpan.Zero,
+			RoomConfig);
 	}
 
 	private static int BackgroundSessions(LoadTestOptions options)

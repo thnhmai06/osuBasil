@@ -19,23 +19,23 @@ public readonly record struct PersonaAllocation(
 	int EdgeCaseRatePerMinute)
 {
 	/// <summary>
-	/// Gets the expected number of concurrent sessions one match room holds: the players, the referee, the spectators,
-	/// the tourney clusters (each one manager plus one child client per player) and the overlay viewers that sign in.
+	///     Gets the expected number of concurrent sessions one match room holds: the players, the referee, the spectators,
+	///     the tourney clusters (each one manager plus one child client per player) and the overlay viewers that sign in.
 	/// </summary>
 	/// <remarks>
-	/// Players are 2, 4 or 8 with equal chance inside <c>[MinPlayers, MaxPlayers]</c>. The referee is one session over IRC
-	/// or REST. Without a fixed cluster count a room has 0 to 2 clusters at random, one on average. Of the overlay viewers
-	/// every second one watches <c>/v1/rooms/{id}/live</c>; it signs in as an extra session only when the referee is on
-	/// IRC, which is half of the rooms unless the referee is forced. The default configuration gives about 12.8 sessions.
+	///     Players are 2, 4 or 8 with equal chance inside <c>[MinPlayers, MaxPlayers]</c>. The referee is one session over IRC
+	///     or REST. Without a fixed cluster count a room has 0 to 2 clusters at random, one on average. Of the overlay viewers
+	///     every second one watches <c>/v1/rooms/{id}/live</c>; it signs in as an extra session only when the referee is on
+	///     IRC, which is half of the rooms unless the referee is forced. The default configuration gives about 12.8 sessions.
 	/// </remarks>
-	/// <param name="matchRoom">The room configuration; <see langword="null"/> means the defaults.</param>
+	/// <param name="matchRoom">The room configuration; <see langword="null" /> means the defaults.</param>
 	public static double SessionsPerMatchRoom(MatchRoomConfig? matchRoom = null)
 	{
 		var config = matchRoom ?? new MatchRoomConfig();
 		var sizes = new[] { 2, 4, 8 }.Where(size => size >= config.MinPlayers && size <= config.MaxPlayers).ToArray();
 		var players = sizes.Length == 0 ? Math.Max(2, config.MinPlayers) : sizes.Average();
 
-		int? fixedClusters = config.TourneyClusters;
+		var fixedClusters = config.TourneyClusters;
 		var clusters = fixedClusters ?? 1.0;
 
 		var liveViewers = config.OverlayViewersPerRoom / 2;
@@ -44,9 +44,12 @@ public readonly record struct PersonaAllocation(
 		return players + 1 + config.SpectatorsPerRoom + clusters * (1 + players) + liveViewers * ircReferee;
 	}
 
-	/// <summary>Computes a realistic live-tournament workload mix for <paramref name="targetSessions"/> concurrent sessions.</summary>
-	/// <param name="targetSessions">The concurrent sessions <c>N</c> the whole mix should hold, tourney child clients included.</param>
-	/// <param name="matchRoom">The room configuration the match rooms use; <see langword="null"/> means the defaults.</param>
+	/// <summary>Computes a realistic live-tournament workload mix for <paramref name="targetSessions" /> concurrent sessions.</summary>
+	/// <param name="targetSessions">
+	///     The concurrent sessions <c>N</c> the whole mix should hold, tourney child clients
+	///     included.
+	/// </param>
+	/// <param name="matchRoom">The room configuration the match rooms use; <see langword="null" /> means the defaults.</param>
 	public static PersonaAllocation ForSessions(int targetSessions, MatchRoomConfig? matchRoom = null)
 	{
 		var n = Math.Max(10, targetSessions);
@@ -99,14 +102,12 @@ public static class ScenarioCatalog
 			s = s.WithLoadSimulations(sims);
 			if (enforceSlo && thresholds.Length > 0) s = s.WithThresholds(thresholds);
 			if (attachMonitor && monitor is not null)
-			{
 				s = s.WithInit(ctx =>
 				{
 					monitor.RegisterMetrics(ctx);
 					monitor.Start();
 					return Task.CompletedTask;
 				});
-			}
 
 			return s;
 		}
@@ -120,10 +121,10 @@ public static class ScenarioCatalog
 					return Response.Ok();
 				}),
 				closedSimulations(a => a.MatchRooms),
-				SloThresholds.ForScenario(includePoll: true, includeSubmit: true, includeRest: true,
+				SloThresholds.ForScenario(true, true, includeRest: true,
 					includeLogin: true, includeServerCpu: monitor is not null),
 				matchRoom.ShutdownAsync,
-				attachMonitor: true),
+				true),
 
 			Configure(
 				Scenario.Create("free_player", async ctx =>
@@ -132,7 +133,7 @@ public static class ScenarioCatalog
 					return Response.Ok();
 				}),
 				closedSimulations(a => a.FreePlayers),
-				SloThresholds.ForScenario(includePoll: true, includeSubmit: true, includeGetScores: true,
+				SloThresholds.ForScenario(true, true, true,
 					includeLogin: true),
 				freePlayer.ShutdownAsync),
 
@@ -143,7 +144,7 @@ public static class ScenarioCatalog
 					return Response.Ok();
 				}),
 				closedSimulations(a => a.CasualRooms),
-				SloThresholds.ForScenario(includePoll: true, includeSubmit: true, includeLogin: true),
+				SloThresholds.ForScenario(true, true, includeLogin: true),
 				casualRoom.ShutdownAsync),
 
 			Configure(
@@ -153,7 +154,7 @@ public static class ScenarioCatalog
 					return Response.Ok();
 				}),
 				closedSimulations(a => a.Spectators),
-				SloThresholds.ForScenario(includePoll: true, includeLogin: true),
+				SloThresholds.ForScenario(true, includeLogin: true),
 				spectator.ShutdownAsync),
 
 			Configure(
@@ -163,7 +164,7 @@ public static class ScenarioCatalog
 					return Response.Ok();
 				}),
 				closedSimulations(a => a.TourneyClusters),
-				SloThresholds.ForScenario(includePoll: true, includeLogin: true),
+				SloThresholds.ForScenario(true, includeLogin: true),
 				tourney.ShutdownAsync),
 
 			Configure(
@@ -214,7 +215,7 @@ public static class ScenarioCatalog
 				}),
 				openSimulations(a => a.EdgeCaseRatePerMinute),
 				SloThresholds.ForScenario(),
-				edgeCases.ShutdownAsync)
+				EdgeCasesPersona.ShutdownAsync)
 		];
 	}
 }

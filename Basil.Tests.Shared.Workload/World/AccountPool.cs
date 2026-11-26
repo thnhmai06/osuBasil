@@ -3,16 +3,22 @@ using Basil.Tests.Shared.Clients.Stable;
 
 namespace Basil.Tests.Shared.Workload.World;
 
-/// <summary>Hands out seeded accounts without concurrent double-use and keeps one fixed <see cref="StableIdentity"/> per account.</summary>
+/// <summary>
+///     Hands out seeded accounts without concurrent double-use and keeps one fixed <see cref="StableIdentity" /> per
+///     account.
+/// </summary>
 public sealed class AccountPool
 {
+	/// <summary>
+	///     How long an account whose sign-in was refused unexpectedly stays out of the pool, so the server's 30 s replace
+	///     window has passed before it is used again.
+	/// </summary>
+	public static readonly TimeSpan QuarantineDuration = TimeSpan.FromSeconds(35);
+
 	private readonly ConcurrentDictionary<AccountRole, ConcurrentQueue<AccountEntry>> _available = new();
 	private readonly ConcurrentDictionary<(string Name, bool Tourney), StableIdentity> _identities = new();
 	private readonly Dictionary<AccountRole, int> _totals = [];
 	private long _misses;
-
-	/// <summary>How long an account whose sign-in was refused unexpectedly stays out of the pool, so the server's 30 s replace window has passed before it is used again.</summary>
-	public static readonly TimeSpan QuarantineDuration = TimeSpan.FromSeconds(35);
 
 	/// <summary>Creates a pool from the loaded accounts.</summary>
 	public AccountPool(IReadOnlyList<AccountEntry> accounts)
@@ -49,11 +55,11 @@ public sealed class AccountPool
 		}
 
 		Interlocked.Increment(ref _misses);
-		lease = default!;
+		lease = null!;
 		return false;
 	}
 
-	/// <summary>Checks out <paramref name="count"/> accounts of the requested role, or returns all of them if fewer are free.</summary>
+	/// <summary>Checks out <paramref name="count" /> accounts of the requested role, or returns all of them if fewer are free.</summary>
 	public bool TryAcquireMany(AccountRole role, int count, out List<AccountLease> leases)
 	{
 		leases = new List<AccountLease>(count);
@@ -72,11 +78,16 @@ public sealed class AccountPool
 		return true;
 	}
 
-	/// <summary>Gets the deterministic <see cref="StableIdentity"/> of an account; the same account always produces the same install hashes.</summary>
+	/// <summary>
+	///     Gets the deterministic <see cref="StableIdentity" /> of an account; the same account always produces the same
+	///     install hashes.
+	/// </summary>
 	public StableIdentity IdentityOf(AccountEntry account, bool tourney = false)
 	{
-		return _identities.GetOrAdd((account.Name, tourney),
-			_ => StableIdentity.Create(account.Name, account.Password, tourney));
+		return _identities.GetOrAdd(
+			(account.Name, tourney),
+			static (_, state) => StableIdentity.Create(state.Name, state.Password, state.Tourney),
+			(account.Name, account.Password, Tourney: tourney));
 	}
 
 	internal void Return(AccountEntry account, TimeSpan delay = default)
@@ -91,12 +102,12 @@ public sealed class AccountPool
 	}
 }
 
-/// <summary>An exclusive checkout of one account from an <see cref="AccountPool"/>.</summary>
+/// <summary>An exclusive checkout of one account from an <see cref="AccountPool" />.</summary>
 public sealed class AccountLease : IDisposable
 {
 	private readonly AccountPool _pool;
-	private int _returned;
 	private int _quarantined;
+	private int _returned;
 
 	internal AccountLease(AccountPool pool, AccountEntry account)
 	{
@@ -107,22 +118,25 @@ public sealed class AccountLease : IDisposable
 	/// <summary>Gets the leased account.</summary>
 	public AccountEntry Account { get; }
 
+	/// <summary>Returns the account to the pool, immediately or after the quarantine.</summary>
+	public void Dispose()
+	{
+		if (Interlocked.Exchange(ref _returned, 1) != 0) return;
+		_pool.Return(Account, Volatile.Read(ref _quarantined) == 0 ? TimeSpan.Zero : AccountPool.QuarantineDuration);
+	}
+
 	/// <summary>Gets the deterministic osu! stable identity for this account.</summary>
 	public StableIdentity Identity(bool tourney = false)
 	{
 		return _pool.IdentityOf(Account, tourney);
 	}
 
-	/// <summary>Marks the account as refused unexpectedly: when the lease is disposed, the account returns to the pool only after <see cref="AccountPool.QuarantineDuration"/>.</summary>
+	/// <summary>
+	///     Marks the account as refused unexpectedly: when the lease is disposed, the account returns to the pool only
+	///     after <see cref="AccountPool.QuarantineDuration" />.
+	/// </summary>
 	public void Quarantine()
 	{
 		Volatile.Write(ref _quarantined, 1);
-	}
-
-	/// <summary>Returns the account to the pool, immediately or after the quarantine.</summary>
-	public void Dispose()
-	{
-		if (Interlocked.Exchange(ref _returned, 1) != 0) return;
-		_pool.Return(Account, Volatile.Read(ref _quarantined) == 0 ? TimeSpan.Zero : AccountPool.QuarantineDuration);
 	}
 }

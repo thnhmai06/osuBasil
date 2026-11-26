@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Text;
@@ -6,10 +7,14 @@ using Basil.Protocol.Irc.Models;
 
 namespace Basil.Tests.Shared.Clients.Irc;
 
-/// <summary>An IRC client over TLS: registers with the account password, answers PING, and hands every received line to whoever is waiting for it.</summary>
+/// <summary>
+///     An IRC client over TLS: registers with the account password, answers PING, and hands every received line to
+///     whoever is waiting for it.
+/// </summary>
 /// <remarks>
-/// Lines are not kept: to see a reply, register the expectation with <see cref="Expect"/> before sending the command that causes it.
-/// The proxy header of the connection is added by the front, not by this client.
+///     Lines are not kept: to see a reply, register the expectation with <see cref="Expect" /> before sending the command
+///     that causes it.
+///     The proxy header of the connection is added by the front, not by this client.
 /// </remarks>
 /// <param name="endpoint">Where the server is reached; the TLS name is <c>irc.</c> of its domain.</param>
 /// <param name="port">The IRC TLS port, usually 6697.</param>
@@ -27,10 +32,44 @@ public sealed class IrcClient(Endpoint endpoint, int port, string name, string p
 	/// <summary>Gets the nickname the client registers with.</summary>
 	public string Nick => name.Replace(' ', '_');
 
+	/// <summary>Quits and closes the connection.</summary>
+	public async ValueTask DisposeAsync()
+	{
+		try
+		{
+			using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+			if (_stream is not null) await SendAsync(new IrcMessage(IrcVerb.Quit), timeout.Token);
+		}
+		catch (Exception exception) when (exception is IOException or OperationCanceledException
+			                                  or ObjectDisposedException)
+		{
+			// The connection is gone already.
+		}
+
+		await _stop.CancelAsync();
+		if (_stream is not null) await _stream.DisposeAsync();
+		_tcp?.Dispose();
+		try
+		{
+			await _reading;
+		}
+		catch (Exception exception) when (exception is IOException or OperationCanceledException
+			                                  or ObjectDisposedException)
+		{
+			// Closing the stream ends the reading.
+		}
+
+		_stop.Dispose();
+		_writing.Dispose();
+	}
+
 	/// <summary>Connects and registers.</summary>
 	/// <param name="timeout">How long to wait for the welcome or a refusal.</param>
 	/// <param name="ct">Stops the connecting.</param>
-	/// <returns>Whether the server welcomed the client, with the line that decided it; the line is <see langword="null"/> when the wait ran out.</returns>
+	/// <returns>
+	///     Whether the server welcomed the client, with the line that decided it; the line is <see langword="null" />
+	///     when the wait ran out.
+	/// </returns>
 	public async Task<IrcRegistration> ConnectAsync(TimeSpan timeout, CancellationToken ct)
 	{
 		_tcp = new TcpClient { NoDelay = true };
@@ -64,7 +103,8 @@ public sealed class IrcClient(Endpoint endpoint, int port, string name, string p
 	/// <summary>Sends a line.</summary>
 	public async Task SendAsync(IrcMessage message, CancellationToken ct)
 	{
-		var bytes = Encoding.UTF8.GetBytes(message.ToString() + IrcWire.LineEnd);
+		var bytes = Encoding.UTF8.GetBytes(message.ToString(formatProvider: CultureInfo.InvariantCulture) +
+		                                   IrcWire.LineEnd);
 		await _writing.WaitAsync(ct);
 		try
 		{
@@ -78,7 +118,7 @@ public sealed class IrcClient(Endpoint endpoint, int port, string name, string p
 	}
 
 	/// <summary>Sends a line and waits for the line that answers it, registering the wait first so no answer is missed.</summary>
-	/// <returns>The answering line, or <see langword="null"/> when the wait ran out.</returns>
+	/// <returns>The answering line, or <see langword="null" /> when the wait ran out.</returns>
 	public async Task<IrcMessage?> RequestAsync(IrcMessage message, Func<IrcMessage, bool> answer, TimeSpan timeout,
 		CancellationToken ct)
 	{
@@ -141,41 +181,12 @@ public sealed class IrcClient(Endpoint endpoint, int port, string name, string p
 			ct);
 	}
 
-	/// <summary>Marks the client away with a text, or back when the text is <see langword="null"/>, and waits for the answer.</summary>
+	/// <summary>Marks the client away with a text, or back when the text is <see langword="null" />, and waits for the answer.</summary>
 	public Task<IrcMessage?> AwayAsync(string? text, TimeSpan timeout, CancellationToken ct)
 	{
 		return RequestAsync(text is null ? new IrcMessage(IrcVerb.Away) : new IrcMessage(IrcVerb.Away, null, text),
 			line => IsNumeric(line, IrcNumericReply.RplNowAway) || IsNumeric(line, IrcNumericReply.RplUnaway), timeout,
 			ct);
-	}
-
-	/// <summary>Quits and closes the connection.</summary>
-	public async ValueTask DisposeAsync()
-	{
-		try
-		{
-			using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-			if (_stream is not null) await SendAsync(new IrcMessage(IrcVerb.Quit), timeout.Token);
-		}
-		catch (Exception exception) when (exception is IOException or OperationCanceledException or ObjectDisposedException)
-		{
-			// The connection is gone already.
-		}
-
-		await _stop.CancelAsync();
-		_stream?.Dispose();
-		_tcp?.Dispose();
-		try
-		{
-			await _reading;
-		}
-		catch (Exception exception) when (exception is IOException or OperationCanceledException or ObjectDisposedException)
-		{
-			// Closing the stream ends the reading.
-		}
-
-		_stop.Dispose();
-		_writing.Dispose();
 	}
 
 	private async Task ReadAsync(CancellationToken ct)
@@ -185,14 +196,15 @@ public sealed class IrcClient(Endpoint endpoint, int port, string name, string p
 		{
 			await foreach (var text in IrcLines.ReadAsync(_stream!, ct))
 			{
-				if (text is null || !IrcMessage.TryParse(text, null, out var line)) continue;
+				if (text is null || !IrcMessage.TryParse(text, CultureInfo.InvariantCulture, out var line)) continue;
 
 				if (line.Command == IrcVerb.Ping)
 					await SendAsync(new IrcMessage(IrcVerb.Pong, null, line.Parameters), ct);
 				Deliver(line);
 			}
 		}
-		catch (Exception exception) when (exception is IOException or OperationCanceledException or ObjectDisposedException)
+		catch (Exception exception) when (exception is IOException or OperationCanceledException
+			                                  or ObjectDisposedException)
 		{
 			failure = new IOException("The IRC connection closed.", exception);
 		}
@@ -247,13 +259,16 @@ public sealed class IrcClient(Endpoint endpoint, int port, string name, string p
 	// A numeric from 400 to 599 refuses a command, or the sign-in before the welcome.
 	private static bool IsRefusal(IrcMessage line)
 	{
-		return line.Command.Length == 3 && line.Command[0] is '4' or '5' && ushort.TryParse(line.Command, out _);
+		return line.Command is ['4' or '5', _, _] && ushort.TryParse(line.Command, out _);
 	}
 }
 
 /// <summary>The outcome of registering an IRC client.</summary>
 /// <param name="Welcomed">Whether the server welcomed the client.</param>
-/// <param name="Line">The line that decided it: the welcome, a refusing numeric or <c>ERROR</c>; <see langword="null"/> when the wait ran out.</param>
+/// <param name="Line">
+///     The line that decided it: the welcome, a refusing numeric or <c>ERROR</c>; <see langword="null" />
+///     when the wait ran out.
+/// </param>
 public sealed record IrcRegistration(bool Welcomed, IrcMessage? Line);
 
 /// <summary>A wait for one received line, registered before the command that causes it is sent.</summary>
@@ -278,7 +293,7 @@ public sealed class IrcExpectation : IDisposable
 	/// <summary>Waits for the line.</summary>
 	/// <param name="timeout">How long to wait.</param>
 	/// <param name="ct">Stops the wait.</param>
-	/// <returns>The line, or <see langword="null"/> when the wait ran out.</returns>
+	/// <returns>The line, or <see langword="null" /> when the wait ran out.</returns>
 	/// <exception cref="IOException">The connection closed before the line came.</exception>
 	public async Task<IrcMessage?> WaitAsync(TimeSpan timeout, CancellationToken ct)
 	{

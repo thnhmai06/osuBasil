@@ -24,8 +24,11 @@ public sealed class SoakTest : ILoadTest
 		var ramp = options.RampDuration(soakN);
 		var rampDown = TimeSpan.FromSeconds(Math.Max(15, ramp.TotalSeconds / 2));
 		var windows = SplitWindows(options.SoakDuration, TimeSpan.FromHours(1));
-		var levels = new List<(string, int, TimeSpan)> { ("ramp", soakN, ramp) };
-		levels.AddRange(windows.Select((window, i) => ($"hour {i + 1}", soakN, window)));
+		List<(string, int, TimeSpan)> levels =
+		[
+			("ramp", soakN, ramp),
+			.. windows.Select((window, i) => ($"hour {i + 1}", soakN, window))
+		];
 		return RunPlan.Create(WarmUp, rampDown, [.. levels]);
 	}
 
@@ -44,15 +47,17 @@ public sealed class SoakTest : ILoadTest
 			pick =>
 			{
 				var copies = pick(alloc);
-				var sims = new List<LoadSimulation> { Simulation.RampingConstant(copies, ramp) };
-				foreach (var window in windows)
-					sims.Add(Simulation.KeepConstant(copies, window));
-				sims.Add(Simulation.RampingConstant(0, rampDown));
+				List<LoadSimulation> sims =
+				[
+					Simulation.RampingConstant(copies, ramp),
+					.. windows.Select(window => Simulation.KeepConstant(copies, window)),
+					Simulation.RampingConstant(0, rampDown)
+				];
 				return [.. sims];
 			},
 			pick => [Injection.PerMinute(pick(alloc), ramp + options.SoakDuration + rampDown)],
-			enforceSlo: true,
-			warmUp: WarmUp);
+			true,
+			WarmUp);
 	}
 
 	private static int SoakSessions(LoadTestOptions options)

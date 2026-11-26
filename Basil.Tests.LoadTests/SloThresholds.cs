@@ -1,7 +1,6 @@
 using Basil.Tests.Shared.Environment.Monitor;
 using Basil.Tests.Shared.Workload.Outcomes;
 using NBomber.Contracts;
-using NBomber.CSharp;
 
 namespace Basil.Tests.LoadTests;
 

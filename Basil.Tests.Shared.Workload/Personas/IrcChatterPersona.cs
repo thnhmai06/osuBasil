@@ -6,7 +6,10 @@ using NBomber.Contracts;
 
 namespace Basil.Tests.Shared.Workload.Personas;
 
-/// <summary>Simulates an IRC user: each scenario copy connects once and keeps the connection, then every invocation exercises channel queries (NAMES, WHO, WHOIS, LIST, TOPIC, AWAY) and one BasilBot command.</summary>
+/// <summary>
+///     Simulates an IRC user: each scenario copy connects once and keeps the connection, then every invocation
+///     exercises channel queries (NAMES, WHO, WHOIS, LIST, TOPIC, AWAY) and one BasilBot command.
+/// </summary>
 public sealed class IrcChatterPersona(WorkloadContext workload)
 {
 	private const string Channel = "#osu";
@@ -14,7 +17,10 @@ public sealed class IrcChatterPersona(WorkloadContext workload)
 	private readonly ConcurrentDictionary<int, Held> _held = new();
 	private volatile bool _closing;
 
-	/// <summary>Runs one round of IRC activity on the copy's connection, connecting first when the copy has none or the server ended it.</summary>
+	/// <summary>
+	///     Runs one round of IRC activity on the copy's connection, connecting first when the copy has none or the server
+	///     ended it.
+	/// </summary>
 	public async Task RunCycleAsync(IScenarioContext context)
 	{
 		if (_closing) return;
@@ -22,7 +28,8 @@ public sealed class IrcChatterPersona(WorkloadContext workload)
 		using var linked = workload.LinkToken(context);
 		var ct = linked.Token;
 		var instance = context.ScenarioInfo.InstanceNumber;
-		var random = SeededRandom.For(workload.Seed, context.ScenarioInfo.ScenarioName, instance, context.InvocationNumber);
+		var random = SeededRandom.For(workload.Seed, context.ScenarioInfo.ScenarioName, instance,
+			context.InvocationNumber);
 
 		var held = await EnsureConnectionAsync(instance, context, ct);
 		if (held is null)
@@ -37,12 +44,17 @@ public sealed class IrcChatterPersona(WorkloadContext workload)
 		var targetNick = (other?.Name ?? held.Lease.Account.Name).Replace(' ', '_');
 
 		// Exercise IRC discovery and state commands.
-		await Query(held, context, ct, async () => OutcomeClassifier.FromIrcReply(await irc.NamesAsync(Channel, wait, ct)));
-		await Query(held, context, ct, async () => OutcomeClassifier.FromIrcReply(await irc.TopicAsync(Channel, wait, ct)));
+		await Query(held, context, ct,
+			async () => OutcomeClassifier.FromIrcReply(await irc.NamesAsync(Channel, wait, ct)));
+		await Query(held, context, ct,
+			async () => OutcomeClassifier.FromIrcReply(await irc.TopicAsync(Channel, wait, ct)));
 		await Query(held, context, ct, async () => OutcomeClassifier.FromIrcReply(await irc.ListAsync(wait, ct)));
-		await Query(held, context, ct, async () => OutcomeClassifier.FromIrcReply(await irc.WhoAsync(Channel, wait, ct)));
-		await Query(held, context, ct, async () => OutcomeClassifier.FromIrcReply(await irc.WhoisAsync(targetNick, wait, ct)));
-		await Query(held, context, ct, async () => OutcomeClassifier.FromIrcReply(await irc.AwayAsync("spectating match", wait, ct)));
+		await Query(held, context, ct,
+			async () => OutcomeClassifier.FromIrcReply(await irc.WhoAsync(Channel, wait, ct)));
+		await Query(held, context, ct,
+			async () => OutcomeClassifier.FromIrcReply(await irc.WhoisAsync(targetNick, wait, ct)));
+		await Query(held, context, ct,
+			async () => OutcomeClassifier.FromIrcReply(await irc.AwayAsync("spectating match", wait, ct)));
 		await Query(held, context, ct, async () => OutcomeClassifier.FromIrcReply(await irc.AwayAsync(null, wait, ct)));
 
 		// Chat and BasilBot commands.
@@ -58,7 +70,10 @@ public sealed class IrcChatterPersona(WorkloadContext workload)
 		await WorkloadContext.SafeDelayAsync(TimeSpan.FromSeconds(2), ct);
 	}
 
-	/// <summary>Disconnects every IRC connection this persona still holds and returns every account lease; best effort, never throws.</summary>
+	/// <summary>
+	///     Disconnects every IRC connection this persona still holds and returns every account lease; best effort, never
+	///     throws.
+	/// </summary>
 	public async Task ShutdownAsync()
 	{
 		_closing = true;

@@ -4,7 +4,7 @@ namespace Basil.Tests.Shared.Clients.OsuWeb;
 
 /// <summary>A finished play a client submits: hit counts, combo and the grade they earn, kept consistent with each other.</summary>
 /// <param name="BeatmapMd5">The md5 of the beatmap that was played.</param>
-/// <param name="StoryboardMd5">The md5 of the beatmap's storyboard, or <see langword="null"/> when it has none.</param>
+/// <param name="StoryboardMd5">The md5 of the beatmap's storyboard, or <see langword="null" /> when it has none.</param>
 /// <param name="Mode">The game mode number.</param>
 /// <param name="Mods">The mods as the client's flag number.</param>
 /// <param name="Num300">The number of 300 hits.</param>
@@ -16,7 +16,10 @@ namespace Basil.Tests.Shared.Clients.OsuWeb;
 /// <param name="TotalScore">The score.</param>
 /// <param name="MaxCombo">The longest combo.</param>
 /// <param name="FullCombo">Whether the play had no break.</param>
-/// <param name="Grade">The grade as the client writes it: <c>XH</c>, <c>X</c>, <c>SH</c>, <c>S</c>, <c>A</c>, <c>B</c>, <c>C</c>, <c>D</c> or <c>F</c>.</param>
+/// <param name="Grade">
+///     The grade as the client writes it: <c>XH</c>, <c>X</c>, <c>SH</c>, <c>S</c>, <c>A</c>, <c>B</c>,
+///     <c>C</c>, <c>D</c> or <c>F</c>.
+/// </param>
 /// <param name="Passed">Whether the play was completed.</param>
 /// <param name="Timestamp">When the play ended, to the second.</param>
 public sealed record PlayedScore(
@@ -47,13 +50,16 @@ public sealed record PlayedScore(
 	/// <summary>Gets the accuracy as a ratio from 0 to 1.</summary>
 	public double Accuracy => Objects == 0 ? 1 : (300.0 * Num300 + 100.0 * Num100 + 50.0 * Num50) / (300.0 * Objects);
 
+	/// <summary>Gets the timestamp as the score line carries it.</summary>
+	public string TimestampText => Timestamp.ToUniversalTime().ToString("yyMMddHHmmss", CultureInfo.InvariantCulture);
+
 	/// <summary>Makes a play with random but consistent numbers.</summary>
 	/// <param name="random">The source of the numbers; a seeded one makes the play repeatable.</param>
 	/// <param name="beatmapMd5">The md5 of the beatmap that was played.</param>
 	/// <param name="passed">Whether the play was completed; a failed play is graded <c>F</c> and has more misses.</param>
 	/// <param name="mode">The game mode number.</param>
 	/// <param name="mods">The mods as the client's flag number.</param>
-	/// <param name="storyboardMd5">The md5 of the beatmap's storyboard, or <see langword="null"/>.</param>
+	/// <param name="storyboardMd5">The md5 of the beatmap's storyboard, or <see langword="null" />.</param>
 	/// <param name="at">When the play ended; the current time when omitted.</param>
 	public static PlayedScore Generate(Random random, string beatmapMd5, bool passed = true, int mode = 0,
 		int mods = 0, string? storyboardMd5 = null, DateTimeOffset? at = null)
@@ -93,7 +99,4 @@ public sealed record PlayedScore(
 			_ => "D"
 		};
 	}
-
-	/// <summary>Gets the timestamp as the score line carries it.</summary>
-	public string TimestampText => Timestamp.ToUniversalTime().ToString("yyMMddHHmmss", CultureInfo.InvariantCulture);
 }

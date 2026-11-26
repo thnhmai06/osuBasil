@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using Basil.Tests.LoadTests;
@@ -20,9 +21,9 @@ using NBomber.CSharp;
 
 // Exit codes: 0 the SLO held, 3 the run was sound and the SLO broke, 1 the run itself broke (bad options, lockout
 // guard, server restart, crash). Capacity, pilot and stress are meant to break the SLO, so the runner treats 3 as success there.
-const int ExitSloMet = 0;
-const int ExitRunBroken = 1;
-const int ExitSloBroken = 3;
+const int exitSloMet = 0;
+const int exitRunBroken = 1;
+const int exitSloBroken = 3;
 
 var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true };
 
@@ -35,7 +36,7 @@ try
 catch (Exception ex) when (ex is ArgumentException or FormatException or OverflowException)
 {
 	PrintUsage(ex.Message == "help" ? null : ex.Message);
-	return ex.Message == "help" ? 0 : ExitRunBroken;
+	return ex.Message == "help" ? 0 : exitRunBroken;
 }
 
 if (options.Test == "pilot")
@@ -60,7 +61,7 @@ if (planOnly)
 	if (selected is null)
 	{
 		PrintUsage($"Unknown test '{options.Test}'.");
-		return ExitRunBroken;
+		return exitRunBroken;
 	}
 
 	Console.WriteLine((long)Math.Ceiling(selected.Plan(options).Total.TotalSeconds));
@@ -73,8 +74,9 @@ if (options.Test == "seed")
 {
 	if (string.IsNullOrEmpty(options.OwnerPassword))
 	{
-		Console.Error.WriteLine($"The owner password is required for seed: set {LoadTestOptions.OwnerPasswordVariable}.");
-		return ExitRunBroken;
+		Console.Error.WriteLine(
+			$"The owner password is required for seed: set {LoadTestOptions.OwnerPasswordVariable}.");
+		return exitRunBroken;
 	}
 
 	var seeder = new Seeder(http);
@@ -91,12 +93,12 @@ if (options.Test == "seed")
 		options.Seed), CancellationToken.None);
 
 	Console.WriteLine(JsonSerializer.Serialize(report, jsonOptions));
-	return report.RateLimitRestored ? 0 : ExitRunBroken;
+	return report.RateLimitRestored ? 0 : exitRunBroken;
 }
 
 var worldData = WorldData.Load(options.WorldPath);
 var accounts = WorldData.LoadAccounts(options.AccountsPath);
-var timestamp = DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss");
+var timestamp = DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
 
 if (options.Test == "control")
 {
@@ -122,7 +124,7 @@ if (options.Test == "control")
 if (selected is null)
 {
 	PrintUsage($"Unknown test '{options.Test}'.");
-	return ExitRunBroken;
+	return exitRunBroken;
 }
 
 var reportName = selected.ReportName(options);
@@ -137,7 +139,8 @@ var lockoutGuard = new LoginLockoutGuard(runAbort);
 
 // In Spike mode, align all tournament rooms on one shared start instant right after ramp.
 var tournamentClock = options.Test == "spike"
-	? new TournamentClock(DateTimeOffset.UtcNow + options.RampDuration(options.TargetSessions) + TimeSpan.FromSeconds(15))
+	? new TournamentClock(DateTimeOffset.UtcNow + options.RampDuration(options.TargetSessions) +
+	                      TimeSpan.FromSeconds(15))
 	: new TournamentClock();
 
 var workload = new WorkloadContext(
@@ -182,7 +185,7 @@ catch (Exception ex)
 	await File.WriteAllTextAsync(Path.Combine(reportFolder, "run-meta.json"),
 		JsonSerializer.Serialize(new { test = selected.Name, crashed = true, error = ex.ToString() }, jsonOptions),
 		new UTF8Encoding(false));
-	return ExitRunBroken;
+	return exitRunBroken;
 }
 
 // Plan T8: the server-side checks of the smoke run, made only through the public REST API.
@@ -195,7 +198,8 @@ if (selected.Name == "smoke")
 		checks = developer is null
 			? [new CheckResult("sign-in", false, "accounts.csv has no developer account for the checks.")]
 			: await new SmokeChecks(options.Endpoint, http, developer.Name, developer.Password)
-				.RunAsync(runStartedAt, submitted, SmokeTest.Rooms, monitor, TimeSpan.FromSeconds(30), CancellationToken.None);
+				.RunAsync(runStartedAt, submitted, SmokeTest.Rooms, monitor, TimeSpan.FromSeconds(30),
+					CancellationToken.None);
 	}
 	catch (Exception ex)
 	{
@@ -216,7 +220,7 @@ var checksBroken = checks.Any(c => !c.Passed);
 var sloBroken = failedThresholds.Length > 0 || cpuBroken || checksBroken;
 var restarted = serverSummary?.RestartDetected ?? false;
 var runBroken = lockoutGuard.IsTripped || restarted;
-var exitCode = runBroken ? ExitRunBroken : sloBroken ? ExitSloBroken : ExitSloMet;
+var exitCode = runBroken ? exitRunBroken : sloBroken ? exitSloBroken : exitSloMet;
 
 var meta = new
 {
@@ -287,7 +291,8 @@ await File.WriteAllTextAsync(
 	new UTF8Encoding(false));
 
 Console.WriteLine($"Report folder: {reportFolder}");
-Console.WriteLine($"Seed: {options.Seed} | Errors: {outcomes.Total(Outcome.Error)} | Failed thresholds: {failedThresholds.Length} | Exit: {exitCode}");
+Console.WriteLine(
+	$"Seed: {options.Seed} | Errors: {outcomes.Total(Outcome.Error)} | Failed thresholds: {failedThresholds.Length} | Exit: {exitCode}");
 foreach (var check in checks)
 	Console.WriteLine($"Check {(check.Passed ? "ok" : "FAILED")}: {check.Name} - {check.Detail}");
 if (lockoutGuard.IsTripped)

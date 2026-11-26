@@ -56,7 +56,10 @@ public sealed record WorldData(
 		       ?? throw new InvalidDataException($"Could not read world data from '{path}'.");
 	}
 
-	/// <summary>Loads accounts from <c>accounts.csv</c> (<c>name,password,role</c>; role defaults to <see cref="AccountRole.Player"/>).</summary>
+	/// <summary>
+	///     Loads accounts from <c>accounts.csv</c> (<c>name,password,role</c>; role defaults to
+	///     <see cref="AccountRole.Player" />).
+	/// </summary>
 	public static IReadOnlyList<AccountEntry> LoadAccounts(string path)
 	{
 		var accounts = new List<AccountEntry>();

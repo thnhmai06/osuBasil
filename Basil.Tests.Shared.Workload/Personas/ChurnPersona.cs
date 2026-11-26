@@ -93,7 +93,8 @@ public sealed class ChurnPersona(WorkloadContext workload)
 
 	private async Task ChurnIrcAsync(AccountLease lease, IScenarioContext context, CancellationToken ct)
 	{
-		await using var irc = new IrcClient(workload.Endpoint, workload.IrcPort, lease.Account.Name, lease.Account.Password);
+		await using var irc =
+			new IrcClient(workload.Endpoint, workload.IrcPort, lease.Account.Name, lease.Account.Password);
 		var (outcome, reg) = await StepExecution.RunAsync(Channels.Irc, context, workload.Outcomes, async () =>
 		{
 			var result = await irc.ConnectAsync(workload.WaitTimeout, ct);

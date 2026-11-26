@@ -6,7 +6,11 @@ using NBomber.Contracts;
 
 namespace Basil.Tests.Shared.Workload.Personas;
 
-/// <summary>Simulates a stream overlay viewer reading SSE events from <c>/v1/matches/{id}</c> and <c>/v1/rooms/{id}/live</c>: each scenario copy signs in once where the stream needs it and keeps the session, then every invocation watches one stream for one observation window.</summary>
+/// <summary>
+///     Simulates a stream overlay viewer reading SSE events from <c>/v1/matches/{id}</c> and
+///     <c>/v1/rooms/{id}/live</c>: each scenario copy signs in once where the stream needs it and keeps the session, then
+///     every invocation watches one stream for one observation window.
+/// </summary>
 public sealed class OverlayViewerPersona(WorkloadContext workload)
 {
 	private readonly ConcurrentDictionary<int, Viewer> _viewers = new();
@@ -20,7 +24,8 @@ public sealed class OverlayViewerPersona(WorkloadContext workload)
 		using var linked = workload.LinkToken(context);
 		var ct = linked.Token;
 		var instance = context.ScenarioInfo.InstanceNumber;
-		var random = SeededRandom.For(workload.Seed, context.ScenarioInfo.ScenarioName, instance, context.InvocationNumber);
+		var random = SeededRandom.For(workload.Seed, context.ScenarioInfo.ScenarioName, instance,
+			context.InvocationNumber);
 
 		var room = workload.World.PickRoom(random);
 		if (room is null)
@@ -46,7 +51,7 @@ public sealed class OverlayViewerPersona(WorkloadContext workload)
 		using var window = CancellationTokenSource.CreateLinkedTokenSource(ct);
 		window.CancelAfter(workload.RoundDuration);
 
-		var delivered = await SseWatch.WatchAsync(workload, viewer.Rest, path, authorize: !watchMatchReport,
+		var delivered = await SseWatch.WatchAsync(workload, viewer.Rest, path, !watchMatchReport,
 			() => context, window.Token);
 
 		// A refused token means the viewer has to sign in again next time.

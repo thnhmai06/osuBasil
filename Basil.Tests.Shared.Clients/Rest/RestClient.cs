@@ -5,15 +5,21 @@ using System.Text.Json;
 
 namespace Basil.Tests.Shared.Clients.Rest;
 
-/// <summary>A client of the <c>api.</c> host: signs in for a Bearer token, then calls the <c>/v1</c> routes and reads the response envelope.</summary>
-/// <remarks>A refusal is an answer; only a transport failure throws. A body that is not an envelope (for example a refusal of the front) leaves <see cref="RestReply.Data"/> undefined and is kept in <see cref="RestReply.Raw"/>.</remarks>
+/// <summary>
+///     A client of the <c>api.</c> host: signs in for a Bearer token, then calls the <c>/v1</c> routes and reads the
+///     response envelope.
+/// </summary>
+/// <remarks>
+///     A refusal is an answer; only a transport failure throws. A body that is not an envelope (for example a refusal
+///     of the front) leaves <see cref="RestReply.Data" /> undefined and is kept in <see cref="RestReply.Raw" />.
+/// </remarks>
 public sealed class RestClient(Endpoint endpoint, HttpClient http)
 {
 	private const string Host = "api";
 
 	private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
-	/// <summary>Gets the Bearer token, or <see langword="null"/> while the client is not signed in.</summary>
+	/// <summary>Gets the Bearer token, or <see langword="null" /> while the client is not signed in.</summary>
 	public string? Token { get; private set; }
 
 	/// <summary>Gets the id of the signed-in user, or 0 while the client is not signed in.</summary>
@@ -23,7 +29,8 @@ public sealed class RestClient(Endpoint endpoint, HttpClient http)
 	public async Task<RestReply> SignInAsync(string username, string password, CancellationToken ct)
 	{
 		var reply = await SendAsync(HttpMethod.Post, "/v1/auth/login", new { username, password }, false, ct);
-		if (reply is { Success: true, Data.ValueKind: JsonValueKind.Object } && reply.Data.TryGetProperty("token", out var token) &&
+		if (reply is { Success: true, Data.ValueKind: JsonValueKind.Object } &&
+		    reply.Data.TryGetProperty("token", out var token) &&
 		    reply.Data.TryGetProperty("userId", out var userId))
 		{
 			Token = token.GetString();
@@ -78,15 +85,19 @@ public sealed class RestClient(Endpoint endpoint, HttpClient http)
 	public async Task<RestReply> PutAvatarAsync(int userId, byte[] picture, CancellationToken ct)
 	{
 		using var request = NewRequest(HttpMethod.Put, $"/v1/users/{userId}/avatar", true);
-		using var form = new MultipartFormDataContent { { new ByteArrayContent(picture), "file", "avatar.png" } };
+		using var form = new MultipartFormDataContent();
+		form.Add(new ByteArrayContent(picture), "file", "avatar.png");
 		request.Content = form;
 		return await ReadAsync(request, ct);
 	}
 
 	/// <summary>Opens a live stream.</summary>
-	/// <param name="path">The route of the stream, such as <c>/v1/matches/12</c>, <c>/v1/rooms/12/live</c> or <c>/v1/diagnostics</c>.</param>
+	/// <param name="path">
+	///     The route of the stream, such as <c>/v1/matches/12</c>, <c>/v1/rooms/12/live</c> or
+	///     <c>/v1/diagnostics</c>.
+	/// </param>
 	/// <param name="authorize">Whether to send the token; a match report needs none.</param>
-	/// <param name="ct">Stops opening; the stream is stopped through <see cref="SseStream.ReadAsync"/>.</param>
+	/// <param name="ct">Stops opening; the stream is stopped through <see cref="SseStream.ReadAsync" />.</param>
 	public async Task<SseStream> OpenStreamAsync(string path, bool authorize, CancellationToken ct)
 	{
 		var request = NewRequest(HttpMethod.Get, path, authorize);
@@ -106,7 +117,8 @@ public sealed class RestClient(Endpoint endpoint, HttpClient http)
 	private HttpRequestMessage NewRequest(HttpMethod method, string path, bool authorize)
 	{
 		var request = endpoint.Request(method, Host, path);
-		if (authorize && Token is not null) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Token);
+		if (authorize && Token is not null)
+			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Token);
 		return request;
 	}
 
@@ -119,9 +131,9 @@ public sealed class RestClient(Endpoint endpoint, HttpClient http)
 
 /// <summary>An answer of the <c>api.</c> host, read from its response envelope.</summary>
 /// <param name="Status">The HTTP status code.</param>
-/// <param name="Success">The envelope's success flag; <see langword="false"/> when the body is not an envelope.</param>
+/// <param name="Success">The envelope's success flag; <see langword="false" /> when the body is not an envelope.</param>
 /// <param name="Message">The envelope's message, or an empty text.</param>
-/// <param name="ErrorCode">The envelope's error code, or <see langword="null"/> when there is none.</param>
+/// <param name="ErrorCode">The envelope's error code, or <see langword="null" /> when there is none.</param>
 /// <param name="Data">The envelope's data; undefined when there is none.</param>
 /// <param name="Meta">The envelope's paging data; undefined when there is none.</param>
 /// <param name="Raw">The body as it came.</param>

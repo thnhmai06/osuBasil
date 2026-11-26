@@ -5,13 +5,19 @@ using NBomber.Contracts;
 
 namespace Basil.Tests.Shared.Workload.Personas;
 
-/// <summary>Simulates a standalone osu!tourney cluster (one manager plus child clients, all signed in with one Tourney account): each scenario copy signs the cluster in once and keeps it, then every invocation watches a live room.</summary>
+/// <summary>
+///     Simulates a standalone osu!tourney cluster (one manager plus child clients, all signed in with one Tourney
+///     account): each scenario copy signs the cluster in once and keeps it, then every invocation watches a live room.
+/// </summary>
 public sealed class TourneyClusterPersona(WorkloadContext workload, int slotsToWatch = 4)
 {
 	private readonly ConcurrentDictionary<int, Cluster> _clusters = new();
 	private volatile bool _closing;
 
-	/// <summary>Observes one live room for one round with the copy's cluster, signing the cluster in first when the copy has none.</summary>
+	/// <summary>
+	///     Observes one live room for one round with the copy's cluster, signing the cluster in first when the copy has
+	///     none.
+	/// </summary>
 	public async Task RunCycleAsync(IScenarioContext context)
 	{
 		if (_closing) return;
@@ -19,7 +25,8 @@ public sealed class TourneyClusterPersona(WorkloadContext workload, int slotsToW
 		using var linked = workload.LinkToken(context);
 		var ct = linked.Token;
 		var instance = context.ScenarioInfo.InstanceNumber;
-		var random = SeededRandom.For(workload.Seed, context.ScenarioInfo.ScenarioName, instance, context.InvocationNumber);
+		var random = SeededRandom.For(workload.Seed, context.ScenarioInfo.ScenarioName, instance,
+			context.InvocationNumber);
 
 		_clusters.TryGetValue(instance, out var cluster);
 		if (cluster is not null && cluster.All.Any(workload.IsDropped))
@@ -31,7 +38,7 @@ public sealed class TourneyClusterPersona(WorkloadContext workload, int slotsToW
 
 		var room = cluster is { RoomId: > 0 } && workload.World.Rooms.TryGetValue(cluster.RoomId, out var current)
 			? current
-			: workload.World.PickRoom(random, tournamentOnly: true) ?? workload.World.PickRoom(random);
+			: workload.World.PickRoom(random, true) ?? workload.World.PickRoom(random);
 		if (room is null || room.PlayerIds.Count == 0)
 		{
 			if (cluster is not null) await PollAllAsync(cluster, context, ct);
@@ -53,7 +60,8 @@ public sealed class TourneyClusterPersona(WorkloadContext workload, int slotsToW
 
 		if (cluster.RoomId != room.RoomId) await AttachAsync(cluster, room, context, ct);
 
-		var ticks = Math.Max(3, (int)(workload.RoundDuration.TotalSeconds / Math.Max(0.5, workload.PollInterval.TotalSeconds)));
+		var ticks = Math.Max(3,
+			(int)(workload.RoundDuration.TotalSeconds / Math.Max(0.5, workload.PollInterval.TotalSeconds)));
 		for (var tick = 0; tick < ticks && !ct.IsCancellationRequested; tick++)
 		{
 			await PollAllAsync(cluster, context, ct);
@@ -75,7 +83,7 @@ public sealed class TourneyClusterPersona(WorkloadContext workload, int slotsToW
 		if (!workload.Accounts.TryAcquire(AccountRole.Tourney, out var lease)) return null;
 
 		// The osu!tourney client signs in the manager and every child with the same account.
-		var identity = lease.Identity(tourney: true);
+		var identity = lease.Identity(true);
 		var cluster = new Cluster(lease, new StableClient(workload.Endpoint, workload.Http, identity));
 		var login = await workload.LoginStableAsync(cluster.Manager, context, ct, lease: lease);
 		if (login is not { Accepted: true })

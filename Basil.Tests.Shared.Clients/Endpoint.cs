@@ -2,7 +2,10 @@ using System.Net;
 
 namespace Basil.Tests.Shared.Clients;
 
-/// <summary>Where the server under test is reached: one connect address and port, and the domain whose subdomains name its hosts.</summary>
+/// <summary>
+///     Where the server under test is reached: one connect address and port, and the domain whose subdomains name its
+///     hosts.
+/// </summary>
 /// <param name="Connect">The address every request is sent to.</param>
 /// <param name="Port">The port of the HTTPS front.</param>
 /// <param name="Domain">The domain the hosts are named under, such as <c>basil.local</c>.</param>
@@ -25,7 +28,10 @@ public sealed record Endpoint(string Connect, int Port, string Domain)
 		return request;
 	}
 
-	/// <summary>Creates the HTTP client the clients share: many connections per server and no certificate validation, for a bench with a self-signed certificate.</summary>
+	/// <summary>
+	///     Creates the HTTP client the clients share: many connections per server and no certificate validation, for a
+	///     bench with a self-signed certificate.
+	/// </summary>
 	/// <param name="timeout">How long a request may wait for its response headers.</param>
 	public static HttpClient CreateHttpClient(TimeSpan timeout)
 	{

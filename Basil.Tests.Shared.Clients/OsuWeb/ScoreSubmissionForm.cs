@@ -9,7 +9,10 @@ using Org.BouncyCastle.Crypto.Parameters;
 
 namespace Basil.Tests.Shared.Clients.OsuWeb;
 
-/// <summary>Builds the pieces of a score submission the way the osu! client does: the checksum, the score line, its encryption and the multipart form.</summary>
+/// <summary>
+///     Builds the pieces of a score submission the way the osu! client does: the checksum, the score line, its
+///     encryption and the multipart form.
+/// </summary>
 public static class ScoreSubmissionForm
 {
 	private const int BlockSizeBits = 256;
@@ -47,7 +50,8 @@ public static class ScoreSubmissionForm
 		var cipher = new PaddedBufferedBlockCipher(new CbcBlockCipher(new RijndaelEngine(BlockSizeBits)),
 			new Pkcs7Padding());
 		cipher.Init(true,
-			new ParametersWithIV(new KeyParameter(Encoding.UTF8.GetBytes($"osu!-scoreburgr---------{osuVersion}")), iv));
+			new ParametersWithIV(new KeyParameter(Encoding.UTF8.GetBytes($"osu!-scoreburgr---------{osuVersion}")),
+				iv));
 		var input = Encoding.UTF8.GetBytes(plainText);
 		var output = new byte[cipher.GetOutputSize(input.Length)];
 		var length = cipher.ProcessBytes(input, 0, input.Length, output, 0);

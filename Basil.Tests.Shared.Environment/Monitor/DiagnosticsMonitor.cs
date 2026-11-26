@@ -4,11 +4,13 @@ using System.Text.Json;
 using Basil.Tests.Shared.Clients;
 using Basil.Tests.Shared.Clients.Rest;
 using NBomber.Contracts;
-using NBomber.CSharp;
 
 namespace Basil.Tests.Shared.Environment.Monitor;
 
-/// <summary>Summary of server-side metrics collected from Basil's diagnostics SSE during a run; baseline is the first sample (only the monitor signed in), final the latest.</summary>
+/// <summary>
+///     Summary of server-side metrics collected from Basil's diagnostics SSE during a run; baseline is the first
+///     sample (only the monitor signed in), final the latest.
+/// </summary>
 public sealed record ServerMetricsSummary(
 	int Samples,
 	double AvgCpuPercent,
@@ -31,7 +33,10 @@ public sealed record ServerMetricsSummary(
 	long FinalUsersOnline,
 	long FinalOpenRooms);
 
-/// <summary>Streams Basil's <c>/v1/diagnostics</c> SSE feed into NBomber custom gauges and writes <c>diagnostics.jsonl</c> and <c>server-summary.json</c> beside the report.</summary>
+/// <summary>
+///     Streams Basil's <c>/v1/diagnostics</c> SSE feed into NBomber custom gauges and writes <c>diagnostics.jsonl</c>
+///     and <c>server-summary.json</c> beside the report.
+/// </summary>
 public sealed class DiagnosticsMonitor(
 	Endpoint endpoint,
 	HttpClient http,
@@ -39,8 +44,6 @@ public sealed class DiagnosticsMonitor(
 	string developerPassword,
 	string reportDirectory) : IAsyncDisposable
 {
-	private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
-
 	public const string CpuGaugeName = "server_cpu_percent";
 	public const string WorkingSetGaugeName = "server_working_set_mb";
 	public const string GcHeapGaugeName = "server_gc_heap_mb";
@@ -55,47 +58,59 @@ public sealed class DiagnosticsMonitor(
 	public const string DbP95GaugeName = "server_db_p95_us";
 	public const string EventsPendingGaugeName = "server_events_pending";
 	public const string EventsFailuresGaugeName = "server_events_failures";
+	private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
 	private readonly ConcurrentDictionary<string, Action<double>> _gauges = new();
-
-	private readonly object _sync = new();
 	private readonly CancellationTokenSource _stop = new();
-	private Task _loop = Task.CompletedTask;
-	private int _started;
 
-	private int _samples;
-	private double _sumCpu;
+	private readonly Lock _sync = new();
+	private long _baselineUsers = -1;
+	private long _finalRooms;
+	private long _finalUsers;
+	private long _lastUptimeSeconds = -1;
+	private Task _loop = Task.CompletedTask;
 	private double _maxCpu;
-	private double _maxWorkingSetMb;
-	private double _maxGcHeapMb;
-	private long _maxTpPending;
+	private double _maxDbP95;
+	private long _maxEventsPending;
 	private double _maxExceptionsPerSec;
-	private long _peakUsers;
+	private double _maxGcHeapMb;
+	private double _maxIrcP95;
+	private double _maxStableP95;
+	private long _maxTpPending;
+	private double _maxWorkingSetMb;
 	private long _peakRooms;
 	private long _peakRounds;
 	private long _peakStreams;
-	private double _maxStableP95;
-	private double _maxIrcP95;
-	private double _maxDbP95;
-	private long _maxEventsPending;
-	private long _totalEventFailures;
-	private long _lastUptimeSeconds = -1;
+	private long _peakUsers;
 	private bool _restartDetected;
-	private long _baselineUsers = -1;
-	private long _finalUsers;
-	private long _finalRooms;
+
+	private int _samples;
+	private int _started;
+	private double _sumCpu;
+	private long _totalEventFailures;
+
+	/// <summary>Stops streaming and writes <c>server-summary.json</c>.</summary>
+	public async ValueTask DisposeAsync()
+	{
+		await _stop.CancelAsync();
+		try
+		{
+			await _loop;
+		}
+		catch (Exception)
+		{
+			// Shutting down.
+		}
+
+		Directory.CreateDirectory(reportDirectory);
+		var summaryPath = Path.Combine(reportDirectory, "server-summary.json");
+		await File.WriteAllTextAsync(summaryPath, JsonSerializer.Serialize(Summary(), Json), new UTF8Encoding(false));
+		_stop.Dispose();
+	}
 
 	/// <summary>Registers every server gauge on an NBomber scenario init context.</summary>
 	public void RegisterMetrics(IScenarioInitContext context)
 	{
-		void Register(string name, string unit)
-		{
-			var gauge = Metric.CreateGauge(name, unit);
-			gauge.Set(0);
-			context.RegisterMetric(gauge);
-			_gauges[name] = value => gauge.Set(value);
-		}
-
 		Register(CpuGaugeName, "%");
 		Register(WorkingSetGaugeName, "MB");
 		Register(GcHeapGaugeName, "MB");
@@ -110,6 +125,15 @@ public sealed class DiagnosticsMonitor(
 		Register(DbP95GaugeName, "us");
 		Register(EventsPendingGaugeName, "events");
 		Register(EventsFailuresGaugeName, "count");
+		return;
+
+		void Register(string name, string unit)
+		{
+			var gauge = Metric.CreateGauge(name, unit);
+			gauge.Set(0);
+			context.RegisterMetric(gauge);
+			_gauges[name] = value => gauge.Set(value);
+		}
 	}
 
 	/// <summary>Starts streaming diagnostics in the background (idempotent).</summary>
@@ -149,29 +173,11 @@ public sealed class DiagnosticsMonitor(
 		}
 	}
 
-	/// <summary>Stops streaming and writes <c>server-summary.json</c>.</summary>
-	public async ValueTask DisposeAsync()
-	{
-		await _stop.CancelAsync();
-		try
-		{
-			await _loop;
-		}
-		catch (Exception)
-		{
-			// Shutting down.
-		}
-
-		Directory.CreateDirectory(reportDirectory);
-		var summaryPath = Path.Combine(reportDirectory, "server-summary.json");
-		await File.WriteAllTextAsync(summaryPath, JsonSerializer.Serialize(Summary(), Json), new UTF8Encoding(false));
-		_stop.Dispose();
-	}
-
 	private async Task RunAsync(CancellationToken ct)
 	{
 		var jsonlPath = Path.Combine(reportDirectory, "diagnostics.jsonl");
-		await using var writer = new StreamWriter(jsonlPath, append: true, new UTF8Encoding(false)) { AutoFlush = true };
+		await using var writer = new StreamWriter(jsonlPath, true, new UTF8Encoding(false));
+		writer.AutoFlush = true;
 
 		while (!ct.IsCancellationRequested)
 		{
@@ -185,7 +191,7 @@ public sealed class DiagnosticsMonitor(
 					continue;
 				}
 
-				using var stream = await rest.OpenStreamAsync("/v1/diagnostics", authorize: true, ct);
+				using var stream = await rest.OpenStreamAsync("/v1/diagnostics", true, ct);
 				await foreach (var ev in stream.ReadAsync(ct))
 				{
 					await writer.WriteLineAsync(JsonSerializer.Serialize(new
@@ -216,7 +222,6 @@ public sealed class DiagnosticsMonitor(
 			finally
 			{
 				if (rest.Token is not null)
-				{
 					try
 					{
 						using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
@@ -226,7 +231,6 @@ public sealed class DiagnosticsMonitor(
 					{
 						// Best effort.
 					}
-				}
 			}
 		}
 	}
@@ -262,7 +266,7 @@ public sealed class DiagnosticsMonitor(
 		var gcMb = ReadDouble(sample, "gc", "heapBytes") / bytesPerMb;
 		var tpPending = ReadLong(sample, "threadpool", "pendingWorkItems");
 		var excRate = ReadDouble(sample, "exceptions", "perSecond");
-		var uptime = ReadLong(sample, "runtime", "uptimeSeconds", fallback: -1);
+		var uptime = ReadLong(sample, "runtime", "uptimeSeconds", -1);
 		var users = ReadLong(sample, "application", "usersOnline");
 		var rooms = ReadLong(sample, "application", "rooms");
 		var rounds = ReadLong(sample, "application", "roundsInProgress");

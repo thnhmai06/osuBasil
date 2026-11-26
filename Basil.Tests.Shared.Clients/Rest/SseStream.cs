@@ -7,7 +7,7 @@ namespace Basil.Tests.Shared.Clients.Rest;
 /// <summary>One event of a Server-Sent Events stream.</summary>
 /// <param name="Event">The event name; <c>message</c> when the server named none.</param>
 /// <param name="Data">The data lines joined by line feeds.</param>
-/// <param name="Id">The event id, or <see langword="null"/> when it has none.</param>
+/// <param name="Id">The event id, or <see langword="null" /> when it has none.</param>
 public sealed record SseEvent(string Event, string Data, string? Id);
 
 /// <summary>An open <c>text/event-stream</c> response, read event by event until it ends or the caller stops reading.</summary>
@@ -51,7 +51,8 @@ public sealed class SseStream(HttpRequestMessage request, HttpResponseMessage re
 
 			if (line.Length == 0)
 			{
-				if (data.Length > 0) yield return new SseEvent(name.Length == 0 ? "message" : name, data.ToString(), id);
+				if (data.Length > 0)
+					yield return new SseEvent(name.Length == 0 ? "message" : name, data.ToString(), id);
 
 				name = string.Empty;
 				id = null;

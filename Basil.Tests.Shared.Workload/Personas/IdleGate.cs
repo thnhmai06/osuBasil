@@ -1,17 +1,20 @@
 namespace Basil.Tests.Shared.Workload.Personas;
 
-/// <summary>Arbitrates a scenario copy's held resource between its owner and the sweeps of other copies, so the owner never runs on a resource that was reaped and exactly one party tears it down.</summary>
+/// <summary>
+///     Arbitrates a scenario copy's held resource between its owner and the sweeps of other copies, so the owner
+///     never runs on a resource that was reaped and exactly one party tears it down.
+/// </summary>
 internal sealed class IdleGate
 {
 	private const int Free = 0;
 	private const int Busy = 1;
 	private const int Reaped = 2;
+	private long _lastExit = Environment.TickCount64;
 
 	// A gate starts busy: its owner creates it in the middle of an invocation.
 	private int _state = Busy;
-	private long _lastExit = Environment.TickCount64;
 
-	/// <summary>Claims the resource for an invocation; returns <see langword="false"/> when it was reaped.</summary>
+	/// <summary>Claims the resource for an invocation; returns <see langword="false" /> when it was reaped.</summary>
 	public bool TryEnter()
 	{
 		return Interlocked.CompareExchange(ref _state, Busy, Free) == Free;
@@ -24,7 +27,10 @@ internal sealed class IdleGate
 		Volatile.Write(ref _state, Free);
 	}
 
-	/// <summary>Claims the resource for teardown when no invocation is using it and it has been idle for at least <paramref name="idle"/>.</summary>
+	/// <summary>
+	///     Claims the resource for teardown when no invocation is using it and it has been idle for at least
+	///     <paramref name="idle" />.
+	/// </summary>
 	public bool TryReap(TimeSpan idle)
 	{
 		if (IsFresh(idle) || Interlocked.CompareExchange(ref _state, Reaped, Free) != Free) return false;

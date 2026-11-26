@@ -1,6 +1,9 @@
 namespace Basil.Tests.Shared.Clients.OsuWeb;
 
-/// <summary>Reads the pictures and audio the image hosts serve; every call counts the bytes of the answer instead of keeping them.</summary>
+/// <summary>
+///     Reads the pictures and audio the image hosts serve; every call counts the bytes of the answer instead of
+///     keeping them.
+/// </summary>
 /// <remarks>These hosts need no sign-in.</remarks>
 public sealed class AssetClient(Endpoint endpoint, HttpClient http)
 {

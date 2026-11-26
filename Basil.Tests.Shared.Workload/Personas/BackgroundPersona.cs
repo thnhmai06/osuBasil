@@ -9,17 +9,21 @@ using NBomber.Contracts;
 
 namespace Basil.Tests.Shared.Workload.Personas;
 
-/// <summary>Covers every secondary feature at a low real rate: presence, friends, PMs, channels, search, /d/, difficulty-rating, assets, avatar/screenshot uploads, BasilBot and REST reads, on a pool of signed-in sessions that cycles borrow and return.</summary>
+/// <summary>
+///     Covers every secondary feature at a low real rate: presence, friends, PMs, channels, search, /d/,
+///     difficulty-rating, assets, avatar/screenshot uploads, BasilBot and REST reads, on a pool of signed-in sessions that
+///     cycles borrow and return.
+/// </summary>
 public sealed class BackgroundPersona(WorkloadContext workload)
 {
 	private static readonly string[] CoverVariants = ["cover", "card", "list", "slimcover"];
 
 	private readonly ConcurrentDictionary<long, Session> _sessions = new();
 	private readonly CancellationTokenSource _stopKeepAlive = new();
-	private IScenarioContext? _latest;
-	private Task? _keepAlive;
-	private long _nextId;
 	private volatile bool _closing;
+	private Task? _keepAlive;
+	private IScenarioContext? _latest;
+	private long _nextId;
 
 	/// <summary>Runs one rotating background activity cycle on a free pooled session, signing a new one in when none is free.</summary>
 	public async Task RunCycleAsync(IScenarioContext context)
@@ -66,7 +70,6 @@ public sealed class BackgroundPersona(WorkloadContext workload)
 		_closing = true;
 		await _stopKeepAlive.CancelAsync();
 		if (_keepAlive is not null)
-		{
 			try
 			{
 				await _keepAlive.WaitAsync(TimeSpan.FromSeconds(5));
@@ -75,7 +78,6 @@ public sealed class BackgroundPersona(WorkloadContext workload)
 			{
 				// Best effort.
 			}
-		}
 
 		var all = _sessions.Values.ToArray();
 		_sessions.Clear();
@@ -123,7 +125,6 @@ public sealed class BackgroundPersona(WorkloadContext workload)
 		while (!stop.IsCancellationRequested)
 		{
 			if (_latest is { } context)
-			{
 				await Task.WhenAll(_sessions.Values.Select(async session =>
 				{
 					if (!session.TryBorrow()) return;
@@ -142,7 +143,6 @@ public sealed class BackgroundPersona(WorkloadContext workload)
 						session.Return();
 					}
 				}));
-			}
 
 			await WorkloadContext.SafeDelayAsync(workload.PollInterval, stop);
 		}
@@ -168,15 +168,11 @@ public sealed class BackgroundPersona(WorkloadContext workload)
 		// 1. Presence, stats, friends, PMs, channels, BasilBot via osu! stable.
 		var onlineIds = workload.World.PickOnlineUserIds(random, 8);
 		if (onlineIds.Count > 0)
-		{
 			stable.Enqueue(
 				ClientPackets.UserPresenceRequest(onlineIds),
 				ClientPackets.UserStatsRequest(onlineIds));
-		}
 		else
-		{
 			stable.Enqueue(ClientPackets.UserPresenceRequestAll());
-		}
 
 		stable.Enqueue(ClientPackets.ChannelJoin("#osu"));
 		await workload.PollStableAsync(stable, context, ct);
@@ -191,7 +187,7 @@ public sealed class BackgroundPersona(WorkloadContext workload)
 			await workload.PollStableAsync(stable, context, ct);
 		}
 
-		var botCmd = (random.Next(4)) switch
+		var botCmd = random.Next(4) switch
 		{
 			0 => "!roll",
 			1 => "!help",
@@ -218,7 +214,7 @@ public sealed class BackgroundPersona(WorkloadContext workload)
 
 		await StepExecution.RunAsync(Channels.OsuWeb, context, workload.Outcomes, async () =>
 		{
-			var r = await web.SearchAsync(set.Artist.Split(' ')[0], status: 4, mode: -1, page: 0, ct);
+			var r = await web.SearchAsync(set.Artist.Split(' ')[0], 4, -1, 0, ct);
 			return OutcomeClassifier.FromHttpStatus(r.Status);
 		}, ct);
 
@@ -230,7 +226,7 @@ public sealed class BackgroundPersona(WorkloadContext workload)
 
 		await StepExecution.RunAsync(Channels.OsuWeb, context, workload.Outcomes, async () =>
 		{
-			var r = await web.GetDifficultyRatingAsync(map.Id, mods: 0, ct);
+			var r = await web.GetDifficultyRatingAsync(map.Id, 0, ct);
 			return OutcomeClassifier.FromHttpStatus(r.Status);
 		}, ct);
 
@@ -245,19 +241,19 @@ public sealed class BackgroundPersona(WorkloadContext workload)
 		{
 			var variant = CoverVariants[random.Next(CoverVariants.Length)];
 			var r = await assets.GetCoverAsync(set.Id, variant, ct);
-			return OutcomeClassifier.FromHttpStatus(r.Status, refusalExpected: r.Status == HttpStatusCode.NotFound, bytes: r.Body);
+			return OutcomeClassifier.FromHttpStatus(r.Status, r.Status == HttpStatusCode.NotFound, r.Body);
 		}, ct);
 
 		await StepExecution.RunAsync(Channels.Asset, context, workload.Outcomes, async () =>
 		{
-			var r = await assets.GetThumbnailAsync(set.Id, large: random.Next(2) == 0, ct);
-			return OutcomeClassifier.FromHttpStatus(r.Status, refusalExpected: r.Status == HttpStatusCode.NotFound, bytes: r.Body);
+			var r = await assets.GetThumbnailAsync(set.Id, random.Next(2) == 0, ct);
+			return OutcomeClassifier.FromHttpStatus(r.Status, r.Status == HttpStatusCode.NotFound, r.Body);
 		}, ct);
 
 		await StepExecution.RunAsync(Channels.Asset, context, workload.Outcomes, async () =>
 		{
 			var r = await assets.GetPreviewAsync(set.Id, ct);
-			return OutcomeClassifier.FromHttpStatus(r.Status, refusalExpected: r.Status == HttpStatusCode.NotFound, bytes: r.Body);
+			return OutcomeClassifier.FromHttpStatus(r.Status, r.Status == HttpStatusCode.NotFound, r.Body);
 		}, ct);
 
 		if (workload.WorldData.Seasonals.Count > 0)
@@ -266,19 +262,17 @@ public sealed class BackgroundPersona(WorkloadContext workload)
 			await StepExecution.RunAsync(Channels.Asset, context, workload.Outcomes, async () =>
 			{
 				var r = await assets.GetMenuImageAsync($"seasonals/{seasonal}", ct);
-				return OutcomeClassifier.FromHttpStatus(r.Status, refusalExpected: r.Status == HttpStatusCode.NotFound, bytes: r.Body);
+				return OutcomeClassifier.FromHttpStatus(r.Status, r.Status == HttpStatusCode.NotFound, r.Body);
 			}, ct);
 		}
 
 		// 4. Low-rate /d/ no-video download (reported separately under "download").
 		if (context.InvocationNumber % 4 == 0)
-		{
 			await StepExecution.RunAsync(Channels.Download, context, workload.Outcomes, async () =>
 			{
-				var r = await web.DownloadSetAsync(set.Id, withVideo: false, ct);
+				var r = await web.DownloadSetAsync(set.Id, false, ct);
 				return OutcomeClassifier.FromHttpStatus(r.Status, bytes: r.Body);
 			}, ct);
-		}
 
 		// 5. Low-rate screenshot upload and read (reported separately under "upload").
 		if (context.InvocationNumber % 5 == 0)
@@ -294,13 +288,11 @@ public sealed class BackgroundPersona(WorkloadContext workload)
 		}
 
 		if (workload.World.PickScreenshot(random) is { } existingScreenshot)
-		{
 			await StepExecution.RunAsync(Channels.Asset, context, workload.Outcomes, async () =>
 			{
 				var r = await assets.GetScreenshotAsync(existingScreenshot, ct);
-				return OutcomeClassifier.FromHttpStatus(r.Status, refusalExpected: r.Status == HttpStatusCode.NotFound, bytes: r.Body);
+				return OutcomeClassifier.FromHttpStatus(r.Status, r.Status == HttpStatusCode.NotFound, r.Body);
 			}, ct);
-		}
 
 		// 6. REST reads and occasional avatar upload; the REST session is signed in once and kept with the pooled session.
 		if (rest.Token is null)
@@ -335,22 +327,27 @@ public sealed class BackgroundPersona(WorkloadContext workload)
 			await StepExecution.RunAsync(Channels.Rest, context, workload.Outcomes, async () =>
 			{
 				var r = await session.Rest.GetAsync(path, ct);
-				if (r.Status == HttpStatusCode.Unauthorized) session.Rest = new RestClient(workload.Endpoint, workload.Http);
+				if (r.Status == HttpStatusCode.Unauthorized)
+					session.Rest = new RestClient(workload.Endpoint, workload.Http);
 				return OutcomeClassifier.FromRest(r);
 			}, ct);
 		}
 
 		if (context.InvocationNumber % 6 == 0)
-		{
 			await StepExecution.RunAsync(Channels.Upload, context, workload.Outcomes, async () =>
 			{
 				var r = await rest.PutAvatarAsync(stable.UserId, SampleFiles.Png, ct);
 				return OutcomeClassifier.FromRest(r);
 			}, ct);
-		}
 	}
 
-	private sealed class Session(long id, AccountLease lease, StableClient stable, OsuWebClient web, AssetClient assets, RestClient rest)
+	private sealed class Session(
+		long id,
+		AccountLease lease,
+		StableClient stable,
+		OsuWebClient web,
+		AssetClient assets,
+		RestClient rest)
 	{
 		private int _busy;
 		private long _lastUsed = Environment.TickCount64;

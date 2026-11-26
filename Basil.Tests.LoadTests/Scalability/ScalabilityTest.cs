@@ -5,7 +5,10 @@ using NBomber.Contracts;
 
 namespace Basil.Tests.LoadTests.Scalability;
 
-/// <summary>Scalability test: runs the Capacity profile with Basil pinned to 1, 2 or 4 cores so scaling efficiency can be compared across runs.</summary>
+/// <summary>
+///     Scalability test: runs the Capacity profile with Basil pinned to 1, 2 or 4 cores so scaling efficiency can be
+///     compared across runs.
+/// </summary>
 public sealed class ScalabilityTest : ILoadTest
 {
 	private readonly CapacityTest _capacity = new();

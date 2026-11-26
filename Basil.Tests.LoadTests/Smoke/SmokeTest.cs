@@ -5,7 +5,10 @@ using NBomber.CSharp;
 
 namespace Basil.Tests.LoadTests.Smoke;
 
-/// <summary>T8 smoke run: two 2v2 tournament rooms (one IRC referee, one REST referee), 20 free players and edge cases for two minutes with zero errors.</summary>
+/// <summary>
+///     T8 smoke run: two 2v2 tournament rooms (one IRC referee, one REST referee), 20 free players and edge cases for
+///     two minutes with zero errors.
+/// </summary>
 public sealed class SmokeTest : ILoadTest
 {
 	/// <summary>The number of rooms the smoke run plays at once; the server-side checks expect that many matches with rounds.</summary>
@@ -16,8 +19,8 @@ public sealed class SmokeTest : ILoadTest
 	private static readonly TimeSpan RampDown = TimeSpan.FromSeconds(10);
 
 	private static readonly MatchRoomConfig RoomConfig = new(
-		MinPlayers: 4, MaxPlayers: 4, RoundsPerCycle: 2,
-		TourneyClusters: 0, SpectatorsPerRoom: 1, OverlayViewersPerRoom: 2);
+		4, 4, 2,
+		0, 1, 2);
 
 	public string Name => "smoke";
 
@@ -52,18 +55,16 @@ public sealed class SmokeTest : ILoadTest
 				Simulation.RampingConstant(Rooms, Ramp),
 				Simulation.KeepConstant(Rooms, duration),
 				Simulation.RampingConstant(0, RampDown))
-			.WithThresholds(SloThresholds.ForScenario(includePoll: true, includeSubmit: true, includeRest: true,
+			.WithThresholds(SloThresholds.ForScenario(true, true, includeRest: true,
 				includeLogin: true, includeServerCpu: monitor is not null, maxErrorPercent: 0.01));
 
 		if (monitor is not null)
-		{
 			roomsScenario = roomsScenario.WithInit(ctx =>
 			{
 				monitor.RegisterMetrics(ctx);
 				monitor.Start();
 				return Task.CompletedTask;
 			});
-		}
 
 		var freeScenario = Scenario.Create("free_player", async ctx =>
 			{
@@ -76,7 +77,7 @@ public sealed class SmokeTest : ILoadTest
 				Simulation.RampingConstant(FreePlayers, Ramp),
 				Simulation.KeepConstant(FreePlayers, duration),
 				Simulation.RampingConstant(0, RampDown))
-			.WithThresholds(SloThresholds.ForScenario(includePoll: true, includeSubmit: true, includeGetScores: true,
+			.WithThresholds(SloThresholds.ForScenario(true, true, true,
 				includeLogin: true, maxErrorPercent: 0.01));
 
 		var edgeScenario = Scenario.Create("edge_cases", async ctx =>
@@ -85,7 +86,7 @@ public sealed class SmokeTest : ILoadTest
 				return Response.Ok();
 			})
 			.WithoutWarmUp()
-			.WithClean(_ => edgeCases.ShutdownAsync())
+			.WithClean(_ => EdgeCasesPersona.ShutdownAsync())
 			.WithLoadSimulations(Injection.PerMinute(2, Ramp + duration))
 			.WithThresholds(SloThresholds.ForScenario(maxErrorPercent: 0.01));
 
