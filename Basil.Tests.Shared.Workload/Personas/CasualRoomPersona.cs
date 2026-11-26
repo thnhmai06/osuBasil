@@ -23,6 +23,8 @@ public sealed class CasualRoomPersona(WorkloadContext workload, int playersPerRo
 		var instance = context.ScenarioInfo.InstanceNumber;
 		var random = SeededRandom.For(workload.Seed, context.ScenarioInfo.ScenarioName, instance, context.InvocationNumber);
 
+		await ReapIdleAsync(instance);
+
 		var room = await EnsureRoomAsync(instance, random, context, ct);
 		if (room is null)
 		{
@@ -30,6 +32,18 @@ public sealed class CasualRoomPersona(WorkloadContext workload, int playersPerRo
 			return;
 		}
 
+		try
+		{
+			await PlayRoundAsync(room, context, ct);
+		}
+		finally
+		{
+			room.Gate.Exit();
+		}
+	}
+
+	private async Task PlayRoundAsync(Room room, IScenarioContext context, CancellationToken ct)
+	{
 		var round = room.Rounds++;
 		var clients = room.Clients;
 		var host = clients[0];
@@ -59,14 +73,41 @@ public sealed class CasualRoomPersona(WorkloadContext workload, int playersPerRo
 		await Task.WhenAll(all.Select(CloseAsync));
 	}
 
+	/// <summary>Closes the rooms of the other scenario copies that have not run for longer than <see cref="WorkloadContext.IdleReapAfter"/>; never throws.</summary>
+	private async Task ReapIdleAsync(int instance)
+	{
+		foreach (var pair in _rooms)
+		{
+			if (pair.Key == instance || !pair.Value.Gate.TryReap(workload.IdleReapAfter)) continue;
+			if (!_rooms.TryRemove(pair)) continue;
+
+			try
+			{
+				await CloseAsync(pair.Value);
+			}
+			catch (Exception)
+			{
+				// Best effort.
+			}
+		}
+	}
+
 	private async Task<Room?> EnsureRoomAsync(int instance, Random random, IScenarioContext context, CancellationToken ct)
 	{
 		if (_rooms.TryGetValue(instance, out var existing))
 		{
-			if (!existing.Clients.Any(workload.IsDropped)) return existing;
+			if (!existing.Gate.TryEnter())
+			{
+				// Another invocation of this persona reaped the room while it sat idle.
+				_rooms.TryRemove(new KeyValuePair<int, Room>(instance, existing));
+			}
+			else
+			{
+				if (!existing.Clients.Any(workload.IsDropped)) return existing;
 
-			_rooms.TryRemove(instance, out _);
-			await CloseAsync(existing);
+				_rooms.TryRemove(instance, out _);
+				await CloseAsync(existing);
+			}
 		}
 
 		var count = Math.Max(2, playersPerRoom);
@@ -174,6 +215,8 @@ public sealed class CasualRoomPersona(WorkloadContext workload, int playersPerRo
 
 	private sealed class Room(List<AccountLease> leases, BeatmapEntry map)
 	{
+		public IdleGate Gate { get; } = new();
+
 		public List<AccountLease> Leases { get; } = leases;
 
 		public BeatmapEntry Map { get; } = map;

@@ -74,6 +74,9 @@ public sealed class WorkloadContext(
 	/// <summary>Gets or sets the timeout for waiting on server responses.</summary>
 	public TimeSpan WaitTimeout { get; init; } = TimeSpan.FromSeconds(15);
 
+	/// <summary>Gets how long a scenario copy's held sessions may sit unused before another invocation of the same persona signs them out: three rounds including their waits, so a copy that NBomber removed on ramp-down stops loading the server while a copy between two invocations is never reaped.</summary>
+	public TimeSpan IdleReapAfter => 3 * (RoundDuration + WaitTimeout);
+
 	/// <summary>Creates a token linked to both NBomber's scenario cancellation and the run abort guard.</summary>
 	public CancellationTokenSource LinkToken(IScenarioContext context)
 	{

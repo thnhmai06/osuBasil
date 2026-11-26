@@ -54,6 +54,7 @@ public sealed class BackgroundPersona(WorkloadContext workload)
 			}
 			else
 			{
+				session.Touch();
 				session.Return();
 			}
 		}
@@ -115,7 +116,8 @@ public sealed class BackgroundPersona(WorkloadContext workload)
 		return session;
 	}
 
-	// An idle osu! client still polls; without it the server would end the pooled sessions as silent.
+	// An idle osu! client still polls; without it the server would end the pooled sessions as silent. A session no cycle has used for
+	// workload.IdleReapAfter is signed out instead, so the pool shrinks with the rate.
 	private async Task KeepAliveAsync(CancellationToken stop)
 	{
 		while (!stop.IsCancellationRequested)
@@ -125,6 +127,12 @@ public sealed class BackgroundPersona(WorkloadContext workload)
 				await Task.WhenAll(_sessions.Values.Select(async session =>
 				{
 					if (!session.TryBorrow()) return;
+					if (session.IdleFor() > workload.IdleReapAfter)
+					{
+						if (_sessions.TryRemove(session.Id, out _)) await CloseAsync(session);
+						return;
+					}
+
 					try
 					{
 						await workload.PollStableAsync(session.Stable, context, stop);
@@ -345,6 +353,7 @@ public sealed class BackgroundPersona(WorkloadContext workload)
 	private sealed class Session(long id, AccountLease lease, StableClient stable, OsuWebClient web, AssetClient assets, RestClient rest)
 	{
 		private int _busy;
+		private long _lastUsed = Environment.TickCount64;
 
 		public long Id { get; } = id;
 
@@ -361,6 +370,17 @@ public sealed class BackgroundPersona(WorkloadContext workload)
 		public bool TryBorrow()
 		{
 			return Interlocked.CompareExchange(ref _busy, 1, 0) == 0;
+		}
+
+		/// <summary>Records that a cycle used the session, restarting its idle time.</summary>
+		public void Touch()
+		{
+			Volatile.Write(ref _lastUsed, Environment.TickCount64);
+		}
+
+		public TimeSpan IdleFor()
+		{
+			return TimeSpan.FromMilliseconds(Environment.TickCount64 - Volatile.Read(ref _lastUsed));
 		}
 
 		public void Return()

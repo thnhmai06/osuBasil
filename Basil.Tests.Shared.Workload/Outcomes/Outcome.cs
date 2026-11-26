@@ -234,7 +234,6 @@ public static class OutcomeClassifier
 	}
 }
 
-
 /// <summary>Runs one action as an NBomber step on the named channel and records its classified outcome.</summary>
 public static class StepExecution
 {

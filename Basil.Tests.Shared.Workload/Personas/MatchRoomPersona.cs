@@ -49,6 +49,8 @@ public sealed partial class MatchRoomPersona(WorkloadContext workload, MatchRoom
 		var instance = context.ScenarioInfo.InstanceNumber;
 		var random = SeededRandom.For(workload.Seed, context.ScenarioInfo.ScenarioName, instance, context.InvocationNumber);
 
+		await ReapIdleAsync(instance);
+
 		var room = await EnsureRoomAsync(instance, random, context, ct);
 		if (room is null)
 		{
@@ -56,10 +58,17 @@ public sealed partial class MatchRoomPersona(WorkloadContext workload, MatchRoom
 			return;
 		}
 
-		room.Context = context;
-		foreach (var loop in room.Loops) loop.EnsureRunning();
+		try
+		{
+			room.Context = context;
+			foreach (var loop in room.Loops) loop.EnsureRunning();
 
-		await PlayRoundAsync(room, random, context, ct);
+			await PlayRoundAsync(room, random, context, ct);
+		}
+		finally
+		{
+			room.Gate.Exit();
+		}
 	}
 
 	/// <summary>Closes every room this persona still holds, signs every session out and returns every account lease; best effort, never throws.</summary>
@@ -71,14 +80,41 @@ public sealed partial class MatchRoomPersona(WorkloadContext workload, MatchRoom
 		await Task.WhenAll(all.Select(TeardownAsync));
 	}
 
+	/// <summary>Tears down the rooms of the other scenario copies that have not run for longer than <see cref="WorkloadContext.IdleReapAfter"/>; never throws.</summary>
+	private async Task ReapIdleAsync(int instance)
+	{
+		foreach (var pair in _rooms)
+		{
+			if (pair.Key == instance || !pair.Value.Gate.TryReap(workload.IdleReapAfter)) continue;
+			if (!_rooms.TryRemove(pair)) continue;
+
+			try
+			{
+				await TeardownAsync(pair.Value);
+			}
+			catch (Exception)
+			{
+				// Best effort.
+			}
+		}
+	}
+
 	private async Task<Room?> EnsureRoomAsync(int instance, Random random, IScenarioContext context, CancellationToken ct)
 	{
 		if (_rooms.TryGetValue(instance, out var existing))
 		{
-			if (!existing.Broken && !existing.Players.Any(workload.IsDropped)) return existing;
+			if (!existing.Gate.TryEnter())
+			{
+				// Another invocation of this persona reaped the room while it sat idle.
+				_rooms.TryRemove(new KeyValuePair<int, Room>(instance, existing));
+			}
+			else
+			{
+				if (!existing.Broken && !existing.Players.Any(workload.IsDropped)) return existing;
 
-			_rooms.TryRemove(instance, out _);
-			await TeardownAsync(existing);
+				_rooms.TryRemove(instance, out _);
+				await TeardownAsync(existing);
+			}
 		}
 
 		var room = await BuildRoomAsync(instance, random, context, ct);
@@ -587,6 +623,8 @@ public sealed partial class MatchRoomPersona(WorkloadContext workload, MatchRoom
 			PlayerLeases = playerLeases;
 			_stop = CancellationTokenSource.CreateLinkedTokenSource(scenarioStopped, runAborted);
 		}
+
+		public IdleGate Gate { get; } = new();
 
 		public AccountLease RefereeLease { get; }
 
