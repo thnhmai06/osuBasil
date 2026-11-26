@@ -36,7 +36,7 @@ public sealed class TourneyClusterPersona(WorkloadContext workload, int slotsToW
 			cluster = null;
 		}
 
-		var room = cluster is { RoomId: > 0 } && workload.World.Rooms.TryGetValue(cluster.RoomId, out var current)
+		var room = cluster is { WireId: > 0 } && workload.World.Rooms.TryGetValue(cluster.WireId, out var current)
 			? current
 			: workload.World.PickRoom(random, true) ?? workload.World.PickRoom(random);
 		if (room is null || room.PlayerIds.Count == 0)
@@ -58,7 +58,7 @@ public sealed class TourneyClusterPersona(WorkloadContext workload, int slotsToW
 			_clusters[instance] = cluster;
 		}
 
-		if (cluster.RoomId != room.RoomId) await AttachAsync(cluster, room, context, ct);
+		if (cluster.WireId != room.WireId) await AttachAsync(cluster, room, context, ct);
 
 		var ticks = Math.Max(3,
 			(int)(workload.RoundDuration.TotalSeconds / Math.Max(0.5, workload.PollInterval.TotalSeconds)));
@@ -104,20 +104,20 @@ public sealed class TourneyClusterPersona(WorkloadContext workload, int slotsToW
 
 	private async Task AttachAsync(Cluster cluster, LiveRoom room, IScenarioContext context, CancellationToken ct)
 	{
-		if (cluster.RoomId > 0)
+		if (cluster.WireId > 0)
 		{
-			cluster.Manager.Enqueue(ClientPackets.TournamentLeaveMatchChannel(cluster.RoomId));
+			cluster.Manager.Enqueue(ClientPackets.TournamentLeaveMatchChannel(cluster.WireId));
 			foreach (var child in cluster.Children) child.Enqueue(ClientPackets.StopSpectating());
 		}
 
 		cluster.Manager.Enqueue(
-			ClientPackets.TournamentMatchInfoRequest(room.RoomId),
-			ClientPackets.TournamentJoinMatchChannel(room.RoomId));
+			ClientPackets.TournamentMatchInfoRequest(room.WireId),
+			ClientPackets.TournamentJoinMatchChannel(room.WireId));
 		for (var i = 0; i < cluster.Children.Count && i < room.PlayerIds.Count; i++)
 			cluster.Children[i].Enqueue(ClientPackets.StartSpectating(room.PlayerIds[i]));
 
 		await PollAllAsync(cluster, context, ct);
-		cluster.RoomId = room.RoomId;
+		cluster.WireId = room.WireId;
 	}
 
 	private async Task PollAllAsync(Cluster cluster, IScenarioContext context, CancellationToken ct)
@@ -148,7 +148,7 @@ public sealed class TourneyClusterPersona(WorkloadContext workload, int slotsToW
 
 		public List<StableClient> Children { get; } = [];
 
-		public int RoomId { get; set; }
+		public int WireId { get; set; }
 
 		public IEnumerable<StableClient> All => Children.Prepend(Manager);
 	}

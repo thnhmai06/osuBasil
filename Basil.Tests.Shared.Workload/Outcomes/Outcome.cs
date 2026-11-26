@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Authentication;
+using Basil.Protocol.Irc;
 using Basil.Protocol.Irc.Models;
 using Basil.Tests.Shared.Clients.Irc;
 using Basil.Tests.Shared.Clients.Rest;
@@ -45,6 +46,9 @@ public static class Channels
 	public const string Rest = "rest";
 
 	public const string Irc = "irc";
+
+	/// <summary>Joining a multiplayer room from the osu! client, the lobby listing included.</summary>
+	public const string Room = "room";
 
 	public const string Sse = "sse";
 
@@ -239,10 +243,25 @@ public static class OutcomeClassifier
 			: StepOutcome.Error($"irc_{registration.Line.Command}");
 	}
 
+	/// <summary>
+	///     Classifies a notice the server answered instead of taking a line: shed when it is too busy, otherwise
+	///     throttled; <see langword="null" /> when the line is no notice.
+	/// </summary>
+	public static StepOutcome? FromIrcNotice(IrcMessage line)
+	{
+		if (line.Command != IrcVerb.Notice) return null;
+
+		return line.Parameters[^1].Contains("busy", StringComparison.OrdinalIgnoreCase)
+			? StepOutcome.Shed("irc_busy")
+			: StepOutcome.Throttled("irc_notice");
+	}
+
 	/// <summary>Classifies an IRC command reply.</summary>
 	public static StepOutcome FromIrcReply(IrcMessage? reply, bool refusalExpected = false)
 	{
 		if (reply is null) return StepOutcome.Error("irc_timeout");
+		if (FromIrcNotice(reply) is { } turnedAway) return turnedAway;
+
 		var isRefusal = reply.Command is ['4' or '5', _, _];
 		if (!isRefusal) return StepOutcome.Ok(reply.Command);
 

@@ -6,8 +6,13 @@ using NBomber.Contracts;
 namespace Basil.Tests.Shared.Workload.World;
 
 /// <summary>A live multiplayer room tracked by the shared world.</summary>
+/// <param name="WireId">The room number of the osu! packets, reused after a room closes.</param>
+/// <param name="MatchId">
+///     The match id of the HTTP API and IRC, or 0 when the world does not know it (a room an osu! client made).
+/// </param>
 public sealed record LiveRoom(
-	int RoomId,
+	int WireId,
+	int MatchId,
 	string Name,
 	string Password,
 	int BeatmapId,
@@ -41,13 +46,13 @@ public sealed class WorldState
 	/// <summary>Registers or updates a live room.</summary>
 	public void PutRoom(LiveRoom room)
 	{
-		_rooms[room.RoomId] = room;
+		_rooms[room.WireId] = room;
 	}
 
 	/// <summary>Removes a closed room.</summary>
-	public void RemoveRoom(int roomId)
+	public void RemoveRoom(int wireId)
 	{
-		_rooms.TryRemove(roomId, out _);
+		_rooms.TryRemove(wireId, out _);
 	}
 
 	/// <summary>Registers or updates an online user.</summary>
@@ -79,10 +84,11 @@ public sealed class WorldState
 	}
 
 	/// <summary>Picks a live room, optionally filtering to tournament rooms.</summary>
-	public LiveRoom? PickRoom(Random random, bool? tournamentOnly = null)
+	public LiveRoom? PickRoom(Random random, bool? tournamentOnly = null, bool withMatchId = false)
 	{
 		var snapshot = _rooms.Values
 			.Where(room => tournamentOnly is null || room.IsTournament == tournamentOnly.Value)
+			.Where(room => !withMatchId || room.MatchId > 0)
 			.ToArray();
 		return snapshot.Length == 0 ? null : snapshot[random.Next(snapshot.Length)];
 	}

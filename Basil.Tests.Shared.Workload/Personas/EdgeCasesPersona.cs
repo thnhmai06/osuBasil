@@ -71,9 +71,9 @@ public sealed class EdgeCasesPersona(WorkloadContext workload)
 					{
 						var reply = await web.SubmitScoreAsync(score, replay, ct);
 						var classified = OutcomeClassifier.FromScoreSubmission(reply.Status, reply.Body, true);
-						return classified.Outcome == Outcome.Refused
-							? classified
-							: StepOutcome.Error("expected_duplicate_refusal");
+						return classified.Outcome == Outcome.Ok
+							? StepOutcome.Error("expected_duplicate_refusal")
+							: classified;
 					}, ct);
 
 				// 3. Second login within 30 s while the first session is active (AlreadyOnline; does not trip lockout).
@@ -112,17 +112,13 @@ public sealed class EdgeCasesPersona(WorkloadContext workload)
 					await StepExecution.RunAsync(Channels.Rest, context, workload.Outcomes, async () =>
 					{
 						var reply = await rest.GetAsync("/v1/users/99999999", ct);
-						return reply.Status == HttpStatusCode.NotFound
-							? StepOutcome.Refused("404")
-							: StepOutcome.Error($"expected_404_got_{(int)reply.Status}");
+						return Expected(reply.Status, HttpStatusCode.NotFound);
 					}, ct);
 
 					await StepExecution.RunAsync(Channels.Rest, context, workload.Outcomes, async () =>
 					{
 						using var stream = await rest.OpenStreamAsync("/v1/diagnostics", true, ct);
-						return stream.Status == HttpStatusCode.Forbidden
-							? StepOutcome.Refused("403")
-							: StepOutcome.Error($"expected_403_got_{(int)stream.Status}");
+						return Expected(stream.Status, HttpStatusCode.Forbidden);
 					}, ct);
 
 					await workload.LogoutRestAsync(rest, context);
@@ -134,5 +130,18 @@ public sealed class EdgeCasesPersona(WorkloadContext workload)
 				await workload.LogoutStableAsync(stable, context);
 			}
 		}
+	}
+
+	// A refusal the edge case asks for; a busy or limiting server is counted as such, not as a wrong answer.
+	private static StepOutcome Expected(HttpStatusCode got, HttpStatusCode wanted)
+	{
+		if (got == wanted) return StepOutcome.Refused($"{(int)wanted}");
+
+		return got switch
+		{
+			HttpStatusCode.TooManyRequests => StepOutcome.Throttled(),
+			HttpStatusCode.ServiceUnavailable => StepOutcome.Shed(),
+			_ => StepOutcome.Error($"expected_{(int)wanted}_got_{(int)got}")
+		};
 	}
 }

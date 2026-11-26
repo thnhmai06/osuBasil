@@ -27,7 +27,7 @@ public sealed class OverlayViewerPersona(WorkloadContext workload)
 		var random = SeededRandom.For(workload.Seed, context.ScenarioInfo.ScenarioName, instance,
 			context.InvocationNumber);
 
-		var room = workload.World.PickRoom(random);
+		var room = workload.World.PickRoom(random, withMatchId: true);
 		if (room is null)
 		{
 			await WorkloadContext.SafeDelayAsync(TimeSpan.FromSeconds(1), ct);
@@ -47,7 +47,7 @@ public sealed class OverlayViewerPersona(WorkloadContext workload)
 			return;
 		}
 
-		var path = watchMatchReport ? $"/v1/matches/{room.RoomId}" : $"/v1/rooms/{room.RoomId}/live";
+		var path = watchMatchReport ? $"/v1/matches/{room.MatchId}" : $"/v1/rooms/{room.MatchId}/live";
 		using var window = CancellationTokenSource.CreateLinkedTokenSource(ct);
 		window.CancelAfter(workload.RoundDuration);
 

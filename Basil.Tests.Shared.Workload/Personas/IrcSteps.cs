@@ -25,6 +25,7 @@ internal static class IrcSteps
 		await irc.PrivmsgAsync(target, text, ct);
 		var line = await reply.WaitAsync(timeout, ct);
 		if (line is null) return StepOutcome.Error($"{tag}_timeout");
+		if (OutcomeClassifier.FromIrcNotice(line) is { } turnedAway) return turnedAway;
 		return IsRefusal(line) ? StepOutcome.Error($"{tag}_{line.Command}") : StepOutcome.Ok(tag);
 	}
 
@@ -51,6 +52,7 @@ internal static class IrcSteps
 			         IsRefusal(reply),
 			timeout, ct);
 		if (line is null) return StepOutcome.Error($"{tag}_timeout");
+		if (OutcomeClassifier.FromIrcNotice(line) is { } turnedAway) return turnedAway;
 		return IsRefusal(line) ? StepOutcome.Error($"{tag}_{line.Command}") : StepOutcome.Ok(tag);
 	}
 

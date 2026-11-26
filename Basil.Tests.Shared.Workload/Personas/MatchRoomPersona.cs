@@ -39,6 +39,8 @@ public sealed record MatchRoomConfig(
 /// </summary>
 public sealed partial class MatchRoomPersona(WorkloadContext workload, MatchRoomConfig? config = null)
 {
+	private static readonly TimeSpan RebuildDelay = TimeSpan.FromSeconds(5);
+
 	private readonly MatchRoomConfig _config = config ?? new MatchRoomConfig();
 	private readonly ConcurrentDictionary<int, Room> _rooms = new();
 	private volatile bool _closing;
@@ -65,7 +67,8 @@ public sealed partial class MatchRoomPersona(WorkloadContext workload, MatchRoom
 		var room = await EnsureRoomAsync(instance, random, context, ct);
 		if (room is null)
 		{
-			await WorkloadContext.SafeDelayAsync(TimeSpan.FromSeconds(1), ct);
+			// Opening again signs every member in again, so it waits as long as a busy server asks.
+			await WorkloadContext.SafeDelayAsync(RebuildDelay, ct);
 			return;
 		}
 
@@ -187,12 +190,9 @@ public sealed partial class MatchRoomPersona(WorkloadContext workload, MatchRoom
 				return null;
 			}
 
-			workload.World.PutRoom(new LiveRoom(room.RoomId, room.Name, string.Empty, room.Beatmap.Id, room.Beatmap.Md5,
-				true, false, []));
-
 			// 2. Players sign in and join the room concurrently.
 			var joined = await Task.WhenAll(playerLeases.Select((lease, index) =>
-				JoinPlayerAsync(lease, room.RoomId, index, playerCount, context, ct)));
+				JoinPlayerAsync(lease, room, index, playerCount, context, ct)));
 			room.Players.AddRange(joined.Where(p => p is not null)!);
 			if (room.Players.Count < 2 || ct.IsCancellationRequested)
 			{
@@ -256,11 +256,13 @@ public sealed partial class MatchRoomPersona(WorkloadContext workload, MatchRoom
 
 		// Start the round through the referee.
 		var started = room.Irc is not null
-			? await MpAsync(room, "!mp start", "mp_start", context, ct) is { Outcome: Outcome.Ok }
+			? await MpAsync(room, "!mp start", "mp_start", context, ct)
 			: await StartRestRoundAsync(room, context, ct);
-		if (!started)
+		if (started.Outcome != Outcome.Ok)
 		{
-			if (!ct.IsCancellationRequested) room.Broken = true;
+			// A start the busy server turned away is tried again; only a failure gives the room up.
+			if (started.Outcome == Outcome.Error && !ct.IsCancellationRequested) room.Broken = true;
+			else await WorkloadContext.SafeDelayAsync(RebuildDelay, ct);
 			return;
 		}
 
@@ -285,8 +287,8 @@ public sealed partial class MatchRoomPersona(WorkloadContext workload, MatchRoom
 
 	private void PutRoom(Room room, bool inProgress)
 	{
-		workload.World.PutRoom(new LiveRoom(room.RoomId, room.Name, string.Empty, room.Beatmap.Id, room.Beatmap.Md5,
-			true, inProgress, room.PlayerIds));
+		workload.World.PutRoom(new LiveRoom(room.WireId, room.RoomId, room.Name, string.Empty, room.Beatmap.Id,
+			room.Beatmap.Md5, true, inProgress, room.PlayerIds));
 	}
 
 	private async Task TeardownAsync(Room room)
@@ -303,9 +305,9 @@ public sealed partial class MatchRoomPersona(WorkloadContext workload, MatchRoom
 		}));
 
 		// Referee closes the room and disconnects.
+		if (room.WireId > 0) workload.World.RemoveRoom(room.WireId);
 		if (room.RoomId > 0)
 		{
-			workload.World.RemoveRoom(room.RoomId);
 			try
 			{
 				using var closeTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
@@ -440,30 +442,30 @@ public sealed partial class MatchRoomPersona(WorkloadContext workload, MatchRoom
 		}, ct);
 	}
 
-	private async Task<bool> StartRestRoundAsync(Room room, IScenarioContext context, CancellationToken ct)
+	private Task<StepOutcome> StartRestRoundAsync(Room room, IScenarioContext context, CancellationToken ct)
 	{
-		var outcome = await StepExecution.RunAsync(Channels.Rest, context, workload.Outcomes, async () =>
+		return StepExecution.RunAsync(Channels.Rest, context, workload.Outcomes, async () =>
 		{
 			var reply = await room.Rest!.PostAsync($"/v1/rooms/{room.RoomId}/start", new { }, ct);
 			return OutcomeClassifier.FromRest(reply);
 		}, ct);
-		return outcome.Outcome == Outcome.Ok;
 	}
 
-	private async Task<StableClient?> JoinPlayerAsync(AccountLease lease, int roomId, int index, int playerCount,
+	private async Task<StableClient?> JoinPlayerAsync(AccountLease lease, Room room, int index, int playerCount,
 		IScenarioContext context, CancellationToken ct)
 	{
 		var client = new StableClient(workload.Endpoint, workload.Http, lease.Identity());
 		var login = await workload.LoginStableAsync(client, context, ct, lease: lease);
 		if (login is not { Accepted: true }) return null;
 
-		client.Enqueue(ClientPackets.JoinMatch(roomId));
-		var joined = await workload.PollUntilAsync<MatchJoined>(client, null, workload.WaitTimeout, context, ct);
+		var joined = await workload.JoinRoomAsync(client, null, room.Name, context, ct);
 		if (joined is null)
 		{
 			await workload.SignOutQuietAsync(client);
 			return null;
 		}
+
+		room.WireId = joined.Room.Id;
 
 		// Split players into Red and Blue teams.
 		if (index >= playerCount / 2)
@@ -545,8 +547,8 @@ public sealed partial class MatchRoomPersona(WorkloadContext workload, MatchRoom
 			if (managerLogin is not { Accepted: true }) return;
 
 			manager.Enqueue(
-				ClientPackets.TournamentMatchInfoRequest(room.RoomId),
-				ClientPackets.TournamentJoinMatchChannel(room.RoomId));
+				ClientPackets.TournamentMatchInfoRequest(room.WireId),
+				ClientPackets.TournamentJoinMatchChannel(room.WireId));
 			await workload.PollStableAsync(manager, room.Context, ct);
 
 			for (var i = 0; i < cluster.ChildCount && i < room.PlayerIds.Count && !ct.IsCancellationRequested; i++)
@@ -667,7 +669,11 @@ public sealed partial class MatchRoomPersona(WorkloadContext workload, MatchRoom
 
 		public RestClient? Rest { get; set; }
 
+		/// <summary>Gets or sets the match id, which the HTTP API and IRC use.</summary>
 		public int RoomId { get; set; }
+
+		/// <summary>Gets or sets the room number of the osu! packets, learned from the lobby.</summary>
+		public int WireId { get; set; }
 
 		public int Round { get; set; }
 
@@ -699,7 +705,7 @@ public sealed partial class MatchRoomPersona(WorkloadContext workload, MatchRoom
 			try
 			{
 				await Task.WhenAll(Loops.Select(loop => loop.Running).OfType<Task>())
-					.WaitAsync(TimeSpan.FromSeconds(10), StopToken);
+					.WaitAsync(TimeSpan.FromSeconds(10));
 			}
 			catch (Exception)
 			{

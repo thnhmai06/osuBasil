@@ -152,6 +152,47 @@ public sealed class WorkloadContext(
 		return exchange;
 	}
 
+	/// <summary>
+	///     Joins a room as the osu! client does, inside a <c>room</c> step: by its wire number, or, when only its name is
+	///     known, by finding it in the lobby first.
+	/// </summary>
+	/// <returns>The joined room, or <see langword="null" /> when the client did not get in.</returns>
+	public async Task<MatchJoined?> JoinRoomAsync(StableClient client, int? wireId, string name,
+		IScenarioContext context, CancellationToken ct)
+	{
+		var (_, joined) = await StepExecution.RunAsync(Channels.Room, context, outcomes, async () =>
+		{
+			if (wireId is null)
+			{
+				client.Enqueue(ClientPackets.JoinLobby());
+				var listed = await PollUntilAsync<RoomUpdated>(client, room => room.Room.Name == name, WaitTimeout,
+					context, ct);
+				client.Enqueue(ClientPackets.PartLobby());
+				if (listed is null) return (JoinMiss(client, "room_not_listed", ct), null);
+
+				wireId = listed.Room.Id;
+			}
+
+			client.Enqueue(ClientPackets.JoinMatch(wireId.Value));
+			var answer = await PollUntilAsync<StablePacket>(client,
+				packet => packet is MatchJoined or MatchJoinFailed, WaitTimeout, context, ct);
+			return answer switch
+			{
+				MatchJoined match => (StepOutcome.Ok("match_join"), match),
+				MatchJoinFailed => (StepOutcome.Error("match_join_fail"), null),
+				_ => (JoinMiss(client, "match_join_timeout", ct), (MatchJoined?)null)
+			};
+		}, ct);
+		return joined;
+	}
+
+	// A wait that ended because the run stops or the session was dropped is not a failure of the join itself.
+	private StepOutcome JoinMiss(StableClient client, string reason, CancellationToken ct)
+	{
+		ct.ThrowIfCancellationRequested();
+		return StepOutcome.Error(IsDropped(client) ? "session_dropped" : reason);
+	}
+
 	/// <summary>Gets whether the server dropped the session of an osu! client, so it has to sign in again.</summary>
 	public bool IsDropped(StableClient client)
 	{

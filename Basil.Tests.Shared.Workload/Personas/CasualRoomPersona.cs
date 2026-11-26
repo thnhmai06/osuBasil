@@ -32,7 +32,8 @@ public sealed class CasualRoomPersona(WorkloadContext workload, int playersPerRo
 		var room = await EnsureRoomAsync(instance, random, context, ct);
 		if (room is null)
 		{
-			await WorkloadContext.SafeDelayAsync(TimeSpan.FromSeconds(1), ct);
+			// Opening again signs every member in again, so it waits as long as a busy server asks.
+			await WorkloadContext.SafeDelayAsync(TimeSpan.FromSeconds(5), ct);
 			return;
 		}
 
@@ -149,7 +150,8 @@ public sealed class CasualRoomPersona(WorkloadContext workload, int playersPerRo
 		}
 
 		room.RoomId = created.Room.Id;
-		workload.World.PutRoom(new LiveRoom(room.RoomId, roomName, string.Empty, map.Id, map.Md5, false, false,
+		// The match id of a room made in the client is not on the wire, so the viewers of the HTTP API skip it.
+		workload.World.PutRoom(new LiveRoom(room.RoomId, 0, roomName, string.Empty, map.Id, map.Md5, false, false,
 			[host.UserId]));
 
 		// Guests join and ready up.
@@ -159,8 +161,7 @@ public sealed class CasualRoomPersona(WorkloadContext workload, int playersPerRo
 			var login = await workload.LoginStableAsync(guest, context, ct, lease: leases[i]);
 			if (login is not { Accepted: true }) continue;
 
-			guest.Enqueue(ClientPackets.JoinMatch(room.RoomId));
-			var joined = await workload.PollUntilAsync<MatchJoined>(guest, null, workload.WaitTimeout, context, ct);
+			var joined = await workload.JoinRoomAsync(guest, room.RoomId, roomName, context, ct);
 			if (joined is null)
 			{
 				await workload.SignOutQuietAsync(guest);

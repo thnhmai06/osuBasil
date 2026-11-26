@@ -91,7 +91,8 @@ public sealed class IrcClient(Endpoint endpoint, int port, string name, string p
 	/// <param name="accepts">Decides whether a received line is the one wanted.</param>
 	public IrcExpectation Expect(Func<IrcMessage, bool> accepts)
 	{
-		var expectation = new IrcExpectation(accepts, Forget);
+		// A line the server turns away is answered by a notice only, so the notice ends every wait.
+		var expectation = new IrcExpectation(line => IsTurnedAway(line) || accepts(line), Forget);
 		lock (_waiting)
 		{
 			_waiting.Add(expectation);
@@ -244,6 +245,13 @@ public sealed class IrcClient(Endpoint endpoint, int port, string name, string p
 		{
 			_waiting.Remove(expectation);
 		}
+	}
+
+	// A notice from the server itself (no user mask in its prefix) addressed to this connection.
+	private bool IsTurnedAway(IrcMessage line)
+	{
+		return line is { Command: IrcVerb.Notice, Prefix: { } prefix, Parameters.Count: >= 2 } &&
+		       !prefix.Contains('!') && string.Equals(line.Parameters[0], Nick, StringComparison.OrdinalIgnoreCase);
 	}
 
 	private static bool IsNumeric(IrcMessage line, IrcNumericReply numeric)
