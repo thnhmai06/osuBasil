@@ -222,11 +222,11 @@ var steadyCpu = plan.Steps.Select(step => new
 	step.Index,
 	step.Name,
 	step.TargetSessions,
-	maxCpuPercent = monitor?.MaxCpuBetween(loadStart + step.SteadyStart + SloThresholds.SteadyMargin,
+	p95CpuPercent = monitor?.CpuP95Between(loadStart + step.SteadyStart + SloThresholds.SteadyMargin,
 		loadStart + step.End)
 }).ToArray();
-var steadyCpuMax = steadyCpu.Max(step => step.maxCpuPercent);
-var cpuBroken = judgesSlo && steadyCpuMax > SloThresholds.MaxServerCpuPercent;
+var worstStepCpu = steadyCpu.Max(step => step.p95CpuPercent);
+var cpuBroken = judgesSlo && worstStepCpu > SloThresholds.MaxServerCpuPercent;
 var checksBroken = checks.Any(c => !c.Passed);
 var sloBroken = failedThresholds.Length > 0 || cpuBroken || checksBroken;
 var restarted = serverSummary?.RestartDetected ?? false;
@@ -254,7 +254,7 @@ var meta = new
 		runBroken,
 		failedThresholds = failedThresholds.Length,
 		cpuMaxPercent = serverSummary?.MaxCpuPercent,
-		cpuSteadyMaxPercent = steadyCpuMax,
+		cpuSteadyP95Percent = worstStepCpu,
 		cpuSteps = steadyCpu,
 		cpuLimitPercent = SloThresholds.MaxServerCpuPercent,
 		cpuBroken

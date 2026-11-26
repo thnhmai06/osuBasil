@@ -60,7 +60,7 @@ dotnet run --project Basil.Tests.LoadTests -c Release -- \
 ```
 
 Available test commands: `seed`, `smoke`, `pilot`, `load`, `stress`, `spike`, `soak`, `capacity`, `scalability`, `control`.
-Exit codes: `0` the SLO held, `3` the run was sound and the SLO broke (a failed threshold, server CPU above 80 % while a step holds its load, or a failed
+Exit codes: `0` the SLO held, `3` the run was sound and the SLO broke (a failed threshold, the 95th percentile of server CPU above 80 % while a step holds its load, or a failed
 server-side check of the smoke run), `1` the run itself broke (bad options, the login lockout guard tripped, the server
 restarted, a crash). Capacity, pilot, stress and scalability are meant to break the SLO, so the runner reports `3` as a
 successful run for them. `run-meta.json` carries the verdict, the step schedule (`plan.steps`: index, target N, start and end
@@ -97,7 +97,7 @@ run the earlier three-node k3s bench.
 | REST read (`rest`) | p95 <= 300 ms |
 | login (`login`) | p95 <= 2 s |
 | real errors (`error`) | < 0.5 % |
-| server | CPU <= 80 % while a step holds its load, no OOM, no restart |
+| server | CPU p95 <= 80 % while a step holds its load, no OOM, no restart |
 
 `/d/` downloads (`download`) and uploads (`upload`) are reported separately and are not judged against latency targets.
 

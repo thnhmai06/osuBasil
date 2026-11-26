@@ -7,8 +7,8 @@ namespace Basil.Tests.LoadTests;
 public static class SloThresholds
 {
 	/// <summary>
-	///     The highest server CPU, in percent, the SLO allows while a step holds its load; the run verdict judges it after
-	///     the run, and the ramps are reported but not judged.
+	///     The server CPU, in percent, that the 95th percentile of the samples of a step may not exceed while the step
+	///     holds its load; the run verdict judges it after the run, and the ramps are reported but not judged.
 	/// </summary>
 	public const double MaxServerCpuPercent = 80.0;
 

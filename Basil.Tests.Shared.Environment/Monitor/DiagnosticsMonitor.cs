@@ -181,16 +181,17 @@ public sealed class DiagnosticsMonitor(
 	}
 
 	/// <summary>
-	///     Gets the highest server CPU percent sampled inside a time window, or <see langword="null" /> when no sample
-	///     fell inside it.
+	///     Gets the 95th percentile of the server CPU percent sampled inside a time window, or <see langword="null" />
+	///     when no sample fell inside it.
 	/// </summary>
-	public double? MaxCpuBetween(DateTimeOffset from, DateTimeOffset to)
+	public double? CpuP95Between(DateTimeOffset from, DateTimeOffset to)
 	{
 		lock (_sync)
 		{
 			var inside = _cpu.Where(sample => sample.At >= from && sample.At <= to).Select(sample => sample.Percent)
-				.ToArray();
-			return inside.Length == 0 ? null : Math.Round(inside.Max(), 2);
+				.Order().ToArray();
+			// Nearest rank: the smallest sample that at least 95 % of the samples do not exceed.
+			return inside.Length == 0 ? null : Math.Round(inside[(int)Math.Ceiling(inside.Length * 0.95) - 1], 2);
 		}
 	}
 

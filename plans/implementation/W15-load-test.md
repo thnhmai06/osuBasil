@@ -54,7 +54,7 @@ labelled as such.
 | REST read | p95 ≤ 300 ms |
 | login | p95 ≤ 2 s |
 | real errors | < 0.5 % |
-| server | CPU ≤ 80 %, no OOM, no restart |
+| server | CPU p95 ≤ 80 % while a step holds its load, no OOM, no restart |
 
 `/d/` downloads and uploads are reported separately and are not judged, because Wi‑Fi dominates them.
 
@@ -201,7 +201,10 @@ Durations grow with N. If late: Scalability drops to two sizes, then Spike drops
 Soak are never cut.
 
 **CPU verdict** (owner decision 2026-11-26): the 80 % limit is judged only while a step holds its load (from 5 s after
-its ramp ends); the whole-run peak and the peak of each step are reported beside it.
+its ramp ends), on the 95th percentile of the one-second samples of that step; the whole-run peak is reported beside it.
+100 % is all four CPUs given to Basil. The rule was changed from the highest sample to the 95th percentile after pilot
+`20261126-122350` and before any measured run: a single second broke a step. On that pilot the p95 was 37, 63, 84 and
+97 % at 150, 300, 450 and 600 sessions.
 
 ## Findings so far
 
@@ -217,8 +220,11 @@ its ramp ends); the whole-run peak and the peak of each step are reported beside
 | 549,635 of 633,326 503s were `GET /v1/matches/{id}` (pilot `20261126-112909`) | a refused match report viewer reopened its stream at once | harness | fixed: one stream per viewing window |
 | The same pilot ran out of memory in the generator at step 8 | the lockout guard counted `already logged in` refusals under overload and cancelled the run; every persona cycle then returned without waiting | harness | fixed; the run is invalid |
 | 355 exceptions in the overlay viewer in that pilot | the stream end check read a JSON array as an object | harness | fixed |
-| The bench server wrote several log lines for every request | `~/basil-load/Data/appsettings.json` set every level to `Trace` (a local override carried into the bench); the shipped file already logs `Information` | bench configuration | bench set to the shipped levels on 2026-11-26 |
+| The bench server wrote several log lines for every request | `~/basil-load/Data/appsettings.json` set every level to `Trace` (a local override carried into the bench); the shipped file already logs `Information` | bench configuration | bench set to the shipped levels for pilot `20261126-122350`, then to `Warning` for every later run (owner decision 2026-11-26; the report states this departure from the shipped level) |
 | Pilot `20261126-115718` (8 steps, at `Trace`) completed | 503: 101,442 in all; shed share about 1% up to 450 sessions, 8% at 600, 20% at 750, 38% at 1200; 2455 errors not yet analysed | measurement | before the log level change, so not comparable with later runs |
+| Match rooms almost never played: 449 of 461 rooms lived 10 to 20 s and every member signed in again (3467 sign-ins in 9 min) | the harness joined a room by its match id; the osu! packets use the room's wire id, and a refused join was ignored. **Every pilot before `20261126-131315` is invalid** for the ceiling and for N | harness | fixed, join reproduced both ways on the bench |
+| `irc_timeout` about 5 % of the chatter's lines | a busy server answers a line with a notice only | harness | counted as shed |
+| Pilot `20261126-131315` (4 steps to 600, fixed harness, log level `Warning`) | 6 errors in 219,277 steps; CPU p95 25, 25, 34 and 38 %; shed 0 to 1.6 % in the steps; 4 NBomber thresholds broke in a few reporting intervals, not yet traced | measurement | ceiling not reached |
 | `getscores` p95 above 500 ms in the smoke | suspected cold start (empty cache, first sign-ins) | open | measure in the next runs |
 | Earlier k3s bench: firewall blocked 8443 and 5201, AppArmor crashed the generator, weak Wi‑Fi | worker infrastructure | environment | gone with the Docker bench |
 
