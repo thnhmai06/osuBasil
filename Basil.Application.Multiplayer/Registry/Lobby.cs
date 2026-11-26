@@ -46,7 +46,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 
 	public IReadOnlySet<StableSession> Watchers => _watchers;
 
-	internal ISet<StableSession> MutableWatchers => _watchers;
+	internal ConcurrentSet<StableSession> MutableWatchers => _watchers;
 
 	/// <summary>Gets the rooms the lobby shows to its watchers: the open rooms that are not private.</summary>
 	public IEnumerable<Room> ListedRooms => _rooms.Values.Where(room => room is { IsClosed: false, Settings.IsPrivate: false });

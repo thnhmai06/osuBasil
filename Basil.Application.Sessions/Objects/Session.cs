@@ -143,7 +143,7 @@ public sealed class StableSession : Session
 
 	public bool HasApiSpectators => _spectators.Any(spectator => spectator is ApiSession);
 
-	internal ISet<Session> MutableSpectators => _spectators;
+	internal ConcurrentSet<Session> MutableSpectators => _spectators;
 
 	public ScopedStableSession ScopeTo(Session actor)
 	{

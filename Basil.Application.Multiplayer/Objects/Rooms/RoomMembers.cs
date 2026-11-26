@@ -17,5 +17,5 @@ public sealed class RoomMembers
 
 	public IReadOnlySet<TourneySession> Observers => _observers;
 
-	internal ISet<TourneySession> MutableObservers => _observers;
+	internal ConcurrentSet<TourneySession> MutableObservers => _observers;
 }

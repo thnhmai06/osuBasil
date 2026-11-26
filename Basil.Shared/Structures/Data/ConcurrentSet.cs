@@ -3,23 +3,22 @@ using System.Collections.Concurrent;
 
 namespace Basil.Shared.Structures.Data;
 
-public class ConcurrentSet<T> : ISet<T>, IReadOnlySet<T> where T : notnull
+/// <summary>A set that may be read while other threads change it.</summary>
+/// <remarks>
+///     It is deliberately not an <see cref="ICollection{T}" />: a copy made through that interface sizes its target from
+///     <see cref="Count" /> first, and a member added in between overflows it. A copy therefore enumerates the set.
+///     A collection expression that spreads the set also sizes from <see cref="Count" />; spread <c>set.ToArray()</c>.
+/// </remarks>
+public class ConcurrentSet<T> : IReadOnlySet<T> where T : notnull
 {
 	private const byte Present = 0;
 	private readonly ConcurrentDictionary<T, byte> _items = new();
 
 	public int Count => _items.Count;
 
-	public bool IsReadOnly => false;
-
 	public bool Add(T item)
 	{
 		return _items.TryAdd(item, Present);
-	}
-
-	void ICollection<T>.Add(T item)
-	{
-		Add(item);
 	}
 
 	public bool Remove(T item)
@@ -35,12 +34,6 @@ public class ConcurrentSet<T> : ISet<T>, IReadOnlySet<T> where T : notnull
 	public void Clear()
 	{
 		_items.Clear();
-	}
-
-	public void CopyTo(T[] array, int arrayIndex)
-	{
-		foreach (var item in this)
-			array[arrayIndex++] = item;
 	}
 
 	public void UnionWith(IEnumerable<T> other)

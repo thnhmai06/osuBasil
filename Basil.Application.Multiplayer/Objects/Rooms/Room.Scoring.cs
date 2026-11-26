@@ -20,7 +20,7 @@ public sealed partial class Room
 		{
 			if (SlotOf(player) is not { } slot || !Rounds.InProgress) return false;
 
-			Emit(new RoomScoreRelayed(this, slot.Index, frame, [.. Players, .. Members.Observers]));
+			Emit(new RoomScoreRelayed(this, slot.Index, frame, [.. Players, .. Members.Observers.ToArray()]));
 			return true;
 		}
 	}

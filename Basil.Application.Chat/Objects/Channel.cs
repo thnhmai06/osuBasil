@@ -28,7 +28,7 @@ public abstract class Channel
 
 	public IReadOnlySet<Session> Members => _members;
 
-	internal ISet<Session> MutableMembers => _members;
+	internal ConcurrentSet<Session> MutableMembers => _members;
 
 	public bool IsClosed
 	{
