@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using Basil.Domain.Spectating;
 using Basil.Protocol.Irc.Models;
@@ -14,8 +15,8 @@ namespace Basil.Tests.Shared.Workload.Personas;
 /// <summary>Configuration of a simulated tournament room.</summary>
 /// <param name="MinPlayers">Minimum players per room (2 = 1v1).</param>
 /// <param name="MaxPlayers">Maximum players per room (8 = 4v4).</param>
-/// <param name="RoundsPerCycle">Rounds played before the room closes.</param>
-/// <param name="TourneyClusters">Number of osu!tourney clusters attached to the room (0 to 2).</param>
+/// <param name="RoundsPerCycle">Not used: the room lives for the whole scenario copy and every invocation plays one round.</param>
+/// <param name="TourneyClusters">Number of osu!tourney clusters attached to each room, or <see langword="null"/> to draw 0 to 2 for each room.</param>
 /// <param name="SpectatorsPerRoom">In-game spectators watching players in this room.</param>
 /// <param name="OverlayViewersPerRoom">SSE overlay viewers subscribed to the room and match report.</param>
 /// <param name="ForceIrcReferee">When set, forces IRC or REST referee instead of alternating 50/50.</param>
@@ -23,244 +24,265 @@ public sealed record MatchRoomConfig(
 	int MinPlayers = 2,
 	int MaxPlayers = 8,
 	int RoundsPerCycle = 2,
-	int TourneyClusters = 1,
+	int? TourneyClusters = null,
 	int SpectatorsPerRoom = 1,
 	int OverlayViewersPerRoom = 2,
 	bool? ForceIrcReferee = null);
 
-/// <summary>Simulates a live tournament room: 2–8 players, one IRC or REST referee, 0–2 tourney clusters, spectators and SSE overlay viewers.</summary>
+/// <summary>Simulates a live tournament room: 2–8 players, one IRC or REST referee, 0–2 tourney clusters, spectators and SSE overlay viewers. Each scenario copy opens its room on the first invocation, keeps every session, and plays one round per invocation.</summary>
 public sealed partial class MatchRoomPersona(WorkloadContext workload, MatchRoomConfig? config = null)
 {
 	private readonly MatchRoomConfig _config = config ?? new MatchRoomConfig();
+	private readonly ConcurrentDictionary<int, Room> _rooms = new();
+	private volatile bool _closing;
 
 	[GeneratedRegex(@"Created room #(\d+)", RegexOptions.CultureInvariant)]
 	private static partial Regex CreatedRoomRegex();
 
-	/// <summary>Runs one complete tournament room cycle.</summary>
+	/// <summary>Plays one round in the copy's room, opening the room and signing everyone in first when the copy has none or the server dropped a session of it.</summary>
 	public async Task RunCycleAsync(IScenarioContext context)
 	{
+		if (_closing) return;
+
 		using var linked = workload.LinkToken(context);
 		var ct = linked.Token;
-		var random = SeededRandom.For(workload.Seed, context.ScenarioInfo.ScenarioName,
-			context.ScenarioInfo.InstanceNumber, context.InvocationNumber);
+		var instance = context.ScenarioInfo.InstanceNumber;
+		var random = SeededRandom.For(workload.Seed, context.ScenarioInfo.ScenarioName, instance, context.InvocationNumber);
 
-		var playerCount = PickTeamSize(random, _config.MinPlayers, _config.MaxPlayers);
-		var useIrcRef = _config.ForceIrcReferee ?? (context.ScenarioInfo.InstanceNumber % 2 == 0);
-
-		if (!workload.Accounts.TryAcquire(AccountRole.Referee, out var refLease))
+		var room = await EnsureRoomAsync(instance, random, context, ct);
+		if (room is null)
 		{
 			await WorkloadContext.SafeDelayAsync(TimeSpan.FromSeconds(1), ct);
 			return;
 		}
 
+		room.Context = context;
+		foreach (var loop in room.Loops) loop.EnsureRunning();
+
+		await PlayRoundAsync(room, random, context, ct);
+	}
+
+	/// <summary>Closes every room this persona still holds, signs every session out and returns every account lease; best effort, never throws.</summary>
+	public async Task ShutdownAsync()
+	{
+		_closing = true;
+		var all = _rooms.Values.ToArray();
+		_rooms.Clear();
+		await Task.WhenAll(all.Select(TeardownAsync));
+	}
+
+	private async Task<Room?> EnsureRoomAsync(int instance, Random random, IScenarioContext context, CancellationToken ct)
+	{
+		if (_rooms.TryGetValue(instance, out var existing))
+		{
+			if (!existing.Broken && !existing.Players.Any(workload.IsDropped)) return existing;
+
+			_rooms.TryRemove(instance, out _);
+			await TeardownAsync(existing);
+		}
+
+		var room = await BuildRoomAsync(instance, random, context, ct);
+		if (room is not null) _rooms[instance] = room;
+		return room;
+	}
+
+	private async Task<Room?> BuildRoomAsync(int instance, Random random, IScenarioContext context, CancellationToken ct)
+	{
+		var playerCount = PickTeamSize(random, _config.MinPlayers, _config.MaxPlayers);
+		var useIrcRef = _config.ForceIrcReferee ?? (instance % 2 == 0);
+
+		if (!workload.Accounts.TryAcquire(AccountRole.Referee, out var refLease)) return null;
 		if (!workload.Accounts.TryAcquireMany(AccountRole.Player, playerCount, out var playerLeases))
 		{
 			refLease.Dispose();
-			await WorkloadContext.SafeDelayAsync(TimeSpan.FromSeconds(1), ct);
-			return;
+			return null;
 		}
 
-		var spectatorLeases = new List<AccountLease>();
+		var room = new Room(refLease, playerLeases, context.ScenarioCancellationToken, workload.AbortToken)
+		{
+			Name = $"Tourney {instance}-{context.InvocationNumber}",
+			Context = context,
+			Beatmap = workload.PickBeatmap(random)
+		};
+
+		// Spectators, tourney clusters and overlay viewers; their accounts are taken now and held for the room's life.
 		for (var i = 0; i < _config.SpectatorsPerRoom; i++)
 			if (workload.Accounts.TryAcquire(AccountRole.Player, out var specLease))
-				spectatorLeases.Add(specLease);
+				room.Spectators.Add(new Spectator(specLease));
 
-		var tourneyClusterLeases = new List<List<AccountLease>>();
-		for (var c = 0; c < _config.TourneyClusters; c++)
-		{
-			// One manager + one child client per player slot.
-			var clusterSize = 1 + playerCount;
-			if (workload.Accounts.TryAcquireMany(AccountRole.Tourney, clusterSize, out var cluster))
-				tourneyClusterLeases.Add(cluster);
-		}
+		var clusters = _config.TourneyClusters ?? random.Next(3);
+		for (var c = 0; c < clusters; c++)
+			if (workload.Accounts.TryAcquire(AccountRole.Tourney, out var tourneyLease))
+				room.Clusters.Add(new Cluster(tourneyLease, playerCount));
 
-		var roomName = $"Tourney {context.ScenarioInfo.InstanceNumber}-{context.InvocationNumber}";
-		IrcClient? ircRef = null;
-		RestClient? restRef = null;
-		var players = new List<StableClient>(playerCount);
-		var spectators = new List<StableClient>(spectatorLeases.Count);
-		var tourneyClients = new List<StableClient>();
-		using var overlayStop = CancellationTokenSource.CreateLinkedTokenSource(ct);
-		var overlayTasks = new List<Task>();
-		var roomId = 0;
+		for (var v = 0; v < _config.OverlayViewersPerRoom; v++)
+			room.Overlays.Add(new Overlay(v % 2 == 0));
 
 		try
 		{
-			var beatmap = workload.PickBeatmap(random);
-
 			// 1. Referee opens and configures the room.
 			if (useIrcRef)
-			{
-				(ircRef, roomId) = await OpenIrcRoomAsync(refLease.Account, roomName, playerCount, beatmap, context, ct);
-			}
+				await OpenIrcRoomAsync(room, playerCount, context, ct);
 			else
+				await OpenRestRoomAsync(room, playerCount, context, ct);
+
+			if (room.RoomId <= 0 || ct.IsCancellationRequested)
 			{
-				(restRef, roomId) = await OpenRestRoomAsync(refLease.Account, roomName, playerCount, beatmap, context, ct);
+				await TeardownAsync(room);
+				return null;
 			}
 
-			if (roomId <= 0 || ct.IsCancellationRequested) return;
-
-			workload.World.PutRoom(new LiveRoom(roomId, roomName, string.Empty, beatmap.Id, beatmap.Md5, true, false, []));
+			workload.World.PutRoom(new LiveRoom(room.RoomId, room.Name, string.Empty, room.Beatmap.Id, room.Beatmap.Md5, true, false, []));
 
 			// 2. Players sign in and join the room concurrently.
-			var joinedPlayers = await Task.WhenAll(playerLeases.Select((lease, index) =>
-				JoinPlayerAsync(lease, roomId, index, playerCount, context, ct)));
-			players.AddRange(joinedPlayers.Where(p => p is not null)!);
-			if (players.Count < 2 || ct.IsCancellationRequested) return;
-
-			var playerIds = players.Select(p => p.UserId).ToArray();
-			workload.World.PutRoom(new LiveRoom(roomId, roomName, string.Empty, beatmap.Id, beatmap.Md5, true, false, playerIds));
-
-			// 3. Attach tourney clusters (manager + 1 child client per player slot) and spectators.
-			var auxTasks = new List<Task>();
-			foreach (var cluster in tourneyClusterLeases)
+			var joined = await Task.WhenAll(playerLeases.Select((lease, index) =>
+				JoinPlayerAsync(lease, room.RoomId, index, playerCount, context, ct)));
+			room.Players.AddRange(joined.Where(p => p is not null)!);
+			if (room.Players.Count < 2 || ct.IsCancellationRequested)
 			{
-				var manager = new StableClient(workload.Endpoint, workload.Http, cluster[0].Identity(tourney: true));
-				var children = cluster.Skip(1)
-					.Select(lease => new StableClient(workload.Endpoint, workload.Http, lease.Identity(tourney: true)))
-					.ToList();
-				tourneyClients.Add(manager);
-				tourneyClients.AddRange(children);
-				auxTasks.Add(RunTourneyClusterAsync(manager, children, roomId, playerIds, context, overlayStop.Token));
+				await TeardownAsync(room);
+				return null;
 			}
 
-			foreach (var specLease in spectatorLeases)
+			room.PlayerIds = [.. room.Players.Select(p => p.UserId)];
+			PutRoom(room, inProgress: false);
+
+			// 3. Background loops that live as long as the room: tourney clusters, spectators, overlay viewers.
+			foreach (var cluster in room.Clusters)
+				room.Loops.Add(new RoomLoop(room, () => RunTourneyClusterAsync(room, cluster)));
+			foreach (var spectator in room.Spectators)
 			{
-				var spec = new StableClient(workload.Endpoint, workload.Http, specLease.Identity());
-				spectators.Add(spec);
-				var targetId = playerIds[random.Next(playerIds.Length)];
-				auxTasks.Add(RunSpectatorAsync(spec, targetId, context, overlayStop.Token));
+				spectator.TargetId = room.PlayerIds[random.Next(room.PlayerIds.Count)];
+				room.Loops.Add(new RoomLoop(room, () => RunSpectatorAsync(room, spectator)));
 			}
 
-			// 4. Attach overlay SSE viewers (/v1/matches/{id} and /v1/rooms/{id}/live).
-			for (var v = 0; v < _config.OverlayViewersPerRoom; v++)
-			{
-				var streamMatch = v % 2 == 0;
-				overlayTasks.Add(RunOverlayAsync(roomId, streamMatch, restRef, context, overlayStop.Token));
-			}
+			foreach (var overlay in room.Overlays)
+				room.Loops.Add(new RoomLoop(room, () => RunOverlayAsync(room, overlay)));
 
-			// 5. Play rounds.
-			for (var round = 0; round < _config.RoundsPerCycle && !ct.IsCancellationRequested; round++)
-			{
-				if (round > 0)
-				{
-					beatmap = workload.PickBeatmap(random);
-					if (useIrcRef && ircRef is not null)
-						await SetIrcMapAsync(ircRef, roomId, beatmap, context, ct);
-					else if (restRef is not null)
-						await SetRestMapAsync(restRef, roomId, beatmap, context, ct);
-				}
-
-				// Ready up players.
-				await Task.WhenAll(players.Select(p => ReadyPlayerAsync(p, context, ct)));
-
-				// In Spike mode, wait for the shared tournament clock while keeping sessions alive.
-				if (workload.TournamentClock.IsEnabled)
-				{
-					var waitTask = workload.TournamentClock.WaitForNextWaveAsync(ct);
-					while (!waitTask.IsCompleted && !ct.IsCancellationRequested)
-					{
-						await Task.WhenAll(players.Select(p => workload.PollStableAsync(p, context, ct)));
-						await WorkloadContext.SafeDelayAsync(workload.PollInterval, ct);
-					}
-				}
-
-				if (ct.IsCancellationRequested) break;
-
-				// Start round via referee.
-				var started = useIrcRef && ircRef is not null
-					? await StartIrcRoundAsync(ircRef, roomId, context, ct)
-					: restRef is not null && await StartRestRoundAsync(restRef, roomId, context, ct);
-				if (!started || ct.IsCancellationRequested) break;
-
-				workload.World.PutRoom(new LiveRoom(roomId, roomName, string.Empty, beatmap.Id, beatmap.Md5, true, true, playerIds));
-
-				// Run the round for every player concurrently.
-				await Task.WhenAll(players.Select((player, slot) =>
-					PlayRoundAsync(player, slot, beatmap, SeededRandom.For(workload.Seed, "round", roomId * 16 + slot, round),
-						context, ct)));
-
-				workload.World.PutRoom(new LiveRoom(roomId, roomName, string.Empty, beatmap.Id, beatmap.Md5, true, false, playerIds));
-			}
-
-			// Stop auxiliary loops before closing room.
-			await overlayStop.CancelAsync();
-			await Task.WhenAll(auxTasks.Concat(overlayTasks));
+			return room;
 		}
-		finally
+		catch
 		{
-			await overlayStop.CancelAsync();
-
-			// Players leave and sign out.
-			await Task.WhenAll(players.Select(async player =>
-			{
-				if (player.Token is not null)
-				{
-					player.Enqueue(ClientPackets.PartMatch());
-					await workload.LogoutStableAsync(player, context);
-				}
-			}));
-
-			// Spectators and tourney clients sign out.
-			await Task.WhenAll(spectators.Concat(tourneyClients).Select(async client =>
-			{
-				if (client.Token is not null)
-				{
-					client.Enqueue(ClientPackets.StopSpectating());
-					await workload.LogoutStableAsync(client, context);
-				}
-			}));
-
-			// Referee closes the room and disconnects.
-			if (roomId > 0)
-			{
-				workload.World.RemoveRoom(roomId);
-				using var closeTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-				if (ircRef is not null)
-				{
-					await StepExecution.RunAsync(Channels.Irc, context, workload.Outcomes, async () =>
-					{
-						await ircRef.PrivmsgAsync($"#mp_{roomId}", "!mp close", closeTimeout.Token);
-						return StepOutcome.Ok("mp_close");
-					}, closeTimeout.Token);
-				}
-				else if (restRef is not null)
-				{
-					await StepExecution.RunAsync(Channels.Rest, context, workload.Outcomes, async () =>
-					{
-						var reply = await restRef.PostAsync($"/v1/rooms/{roomId}/close", null, closeTimeout.Token);
-						return OutcomeClassifier.FromRest(reply, refusalExpected: true);
-					}, closeTimeout.Token);
-				}
-			}
-
-			if (ircRef is not null) await ircRef.DisposeAsync();
-			if (restRef is { Token: not null })
-			{
-				try
-				{
-					using var outTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-					await restRef.SignOutAsync(outTimeout.Token);
-				}
-				catch (Exception)
-				{
-					// Best-effort cleanup.
-				}
-			}
-
-			foreach (var lease in playerLeases) lease.Dispose();
-			foreach (var lease in spectatorLeases) lease.Dispose();
-			foreach (var cluster in tourneyClusterLeases)
-				foreach (var lease in cluster)
-					lease.Dispose();
-			refLease.Dispose();
+			await TeardownAsync(room);
+			throw;
 		}
 	}
 
-	private async Task<(IrcClient? Client, int RoomId)> OpenIrcRoomAsync(AccountEntry referee, string roomName,
-		int size, BeatmapEntry map, IScenarioContext context, CancellationToken ct)
+	private async Task PlayRoundAsync(Room room, Random random, IScenarioContext context, CancellationToken ct)
 	{
+		var round = room.Round++;
+		if (round > 0)
+		{
+			room.Beatmap = workload.PickBeatmap(random);
+			if (room.Irc is not null)
+				await MpAsync(room, $"!mp map {room.Beatmap.Id} {room.Beatmap.Mode}", "mp_map", context, ct);
+			else
+				await SetRestMapAsync(room, room.Beatmap, context, ct);
+		}
+
+		var beatmap = room.Beatmap;
+
+		// Ready up players.
+		await Task.WhenAll(room.Players.Select(p => ReadyPlayerAsync(p, context, ct)));
+
+		// In Spike mode, wait for the shared tournament clock while keeping sessions alive.
+		if (workload.TournamentClock.IsEnabled)
+		{
+			var waitTask = workload.TournamentClock.WaitForNextWaveAsync(ct);
+			while (!waitTask.IsCompleted && !ct.IsCancellationRequested)
+			{
+				await Task.WhenAll(room.Players.Select(p => workload.PollStableAsync(p, context, ct)));
+				await WorkloadContext.SafeDelayAsync(workload.PollInterval, ct);
+			}
+		}
+
+		if (ct.IsCancellationRequested) return;
+
+		// Start the round through the referee.
+		var started = room.Irc is not null
+			? await MpAsync(room, "!mp start", "mp_start", context, ct) is { Outcome: Outcome.Ok }
+			: await StartRestRoundAsync(room, context, ct);
+		if (!started)
+		{
+			if (!ct.IsCancellationRequested) room.Broken = true;
+			return;
+		}
+
+		PutRoom(room, inProgress: true);
+
+		// Run the round for every player concurrently; a player's MatchStarted is what confirms the start.
+		var confirmations = await Task.WhenAll(room.Players.Select((player, slot) =>
+			PlayPlayerRoundAsync(player, slot, beatmap, SeededRandom.For(workload.Seed, "round", room.RoomId * 16 + slot, round),
+				context, ct)));
+
+		PutRoom(room, inProgress: false);
+
+		if (!ct.IsCancellationRequested && !confirmations.Any(confirmed => confirmed))
+		{
+			room.Broken = true;
+			await StepExecution.RunAsync(room.Irc is not null ? Channels.Irc : Channels.Rest, context, workload.Outcomes,
+				() => Task.FromResult(StepOutcome.Error("mp_start_unconfirmed")), ct);
+		}
+	}
+
+	private void PutRoom(Room room, bool inProgress)
+	{
+		workload.World.PutRoom(new LiveRoom(room.RoomId, room.Name, string.Empty, room.Beatmap.Id, room.Beatmap.Md5,
+			true, inProgress, room.PlayerIds));
+	}
+
+	private async Task TeardownAsync(Room room)
+	{
+		await room.StopLoopsAsync();
+
+		// Players leave and sign out; spectators and tourney clients were signed out by their loops.
+		await Task.WhenAll(room.Players.Select(async player =>
+		{
+			if (player.Token is null) return;
+
+			player.Enqueue(ClientPackets.PartMatch());
+			await workload.SignOutQuietAsync(player);
+		}));
+
+		// Referee closes the room and disconnects.
+		if (room.RoomId > 0)
+		{
+			workload.World.RemoveRoom(room.RoomId);
+			try
+			{
+				using var closeTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+				if (room.Irc is not null)
+					await IrcSteps.CommandAsync(room.Irc, $"#mp_{room.RoomId}", "!mp close", "mp_close", TimeSpan.FromSeconds(5),
+						closeTimeout.Token);
+				else if (room.Rest is not null)
+					await room.Rest.PostAsync($"/v1/rooms/{room.RoomId}/close", null, closeTimeout.Token);
+			}
+			catch (Exception)
+			{
+				// Best effort: the server closes an empty room by itself.
+			}
+		}
+
+		if (room.Irc is not null) await room.Irc.DisposeAsync();
+		if (room.Rest is not null) await WorkloadContext.SignOutQuietAsync(room.Rest);
+		foreach (var overlay in room.Overlays)
+		{
+			if (overlay.Rest is not null) await WorkloadContext.SignOutQuietAsync(overlay.Rest);
+			overlay.Lease?.Dispose();
+		}
+
+		foreach (var lease in room.PlayerLeases) lease.Dispose();
+		foreach (var spectator in room.Spectators) spectator.Lease.Dispose();
+		foreach (var cluster in room.Clusters) cluster.Lease.Dispose();
+		room.RefereeLease.Dispose();
+		room.Dispose();
+	}
+
+	private async Task OpenIrcRoomAsync(Room room, int size, IScenarioContext context, CancellationToken ct)
+	{
+		var referee = room.RefereeLease.Account;
 		var client = new IrcClient(workload.Endpoint, workload.IrcPort, referee.Name, referee.Password);
+		room.Irc = client;
 		var (regOutcome, reg) = await StepExecution.RunAsync(Channels.Irc, context, workload.Outcomes, async () =>
 		{
 			var result = await client.ConnectAsync(workload.WaitTimeout, ct);
@@ -269,14 +291,14 @@ public sealed partial class MatchRoomPersona(WorkloadContext workload, MatchRoom
 
 		if (regOutcome.Outcome != Outcome.Ok || reg is not { Welcomed: true })
 		{
-			await client.DisposeAsync();
-			return (null, 0);
+			if (reg is { Line: not null }) room.RefereeLease.Quarantine();
+			return;
 		}
 
 		var (_, createdId) = await StepExecution.RunAsync(Channels.Irc, context, workload.Outcomes, async () =>
 		{
 			var line = await client.RequestAsync(
-				new IrcMessage("PRIVMSG", null, "BasilBot", $"!mp make {roomName}"),
+				new IrcMessage("PRIVMSG", null, "BasilBot", $"!mp make {room.Name}"),
 				msg => msg.Command == "PRIVMSG" && msg.Parameters.Count >= 2 && CreatedRoomRegex().IsMatch(msg.Parameters[^1]),
 				workload.WaitTimeout, ct);
 			if (line is null) return (StepOutcome.Error("mp_make_timeout"), 0);
@@ -287,47 +309,41 @@ public sealed partial class MatchRoomPersona(WorkloadContext workload, MatchRoom
 				: (StepOutcome.Error("mp_make_parse"), 0);
 		}, ct);
 
-		if (createdId <= 0)
-		{
-			await client.DisposeAsync();
-			return (null, 0);
-		}
+		if (createdId <= 0) return;
 
+		room.RoomId = createdId;
 		var channel = $"#mp_{createdId}";
-		await StepExecution.RunAsync(Channels.Irc, context, workload.Outcomes, async () =>
-		{
-			await client.JoinAsync(channel, ct);
-			await client.PrivmsgAsync(channel, $"!mp set 2 0 {size}", ct);
-			await client.PrivmsgAsync(channel, $"!mp map {map.Id} {map.Mode}", ct);
-			await client.PrivmsgAsync(channel, "!mp mods None", ct);
-			return StepOutcome.Ok("mp_setup");
-		}, ct);
-
-		return (client, createdId);
+		await StepExecution.RunAsync(Channels.Irc, context, workload.Outcomes,
+			() => IrcSteps.JoinAsync(client, channel, workload.WaitTimeout, ct), ct);
+		await MpAsync(room, $"!mp set 2 0 {size}", "mp_set", context, ct);
+		await MpAsync(room, $"!mp map {room.Beatmap.Id} {room.Beatmap.Mode}", "mp_map", context, ct);
+		await MpAsync(room, "!mp mods None", "mp_mods", context, ct);
 	}
 
-	private async Task<(RestClient? Client, int RoomId)> OpenRestRoomAsync(AccountEntry referee, string roomName,
-		int size, BeatmapEntry map, IScenarioContext context, CancellationToken ct)
+	private async Task OpenRestRoomAsync(Room room, int size, IScenarioContext context, CancellationToken ct)
 	{
+		var referee = room.RefereeLease.Account;
 		var client = new RestClient(workload.Endpoint, workload.Http);
+		room.Rest = client;
 		var loginOutcome = await StepExecution.RunAsync(Channels.Login, context, workload.Outcomes, async () =>
 		{
 			var reply = await client.SignInAsync(referee.Name, referee.Password, ct);
 			return OutcomeClassifier.FromRest(reply);
 		}, ct);
 
-		if (loginOutcome.Outcome != Outcome.Ok || client.Token is null) return (null, 0);
+		if (loginOutcome.Outcome != Outcome.Ok || client.Token is null) return;
 
 		var (_, roomId) = await StepExecution.RunAsync(Channels.Rest, context, workload.Outcomes, async () =>
 		{
-			var reply = await client.PostAsync("/v1/rooms", new { name = roomName, password = "", isPrivate = false }, ct);
+			var reply = await client.PostAsync("/v1/rooms", new { name = room.Name, password = "", isPrivate = false }, ct);
 			var classified = OutcomeClassifier.FromRest(reply);
 			var id = reply is { Success: true } && reply.Data.TryGetProperty("id", out var prop) ? prop.GetInt32() : 0;
 			return (id > 0 ? classified : StepOutcome.Error("room_id_missing"), id);
 		}, ct);
 
-		if (roomId <= 0) return (client, 0);
+		if (roomId <= 0) return;
 
+		room.RoomId = roomId;
 		await StepExecution.RunAsync(Channels.Rest, context, workload.Outcomes, async () =>
 		{
 			var setReply = await client.PostAsync($"/v1/rooms/{roomId}/set",
@@ -335,7 +351,7 @@ public sealed partial class MatchRoomPersona(WorkloadContext workload, MatchRoom
 			return OutcomeClassifier.FromRest(setReply);
 		}, ct);
 
-		await SetRestMapAsync(client, roomId, map, context, ct);
+		await SetRestMapAsync(room, room.Beatmap, context, ct);
 
 		await StepExecution.RunAsync(Channels.Rest, context, workload.Outcomes, async () =>
 		{
@@ -343,46 +359,30 @@ public sealed partial class MatchRoomPersona(WorkloadContext workload, MatchRoom
 				new { mods = Array.Empty<string>(), freemod = false }, ct);
 			return OutcomeClassifier.FromRest(modsReply);
 		}, ct);
-
-		return (client, roomId);
 	}
 
-	private async Task SetIrcMapAsync(IrcClient irc, int roomId, BeatmapEntry map, IScenarioContext context,
-		CancellationToken ct)
+	// Sends a !mp command to the room channel; the step is ok when BasilBot answers it.
+	private Task<StepOutcome> MpAsync(Room room, string text, string tag, IScenarioContext context, CancellationToken ct)
 	{
-		await StepExecution.RunAsync(Channels.Irc, context, workload.Outcomes, async () =>
-		{
-			await irc.PrivmsgAsync($"#mp_{roomId}", $"!mp map {map.Id} {map.Mode}", ct);
-			return StepOutcome.Ok("mp_map");
-		}, ct);
+		return StepExecution.RunAsync(Channels.Irc, context, workload.Outcomes,
+			() => IrcSteps.CommandAsync(room.Irc!, $"#mp_{room.RoomId}", text, tag, workload.WaitTimeout, ct), ct);
 	}
 
-	private async Task SetRestMapAsync(RestClient rest, int roomId, BeatmapEntry map, IScenarioContext context,
-		CancellationToken ct)
+	private async Task SetRestMapAsync(Room room, BeatmapEntry map, IScenarioContext context, CancellationToken ct)
 	{
 		await StepExecution.RunAsync(Channels.Rest, context, workload.Outcomes, async () =>
 		{
-			var reply = await rest.PostAsync($"/v1/rooms/{roomId}/map",
+			var reply = await room.Rest!.PostAsync($"/v1/rooms/{room.RoomId}/map",
 				new { beatmap = map.Id, mode = WorkloadContext.RestModeName(map.Mode) }, ct);
 			return OutcomeClassifier.FromRest(reply);
 		}, ct);
 	}
 
-	private async Task<bool> StartIrcRoundAsync(IrcClient irc, int roomId, IScenarioContext context, CancellationToken ct)
-	{
-		var outcome = await StepExecution.RunAsync(Channels.Irc, context, workload.Outcomes, async () =>
-		{
-			await irc.PrivmsgAsync($"#mp_{roomId}", "!mp start", ct);
-			return StepOutcome.Ok("mp_start");
-		}, ct);
-		return outcome.Outcome == Outcome.Ok;
-	}
-
-	private async Task<bool> StartRestRoundAsync(RestClient rest, int roomId, IScenarioContext context, CancellationToken ct)
+	private async Task<bool> StartRestRoundAsync(Room room, IScenarioContext context, CancellationToken ct)
 	{
 		var outcome = await StepExecution.RunAsync(Channels.Rest, context, workload.Outcomes, async () =>
 		{
-			var reply = await rest.PostAsync($"/v1/rooms/{roomId}/start", new { }, ct);
+			var reply = await room.Rest!.PostAsync($"/v1/rooms/{room.RoomId}/start", new { }, ct);
 			return OutcomeClassifier.FromRest(reply);
 		}, ct);
 		return outcome.Outcome == Outcome.Ok;
@@ -392,14 +392,14 @@ public sealed partial class MatchRoomPersona(WorkloadContext workload, MatchRoom
 		IScenarioContext context, CancellationToken ct)
 	{
 		var client = new StableClient(workload.Endpoint, workload.Http, lease.Identity());
-		var login = await workload.LoginStableAsync(client, context, ct);
+		var login = await workload.LoginStableAsync(client, context, ct, lease: lease);
 		if (login is not { Accepted: true }) return null;
 
 		client.Enqueue(ClientPackets.JoinMatch(roomId));
 		var joined = await workload.PollUntilAsync<MatchJoined>(client, null, workload.WaitTimeout, context, ct);
 		if (joined is null)
 		{
-			await workload.LogoutStableAsync(client, context);
+			await workload.SignOutQuietAsync(client);
 			return null;
 		}
 
@@ -419,17 +419,17 @@ public sealed partial class MatchRoomPersona(WorkloadContext workload, MatchRoom
 		await workload.PollStableAsync(player, context, ct);
 	}
 
-	private async Task PlayRoundAsync(StableClient player, int slot, BeatmapEntry map, Random random,
+	private async Task<bool> PlayPlayerRoundAsync(StableClient player, int slot, BeatmapEntry map, Random random,
 		IScenarioContext context, CancellationToken ct)
 	{
 		var started = await workload.PollUntilAsync<MatchStarted>(player, null, workload.WaitTimeout, context, ct);
-		if (started is null || ct.IsCancellationRequested) return;
+		if (started is null || ct.IsCancellationRequested) return started is not null;
 
 		player.Enqueue(
 			ClientPackets.ChangeAction(WorkloadContext.PlayingAction(map)),
 			ClientPackets.MatchLoadComplete());
 		await workload.PollUntilAsync<MatchAllPlayersLoaded>(player, null, workload.WaitTimeout, context, ct);
-		if (ct.IsCancellationRequested) return;
+		if (ct.IsCancellationRequested) return true;
 
 		workload.World.PutOnline(new OnlineUser(player.UserId, player.Identity.Name, true, map.Md5));
 
@@ -444,7 +444,7 @@ public sealed partial class MatchRoomPersona(WorkloadContext workload, MatchRoom
 			await WorkloadContext.SafeDelayAsync(workload.PollInterval, ct);
 		}
 
-		if (ct.IsCancellationRequested) return;
+		if (ct.IsCancellationRequested) return true;
 
 		player.Enqueue(
 			ClientPackets.SpectateFrames(WorkloadContext.BuildSpectatorBundle(ticks, slot, random, SpectatorAction.Completion)),
@@ -465,110 +465,107 @@ public sealed partial class MatchRoomPersona(WorkloadContext workload, MatchRoom
 
 		workload.World.PutOnline(new OnlineUser(player.UserId, player.Identity.Name, false, string.Empty));
 		await workload.PollUntilAsync<MatchCompleted>(player, null, workload.WaitTimeout, context, ct);
+		return true;
 	}
 
-	private async Task RunTourneyClusterAsync(StableClient manager, IReadOnlyList<StableClient> children, int roomId,
-		IReadOnlyList<int> playerIds, IScenarioContext context, CancellationToken ct)
+	private async Task RunTourneyClusterAsync(Room room, Cluster cluster)
 	{
-		var managerLogin = await workload.LoginStableAsync(manager, context, ct);
-		if (managerLogin is not { Accepted: true }) return;
-
-		manager.Enqueue(
-			ClientPackets.TournamentMatchInfoRequest(roomId),
-			ClientPackets.TournamentJoinMatchChannel(roomId));
-		await workload.PollStableAsync(manager, context, ct);
-
-		var activeChildren = new List<StableClient>();
-		for (var i = 0; i < children.Count && i < playerIds.Count && !ct.IsCancellationRequested; i++)
+		var ct = room.StopToken;
+		try
 		{
-			var child = children[i];
-			var childLogin = await workload.LoginStableAsync(child, context, ct);
-			if (childLogin is not { Accepted: true }) continue;
+			// One Tourney account signs in the manager and every child client, as the osu!tourney client does.
+			var identity = cluster.Lease.Identity(tourney: true);
+			var manager = new StableClient(workload.Endpoint, workload.Http, identity);
+			cluster.Clients.Add(manager);
+			var managerLogin = await workload.LoginStableAsync(manager, room.Context, ct, lease: cluster.Lease);
+			if (managerLogin is not { Accepted: true }) return;
 
-			child.Enqueue(ClientPackets.StartSpectating(playerIds[i]));
-			await workload.PollStableAsync(child, context, ct);
-			activeChildren.Add(child);
-		}
+			manager.Enqueue(
+				ClientPackets.TournamentMatchInfoRequest(room.RoomId),
+				ClientPackets.TournamentJoinMatchChannel(room.RoomId));
+			await workload.PollStableAsync(manager, room.Context, ct);
 
-		while (!ct.IsCancellationRequested)
-		{
-			await workload.PollStableAsync(manager, context, ct);
-			foreach (var child in activeChildren)
+			for (var i = 0; i < cluster.ChildCount && i < room.PlayerIds.Count && !ct.IsCancellationRequested; i++)
 			{
-				if (ct.IsCancellationRequested) break;
-				await workload.PollStableAsync(child, context, ct);
+				var child = new StableClient(workload.Endpoint, workload.Http, identity);
+				cluster.Clients.Add(child);
+				var childLogin = await workload.LoginStableAsync(child, room.Context, ct, lease: cluster.Lease);
+				if (childLogin is not { Accepted: true }) continue;
+
+				child.Enqueue(ClientPackets.StartSpectating(room.PlayerIds[i]));
+				await workload.PollStableAsync(child, room.Context, ct);
 			}
 
-			await WorkloadContext.SafeDelayAsync(workload.PollInterval, ct);
-		}
-	}
-
-	private async Task RunSpectatorAsync(StableClient spectator, int targetUserId, IScenarioContext context,
-		CancellationToken ct)
-	{
-		var login = await workload.LoginStableAsync(spectator, context, ct);
-		if (login is not { Accepted: true }) return;
-
-		spectator.Enqueue(ClientPackets.StartSpectating(targetUserId));
-		while (!ct.IsCancellationRequested)
-		{
-			await workload.PollStableAsync(spectator, context, ct);
-			await WorkloadContext.SafeDelayAsync(workload.PollInterval, ct);
-		}
-	}
-
-	private async Task RunOverlayAsync(int roomId, bool matchReport, RestClient? existingRest,
-		IScenarioContext context, CancellationToken ct)
-	{
-		var path = matchReport ? $"/v1/matches/{roomId}" : $"/v1/rooms/{roomId}/live";
-		var rest = existingRest ?? new RestClient(workload.Endpoint, workload.Http);
-		if (!matchReport && rest.Token is null)
-		{
-			// Public match stream needs no token; /rooms/{id}/live needs a signed-in viewer.
-			if (!workload.Accounts.TryAcquire(AccountRole.Player, out var viewerLease)) return;
-			using (viewerLease)
+			while (!ct.IsCancellationRequested && !cluster.Clients.Any(workload.IsDropped))
 			{
-				var loginReply = await rest.SignInAsync(viewerLease.Account.Name, viewerLease.Account.Password, ct);
-				if (!loginReply.Success) return;
-				await ConsumeSseAsync(rest, path, authorize: true, context, ct);
-				try
+				foreach (var client in cluster.Clients.Where(client => client.Token is not null))
 				{
-					using var outTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-					await rest.SignOutAsync(outTimeout.Token);
+					if (ct.IsCancellationRequested) break;
+					await workload.PollStableAsync(client, room.Context, ct);
 				}
-				catch (Exception)
-				{
-					// Cleanup.
-				}
+
+				await WorkloadContext.SafeDelayAsync(workload.PollInterval, ct);
 			}
-
-			return;
 		}
-
-		await ConsumeSseAsync(rest, path, authorize: !matchReport, context, ct);
+		finally
+		{
+			var clients = cluster.Clients.ToArray();
+			cluster.Clients.Clear();
+			await Task.WhenAll(clients.Select(async client =>
+			{
+				client.Enqueue(ClientPackets.StopSpectating());
+				await workload.SignOutQuietAsync(client);
+			}));
+		}
 	}
 
-	private async Task ConsumeSseAsync(RestClient rest, string path, bool authorize, IScenarioContext context,
-		CancellationToken ct)
+	private async Task RunSpectatorAsync(Room room, Spectator spectator)
 	{
-		await StepExecution.RunAsync(Channels.Sse, context, workload.Outcomes, async () =>
+		var ct = room.StopToken;
+		var client = spectator.Client ??= new StableClient(workload.Endpoint, workload.Http, spectator.Lease.Identity());
+		try
 		{
-			using var stream = await rest.OpenStreamAsync(path, authorize, ct);
-			var open = OutcomeClassifier.FromHttpStatus(stream.Status);
-			if (open.Outcome != Outcome.Ok) return open;
+			var login = await workload.LoginStableAsync(client, room.Context, ct, lease: spectator.Lease);
+			if (login is not { Accepted: true }) return;
 
-			long bytes = 0;
-			var events = 0;
-			await foreach (var ev in stream.ReadAsync(ct))
+			client.Enqueue(ClientPackets.StartSpectating(spectator.TargetId));
+			while (!ct.IsCancellationRequested && !workload.IsDropped(client))
 			{
-				bytes += ev.Data.Length;
-				events++;
+				await workload.PollStableAsync(client, room.Context, ct);
+				await WorkloadContext.SafeDelayAsync(workload.PollInterval, ct);
+			}
+		}
+		finally
+		{
+			client.Enqueue(ClientPackets.StopSpectating());
+			await workload.SignOutQuietAsync(client);
+		}
+	}
+
+	private async Task RunOverlayAsync(Room room, Overlay overlay)
+	{
+		var ct = room.StopToken;
+		// A REST referee's own signed-in client watches too; otherwise the viewer has a client of its own.
+		var rest = overlay.Rest ??= room.Rest ?? new RestClient(workload.Endpoint, workload.Http);
+		if (!overlay.MatchReport && rest.Token is null)
+		{
+			// The room stream needs a signed-in viewer; the match report is public.
+			if (overlay.Lease is null)
+			{
+				if (!workload.Accounts.TryAcquire(AccountRole.Player, out var viewerLease)) return;
+				overlay.Lease = viewerLease;
 			}
 
-			return events > 0 || ct.IsCancellationRequested
-				? StepOutcome.Ok("sse", bytes)
-				: StepOutcome.Error("sse_empty");
-		}, ct);
+			var login = await StepExecution.RunAsync(Channels.Login, room.Context, workload.Outcomes, async () =>
+			{
+				var reply = await rest.SignInAsync(overlay.Lease.Account.Name, overlay.Lease.Account.Password, ct);
+				return OutcomeClassifier.FromRest(reply);
+			}, ct);
+			if (login.Outcome != Outcome.Ok) return;
+		}
+
+		var path = overlay.MatchReport ? $"/v1/matches/{room.RoomId}" : $"/v1/rooms/{room.RoomId}/live";
+		await SseWatch.WatchAsync(workload, rest, path, authorize: !overlay.MatchReport, () => room.Context, ct);
 	}
 
 	private static int PickTeamSize(Random random, int minPlayers, int maxPlayers)
@@ -576,5 +573,111 @@ public sealed partial class MatchRoomPersona(WorkloadContext workload, MatchRoom
 		int[] allowed = [2, 4, 8];
 		var candidates = allowed.Where(n => n >= minPlayers && n <= maxPlayers).ToArray();
 		return candidates.Length == 0 ? Math.Max(2, minPlayers) : candidates[random.Next(candidates.Length)];
+	}
+
+	/// <summary>The sessions, accounts and background loops of one room, kept for the life of its scenario copy.</summary>
+	private sealed class Room : IDisposable
+	{
+		private readonly CancellationTokenSource _stop;
+
+		public Room(AccountLease refereeLease, List<AccountLease> playerLeases, CancellationToken scenarioStopped,
+			CancellationToken runAborted)
+		{
+			RefereeLease = refereeLease;
+			PlayerLeases = playerLeases;
+			_stop = CancellationTokenSource.CreateLinkedTokenSource(scenarioStopped, runAborted);
+		}
+
+		public AccountLease RefereeLease { get; }
+
+		public List<AccountLease> PlayerLeases { get; }
+
+		public string Name { get; init; } = string.Empty;
+
+		public IScenarioContext Context { get; set; } = null!;
+
+		public BeatmapEntry Beatmap { get; set; } = null!;
+
+		public IrcClient? Irc { get; set; }
+
+		public RestClient? Rest { get; set; }
+
+		public int RoomId { get; set; }
+
+		public int Round { get; set; }
+
+		public bool Broken { get; set; }
+
+		public IReadOnlyList<int> PlayerIds { get; set; } = [];
+
+		public List<StableClient> Players { get; } = [];
+
+		public List<Spectator> Spectators { get; } = [];
+
+		public List<Cluster> Clusters { get; } = [];
+
+		public List<Overlay> Overlays { get; } = [];
+
+		public List<RoomLoop> Loops { get; } = [];
+
+		/// <summary>Gets the token that stops the background loops.</summary>
+		public CancellationToken StopToken => _stop.Token;
+
+		public async Task StopLoopsAsync()
+		{
+			await _stop.CancelAsync();
+			try
+			{
+				await Task.WhenAll(Loops.Select(loop => loop.Running).OfType<Task>()).WaitAsync(TimeSpan.FromSeconds(10));
+			}
+			catch (Exception)
+			{
+				// A loop that does not end in time is left to stop with the process.
+			}
+		}
+
+		public void Dispose()
+		{
+			_stop.Dispose();
+		}
+	}
+
+	/// <summary>A background loop of a room that is started again when it ended before the room was stopped.</summary>
+	private sealed class RoomLoop(Room room, Func<Task> start)
+	{
+		public Task? Running { get; private set; }
+
+		public void EnsureRunning()
+		{
+			if (room.StopToken.IsCancellationRequested) return;
+			if (Running is null || Running.IsCompleted) Running = Task.Run(start);
+		}
+	}
+
+	private sealed class Spectator(AccountLease lease)
+	{
+		public AccountLease Lease { get; } = lease;
+
+		public StableClient? Client { get; set; }
+
+		public int TargetId { get; set; }
+	}
+
+	private sealed class Cluster(AccountLease lease, int childCount)
+	{
+		public AccountLease Lease { get; } = lease;
+
+		public int ChildCount { get; } = childCount;
+
+		public List<StableClient> Clients { get; } = [];
+	}
+
+	private sealed class Overlay(bool matchReport)
+	{
+		public bool MatchReport { get; } = matchReport;
+
+		public RestClient? Rest { get; set; }
+
+		public AccountLease? Lease { get; set; }
 	}
 }
