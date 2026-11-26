@@ -188,14 +188,14 @@ Every command is `./docker/loadtests/run-docker.sh …`.
 |---|---|---|---|
 | 1 | `run smoke` | 2.5 min | ran once: no error, 3/3 server checks; CPU peak and one `getscores` threshold broke in the first 15 s |
 | 2 | `run pilot --step-delta 150 --steps 2` | 5 min | completed: IRC fix holds (1 IRC timeout), 63 errors, see findings |
-| 3 | `run pilot --step-delta 150 --steps 8` | 19 min | finds the ceiling |
-| 4 | owner sets N (70–80 % of the ceiling) | – | open |
-| 5 | `run load --n N`, three times | 11 min each at N = 100 | open |
+| 3 | `run pilot --step-delta 200 --steps 7` | 19 min | done: `pilot-20261126-132913`; ceiling 1200 sessions (CPU p95 65 %; at 1400 it is 96 % and 17 % of the step is shed) |
+| 4 | owner sets N | – | **N = 1000** (owner, 2026-11-26), 83 % of the ceiling; the pilot step at 1000 had CPU p95 51 % |
+| 5 | `run load --n 1000`, three times | about 12 min each | open |
 | 6 | `run capacity --step-delta D --steps S` | 32 min | open |
-| 7 | `run stress --n <ceiling>` | 33 min | open |
+| 7 | `run stress --n <ceiling>` | 33 min | open; 2 × 1200 sessions need more than the 1499 seeded player accounts |
 | 8 | `run spike --n N`, twice | 5 min each | open |
 | 9 | `scalability --step-delta D --steps S` (Basil on 1, 2, 4 threads) | 32 min each | open, run last |
-| – | `run soak --n N` (6 h at 70 % of N) | 6 h | deferred until the owner says |
+| – | `run soak --n 1000` (6 h at 700) | 6 h | deferred until the owner says |
 
 Durations grow with N. If late: Scalability drops to two sizes, then Spike drops to one run. Load, Capacity, Stress and
 Soak are never cut.
@@ -225,6 +225,8 @@ its ramp ends), on the 95th percentile of the one-second samples of that step; t
 | Match rooms almost never played: 449 of 461 rooms lived 10 to 20 s and every member signed in again (3467 sign-ins in 9 min) | the harness joined a room by its match id; the osu! packets use the room's wire id, and a refused join was ignored. **Every pilot before `20261126-131315` is invalid** for the ceiling and for N | harness | fixed, join reproduced both ways on the bench |
 | `irc_timeout` about 5 % of the chatter's lines | a busy server answers a line with a notice only | harness | counted as shed |
 | Pilot `20261126-131315` (4 steps to 600, fixed harness, log level `Warning`) | 6 errors in 219,277 steps; CPU p95 25, 25, 34 and 38 %; shed 0 to 1.6 % in the steps; 4 NBomber thresholds broke in a few reporting intervals, not yet traced | measurement | ceiling not reached |
+| `room_not_listed`, `mp_start_unconfirmed`, `match_join_timeout` (125 of the 201 errors of pilot `20261126-132913`) | probably: the harness dropped the packets of a poll the server refused (seen in the code; the link to these errors is inferred) | harness | fixed: refused packets stay queued |
+| `sse_dropped` on room streams | a live frame carries an array of events; the watcher looked for `closed` on an object only, so a room that closed counted as a drop (reproduced on the bench). A second look at a match report that the server sheds also counted as a drop (from the code) | harness | fixed |
 | `getscores` p95 above 500 ms in the smoke | suspected cold start (empty cache, first sign-ins) | open | measure in the next runs |
 | Earlier k3s bench: firewall blocked 8443 and 5201, AppArmor crashed the generator, weak Wi‑Fi | worker infrastructure | environment | gone with the Docker bench |
 
