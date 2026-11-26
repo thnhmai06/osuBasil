@@ -47,7 +47,7 @@ public sealed record RoomView(
 			[
 				.. room.Slots.Select(slot => new SlotView(slot.Index, slot.Locked, slot.Status, slot.Team,
 					slot.Mods, slot.Player is null ? null : UserRef.Of(slot.Player),
-					host is not null && slot.Player.Equals(host)))
+					host is not null && host.Equals(slot.Player)))
 			]);
 	}
 }
