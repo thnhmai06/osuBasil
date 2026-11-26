@@ -3,6 +3,7 @@ set -euo pipefail
 
 # Orchestrates the k3s load test stack on mocha, cappuccino and espresso.
 # Usage:
+#   ./docker/loadtests/run.sh build
 #   ./docker/loadtests/run.sh deploy
 #   BASIL_OWNER_PASSWORD=<password> ./docker/loadtests/run.sh seed [extra seed args...]
 #   ./docker/loadtests/run.sh reset
@@ -18,48 +19,94 @@ K3S_DIR="$SCRIPT_DIR/k3s"
 NS="basil-load"
 
 MOCHA_IP="${MOCHA_IP:-192.168.27.124}"
-CAPPUCCINO_SSH="${CAPPUCCINO_SSH:-cappuccino@192.168.27.151}"
-ESPRESSO_SSH="${ESPRESSO_SSH:-espresso@192.168.27.150}"
-CAPPUCCINO_HOME="${CAPPUCCINO_HOME:-/home/cappuccino}"
-ESPRESSO_HOME="${ESPRESSO_HOME:-/home/espresso}"
+export KUBECONFIG="${KUBECONFIG:-$HOME/.kube/config}"
 
-DATA_DIR="${BASIL_LOAD_DATA:-/home/haith/Desktop/osuBasil Data}"
+# The bench's folder on mocha; the manifests in k3s/ name the same path.
+BENCH_DIR="/home/haith/basil-load"
 DUMP_FILE="${BASIL_LOAD_DUMP:-$REPO_ROOT/basil-seeded.dump}"
 ACCOUNTS_FILE="${BASIL_LOAD_ACCOUNTS:-$REPO_ROOT/accounts.csv}"
 WORLD_FILE="${BASIL_LOAD_WORLD:-$REPO_ROOT/world-data.json}"
 REPORTS_ROOT="${BASIL_LOAD_REPORTS:-$REPO_ROOT/reports}"
-POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-basil-load-secret}"
 PUBLISH_DIR="$REPO_ROOT/publish/loadtests-linux-x64"
 
+# Recreates the file-moving pod of a worker, so every run starts from a live one.
+start_transfer() {
+  kubectl -n "$NS" delete pod "load-transfer-$1" --ignore-not-found --wait=true >/dev/null
+  NODE="$1" envsubst '${NODE}' < "$K3S_DIR/transfer.yaml" | kubectl apply -f - >/dev/null
+  kubectl -n "$NS" wait --for=condition=Ready "pod/load-transfer-$1" --timeout=120s >/dev/null
+}
+
+# One digest of every file under the current directory, comparable between mocha and a worker.
+DIGEST='find . -type f -exec sha256sum {} + | LC_ALL=C sort -k2 | sha256sum'
+
 publish_binary() {
-  local out_dir="$PUBLISH_DIR"
   echo "[publish] Building self-contained Basil.Tests.LoadTests (linux-x64)..."
   dotnet publish "$REPO_ROOT/Basil.Tests.LoadTests/Basil.Tests.LoadTests.csproj" \
-    -c Release -r linux-x64 --self-contained true -p:DebugType=none -o "$out_dir"
+    -c Release -r linux-x64 --self-contained true -p:DebugType=none -o "$PUBLISH_DIR"
 
   echo "[sync] Copying binary and seed files to cappuccino and espresso..."
-  for host in "$CAPPUCCINO_SSH" "$ESPRESSO_SSH"; do
-    ssh "$host" "mkdir -p ~/loadtests/bin ~/loadtests/data ~/loadtests/reports"
-    scp -q -r "$out_dir"/* "$host:~/loadtests/bin/"
-    [ -f "$ACCOUNTS_FILE" ] && scp -q "$ACCOUNTS_FILE" "$host:~/loadtests/data/accounts.csv"
-    [ -f "$WORLD_FILE" ] && scp -q "$WORLD_FILE" "$host:~/loadtests/data/world-data.json"
+  for node in cappuccino espresso; do
+    start_transfer "$node"
+    # The publish is large and the workers are on Wi-Fi: it is sent only when the node's copy differs.
+    if [ "$(cd "$PUBLISH_DIR" && sh -c "$DIGEST")" != "$(kubectl -n "$NS" exec "load-transfer-$node" -- sh -c "cd /loadtests/bin && $DIGEST")" ]; then
+      tar -C "$PUBLISH_DIR" -cf - . | kubectl -n "$NS" exec -i "load-transfer-$node" -- tar -C /loadtests/bin -xf -
+    fi
+    kubectl -n "$NS" exec -i "load-transfer-$node" -- sh -c 'cat > /loadtests/data/accounts.csv' < "$ACCOUNTS_FILE"
+    kubectl -n "$NS" exec -i "load-transfer-$node" -- sh -c 'cat > /loadtests/data/world-data.json' < "$WORLD_FILE"
   done
+}
+
+# Copies one run's report folder from a worker into a local folder.
+fetch_reports() {
+  kubectl -n "$NS" exec "load-transfer-$1" -- tar -C "/loadtests/reports/$2" -cf - . | tar -C "$3" -xf -
+}
+
+# Builds HEAD (committed files only) into basil:load; 'reset' or a rollout restart then starts it.
+cmd_build() {
+  local revision src
+  revision="$(git -C "$REPO_ROOT" rev-parse --short HEAD)"
+  src="$BENCH_DIR/src-$revision"
+  mkdir -p "$src"
+  git -C "$REPO_ROOT" archive HEAD | tar -C "$src" -xf -
+
+  kubectl -n "$NS" delete pod build-image --ignore-not-found --wait=true >/dev/null
+  BENCH_DIR="$BENCH_DIR" REVISION="$revision" envsubst '${BENCH_DIR} ${REVISION}' < "$K3S_DIR/build.yaml" | kubectl apply -f -
+  local phase=""
+  for _ in $(seq 1 360); do
+    phase="$(kubectl -n "$NS" get pod build-image -o jsonpath='{.status.phase}' 2>/dev/null || true)"
+    [ "$phase" = "Succeeded" ] || [ "$phase" = "Failed" ] && break
+    sleep 5
+  done
+  if [ "$phase" != "Succeeded" ]; then
+    echo "[build] Failed (pod phase '${phase:-unknown}'):" >&2
+    kubectl -n "$NS" logs pod/build-image -c build --tail=60 >&2 || true
+    kubectl -n "$NS" logs pod/build-image -c import >&2 || true
+    exit 1
+  fi
+  kubectl -n "$NS" logs pod/build-image -c import
+  kubectl -n "$NS" delete pod build-image >/dev/null
+  echo "[build] basil:load is now $revision."
 }
 
 cmd_deploy() {
   kubectl apply -f "$K3S_DIR/namespace.yaml"
 
-  kubectl -n "$NS" create secret generic basil-load-secrets \
-    --from-literal="postgres-password=$POSTGRES_PASSWORD" \
-    --dry-run=client -o yaml | kubectl apply -f -
+  # The database keeps the password it was initialised with, so an existing secret is never replaced.
+  if ! kubectl -n "$NS" get secret basil-db >/dev/null 2>&1; then
+    if [ -z "${POSTGRES_PASSWORD:-}" ]; then
+      echo "Set POSTGRES_PASSWORD for the first deploy." >&2
+      exit 2
+    fi
+    kubectl -n "$NS" create secret generic basil-db --from-literal="password=$POSTGRES_PASSWORD"
+  fi
 
-  kubectl -n "$NS" create configmap nginx-load-conf \
-    --from-file="nginx-load.conf=$SCRIPT_DIR/nginx-load.conf" \
+  kubectl -n "$NS" create configmap nginx-load \
+    --from-file="nginx.conf=$SCRIPT_DIR/nginx-load.conf" \
     --from-file="proxy.conf=$REPO_ROOT/docker/nginx/proxy.conf" \
     --from-file="real-ip.conf=$REPO_ROOT/docker/nginx/real-ip.conf" \
     --dry-run=client -o yaml | kubectl apply -f -
 
-  kubectl -n "$NS" create configmap nginx-certs \
+  kubectl -n "$NS" create secret generic nginx-certs \
     --from-file="$REPO_ROOT/docker/nginx/certs" \
     --dry-run=client -o yaml | kubectl apply -f -
 
@@ -67,7 +114,7 @@ cmd_deploy() {
   kubectl -n "$NS" rollout status statefulset/postgres --timeout=120s
 
   kubectl apply -f "$K3S_DIR/basil.yaml"
-  kubectl -n "$NS" rollout status deployment/basil --timeout=180s
+  kubectl -n "$NS" rollout status deployment/basil --timeout=300s
 
   kubectl apply -f "$K3S_DIR/nginx.yaml"
   kubectl apply -f "$K3S_DIR/iperf3.yaml"
@@ -110,9 +157,9 @@ cmd_reset() {
 
   # The server writes these folders as its own user (possibly root), so a throwaway root pod with the same host paths
   # clears them, and the run stops if anything is left: every run must start from the same cold state.
-  echo "[reset] Clearing Replays, Screenshots, uploaded Avatars, Cache, Logs and nginx load.log..."
+  echo "[reset] Clearing Replays, Screenshots, uploaded Avatars, Cache, Logs and the nginx load log..."
   kubectl -n "$NS" delete pod clear-state --ignore-not-found --wait=true >/dev/null
-  DATA_DIR="$DATA_DIR" envsubst '${DATA_DIR}' < "$K3S_DIR/clear-state.yaml" | kubectl apply -f -
+  BENCH_DIR="$BENCH_DIR" envsubst '${BENCH_DIR}' < "$K3S_DIR/clear-state.yaml" | kubectl apply -f -
   local phase=""
   for _ in $(seq 1 90); do
     phase="$(kubectl -n "$NS" get pod clear-state -o jsonpath='{.status.phase}' 2>/dev/null || true)"
@@ -204,14 +251,14 @@ cmd_run() {
   local sampler_pid=$!
 
   echo "[run] Launching control Job ($control_job_name) on espresso..."
-  CONTROL_JOB_NAME="$control_job_name" ESPRESSO_HOME="$ESPRESSO_HOME" RUN_ID="$run_id" \
+  CONTROL_JOB_NAME="$control_job_name" RUN_ID="$run_id" \
     CONTROL_DURATION="$control_duration" \
-    envsubst '${CONTROL_JOB_NAME} ${ESPRESSO_HOME} ${RUN_ID} ${CONTROL_DURATION}' < "$K3S_DIR/job-control.yaml" | kubectl apply -f -
+    envsubst '${CONTROL_JOB_NAME} ${RUN_ID} ${CONTROL_DURATION}' < "$K3S_DIR/job-control.yaml" | kubectl apply -f -
 
   echo "[run] Launching loadtests Job ($job_name) on cappuccino..."
-  JOB_NAME="$job_name" CAPPUCCINO_HOME="$CAPPUCCINO_HOME" RUN_ID="$run_id" \
+  JOB_NAME="$job_name" RUN_ID="$run_id" \
     TEST_ARGS="$test_name $*" \
-    envsubst '${JOB_NAME} ${CAPPUCCINO_HOME} ${RUN_ID} ${TEST_ARGS}' < "$K3S_DIR/job-loadtests.yaml" | kubectl apply -f -
+    envsubst '${JOB_NAME} ${RUN_ID} ${TEST_ARGS}' < "$K3S_DIR/job-loadtests.yaml" | kubectl apply -f -
 
   echo "[run] Waiting for $job_name to finish (planned ${planned}s)..."
   local wait_status=0
@@ -226,9 +273,12 @@ cmd_run() {
   kubectl -n "$NS" delete job "$control_job_name" --ignore-not-found >/dev/null 2>&1 || true
 
   echo "[collect] Gathering reports from cappuccino, espresso and mocha nginx..."
-  scp -q -r "$CAPPUCCINO_SSH:~/loadtests/reports/$run_id"/* "$report_dir/" || true
-  scp -q -r "$ESPRESSO_SSH:~/loadtests/reports/$run_id"/* "$report_dir/control/" || true
-  [ -f /tmp/basil-load/nginx-logs/load.log ] && cp /tmp/basil-load/nginx-logs/load.log "$report_dir/nginx-load.log"
+  fetch_reports cappuccino "$run_id" "$report_dir" || echo "[collect] cappuccino reports missing" >&2
+  fetch_reports espresso "$run_id" "$report_dir/control" || echo "[collect] espresso reports missing" >&2
+  cp "$BENCH_DIR/nginx-log/access.log" "$report_dir/nginx-load.log" || echo "[collect] nginx log missing" >&2
+  # The next reset empties the server's logs, so each run keeps its own copy.
+  cp -r "$BENCH_DIR/Logs" "$report_dir/basil-logs" || echo "[collect] basil logs incomplete" >&2
+  kubectl -n "$NS" logs deploy/basil > "$report_dir/basil-console.log" 2>&1 || true
   rm -f "$stop_file"
 
   # 0 the SLO held, 3 it broke, anything else (or no exit code, or a timeout) means the run itself broke.
@@ -262,13 +312,14 @@ cmd_scalability() {
 }
 
 case "${1:-}" in
+  build) shift; cmd_build "$@" ;;
   deploy) shift; cmd_deploy "$@" ;;
   seed) shift; cmd_seed "$@" ;;
   reset) shift; cmd_reset "$@" ;;
   run) shift; cmd_run "$@" ;;
   scalability) shift; cmd_scalability "$@" ;;
   *)
-    echo "Usage: $0 {deploy|seed|reset|run <test> [args...]|scalability [args...]}" >&2
+    echo "Usage: $0 {build|deploy|seed|reset|run <test> [args...]|scalability [args...]}" >&2
     exit 2
     ;;
 esac

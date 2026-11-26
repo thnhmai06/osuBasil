@@ -5,75 +5,79 @@ metadata:
   namespace: basil-load
 spec:
   replicas: 1
-  strategy:
-    type: Recreate
   selector:
     matchLabels:
       app: nginx
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:
         app: nginx
     spec:
+      containers:
+      - image: nginx:stable-alpine
+        imagePullPolicy: IfNotPresent
+        name: nginx
+        readinessProbe:
+          failureThreshold: 3
+          periodSeconds: 5
+          successThreshold: 1
+          tcpSocket:
+            port: 8443
+          timeoutSeconds: 1
+        resources:
+          limits:
+            cpu: "1"
+            memory: 512Mi
+          requests:
+            cpu: "1"
+            memory: 512Mi
+        volumeMounts:
+        - mountPath: /etc/nginx/nginx.conf
+          name: conf
+          subPath: nginx.conf
+        - mountPath: /etc/nginx/proxy.conf
+          name: conf
+          subPath: proxy.conf
+        - mountPath: /etc/nginx/real-ip.conf
+          name: conf
+          subPath: real-ip.conf
+        - mountPath: /etc/nginx/certs
+          name: certs
+        - mountPath: /data
+          name: data
+          readOnly: true
+        - mountPath: /cache
+          name: cache
+          readOnly: true
+        - mountPath: /var/log/nginx/load
+          name: log
+      dnsPolicy: ClusterFirstWithHostNet
+      hostNetwork: true
       nodeSelector:
         kubernetes.io/hostname: mocha
-      hostNetwork: true
-      dnsPolicy: ClusterFirstWithHostNet
-      containers:
-        - name: nginx
-          image: nginx:stable-alpine
-          ports:
-            - containerPort: 8443
-              hostPort: 8443
-            - containerPort: 6697
-              hostPort: 6697
-          resources:
-            requests:
-              cpu: "1"
-              memory: 1Gi
-            limits:
-              cpu: "1"
-              memory: 1Gi
-          volumeMounts:
-            - name: conf
-              mountPath: /etc/nginx/nginx.conf
-              subPath: nginx-load.conf
-              readOnly: true
-            - name: conf
-              mountPath: /etc/nginx/proxy.conf
-              subPath: proxy.conf
-              readOnly: true
-            - name: conf
-              mountPath: /etc/nginx/real-ip.conf
-              subPath: real-ip.conf
-              readOnly: true
-            - name: certs
-              mountPath: /etc/nginx/certs
-              readOnly: true
-            - name: data
-              mountPath: /data
-              readOnly: true
-            - name: cache
-              mountPath: /cache
-              readOnly: true
-            - name: nginx-logs
-              mountPath: /var/log/nginx
+      restartPolicy: Always
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
       volumes:
-        - name: conf
-          configMap:
-            name: nginx-load-conf
-        - name: certs
-          configMap:
-            name: nginx-certs
-        - name: data
-          hostPath:
-            path: /home/haith/Desktop/osuBasil Data
-            type: Directory
-        - name: cache
-          hostPath:
-            path: /tmp/basil-load/Cache
-            type: DirectoryOrCreate
-        - name: nginx-logs
-          hostPath:
-            path: /tmp/basil-load/nginx-logs
-            type: DirectoryOrCreate
+      - configMap:
+          defaultMode: 420
+          name: nginx-load
+        name: conf
+      - name: certs
+        secret:
+          defaultMode: 420
+          secretName: nginx-certs
+      - hostPath:
+          path: /home/haith/basil-load/Data
+          type: Directory
+        name: data
+      - hostPath:
+          path: /home/haith/basil-load/Cache
+          type: Directory
+        name: cache
+      - hostPath:
+          path: /home/haith/basil-load/nginx-log
+          type: Directory
+        name: log

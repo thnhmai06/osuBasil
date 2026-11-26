@@ -27,7 +27,7 @@ spec:
               exit 1
             fi
           done
-          : > /nginx-logs/load.log
+          : > /nginx-logs/access.log
       volumeMounts:
         - name: data
           mountPath: /data
@@ -40,17 +40,17 @@ spec:
   volumes:
     - name: data
       hostPath:
-        path: "${DATA_DIR}"
+        path: "${BENCH_DIR}/Data"
         type: Directory
     - name: cache
       hostPath:
-        path: /tmp/basil-load/Cache
+        path: "${BENCH_DIR}/Cache"
         type: DirectoryOrCreate
     - name: logs
       hostPath:
-        path: /tmp/basil-load/Logs
+        path: "${BENCH_DIR}/Logs"
         type: DirectoryOrCreate
     - name: nginx-logs
       hostPath:
-        path: /tmp/basil-load/nginx-logs
+        path: "${BENCH_DIR}/nginx-log"
         type: DirectoryOrCreate

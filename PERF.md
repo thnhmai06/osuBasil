@@ -45,8 +45,9 @@ the database).
 
 nginx limits requests and connections per address (`docker/nginx/nginx.conf`), and a load generator comes from one address,
 so the default limits would answer it with 429. `docker/loadtests/nginx-load.conf` raises the per-address limits, listens on
-8443 (HTTPS) and 6697 (IRC TLS), and writes a tab-separated `load` access log with `$upstream_response_time`, `$request_time`,
-`$status`, `$uri` and whether `osu-token` was sent (poll versus login) for server-side SLO reporting.
+8443 (HTTPS) and 6697 (IRC TLS), and writes a space-separated `load` access log (time, host, method, URI, status, whether `osu-token`
+was sent to tell a poll from a login, request length, bytes sent, `$request_time`, `$upstream_response_time`) for
+server-side SLO reporting.
 
 ### Running it
 
@@ -68,7 +69,7 @@ online the server measured beside the target N, and, for smoke, the server-side 
 score is stored once, no room or session is left over). `plan <test> [options]` prints the planned duration in seconds.
 
 On the k3s bench (`docker/loadtests/`), one script deploys the stack, resets state between runs, publishes and copies the
-binary, runs both the generator Job (`cappuccino`) and the control/ping/iperf3 Job (`espresso`), and gathers every report and
+binary through the cluster (no SSH to the workers), runs both the generator Job (`cappuccino`) and the control/ping/iperf3 Job (`espresso`), and gathers every report and
 infrastructure log into `reports/<test>-<timestamp>/`:
 
 ```bash

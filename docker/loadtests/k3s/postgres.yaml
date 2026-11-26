@@ -4,11 +4,19 @@ metadata:
   name: postgres
   namespace: basil-load
 spec:
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - name: pg
+    port: 5432
+    protocol: TCP
+    targetPort: 5432
   selector:
     app: postgres
-  ports:
-    - port: 5432
-      targetPort: 5432
+  sessionAffinity: None
+  type: ClusterIP
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -16,54 +24,82 @@ metadata:
   name: postgres
   namespace: basil-load
 spec:
-  serviceName: postgres
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  podManagementPolicy: OrderedReady
   replicas: 1
   selector:
     matchLabels:
       app: postgres
+  serviceName: postgres
   template:
     metadata:
       labels:
         app: postgres
     spec:
+      containers:
+      - env:
+        - name: POSTGRES_DB
+          value: basil
+        - name: POSTGRES_USER
+          value: basil
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: basil-db
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        image: postgres:17-alpine
+        imagePullPolicy: IfNotPresent
+        name: postgres
+        ports:
+        - containerPort: 5432
+          protocol: TCP
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - basil
+            - -d
+            - basil
+          failureThreshold: 3
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          limits:
+            cpu: "1"
+            memory: 2Gi
+          requests:
+            cpu: "1"
+            memory: 2Gi
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: pgdata
+      dnsPolicy: ClusterFirst
       nodeSelector:
         kubernetes.io/hostname: mocha
-      containers:
-        - name: postgres
-          image: postgres:17-alpine
-          ports:
-            - containerPort: 5432
-          env:
-            - name: POSTGRES_DB
-              value: basil
-            - name: POSTGRES_USER
-              value: basil
-            - name: POSTGRES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: basil-load-secrets
-                  key: postgres-password
-          resources:
-            requests:
-              cpu: "1"
-              memory: 2Gi
-            limits:
-              cpu: "1"
-              memory: 2Gi
-          readinessProbe:
-            exec:
-              command: ["pg_isready", "-U", "basil", "-d", "basil"]
-            initialDelaySeconds: 5
-            periodSeconds: 5
-          volumeMounts:
-            - name: pgdata
-              mountPath: /var/lib/postgresql/data
+      restartPolicy: Always
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 1
+      partition: 0
+    type: RollingUpdate
   volumeClaimTemplates:
-    - metadata:
-        name: pgdata
-      spec:
-        accessModes: ["ReadWriteOnce"]
-        storageClassName: local-path
-        resources:
-          requests:
-            storage: 10Gi
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: pgdata
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 10Gi
+      storageClassName: local-path
+      volumeMode: Filesystem

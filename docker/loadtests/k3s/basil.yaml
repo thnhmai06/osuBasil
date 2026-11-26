@@ -4,15 +4,23 @@ metadata:
   name: basil
   namespace: basil-load
 spec:
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - name: http
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  - name: irc
+    port: 6667
+    protocol: TCP
+    targetPort: 6667
   selector:
     app: basil
-  ports:
-    - name: http
-      port: 8080
-      targetPort: 8080
-    - name: irc
-      port: 6667
-      targetPort: 6667
+  sessionAffinity: None
+  type: ClusterIP
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -21,78 +29,95 @@ metadata:
   namespace: basil-load
 spec:
   replicas: 1
-  strategy:
-    type: Recreate
   selector:
     matchLabels:
       app: basil
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:
         app: basil
     spec:
+      containers:
+      - env:
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: basil-db
+        - name: ASPNETCORE_ENVIRONMENT
+          value: Production
+        - name: ConnectionStrings__Write
+          value: Host=postgres;Port=5432;Database=basil;Username=basil;Password=$(DB_PASSWORD)
+        - name: ConnectionStrings__Read
+          value: Host=postgres;Port=5432;Database=basil;Username=basil;Password=$(DB_PASSWORD)
+        - name: Basil__Server__Domain
+          value: basil.local
+        - name: Basil__Server__TrustedProxies__0
+          value: 10.42.0.1
+        - name: Basil__Server__Files__AccelPrefix
+          value: /_files/
+        - name: Logging__LogLevel__Default
+          value: Information
+        - name: Logging__LogLevel__Microsoft
+          value: Warning
+        - name: Logging__LogLevel__System
+          value: Warning
+        - name: Logging__LogLevel__Microsoft.Hosting.Lifetime
+          value: Information
+        image: basil:load
+        imagePullPolicy: Never
+        name: basil
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        - containerPort: 6667
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 60
+          httpGet:
+            httpHeaders:
+            - name: Host
+              value: api.basil.local
+            path: /health
+            port: 8080
+            scheme: HTTP
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          limits:
+            cpu: "4"
+            memory: 4Gi
+          requests:
+            cpu: "4"
+            memory: 4Gi
+        volumeMounts:
+        - mountPath: /app/Data
+          name: data
+        - mountPath: /app/Cache
+          name: cache
+        - mountPath: /app/Logs
+          name: logs
+      dnsPolicy: ClusterFirst
       nodeSelector:
         kubernetes.io/hostname: mocha
+      restartPolicy: Always
+      securityContext:
+        runAsGroup: 1654
+        runAsUser: 1654
       terminationGracePeriodSeconds: 90
-      containers:
-        - name: basil
-          image: basil:load
-          imagePullPolicy: Never
-          ports:
-            - containerPort: 8080
-            - containerPort: 6667
-          env:
-            - name: ASPNETCORE_ENVIRONMENT
-              value: Production
-            - name: POSTGRES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: basil-load-secrets
-                  key: postgres-password
-            - name: ConnectionStrings__Write
-              value: "Host=postgres;Port=5432;Database=basil;Username=basil;Password=$(POSTGRES_PASSWORD)"
-            - name: ConnectionStrings__Read
-              value: "Host=postgres;Port=5432;Database=basil;Username=basil;Password=$(POSTGRES_PASSWORD)"
-            - name: Basil__Server__Domain
-              value: basil.local
-            # nginx runs with hostNetwork on mocha and reaches Basil over cni0 / LAN.
-            - name: Basil__Server__TrustedProxies__0
-              value: 10.42.0.0/16
-            - name: Basil__Server__TrustedProxies__1
-              value: 192.168.27.124/32
-            - name: Basil__Server__Files__AccelPrefix
-              value: /_files/
-            - name: Serilog__MinimumLevel__Default
-              value: Information
-          resources:
-            requests:
-              cpu: "4"
-              memory: 4Gi
-            limits:
-              cpu: "4"
-              memory: 4Gi
-          readinessProbe:
-            exec:
-              command: ["curl", "-sf", "-H", "Host: api.basil.local", "http://127.0.0.1:8080/health"]
-            initialDelaySeconds: 10
-            periodSeconds: 5
-          volumeMounts:
-            - name: data
-              mountPath: /app/Data
-            - name: cache
-              mountPath: /app/Cache
-            - name: logs
-              mountPath: /app/Logs
       volumes:
-        - name: data
-          hostPath:
-            path: /home/haith/Desktop/osuBasil Data
-            type: Directory
-        - name: cache
-          hostPath:
-            path: /tmp/basil-load/Cache
-            type: DirectoryOrCreate
-        - name: logs
-          hostPath:
-            path: /tmp/basil-load/Logs
-            type: DirectoryOrCreate
+      - hostPath:
+          path: /home/haith/basil-load/Data
+          type: Directory
+        name: data
+      - hostPath:
+          path: /home/haith/basil-load/Cache
+          type: Directory
+        name: cache
+      - hostPath:
+          path: /home/haith/basil-load/Logs
+          type: Directory
+        name: logs

@@ -1,0 +1,22 @@
+# A pod that only moves files to and from a worker's hostPath, so no SSH access to the node is needed.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: load-transfer-${NODE}
+  namespace: basil-load
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: ${NODE}
+  terminationGracePeriodSeconds: 1
+  containers:
+    - name: transfer
+      image: busybox:1.36.1
+      command: ["sh", "-c", "mkdir -p /loadtests/bin /loadtests/data /loadtests/reports && exec sleep 2147483647"]
+      volumeMounts:
+        - name: loadtests
+          mountPath: /loadtests
+  volumes:
+    - name: loadtests
+      hostPath:
+        path: /var/lib/basil-load/loadtests
+        type: DirectoryOrCreate

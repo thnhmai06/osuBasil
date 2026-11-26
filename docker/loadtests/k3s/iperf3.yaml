@@ -8,25 +8,34 @@ spec:
   selector:
     matchLabels:
       app: iperf3
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
   template:
     metadata:
       labels:
         app: iperf3
     spec:
+      containers:
+      - args:
+        - -s
+        - -p
+        - "5201"
+        image: networkstatic/iperf3
+        imagePullPolicy: Always
+        name: iperf3
+        resources:
+          limits:
+            memory: 128Mi
+          requests:
+            cpu: 100m
+            memory: 64Mi
+      dnsPolicy: ClusterFirst
+      hostNetwork: true
       nodeSelector:
         kubernetes.io/hostname: mocha
-      hostNetwork: true
-      containers:
-        - name: iperf3
-          image: networkstatic/iperf3:latest
-          args: ["-s"]
-          ports:
-            - containerPort: 5201
-              hostPort: 5201
-          resources:
-            requests:
-              cpu: "100m"
-              memory: 64Mi
-            limits:
-              cpu: "500m"
-              memory: 128Mi
+      restartPolicy: Always
+      securityContext: {}
+      terminationGracePeriodSeconds: 30

@@ -16,10 +16,24 @@ spec:
         kubernetes.io/hostname: cappuccino
       hostNetwork: true
       restartPolicy: Never
+      # Ubuntu's stacked containerd AppArmor profile denies signals and /proc access inside the pod.
+      securityContext:
+        appArmorProfile:
+          type: Unconfined
       containers:
         - name: loadtests
           image: mcr.microsoft.com/dotnet/runtime-deps:10.0
           workingDir: /work
+          # A native crash of the generator leaves a dump and its crash report beside the NBomber reports.
+          env:
+            - name: DOTNET_DbgEnableMiniDump
+              value: "1"
+            - name: DOTNET_EnableCrashReport
+              value: "1"
+            - name: DOTNET_DbgMiniDumpType
+              value: "1"
+            - name: DOTNET_DbgMiniDumpName
+              value: /reports/core.%p
           command: ["/bin/sh", "-c"]
           args:
             - |
@@ -50,13 +64,13 @@ spec:
       volumes:
         - name: bin
           hostPath:
-            path: ${CAPPUCCINO_HOME}/loadtests/bin
+            path: /var/lib/basil-load/loadtests/bin
             type: Directory
         - name: data
           hostPath:
-            path: ${CAPPUCCINO_HOME}/loadtests/data
+            path: /var/lib/basil-load/loadtests/data
             type: Directory
         - name: reports
           hostPath:
-            path: ${CAPPUCCINO_HOME}/loadtests/reports/${RUN_ID}
+            path: /var/lib/basil-load/loadtests/reports/${RUN_ID}
             type: DirectoryOrCreate

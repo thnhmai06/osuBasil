@@ -16,6 +16,34 @@ spec:
         kubernetes.io/hostname: espresso
       hostNetwork: true
       restartPolicy: Never
+      # Ubuntu's stacked containerd AppArmor profile denies signals and /proc access inside the pod.
+      securityContext:
+        appArmorProfile:
+          type: Unconfined
+      # Native sidecars: they run beside the control probe and stop with it, for network attribution.
+      initContainers:
+        - name: ping
+          image: busybox:1.36.1
+          restartPolicy: Always
+          command: ["/bin/sh", "-c", "exec ping 192.168.27.124 > /reports/ping.log 2>&1"]
+          volumeMounts:
+            - name: reports
+              mountPath: /reports
+        - name: iperf3
+          image: networkstatic/iperf3
+          imagePullPolicy: IfNotPresent
+          restartPolicy: Always
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              while true; do
+                date -u +"%Y-%m-%dT%H:%M:%SZ" >> /reports/iperf3.log
+                iperf3 -c 192.168.27.124 -t 5 >> /reports/iperf3.log 2>&1 || true
+                sleep 55
+              done
+          volumeMounts:
+            - name: reports
+              mountPath: /reports
       containers:
         - name: control
           image: mcr.microsoft.com/dotnet/runtime-deps:10.0
@@ -23,19 +51,6 @@ spec:
           args:
             - |
               mkdir -p /reports
-              # Ping and iperf3 run alongside the control probe for network attribution.
-              if command -v ping >/dev/null 2>&1; then
-                ping -i 1 192.168.27.124 > /reports/ping.log 2>&1 &
-                PING_PID=$!
-              fi
-              if command -v iperf3 >/dev/null 2>&1; then
-                (while true; do
-                  date -u +"%Y-%m-%dT%H:%M:%SZ" >> /reports/iperf3.log
-                  iperf3 -c 192.168.27.124 -t 5 >> /reports/iperf3.log 2>&1 || true
-                  sleep 55
-                done) &
-                IPERF_PID=$!
-              fi
               /bin-host/Basil.Tests.LoadTests control \
                 --connect 192.168.27.124 \
                 --port 8443 \
@@ -45,10 +60,6 @@ spec:
                 --world /data/world-data.json \
                 --duration ${CONTROL_DURATION} \
                 --reports /reports
-              STATUS=$?
-              [ -n "${PING_PID:-}" ] && kill "$PING_PID" 2>/dev/null || true
-              [ -n "${IPERF_PID:-}" ] && kill "$IPERF_PID" 2>/dev/null || true
-              exit $STATUS
           resources:
             requests:
               cpu: "1"
@@ -68,13 +79,13 @@ spec:
       volumes:
         - name: bin
           hostPath:
-            path: ${ESPRESSO_HOME}/loadtests/bin
+            path: /var/lib/basil-load/loadtests/bin
             type: Directory
         - name: data
           hostPath:
-            path: ${ESPRESSO_HOME}/loadtests/data
+            path: /var/lib/basil-load/loadtests/data
             type: Directory
         - name: reports
           hostPath:
-            path: ${ESPRESSO_HOME}/loadtests/reports/${RUN_ID}
+            path: /var/lib/basil-load/loadtests/reports/${RUN_ID}
             type: DirectoryOrCreate
