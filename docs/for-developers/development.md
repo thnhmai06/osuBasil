@@ -182,16 +182,16 @@ development workflow.
 
 ## Build the container image
 
-Basil ships only as a container image. The `Dockerfile` publishes the server self-contained for `linux-x64` or
-`linux-arm64` and adds `ffmpeg`; `docker compose up --build` uses it. To build the image alone:
+Basil ships only as a container image. The `Dockerfile` publishes the server self-contained for `linux-musl-x64` or
+`linux-musl-arm64` on Alpine and adds `ffmpeg`; `docker compose up --build` uses it. To build the image alone:
 
 ```bash
 docker build -t basil:dev .
 ```
 
-`dotnet publish Basil -c Release -r linux-x64 --self-contained true -o publish` makes the same executable without the
-image. It does not need the .NET runtime on the machine that runs it, but `ffmpeg` remains an external dependency for
-beatmapset audio previews, and Basil still expects an nginx in front of it for HTTPS and IRC.
+`dotnet publish Basil -c Release -r linux-x64 --self-contained true -o publish` makes the executable for a glibc Linux
+without the image. It does not need the .NET runtime on the machine that runs it, but `ffmpeg` remains an external
+dependency for beatmapset audio previews, and Basil still expects an nginx in front of it for HTTPS and IRC.
 
 ## Before changing the code
 

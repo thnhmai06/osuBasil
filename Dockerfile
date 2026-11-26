@@ -3,14 +3,15 @@ ARG TARGETARCH
 WORKDIR /src
 COPY . .
 RUN rid=$([ "$TARGETARCH" = arm64 ] && echo arm64 || echo x64) \
-    && dotnet publish Basil -c Release -r linux-$rid --self-contained true -p:DebugType=none \
+    && dotnet publish Basil -c Release -r linux-musl-$rid --self-contained true -p:DebugType=none \
         -p:GenerateDocumentationFile=false -o /app/publish \
     && find /app/publish \( -name '*.pdb' -o -name '*.xml' -o -name 'createdump' \) -delete
 
-FROM mcr.microsoft.com/dotnet/runtime-deps:10.0
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg curl \
-    && rm -rf /var/lib/apt/lists/*
+FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine
+# The Alpine base turns globalization off and carries no ICU or time zone data; Basil needs cultures, region names
+# and the TZ setting.
+RUN apk add --no-cache ffmpeg curl icu-libs icu-data-full tzdata
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 
 WORKDIR /app
 COPY --from=build /app/publish .
