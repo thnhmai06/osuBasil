@@ -94,10 +94,24 @@ public static class ScenarioCatalog
 		var churn = new ChurnPersona(workload);
 		var edgeCases = new EdgeCasesPersona(workload);
 
+		// A cycle of a cancelled run returns without waiting; unpaced, the copies would spin until memory runs out.
+		Func<IScenarioContext, Task<IResponse>> Cycle(Func<IScenarioContext, Task> run)
+		{
+			return async context =>
+			{
+				await run(context);
+				if (workload.AbortToken.IsCancellationRequested || context.ScenarioCancellationToken.IsCancellationRequested)
+					await Task.Delay(TimeSpan.FromSeconds(1));
+				return Response.Ok();
+			};
+		}
+
 		ScenarioProps Configure(ScenarioProps s, LoadSimulation[] sims, Threshold[] thresholds, Func<Task> shutdown,
 			bool attachMonitor = false)
 		{
-			s = s.WithClean(_ => shutdown());
+			// The personas handle a failed step themselves (end the connection, back off); a restarted iteration would
+			// skip that and spin.
+			s = s.WithClean(_ => shutdown()).WithRestartIterationOnFail(false);
 			s = warmUp is { } w && w > TimeSpan.Zero ? s.WithWarmUpDuration(w) : s.WithoutWarmUp();
 			s = s.WithLoadSimulations(sims);
 			if (enforceSlo && thresholds.Length > 0) s = s.WithThresholds(thresholds);
@@ -115,104 +129,64 @@ public static class ScenarioCatalog
 		return
 		[
 			Configure(
-				Scenario.Create("match_room", async ctx =>
-				{
-					await matchRoom.RunCycleAsync(ctx);
-					return Response.Ok();
-				}),
+				Scenario.Create("match_room", Cycle(matchRoom.RunCycleAsync)),
 				closedSimulations(a => a.MatchRooms),
 				SloThresholds.ForScenario(true, true, includeRest: true,
-					includeLogin: true, includeServerCpu: monitor is not null),
+					includeLogin: true),
 				matchRoom.ShutdownAsync,
 				true),
 
 			Configure(
-				Scenario.Create("free_player", async ctx =>
-				{
-					await freePlayer.RunCycleAsync(ctx);
-					return Response.Ok();
-				}),
+				Scenario.Create("free_player", Cycle(freePlayer.RunCycleAsync)),
 				closedSimulations(a => a.FreePlayers),
 				SloThresholds.ForScenario(true, true, true,
 					includeLogin: true),
 				freePlayer.ShutdownAsync),
 
 			Configure(
-				Scenario.Create("casual_room", async ctx =>
-				{
-					await casualRoom.RunCycleAsync(ctx);
-					return Response.Ok();
-				}),
+				Scenario.Create("casual_room", Cycle(casualRoom.RunCycleAsync)),
 				closedSimulations(a => a.CasualRooms),
 				SloThresholds.ForScenario(true, true, includeLogin: true),
 				casualRoom.ShutdownAsync),
 
 			Configure(
-				Scenario.Create("spectator", async ctx =>
-				{
-					await spectator.RunCycleAsync(ctx);
-					return Response.Ok();
-				}),
+				Scenario.Create("spectator", Cycle(spectator.RunCycleAsync)),
 				closedSimulations(a => a.Spectators),
 				SloThresholds.ForScenario(true, includeLogin: true),
 				spectator.ShutdownAsync),
 
 			Configure(
-				Scenario.Create("tourney_cluster", async ctx =>
-				{
-					await tourney.RunCycleAsync(ctx);
-					return Response.Ok();
-				}),
+				Scenario.Create("tourney_cluster", Cycle(tourney.RunCycleAsync)),
 				closedSimulations(a => a.TourneyClusters),
 				SloThresholds.ForScenario(true, includeLogin: true),
 				tourney.ShutdownAsync),
 
 			Configure(
-				Scenario.Create("overlay_viewer", async ctx =>
-				{
-					await overlay.RunCycleAsync(ctx);
-					return Response.Ok();
-				}),
+				Scenario.Create("overlay_viewer", Cycle(overlay.RunCycleAsync)),
 				closedSimulations(a => a.OverlayViewers),
 				SloThresholds.ForScenario(includeLogin: true),
 				overlay.ShutdownAsync),
 
 			Configure(
-				Scenario.Create("irc_chatter", async ctx =>
-				{
-					await irc.RunCycleAsync(ctx);
-					return Response.Ok();
-				}),
+				Scenario.Create("irc_chatter", Cycle(irc.RunCycleAsync)),
 				closedSimulations(a => a.IrcChatters),
 				SloThresholds.ForScenario(),
 				irc.ShutdownAsync),
 
 			Configure(
-				Scenario.Create("background", async ctx =>
-				{
-					await background.RunCycleAsync(ctx);
-					return Response.Ok();
-				}),
+				Scenario.Create("background", Cycle(background.RunCycleAsync)),
 				openSimulations(a => a.BackgroundRatePerMinute),
 				SloThresholds.ForScenario(includeGetScores: true, includeRest: true),
 				background.ShutdownAsync),
 
 			Configure(
-				Scenario.Create("churn", async ctx =>
-				{
-					await churn.RunCycleAsync(ctx);
-					return Response.Ok();
-				}),
+				Scenario.Create("churn", Cycle(churn.RunCycleAsync)),
 				openSimulations(a => a.ChurnRatePerMinute),
 				SloThresholds.ForScenario(includeLogin: true, includeRest: true),
 				churn.ShutdownAsync),
 
 			Configure(
-				Scenario.Create("edge_cases", async ctx =>
-				{
-					await edgeCases.RunCycleAsync(ctx);
-					return Response.Ok();
-				}),
+				Scenario.Create("edge_cases", Cycle(edgeCases.RunCycleAsync)),
 				openSimulations(a => a.EdgeCaseRatePerMinute),
 				SloThresholds.ForScenario(),
 				EdgeCasesPersona.ShutdownAsync)

@@ -1,4 +1,3 @@
-using Basil.Tests.Shared.Environment.Monitor;
 using Basil.Tests.Shared.Workload.Outcomes;
 using NBomber.Contracts;
 
@@ -7,13 +6,19 @@ namespace Basil.Tests.LoadTests;
 /// <summary>Declares the W15 SLO thresholds shared across load test modules.</summary>
 public static class SloThresholds
 {
-	/// <summary>The highest server CPU, in percent, the SLO allows; the run verdict checks the same limit after the run.</summary>
+	/// <summary>
+	///     The highest server CPU, in percent, the SLO allows while a step holds its load; the run verdict judges it after
+	///     the run, and the ramps are reported but not judged.
+	/// </summary>
 	public const double MaxServerCpuPercent = 80.0;
+
+	/// <summary>How long after the planned end of a ramp the load counts as held, to absorb the start-up offset.</summary>
+	public static readonly TimeSpan SteadyMargin = TimeSpan.FromSeconds(5);
 
 	/// <summary>Returns the standard per-channel and error-rate SLO thresholds for a scenario.</summary>
 	public static Threshold[] ForScenario(bool includePoll = false, bool includeSubmit = false,
 		bool includeGetScores = false, bool includeRest = false, bool includeLogin = false,
-		bool includeServerCpu = false, double maxErrorPercent = 0.5)
+		double maxErrorPercent = 0.5)
 	{
 		var thresholds = new List<Threshold>
 		{
@@ -37,11 +42,6 @@ public static class SloThresholds
 
 		if (includeLogin)
 			thresholds.Add(Threshold.Create(Channels.Login, stats => stats.Ok.Latency.Percent95 <= 2000));
-
-		if (includeServerCpu)
-			thresholds.Add(Threshold.Create(
-				metric => metric.Gauges.Get(DiagnosticsMonitor.CpuGaugeName).Value <= MaxServerCpuPercent,
-				startCheckAfter: TimeSpan.FromSeconds(15)));
 
 		return [.. thresholds];
 	}

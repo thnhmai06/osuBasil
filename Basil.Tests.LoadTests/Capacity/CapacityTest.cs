@@ -23,7 +23,7 @@ public sealed class CapacityTest : ILoadTest
 		var (stepHold, stepCount, stepDelta, rampStep) = Shape(options);
 		return RunPlan.Create(WarmUp, rampStep,
 		[
-			.. Enumerable.Range(1, stepCount).Select(step => ($"step {step}", step * stepDelta, rampStep + stepHold))
+			.. Enumerable.Range(1, stepCount).Select(step => ($"step {step}", step * stepDelta, rampStep, rampStep + stepHold))
 		]);
 	}
 

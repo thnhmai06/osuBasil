@@ -218,9 +218,10 @@ public sealed class LoginLockoutGuard(
 
 		if (distinct < burstThreshold || Interlocked.Exchange(ref _tripped, 1) != 0) return;
 
-		runAbort.Cancel();
+		// Stop first: cancelling runs the waiting continuations on this thread and may not come back soon.
 		context?.StopCurrentTest(
 			$"{distinct} distinct accounts were refused at sign-in within {_window.TotalSeconds:0} s; accounts.csv does not match the server.");
+		runAbort.Cancel();
 	}
 }
 

@@ -215,7 +215,18 @@ var failedThresholds = stats.Thresholds
 
 // CPU is also judged after the run from the monitor, so the verdict does not depend on one sampled value.
 var judgesSlo = options.Test is not ("stress" or "spike");
-var cpuBroken = judgesSlo && serverSummary is { MaxCpuPercent: > SloThresholds.MaxServerCpuPercent };
+// Judged only while a step holds its load; the peak of the whole run, ramps included, is reported beside it.
+var loadStart = runStartedAt + plan.WarmUp;
+var steadyCpu = plan.Steps.Select(step => new
+{
+	step.Index,
+	step.Name,
+	step.TargetSessions,
+	maxCpuPercent = monitor?.MaxCpuBetween(loadStart + step.SteadyStart + SloThresholds.SteadyMargin,
+		loadStart + step.End)
+}).ToArray();
+var steadyCpuMax = steadyCpu.Max(step => step.maxCpuPercent);
+var cpuBroken = judgesSlo && steadyCpuMax > SloThresholds.MaxServerCpuPercent;
 var checksBroken = checks.Any(c => !c.Passed);
 var sloBroken = failedThresholds.Length > 0 || cpuBroken || checksBroken;
 var restarted = serverSummary?.RestartDetected ?? false;
@@ -243,6 +254,8 @@ var meta = new
 		runBroken,
 		failedThresholds = failedThresholds.Length,
 		cpuMaxPercent = serverSummary?.MaxCpuPercent,
+		cpuSteadyMaxPercent = steadyCpuMax,
+		cpuSteps = steadyCpu,
 		cpuLimitPercent = SloThresholds.MaxServerCpuPercent,
 		cpuBroken
 	},
@@ -267,6 +280,7 @@ var meta = new
 			step.Name,
 			step.TargetSessions,
 			startSeconds = step.Start.TotalSeconds,
+			steadyStartSeconds = step.SteadyStart.TotalSeconds,
 			endSeconds = step.End.TotalSeconds
 		})
 	},

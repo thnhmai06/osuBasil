@@ -20,7 +20,7 @@ public sealed class LoadTest : ILoadTest
 	public RunPlan Plan(LoadTestOptions options)
 	{
 		var (ramp, steady, rampDown) = Shape(options);
-		return RunPlan.Create(WarmUp, rampDown, ("steady", options.TargetSessions, ramp + steady));
+		return RunPlan.Create(WarmUp, rampDown, ("steady", options.TargetSessions, ramp, ramp + steady));
 	}
 
 	public IReadOnlyList<ScenarioProps> BuildScenarios(LoadTestOptions options, WorkloadContext workload,

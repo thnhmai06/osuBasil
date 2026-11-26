@@ -32,7 +32,7 @@ public sealed class SmokeTest : ILoadTest
 	public RunPlan Plan(LoadTestOptions options)
 	{
 		var sessions = (int)Math.Round(Rooms * PersonaAllocation.SessionsPerMatchRoom(RoomConfig) + FreePlayers);
-		return RunPlan.Create(TimeSpan.Zero, RampDown, ("smoke", sessions, Ramp + Duration(options)));
+		return RunPlan.Create(TimeSpan.Zero, RampDown, ("smoke", sessions, Ramp, Ramp + Duration(options)));
 	}
 
 	public IReadOnlyList<ScenarioProps> BuildScenarios(LoadTestOptions options, WorkloadContext workload,
@@ -49,6 +49,7 @@ public sealed class SmokeTest : ILoadTest
 				await matchRoom.RunCycleAsync(ctx);
 				return Response.Ok();
 			})
+			.WithRestartIterationOnFail(false)
 			.WithoutWarmUp()
 			.WithClean(_ => matchRoom.ShutdownAsync())
 			.WithLoadSimulations(
@@ -56,7 +57,7 @@ public sealed class SmokeTest : ILoadTest
 				Simulation.KeepConstant(Rooms, duration),
 				Simulation.RampingConstant(0, RampDown))
 			.WithThresholds(SloThresholds.ForScenario(true, true, includeRest: true,
-				includeLogin: true, includeServerCpu: monitor is not null, maxErrorPercent: 0.01));
+				includeLogin: true, maxErrorPercent: 0.01));
 
 		if (monitor is not null)
 			roomsScenario = roomsScenario.WithInit(ctx =>
@@ -71,6 +72,7 @@ public sealed class SmokeTest : ILoadTest
 				await freePlayer.RunCycleAsync(ctx);
 				return Response.Ok();
 			})
+			.WithRestartIterationOnFail(false)
 			.WithoutWarmUp()
 			.WithClean(_ => freePlayer.ShutdownAsync())
 			.WithLoadSimulations(
@@ -85,6 +87,7 @@ public sealed class SmokeTest : ILoadTest
 				await edgeCases.RunCycleAsync(ctx);
 				return Response.Ok();
 			})
+			.WithRestartIterationOnFail(false)
 			.WithoutWarmUp()
 			.WithClean(_ => EdgeCasesPersona.ShutdownAsync())
 			.WithLoadSimulations(Injection.PerMinute(2, Ramp + duration))

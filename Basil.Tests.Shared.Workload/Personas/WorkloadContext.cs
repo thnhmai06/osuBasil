@@ -116,7 +116,10 @@ public sealed class WorkloadContext(
 			if (!refusalExpected && !reply.Accepted && (int)reply.Status is >= 200 and < 300)
 			{
 				lease?.Quarantine();
-				lockoutGuard.RecordRefusedLogin(client.Identity.Name, context);
+				// Only a refusal without a message counts: the server explains the others (such as "already logged
+				// in" after a refused sign-out), and they are no sign of a wrong account list.
+				if (!reply.Packets.OfType<NotificationReceived>().Any())
+					lockoutGuard.RecordRefusedLogin(client.Identity.Name, context);
 			}
 
 			return (classified, reply);
@@ -163,9 +166,12 @@ public sealed class WorkloadContext(
 		while (!ct.IsCancellationRequested)
 		{
 			var exchange = await PollStableAsync(client, context, ct);
-			if (exchange is null || !exchange.IsSuccess || IsDropped(client)) return null;
+			if (IsDropped(client)) return null;
 
-			var found = exchange.Packets.OfType<T>().FirstOrDefault(packet => match is null || match(packet));
+			// A refused or failed poll is tried again after the same pause, as the osu! client does.
+			var found = exchange is { IsSuccess: true }
+				? exchange.Packets.OfType<T>().FirstOrDefault(packet => match is null || match(packet))
+				: null;
 			if (found is not null) return found;
 			if (DateTimeOffset.UtcNow >= deadline) return null;
 

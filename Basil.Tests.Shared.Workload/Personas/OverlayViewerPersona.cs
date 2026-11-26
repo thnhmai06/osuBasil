@@ -54,6 +54,9 @@ public sealed class OverlayViewerPersona(WorkloadContext workload)
 		var delivered = await SseWatch.WatchAsync(workload, viewer.Rest, path, !watchMatchReport,
 			() => context, window.Token);
 
+		// One stream per viewing window: a refused or finished stream is not reopened at once.
+		await WorkloadContext.SafeDelayAsync(workload.RoundDuration, window.Token);
+
 		// A refused token means the viewer has to sign in again next time.
 		if (!delivered && !watchMatchReport && !window.IsCancellationRequested) await ReleaseAsync(viewer);
 	}

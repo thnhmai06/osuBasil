@@ -7,12 +7,15 @@ using NBomber.Contracts;
 namespace Basil.Tests.Shared.Workload.Personas;
 
 /// <summary>
-///     Simulates an IRC user: each scenario copy connects once and keeps the connection, then every invocation
-///     exercises channel queries (NAMES, WHO, WHOIS, LIST, TOPIC, AWAY) and one BasilBot command.
+///     Simulates an IRC user: each scenario copy connects once and keeps the connection, then every invocation sends
+///     one line, in turn the channel queries (NAMES, TOPIC, LIST, WHO, WHOIS, AWAY) and a BasilBot command.
 /// </summary>
 public sealed class IrcChatterPersona(WorkloadContext workload)
 {
 	private const string Channel = "#osu";
+
+	// Seven channel queries and one BasilBot command.
+	private const int Rounds = 8;
 
 	private readonly ConcurrentDictionary<int, Held> _held = new();
 	private volatile bool _closing;
@@ -43,29 +46,26 @@ public sealed class IrcChatterPersona(WorkloadContext workload)
 		var other = workload.World.PickOnlineUser(random);
 		var targetNick = (other?.Name ?? held.Lease.Account.Name).Replace(' ', '_');
 
-		// Exercise IRC discovery and state commands.
-		await Query(held, context, ct,
-			async () => OutcomeClassifier.FromIrcReply(await irc.NamesAsync(Channel, wait, ct)));
-		await Query(held, context, ct,
-			async () => OutcomeClassifier.FromIrcReply(await irc.TopicAsync(Channel, wait, ct)));
-		await Query(held, context, ct, async () => OutcomeClassifier.FromIrcReply(await irc.ListAsync(wait, ct)));
-		await Query(held, context, ct,
-			async () => OutcomeClassifier.FromIrcReply(await irc.WhoAsync(Channel, wait, ct)));
-		await Query(held, context, ct,
-			async () => OutcomeClassifier.FromIrcReply(await irc.WhoisAsync(targetNick, wait, ct)));
-		await Query(held, context, ct,
-			async () => OutcomeClassifier.FromIrcReply(await irc.AwayAsync("spectating match", wait, ct)));
-		await Query(held, context, ct, async () => OutcomeClassifier.FromIrcReply(await irc.AwayAsync(null, wait, ct)));
-
-		// Chat and BasilBot commands.
-		var botCommand = (context.InvocationNumber % 4) switch
+		// One line per round: a real user is far below the server's allowance of lines per minute, and so is this one.
+		var botCommand = (context.InvocationNumber / Rounds % 4) switch
 		{
 			0 => "!roll 100",
 			1 => "!help",
 			2 => $"!where {other?.Name ?? held.Lease.Account.Name}",
 			_ => "!faq list"
 		};
-		await Query(held, context, ct, () => IrcSteps.CommandAsync(irc, Channel, botCommand, "bot_cmd", wait, ct));
+		Func<Task<StepOutcome>> action = (context.InvocationNumber % Rounds) switch
+		{
+			0 => async () => OutcomeClassifier.FromIrcReply(await irc.NamesAsync(Channel, wait, ct)),
+			1 => async () => OutcomeClassifier.FromIrcReply(await irc.TopicAsync(Channel, wait, ct)),
+			2 => async () => OutcomeClassifier.FromIrcReply(await irc.ListAsync(wait, ct)),
+			3 => async () => OutcomeClassifier.FromIrcReply(await irc.WhoAsync(Channel, wait, ct)),
+			4 => async () => OutcomeClassifier.FromIrcReply(await irc.WhoisAsync(targetNick, wait, ct)),
+			5 => async () => OutcomeClassifier.FromIrcReply(await irc.AwayAsync("spectating match", wait, ct)),
+			6 => async () => OutcomeClassifier.FromIrcReply(await irc.AwayAsync(null, wait, ct)),
+			_ => () => IrcSteps.CommandAsync(irc, Channel, botCommand, "bot_cmd", wait, ct)
+		};
+		await Query(held, context, ct, action);
 
 		await WorkloadContext.SafeDelayAsync(TimeSpan.FromSeconds(2), ct);
 	}

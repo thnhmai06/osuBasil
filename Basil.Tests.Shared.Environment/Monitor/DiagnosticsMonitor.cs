@@ -60,6 +60,7 @@ public sealed class DiagnosticsMonitor(
 	public const string EventsFailuresGaugeName = "server_events_failures";
 	private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
+	private readonly List<(DateTimeOffset At, double Percent)> _cpu = [];
 	private readonly ConcurrentDictionary<string, Action<double>> _gauges = new();
 	private readonly CancellationTokenSource _stop = new();
 
@@ -176,6 +177,20 @@ public sealed class DiagnosticsMonitor(
 				Math.Max(0, _baselineUsers),
 				_finalUsers,
 				_finalRooms);
+		}
+	}
+
+	/// <summary>
+	///     Gets the highest server CPU percent sampled inside a time window, or <see langword="null" /> when no sample
+	///     fell inside it.
+	/// </summary>
+	public double? MaxCpuBetween(DateTimeOffset from, DateTimeOffset to)
+	{
+		lock (_sync)
+		{
+			var inside = _cpu.Where(sample => sample.At >= from && sample.At <= to).Select(sample => sample.Percent)
+				.ToArray();
+			return inside.Length == 0 ? null : Math.Round(inside.Max(), 2);
 		}
 	}
 
@@ -303,6 +318,7 @@ public sealed class DiagnosticsMonitor(
 		lock (_sync)
 		{
 			_samples++;
+			_cpu.Add((DateTimeOffset.UtcNow, cpu));
 			_sumCpu += cpu;
 			_maxCpu = Math.Max(_maxCpu, cpu);
 			_maxWorkingSetMb = Math.Max(_maxWorkingSetMb, wsMb);

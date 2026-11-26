@@ -39,6 +39,8 @@ public sealed class CasualRoomPersona(WorkloadContext workload, int playersPerRo
 		try
 		{
 			await PlayRoundAsync(room, context, ct);
+			// The players look at the result before the next round; a round that failed is not restarted at once.
+			await WorkloadContext.SafeDelayAsync(workload.PollInterval, ct);
 		}
 		finally
 		{

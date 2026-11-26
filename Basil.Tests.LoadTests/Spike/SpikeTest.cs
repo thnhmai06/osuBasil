@@ -29,10 +29,11 @@ public sealed class SpikeTest : ILoadTest
 	{
 		var background = BackgroundSessions(options);
 		return RunPlan.Create(TimeSpan.Zero, Settle,
-			("ramp", options.TargetSessions, options.RampDuration(options.TargetSessions)),
-			("spike", options.TargetSessions, SpikeHold),
-			("back to background", background, Settle),
-			("background", background, PostSpike));
+			("ramp", options.TargetSessions, options.RampDuration(options.TargetSessions),
+				options.RampDuration(options.TargetSessions)),
+			("spike", options.TargetSessions, TimeSpan.Zero, SpikeHold),
+			("back to background", background, Settle, Settle),
+			("background", background, TimeSpan.Zero, PostSpike));
 	}
 
 	public IReadOnlyList<ScenarioProps> BuildScenarios(LoadTestOptions options, WorkloadContext workload,

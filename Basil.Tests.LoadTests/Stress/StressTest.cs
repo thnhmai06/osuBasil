@@ -24,7 +24,7 @@ public sealed class StressTest : ILoadTest
 		var (stepDuration, rampStep) = Shape(options);
 		return RunPlan.Create(WarmUp, rampStep,
 		[
-			.. Multipliers.Select(m => ($"{m}x", (int)Math.Round(options.TargetSessions * m), rampStep + stepDuration))
+			.. Multipliers.Select(m => ($"{m}x", (int)Math.Round(options.TargetSessions * m), rampStep, rampStep + stepDuration))
 		]);
 	}
 

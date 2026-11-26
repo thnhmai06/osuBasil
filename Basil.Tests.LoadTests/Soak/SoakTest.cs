@@ -24,10 +24,10 @@ public sealed class SoakTest : ILoadTest
 		var ramp = options.RampDuration(soakN);
 		var rampDown = TimeSpan.FromSeconds(Math.Max(15, ramp.TotalSeconds / 2));
 		var windows = SplitWindows(options.SoakDuration, TimeSpan.FromHours(1));
-		List<(string, int, TimeSpan)> levels =
+		List<(string, int, TimeSpan, TimeSpan)> levels =
 		[
-			("ramp", soakN, ramp),
-			.. windows.Select((window, i) => ($"hour {i + 1}", soakN, window))
+			("ramp", soakN, ramp, ramp),
+			.. windows.Select((window, i) => ($"hour {i + 1}", soakN, TimeSpan.Zero, window))
 		];
 		return RunPlan.Create(WarmUp, rampDown, [.. levels]);
 	}
