@@ -638,7 +638,7 @@ overwritten, and a start is refused on a `Data/` layout or a database migration 
 
 #### Optional features never stop the server
 
-An optional feature (ffmpeg previews, the update check, the osu! calculation stack, and any other the server can run without)
+An optional feature (audio previews, the update check, the osu! calculation stack, and any other the server can run without)
 that fails logs the failure and turns itself off; it never stops or crashes the server (owner decision 2026-11-24).
 
 #### Stable protocol

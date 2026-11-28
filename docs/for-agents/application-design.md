@@ -174,7 +174,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   OpenAPI, the response envelope) gets no contract. Whatever kind of file a client sends, trust a known extension
   and probe the content only when it is unknown or when its size is needed: an image with ImageSharp
   (header only, never decoded; a screenshot is always identified because its pixel size is capped), audio with
-  ffprobe through FFMpegCore (duration and bytes are read from the content); no part of an uploaded name reaches a
+  libsndfile through NAudio (duration and bytes are read from the content); no part of an uploaded name reaches a
   temporary file name.
 * **Contract names do not reveal the mechanism.** If the work moved from the file system to the network, or
   from one library to another, the name would not change: `ScanAsync`, not `ScanFileAsync`;

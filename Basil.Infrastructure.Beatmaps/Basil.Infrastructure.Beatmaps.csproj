@@ -25,7 +25,8 @@
 		<PackageReference Include="Microsoft.EntityFrameworkCore"/>
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational"/>
 		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL"/>
-		<PackageReference Include="FFMpegCore"/>
+		<PackageReference Include="NAudio.Core"/>
+		<PackageReference Include="NAudio.SoundFile"/>
 		<PackageReference Include="ppy.osu.Game" PrivateAssets="all"/>
 		<PackageReference Include="SixLabors.ImageSharp"/>
 		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions"/>

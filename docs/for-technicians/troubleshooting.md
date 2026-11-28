@@ -48,10 +48,10 @@ See [`https.md`](https.md).
 
 ## Audio preview returns `404 Not Found`
 
-Basil requires `ffmpeg` to build beatmap audio previews. A preview that could not be built does not exist, so its
-request answers `404`; the failure is a warning in the system log, and the rest of the server keeps working.
+Basil builds beatmap audio previews with libsndfile through NAudio. A preview that could not be built does not exist,
+so its request answers `404`; the failure is a warning in the system log, and the rest of the server keeps working.
 
-The Basil image includes `ffmpeg`. Check the system log in `docker-data/Logs/` for the warning "Audio preview build
+The Basil image includes `libsndfile1`. Check the system log in `docker-data/Logs/` for the warning "Audio preview build
 failed", which names the beatmapset and the audio file.
 
 ---

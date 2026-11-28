@@ -18,17 +18,16 @@ The ingestion pipeline accepts **beatmapsets**, not individual difficulty files.
 * Star rating, BPM, length, and object counts are calculated once during ingestion and persisted with the beatmap metadata. Reading the beatmap files needs the osu! calculation stack in `Data/Rulesets/`; without it an import is refused (`rulesetsMissing`) and a waiting `.osz` stays where it is (see below).
 * Reading a beatmap never triggers difficulty recalculation.
 
-### `ffmpeg` is optional
+### Audio previews are optional
 
-`ffmpeg` is only required for generating audio previews.
+Audio previews are built with [libsndfile](https://libsndfile.github.io/libsndfile/) through NAudio. The system
+`libsndfile` library must be present; the container image includes it.
 
-If it is unavailable or preview generation fails:
+If preview generation fails:
 
 * the preview does not exist, so its endpoint returns `404`;
 * the failure is logged;
 * the rest of beatmap ingestion and serving continues normally.
-
-No other part of Basil depends on `ffmpeg`.
 
 ## Source of truth
 
@@ -220,7 +219,7 @@ Derived media must therefore be treated as disposable cache data, not as another
 * [`BeatmapsetStorageWatcher.cs`](../../Basil.Infrastructure.Beatmaps/Workers/BeatmapsetStorageWatcher.cs): startup scan and filesystem change detection
 * [`FileBeatmapsetStorage.cs`](../../Basil.Infrastructure.Beatmaps/Storage/FileBeatmapsetStorage.cs): the `Beatmapsets/` directory as storage
 * [`OsuBeatmapAnalyser.cs`](../../Basil.Infrastructure.Rulesets/Adapters/OsuBeatmapAnalyser.cs): osu! ruleset difficulty calculations
-* [`BeatmapPreviewMaker.cs`](../../Basil.Infrastructure.Beatmaps/Adapters/BeatmapPreviewMaker.cs): audio previews with `ffmpeg`
+* [`BeatmapPreviewMaker.cs`](../../Basil.Infrastructure.Beatmaps/Adapters/BeatmapPreviewMaker.cs): audio previews with NAudio and libsndfile
 * [`BeatmapRoutes.cs`](../../Basil.Host.Rest/Routes/BeatmapRoutes.cs): beatmapset routes of the API host
 
 ## See also

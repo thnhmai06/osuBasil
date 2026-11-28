@@ -68,7 +68,7 @@ under `Basil`.
 | `Basil:Server:TrustedProxies` | IPs and CIDR ranges of the reverse proxy: only these may tell Basil the client address (`X-Real-IP`), country and scheme, and open IRC connections (with a PROXY protocol header); defaults to loopback, the Compose file sets the compose network |
 | `Basil:Server:Irc:Port` | internal plain TCP port of IRC, default `6667`, reached only through nginx on `6697`; `0` picks a free port |
 | `Basil:Server:Files:AccelPrefix` | the nginx location that serves the `Data` and `Cache` folders, each below it under its own name (the Compose file sets `/_files/`, so `/_files/Data/` and `/_files/Cache/`); when set, stored files are sent by nginx through `X-Accel-Redirect`, when empty Basil sends them itself (for `dotnet run` without nginx) |
-| `Basil:Assets:CacheDirectory`, `FfmpegFolder` | the directory for the temporary files made while audio previews are built (default `Cache/Previews` beside the executable), and the folder of the ffmpeg executable (default: found on the PATH) |
+| `Basil:Assets:CacheDirectory` | the directory for the temporary files made while audio previews are built (default `Cache/Previews` beside the executable) |
 | `Basil:Database:Read:PoolSize`, `Write:PoolSize` | PostgreSQL is the only database; the connection strings are in `ConnectionStrings:Read` and `Write`; migrations run against the write endpoint; `Read:PoolSize` caps the reading pool (`0` keeps the driver's default), `Write:PoolSize` is the number of simultaneous writing connections, default `8` |
 | `Basil:Updates:CheckOnStartup`, `Source` | startup check of the latest release of the GitHub repository in `Source`; it only reports a newer version |
 

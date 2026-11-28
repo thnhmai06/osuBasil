@@ -5,8 +5,8 @@ release is published under its version tag (`v1.x.y`) and, unless it is a pre-re
 path of `Data/` inside the container and the environment variable names do not change within 1.x, so an operator updates
 with `docker compose pull` and changes nothing else.
 
-The image contains the Basil application, .NET runtime, and `ffmpeg`. It does not contain the database (Basil keeps its
-records in PostgreSQL) or the web front: Basil only speaks plain HTTP and plain IRC, on ports that only the Compose
+The image contains the Basil application, .NET runtime, and `libsndfile1`. It does not contain the database (Basil keeps
+its records in PostgreSQL) or the web front: Basil only speaks plain HTTP and plain IRC, on ports that only the Compose
 network reaches. The Compose file runs three services: `nginx`, which ends TLS and is the only one that publishes ports,
 `basil`, and `postgres`.
 

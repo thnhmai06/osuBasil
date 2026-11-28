@@ -1,10 +1,10 @@
 using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Domain.Beatmaps;
-using FFMpegCore;
-using FFMpegCore.Enums;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using NAudio.SoundFile;
+using NAudio.Wave;
 
 namespace Basil.Infrastructure.Beatmaps.Adapters;
 
@@ -13,12 +13,10 @@ internal sealed class BeatmapPreviewMaker(
 	IBeatmapsetStorage storage,
 	ILogger<BeatmapPreviewMaker> logger) : IBeatmapAssets
 {
-	private const int BufferSize = 81920;
+	private const int PreviewSeconds = 10;
+	private const int FadeDurationSeconds = 1;
 
-	private FFOptions FfmpegOptions => new() { BinaryFolder = options.Value.FfmpegFolder ?? string.Empty };
-
-	public async Task BuildAsync(BeatmapsetRecord set, IReadOnlyList<BeatmapRecord> beatmaps,
-		CancellationToken ct = default)
+	public async Task BuildAsync(BeatmapsetRecord set, IReadOnlyList<BeatmapRecord> beatmaps)
 	{
 		var previews = new Dictionary<string, TimeSpan?>(StringComparer.OrdinalIgnoreCase);
 		foreach (var beatmap in beatmaps)
@@ -30,11 +28,7 @@ internal sealed class BeatmapPreviewMaker(
 		foreach (var (audio, previewTime) in previews)
 			try
 			{
-				await BuildPreviewAsync(set, audio, previewTime ?? TimeSpan.Zero, ct);
-			}
-			catch (OperationCanceledException)
-			{
-				throw;
+				await BuildPreviewAsync(set, audio, previewTime ?? TimeSpan.Zero);
 			}
 			catch (Exception exception)
 			{
@@ -43,40 +37,19 @@ internal sealed class BeatmapPreviewMaker(
 			}
 	}
 
-	private async Task BuildPreviewAsync(BeatmapsetRecord set, string audio, TimeSpan start,
-		CancellationToken ct)
+	private async Task BuildPreviewAsync(BeatmapsetRecord set, string audio, TimeSpan start)
 	{
-		var source = await storage.OpenAsync(set, BeatmapsetFileType.Audio, audio, ct);
+		var source = await storage.OpenAsync(set, BeatmapsetFileType.Audio, audio);
 		if (source is null) return;
 		await using var sourceScope = source;
 
 		var directory = options.Value.CacheDirectory;
 		Directory.CreateDirectory(directory);
-		// The name comes from an uploaded archive, so no part of it reaches the temporary file name.
-		var audioPath = Path.Combine(directory, $"{Guid.NewGuid():N}.bin");
+
 		var outputPath = Path.Combine(directory, $"{Guid.NewGuid():N}.tmp.mp3");
 		try
 		{
-			var file = new FileStream(audioPath, FileMode.CreateNew, FileAccess.Write, FileShare.None,
-				BufferSize, FileOptions.Asynchronous);
-			await using (file)
-			{
-				await source.CopyToAsync(file, ct);
-			}
-
-			// The content, not the name, says whether this is audio, how long it is and how many bytes it takes.
-			var analysis = await FFProbe.AnalyseAsync(audioPath, FfmpegOptions, ct);
-			if (analysis.PrimaryAudioStream is null) return;
-
-			if (logger.IsEnabled(LogLevel.Debug))
-				logger.LogDebug(
-					"Audio track read: BeatmapsetId={BeatmapsetId} Audio={Audio} Bytes={Bytes} Duration={Duration}",
-					set.Id, audio, new FileInfo(audioPath).Length, analysis.Duration);
-
-			// A preview point past the end of the track starts the preview at the beginning.
-			if (start >= analysis.Duration) start = TimeSpan.Zero;
-
-			await RunFfmpegAsync(audioPath, start, outputPath, ct);
+			EncodePreview(source, outputPath, start, logger, set.Id, audio);
 
 			var preview = File.OpenRead(outputPath);
 			await using var previewScope = preview;
@@ -84,23 +57,40 @@ internal sealed class BeatmapPreviewMaker(
 		}
 		finally
 		{
-			if (File.Exists(audioPath)) File.Delete(audioPath);
 			if (File.Exists(outputPath)) File.Delete(outputPath);
 		}
 	}
 
-	private Task<bool> RunFfmpegAsync(string audioPath, TimeSpan start, string outputPath,
-		CancellationToken ct)
+	private static void EncodePreview(Stream source, string outputPath, TimeSpan previewTime,
+		ILogger logger, int beatmapsetId, string audio)
 	{
-		return FFMpegArguments
-			.FromFileInput(audioPath, true, input => input.Seek(start))
-			.OutputToFile(outputPath, true, output => output
-				.WithDuration(TimeSpan.FromSeconds(10))
-				.DisableChannel(Channel.Video)
-				.WithAudioCodec(AudioCodec.LibMp3Lame)
-				.WithAudioBitrate(128)
-				.WithCustomArgument("-af afade=t=out:st=9:d=1"))
-			.CancellableThrough(ct)
-			.ProcessAsynchronously(true, FfmpegOptions);
+		using var reader = new SoundFileReader(source);
+		if (reader.TotalTime <= TimeSpan.Zero) return;
+
+		if (logger.IsEnabled(LogLevel.Debug))
+			logger.LogDebug(
+				"Audio track read: BeatmapsetId={BeatmapsetId} Audio={Audio} Duration={Duration}",
+				beatmapsetId, audio, reader.TotalTime);
+
+		// A preview point past the end of the track starts the preview at the beginning.
+		var start = previewTime >= reader.TotalTime ? TimeSpan.Zero : previewTime;
+		reader.CurrentTime = start;
+
+		var fadeDuration = TimeSpan.FromSeconds(FadeDurationSeconds);
+		var remaining = reader.TotalTime - start;
+		var previewDuration = remaining < TimeSpan.FromSeconds(PreviewSeconds)
+			? remaining
+			: TimeSpan.FromSeconds(PreviewSeconds);
+		var fadeStart = previewDuration > fadeDuration
+			? previewDuration - fadeDuration
+			: TimeSpan.Zero;
+
+		var trimmed = reader.Take(TimeSpan.FromSeconds(PreviewSeconds));
+		var faded = fadeStart > TimeSpan.Zero
+			? new FadeOutSampleProvider(trimmed, fadeStart, fadeDuration)
+			: trimmed;
+
+		SoundFileWriter.CreateSoundFile(outputPath, faded.ToWaveProvider(),
+			SoundFileMajorFormat.Mp3, null);
 	}
 }

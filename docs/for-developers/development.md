@@ -8,7 +8,8 @@ the server locally.
 * The [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet).
 * A PostgreSQL server. Basil keeps its records in PostgreSQL, so a development instance needs one; the simplest is a
   container (see [Clone and run](#clone-and-run)). Docker is also what database-backed tests use when no `BASIL_TEST_POSTGRES` server is set (see [Run tests](#run-tests)).
-* [FFmpeg](https://ffmpeg.org), on `PATH`, for beatmapset audio previews (the container image includes it).
+* [libsndfile](https://libsndfile.github.io/libsndfile/) on the host, for beatmapset audio previews (the container image
+  includes it). Without it previews are not built and their endpoints return `404`; the rest of the server works.
 * Docker with Compose, for PostgreSQL and for the stack with nginx.
 
 ## Clone and run
@@ -183,14 +184,14 @@ development workflow.
 ## Build the container image
 
 Basil ships only as a container image. The `Dockerfile` publishes the server self-contained for `linux-musl-x64` or
-`linux-musl-arm64` on Alpine and adds `ffmpeg`; `docker compose up --build` uses it. To build the image alone:
+`linux-musl-arm64` on Alpine and adds `libsndfile1`; `docker compose up --build` uses it. To build the image alone:
 
 ```bash
 docker build -t basil:dev .
 ```
 
 `dotnet publish Basil -c Release -r linux-x64 --self-contained true -o publish` makes the executable for a glibc Linux
-without the image. It does not need the .NET runtime on the machine that runs it, but `ffmpeg` remains an external
+without the image. It does not need the .NET runtime on the machine that runs it, but `libsndfile1` remains an external
 dependency for beatmapset audio previews, and Basil still expects an nginx in front of it for HTTPS and IRC.
 
 ## Before changing the code

@@ -21,7 +21,7 @@ The settings and the stored files live in `Data/`, which is the one folder a bac
 ## Prerequisites
 
 * A Linux, Windows or macOS machine with Docker Engine and Docker Compose v2. The image is built for `amd64` and
-  `arm64`. You do not install .NET, PostgreSQL, nginx or `ffmpeg` yourself: they are in the stack.
+  `arm64`. You do not install .NET, PostgreSQL, nginx or `libsndfile1` yourself: they are in the stack.
 * A domain name that clients can resolve to the machine, or a LAN where you can edit each client's hosts file.
 * A TLS certificate covering the domain and the subdomains listed in [`https.md`](https.md). The stack ships a
   self-signed certificate for `basil.local` that is enough for a LAN and must not be used on the Internet.
