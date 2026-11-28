@@ -190,12 +190,12 @@ Every command is `./docker/loadtests/run-docker.sh …`.
 | 2 | `run pilot --step-delta 150 --steps 2` | 5 min | completed: IRC fix holds (1 IRC timeout), 63 errors, see findings |
 | 3 | `run pilot --step-delta 200 --steps 7` | 19 min | done: `pilot-20261126-132913`; ceiling 1200 sessions (CPU p95 65 %; at 1400 it is 96 % and 17 % of the step is shed) |
 | 4 | owner sets N | – | **N = 1000** (owner, 2026-11-26), 83 % of the ceiling; the pilot step at 1000 had CPU p95 51 % |
-| 5 | `run load --n 1000`, three times | about 12 min each | open |
-| 6 | `run capacity --step-delta D --steps S` | 32 min | open |
-| 7 | `run stress --n <ceiling>` | 33 min | open; 2 × 1200 sessions need more than the 1499 seeded player accounts |
-| 8 | `run spike --n N`, twice | 5 min each | open |
-| 9 | `scalability --step-delta D --steps S` (Basil on 1, 2, 4 threads) | 32 min each | open, run last |
-| – | `run soak --n 1000` (6 h at 700) | 6 h | deferred until the owner says |
+| 5 | `run load --n 1000`, three times | about 12 min each | done 2026-11-26 at `a2067f536`: `load-20261126-140100`, `-141501`, `-142854`; steady 10 min: poll p95 4 to 7 ms, submit p95 75 to 125 ms, CPU p95 55 to 57 %, errors under 0.01 %, 503 0.5 to 1.0 %; each run exits 3 on NBomber thresholds that broke at intermediate checks (13, 13, 19) |
+| 6 | `run capacity --step-delta 200 --steps 7` | 38 min | done: `capacity-20261126-145406` (4 threads); ceiling 1200 (CPU p95 72 %; at 1400 it is 80.2 % and 3.8 % of the step is shed; latency within SLO at every step) |
+| 7 | `run stress --n <ceiling>` | 33 min | done 2026-11-27: `stress-20261127-020615`, `--n 1200`, up to 2400 then down to 600; 884 errors (0.034 %), 503 24.294 % at 2×, no restart; login and poll p95 exceed SLO at 1×, 1.75× and 2×; SLO thresholds are disabled for Stress, so `exit 0` means a valid run, not an SLO pass |
+| 8 | `run spike --n 1000`, twice | 6 min each | done: `spike-20261126-153300`, `-154016`; no restart, no `ERR`, errors under 0.05 %; shed 30 and 38 % in the ramp, 5 % in the spike, under 1 % afterwards |
+| 9 | `run scalability` with Basil on 2 and on 1 thread (the 4-thread point is step 6) | 32 min each | done: 2 threads `scalability-20261126-154729`, steps 150 to 900, ceiling 600 (CPU p95 74 %); 1 thread `scalability-20261126-162141`, steps 75 to 450, ceiling 375 (CPU p95 74 %; the first step, 75, misses the login SLO at 2.2 s) |
+| – | `run soak --n 1000` (6 h at 700 sessions, 70 % of N) | 6 h | done: `soak-20261126-165724`, SLO missed: submit p95 of served requests 182, 517, 997, 1389, 1750, 2135 ms by hour (limit 1 s, missed from hour 4); in hour 6, 67 % of submits and 89 % of getscores are shed; CPU p95 55 to 72 %, working set flat, no restart, no `ERR`, errors 0.0003 %; likely cause (code and table statistics, not profiled): a watched match report is reloaded in full every second, with queries per stored round (`SseHub` poll, `MatchReportRepository.GetAsync`, `EfRoundRepository.ListAsync`), and the soak's match rooms lived 6 h (70 matches, 394 rounds on average, 781 at most); database kept in `~/basil-load/backup/after-soak-20261126.dump` |
 
 Durations grow with N. If late: Scalability drops to two sizes, then Spike drops to one run. Load, Capacity, Stress and
 Soak are never cut.

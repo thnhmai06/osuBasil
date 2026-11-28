@@ -73,7 +73,7 @@ public sealed class Seeder(HttpClient http)
 			var sets = await WaitForBeatmapsetsAsync(rest, options.ExpectedBeatmapsets,
 				options.ImportWaitTimeout ?? TimeSpan.FromMinutes(10), ct);
 
-			// 5. Read current rateLimits, raise rest.mutations temporarily, create accounts, then restore defaults.
+			// 5. Read current rateLimits, raise the allowances account creation meets, create accounts, then restore them.
 			var originalLimits = await rest.GetAsync("/v1/settings/rateLimits", ct);
 			if (!originalLimits.Success)
 				throw new InvalidOperationException(
@@ -89,11 +89,20 @@ public sealed class Seeder(HttpClient http)
 					originalWindow = ws;
 			}
 
+			var originalRequests = 120;
+			if (originalLimits.Data.TryGetProperty("admission", out var admissionNode) &&
+			    admissionNode.TryGetProperty("requests", out var r))
+				originalRequests = r.GetInt32();
+
 			var raise = await rest.PatchAsync("/v1/settings/rateLimits",
-				new { rest = new { mutations = new { count = 100_000, window = originalWindow } } }, ct);
+				new
+				{
+					rest = new { mutations = new { count = 100_000, window = originalWindow } },
+					admission = new { requests = 100_000 }
+				}, ct);
 			if (!raise.Success)
 				throw new InvalidOperationException(
-					$"Could not raise rest.mutations ({(int)raise.Status}): {raise.Message}");
+					$"Could not raise the rate limits ({(int)raise.Status}): {raise.Message}");
 
 			var accounts = BuildAccountList(options);
 			var created = 0;
@@ -132,22 +141,29 @@ public sealed class Seeder(HttpClient http)
 			}
 			finally
 			{
-				// Always put rest.mutations back to its original value.
+				// Always put the raised limits back to their original values.
 				using var restoreTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
 				var restoreReply = await rest.PatchAsync("/v1/settings/rateLimits",
-					new { rest = new { mutations = new { count = originalCount, window = originalWindow } } },
+					new
+					{
+						rest = new { mutations = new { count = originalCount, window = originalWindow } },
+						admission = new { requests = originalRequests }
+					},
 					restoreTimeout.Token);
 				var verify = await rest.GetAsync("/v1/settings/rateLimits", restoreTimeout.Token);
 				restored = restoreReply.Success && verify.Success &&
 				           verify.Data.TryGetProperty("rest", out var vRest) &&
 				           vRest.TryGetProperty("mutations", out var vMut) &&
 				           vMut.TryGetProperty("count", out var vCount) &&
-				           vCount.GetInt32() == originalCount;
+				           vCount.GetInt32() == originalCount &&
+				           verify.Data.TryGetProperty("admission", out var vAdmission) &&
+				           vAdmission.TryGetProperty("requests", out var vRequests) &&
+				           vRequests.GetInt32() == originalRequests;
 			}
 
 			if (!restored)
 				throw new InvalidOperationException(
-					"Failed to restore rateLimits.rest.mutations to its default value.");
+					"Failed to restore the raised rate limits to their original values.");
 
 			// An account left by an earlier seed keeps its old password: prove the new accounts.csv still signs in.
 			foreach (var account in existingByRole.Values)

@@ -24,8 +24,8 @@ text and `run-meta.json` reports under `reports/<test>-<timestamp>/`.
 
 ### Seeding accounts and world data
 
-Seed once against the running stack through the public REST API (raises `rest.mutations` temporarily, creates player,
-referee, tourney and developer accounts, restores the default rate limit, and writes `accounts.csv` and `world-data.json`):
+Seed once against the running stack through the public REST API (raises `rest.mutations` and `admission.requests` temporarily, creates player,
+referee, tourney and developer accounts, restores both limits, and writes `accounts.csv` and `world-data.json`):
 
 ```bash
 BASIL_OWNER_PASSWORD=<password> dotnet run --project Basil.Tests.LoadTests -c Release -- \
