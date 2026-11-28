@@ -1,0 +1,202 @@
+{
+  "version": "2026.1026.0",
+  "packages": [
+    {
+      "id": "AutoMapper",
+      "version": "13.0.1",
+      "sha512": "hsIaMD9HJfc49DGORIyr2rjCd3DQBQjxB54hii8wjccJMp0y+2rHV2t7psJ0jIgqbCiDUj+dJpQ8OwlDWo+C9A==",
+      "files": [
+        {
+          "path": "lib/net6.0/AutoMapper.dll",
+          "sha256": "8939bacbb7f7abf75888f7eb7110caf1667267e13cd5d10e7c9320d3925b4616"
+        }
+      ]
+    },
+    {
+      "id": "MessagePack.Annotations",
+      "version": "3.1.12",
+      "sha512": "rEfJroeoxCbwHicfcfjeYw6LnrORd2PmXiTwwwKfv6YYA1dkzRPlVoIsUWUsnGIz/JltyqhirxwdNYZNbWCoXw==",
+      "files": [
+        {
+          "path": "lib/netstandard2.0/MessagePack.Annotations.dll",
+          "sha256": "1e51e087987bc857e55863eb4e986c2f2f0bf17230eb2c243e5dc25c34e7cf86"
+        }
+      ]
+    },
+    {
+      "id": "NUnit",
+      "version": "4.6.1",
+      "sha512": "jBy4SxUa18b9bfC6/VpbnKW2o9uN8EQYMH1QAvCa68AV03L3bSpv6W84K0FZ1SxlQQojzwh2JC4+BYbCdfWnMA==",
+      "files": [
+        {
+          "path": "lib/net8.0/nunit.framework.dll",
+          "sha256": "dee001d2ec493cf181d456d53a612f4727e03bafc7c9ce3067a9535bce115f63"
+        }
+      ]
+    },
+    {
+      "id": "Newtonsoft.Json",
+      "version": "13.0.4",
+      "sha512": "bR+v+E/yJ6g7GV2uXw2OrUSjYYfjLkOLC8JD4kCS23msLapnKtdJPBJA75fwHH++ErIffeIqzYITLxAur4KAXA==",
+      "files": [
+        {
+          "path": "lib/net6.0/Newtonsoft.Json.dll",
+          "sha256": "a28c251dfe36d881e9e2462e171441b8b0ec156fe3f452602c9149b1b9efe05b"
+        }
+      ]
+    },
+    {
+      "id": "Realm",
+      "version": "20.1.0",
+      "sha512": "MAwWySvTwSk3BvbgYlHjBae6hJ5Hh5UgNFm3jis1BrhCq5l0G4eiI3cadNQBARZSKk8yEJQYAU8w1kbc47OkcA==",
+      "files": [
+        {
+          "path": "lib/net8.0/Realm.dll",
+          "sha256": "22a77fbf9c97b002a81786838a90b5ff357cbb96dc553c9a324d966d8a5e7584"
+        }
+      ]
+    },
+    {
+      "id": "ppy.ManagedBass",
+      "version": "2022.1216.0",
+      "sha512": "xCReMUOnXMHgDzLaSmJSuf5k2sv+972KEHdGtzMBqZNyOvKZwpLKKFeZVePkJa336v++OGbXwQsnDGNoi4LW5w==",
+      "files": [
+        {
+          "path": "lib/netstandard2.1/ppy.ManagedBass.dll",
+          "sha256": "4d5830d3f29f52df12a9facf031db2b91345f709d8f373c248ef37b8303ba3d5"
+        }
+      ]
+    },
+    {
+      "id": "ppy.osu.Framework",
+      "version": "2026.1019.0",
+      "sha512": "OsuraoHn/OKxiA8bOLv9lmkmgOjMPyiVCiGKzAN6UG7/msXE2rhJaDZJwN5TteqdaKS5ngRv9XNprsIH6+2VwQ==",
+      "files": [
+        {
+          "path": "lib/net10.0/osu.Framework.dll",
+          "sha256": "04df9eb573883c5b9ba9ac37e7a1dfd6c6c04ca9dbfed295028bee442a1fc387"
+        }
+      ]
+    },
+    {
+      "id": "ppy.osu.Game.Rulesets.Catch",
+      "version": "2026.1026.0",
+      "sha512": "vyGvrttsmCNqNJ+Xn57uIhOysO8lAKk3k6Vuj55ixRBmFhMLpoMwoCO9fY0f9wWOXGIXyEFh2bP5eVyefhO8uQ==",
+      "files": [
+        {
+          "path": "lib/net10.0/osu.Game.Rulesets.Catch.dll",
+          "sha256": "4d8a4b4038d869480d3a3db1678e83f0957ff863efed3274273caf136fe43d96"
+        }
+      ]
+    },
+    {
+      "id": "ppy.osu.Game.Rulesets.Mania",
+      "version": "2026.1026.0",
+      "sha512": "FMi9umsXDaG7enf/5Cyg2Qu7X4IaIjbxFzisv3DtZPPI7mqWlQbc0pXigKb0O5QOMmxy1lDd21XYPHlWXp3Z7A==",
+      "files": [
+        {
+          "path": "lib/net10.0/osu.Game.Rulesets.Mania.dll",
+          "sha256": "2c0d2a9ad5c1d9efc2dcc8984f57ec59f937d8505f88a37570829ecf152b1d55"
+        }
+      ]
+    },
+    {
+      "id": "ppy.osu.Game.Rulesets.Osu",
+      "version": "2026.1026.0",
+      "sha512": "cCs2a1jKGxR7SGD444YWQmHAOCIW+nFBe2sUS+s17n+vvfKbhoGa4WvMXyznRCZrMnDr8sWHXsQoLObgdZsAxA==",
+      "files": [
+        {
+          "path": "lib/net10.0/osu.Game.Rulesets.Osu.dll",
+          "sha256": "84b724f254ab0ebe1a7c18be9b95a190bd4924befeff32a728e0562f5c6d38bc"
+        }
+      ]
+    },
+    {
+      "id": "ppy.osu.Game.Rulesets.Taiko",
+      "version": "2026.1026.0",
+      "sha512": "BMY37qyblH5Xb61haUhYMyo4T7pBvmhzLP7Whzx1TLsQ7AKC6PczvhyXMn1Qhs4ZhcjCss6xqPufQUPtyh5U6Q==",
+      "files": [
+        {
+          "path": "lib/net10.0/osu.Game.Rulesets.Taiko.dll",
+          "sha256": "9bfd2791072f386ff4a332ff08eb5d74cf08b178075128af46e70beccdf3c9c7"
+        }
+      ]
+    },
+    {
+      "id": "ppy.osu.Game",
+      "version": "2026.1026.0",
+      "sha512": "L7NrXVVeKtgAPRCjXz3oT5haOsqnwXoj+h2iEoeXHccj59e5P97ORKGC5DEnW2crKKoCFeJpI+SUc74i4gJ3DQ==",
+      "files": [
+        {
+          "path": "lib/net10.0/osu.Game.dll",
+          "sha256": "99a236cff7b7494f1e46c18af1a279ebea10269e4fceadccf6a50186b3ac74b0"
+        }
+      ]
+    },
+    {
+      "id": "ppy.osuTK.NS20",
+      "version": "1.0.211",
+      "sha512": "YT+lzaZDe9Hs82nzpwkNnyULlE5Q1hUfCoqF56R9m2UJAVEK346WKeF9HlFHoEMM4JBT8QRnZn/XQOwx/JlTTQ==",
+      "files": [
+        {
+          "path": "lib/netstandard2.0/osuTK.dll",
+          "sha256": "f5036ad16ec1c0fc07a90c196e9495d607b5524adf366ee3fd8970fc1eb8e239"
+        }
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "lib/net6.0/AutoMapper.dll",
+      "sha256": "8939bacbb7f7abf75888f7eb7110caf1667267e13cd5d10e7c9320d3925b4616"
+    },
+    {
+      "path": "lib/netstandard2.0/MessagePack.Annotations.dll",
+      "sha256": "1e51e087987bc857e55863eb4e986c2f2f0bf17230eb2c243e5dc25c34e7cf86"
+    },
+    {
+      "path": "lib/net8.0/nunit.framework.dll",
+      "sha256": "dee001d2ec493cf181d456d53a612f4727e03bafc7c9ce3067a9535bce115f63"
+    },
+    {
+      "path": "lib/net6.0/Newtonsoft.Json.dll",
+      "sha256": "a28c251dfe36d881e9e2462e171441b8b0ec156fe3f452602c9149b1b9efe05b"
+    },
+    {
+      "path": "lib/net8.0/Realm.dll",
+      "sha256": "22a77fbf9c97b002a81786838a90b5ff357cbb96dc553c9a324d966d8a5e7584"
+    },
+    {
+      "path": "lib/netstandard2.1/ppy.ManagedBass.dll",
+      "sha256": "4d5830d3f29f52df12a9facf031db2b91345f709d8f373c248ef37b8303ba3d5"
+    },
+    {
+      "path": "lib/net10.0/osu.Framework.dll",
+      "sha256": "04df9eb573883c5b9ba9ac37e7a1dfd6c6c04ca9dbfed295028bee442a1fc387"
+    },
+    {
+      "path": "lib/net10.0/osu.Game.Rulesets.Catch.dll",
+      "sha256": "4d8a4b4038d869480d3a3db1678e83f0957ff863efed3274273caf136fe43d96"
+    },
+    {
+      "path": "lib/net10.0/osu.Game.Rulesets.Mania.dll",
+      "sha256": "2c0d2a9ad5c1d9efc2dcc8984f57ec59f937d8505f88a37570829ecf152b1d55"
+    },
+    {
+      "path": "lib/net10.0/osu.Game.Rulesets.Osu.dll",
+      "sha256": "84b724f254ab0ebe1a7c18be9b95a190bd4924befeff32a728e0562f5c6d38bc"
+    },
+    {
+      "path": "lib/net10.0/osu.Game.Rulesets.Taiko.dll",
+      "sha256": "9bfd2791072f386ff4a332ff08eb5d74cf08b178075128af46e70beccdf3c9c7"
+    },
+    {
+      "path": "lib/net10.0/osu.Game.dll",
+      "sha256": "99a236cff7b7494f1e46c18af1a279ebea10269e4fceadccf6a50186b3ac74b0"
+    },
+    {
+      "path": "lib/netstandard2.0/osuTK.dll",
+      "sha256": "f5036ad16ec1c0fc07a90c196e9495d607b5524adf366ee3fd8970fc1eb8e239"
+    }
+  ]
+}

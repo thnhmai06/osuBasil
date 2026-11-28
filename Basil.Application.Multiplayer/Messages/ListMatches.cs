@@ -1,0 +1,12 @@
+using Basil.Application.Multiplayer.Persistence;
+using Basil.Application.Shared.Paging;
+using Basil.Application.Sessions.Objects;
+using Basil.Domain.Multiplayer.Report.Matches;
+using Basil.Domain.Multiplayer.Room;
+using Mediator;
+
+namespace Basil.Application.Multiplayer.Messages;
+
+public sealed record ListMatches(Session Actor, MatchQuery Query, PageRequest Page) : IRequest<MatchListing>;
+
+public sealed record MatchListing(RoomActionResult Result, Page<MatchRecord>? Matches);

@@ -1,0 +1,127 @@
+# Module layout
+
+How a module's Application and Infrastructure projects are organised, folder by folder. The dependency rules and the module graph are in [`AGENTS.md`](../../AGENTS.md) and [`architecture.md`](../for-developers/architecture.md).
+
+Application is sliced by module first, then by folder of responsibility; namespace = project + folder
+(`Basil.Application.Chat.Objects`). Application.Shared owns shared values, paging/search syntax and event
+contracts/queue; Infrastructure.Shared owns shared persistence and event delivery. The table lists where each folder's
+contents are; `Handlers/` and `Workers/` and the implementations of `Services/` are in the module's
+Infrastructure project, which has no `Logic/`.
+
+Every module uses these folders, and creates only the ones it needs:
+
+| Folder | Holds |
+|---|---|
+| `Objects/` | The module's live objects, their parts and contexts, and their event records (`Objects/Events/`); the part of an object that touches only itself, with its outcome enum, is in Domain under the same name |
+| `Registry/` | What keeps live objects in RAM and hands them out (`UserRegistry`, `Lobby`, the channel registries); one of the three stores with Repository (`Persistence/`, awaited, cache-aside) and Storage (`Storage/`) |
+| `Capabilities/` | The `Scoped*` views only |
+| `Logic/` | The object-free coordination that needs no live object (it may use the module's repository and storage ports; it takes and returns records and plain results). The rules it applies are in Domain |
+| `Ports/` | The ports to external computation and the data they exchange |
+| `Services/` | The contracts of the services the system provides (the implementation is in Infrastructure). Only what a module offers as a service belongs here |
+| `Persistence/` | The repository ports, their query records and the data both layers name |
+| `Storage/` | The file-storage ports (`IBeatmapsetStorage`, `IReplayStorage`, `IFaqStorage`, the avatars and menu assets) |
+| `Messages/` | The Mediator requests the module answers (a message carries the `Session` as `Actor`) and the values they name |
+
+Infrastructure mirrors those ports: `Persistence/` for the `DbContext`, rows and repositories (PostgreSQL and its migrations are in `Infrastructure.Persistence`), `Storage/` for the
+file implementations, `Adapters/` for what needs an external library, `Registry/` for the shared memory
+primitives, `Handlers/` for the Mediator handlers, `Services/` for the
+service implementations and `Workers/` for the loops and hosted services. Tests mirror the same folders under `tests/`.
+
+```text
+Users/         IUserRepository, IRelationshipRepository,
+               IModerationLogRepository, UserQuery                     (Persistence)
+               IUserAvatarStorage                                      (Storage)
+               User, UserContext, UserProfile, UserRelationships,
+               UserSilence, UserEvents                                 (Objects)
+               UserRegistry                                            (Registry)
+               ScopedUser*                                             (Capabilities)
+               the user and moderation messages                        (Messages)
+               the user handlers, EfUserRepository and the avatar
+               storage                                                 (Infrastructure)
+Sessions/      ICredentialRepository, ISessionRepository, LoginAttempt,
+               RegisterAttempt, CredentialChecks                       (Persistence)
+               Session and its kinds (StableSession, TourneySession,
+               IrcSession, ApiSession, OperatorSession), SessionContext,
+               UserSessions, UserCredentials, SessionAuthResult,
+               LoginResult, SessionMetrics, SessionEvents              (Objects)
+               SessionRegistry                                         (Registry)
+               ScopedSessionRegistry, ScopedStableSession,
+               ScopedUserCredentials, ScopedUserSessions               (Capabilities)
+               the session, credential and spectating messages,
+               SetPlayerStatus                                         (Messages)
+               AccountRules                                            (Logic)
+               ConnectionHandler, the session handlers, and the handlers
+               that close sessions when a user is deleted or changes
+               privileges                                              (Infrastructure Handlers)
+               SessionSweeper, SessionRetentionSweeper                 (Infrastructure Workers)
+               SessionsMeter, EfSessionRepository, EfCredentialRepository (Infrastructure)
+Chat/          IChannelRepository                                      (Persistence)
+               the channel tree, ChannelContext, ChannelJoinResult,
+               ChannelEvents                                            (Objects)
+               GeneralChannelRegistry, RoomChannels, PmChannels,
+               SpectatorChannels                                       (Registry)
+               ScopedChannel, ScopedGeneralChannel                     (Capabilities)
+               PostChatMessage, ChatTarget                             (Messages)
+               PostChatMessageHandler and the room, lobby, connection
+               and spectator handlers                                  (Infrastructure Handlers)
+Multiplayer/   match, round, event and report repositories             (Persistence)
+               Room and its parts, RoomActionResult, the event records       (Objects)
+               Lobby, LobbyContext                                      (Registry)
+               ScopedLobby and the room's scopes                        (Capabilities)
+               the match recorders, ScoreHandler, the lobby handlers    (Infrastructure Handlers)
+Rulesets/      RulesetLibrary, RulesetUpdateResult, RulesetEvents      (Objects)
+               ScopedRulesets                                          (Capabilities)
+               IBeatmapAnalyser, IBeatmapCalculator (internal),
+               IBeatmapFiles (public, implemented by Beatmaps)         (Ports)
+               IRulesetUpdater                                         (Services)
+               the calculation worker and queue, RulesetStore,
+               attribute storage                                       (Infrastructure Workers/Storage)
+Beatmaps/      beatmap and beatmapset repositories, import and scan
+               data                                                     (Persistence)
+               IBeatmapsetStorage                                       (Storage)
+               Beatmapset, Beatmapsets, contexts, outcomes, events      (Objects)
+               ScopedBeatmapset                                         (Capabilities)
+               the reader/analyser/assets ports                         (Ports)
+               the importer, scanner and planner                        (Logic)
+Scores/        score, stats repositories, submission inputs             (Persistence)
+               IReplayStorage                                           (Storage)
+               ScoreSubmitter, IScoreBeatmapAcceptance,
+               ScoreSubmissionResult, ScoreOutcome, ScoreEvents        (Objects)
+               ScopedScoreSubmitter                                     (Capabilities)
+               ScoreRecorder                                            (Logic)
+Anticheat/     IAnticheatReporter                                       (Services)
+               AnticheatReporter                                        (Infrastructure Services)
+               AnticheatEvents                                          (Objects/Events)
+Content/       IMenuBannerRepository                                    (Persistence)
+               the FAQ, menu, screenshot and seasonals storages          (Storage)
+               IScreenshotInspector                                     (Ports)
+Servers/       Server, ServerContext, ServerActionResult, ServerRecovery     (Objects)
+               ScopedServer and its parts                               (Capabilities)
+Diagnostics/   ServerDiagnostics, DiagnosticsCommandResult                    (Objects)
+               ScopedDiagnostics                                        (Capabilities)
+               IDiagnosticsIntake, IDiagnosticsFeed                     (Services)
+```
+
+`Diagnostics` (intake, feed and the maintenance actions behind `ScopedDiagnostics`) is a module of its own; the
+contribution contracts every module answers (`CollectDiagnostics`, `IDiagnosticsCollector`, `DiagnosticsValue`) live in
+Application.Shared; `DiagnosticsSample`, `IClearTally`, `ICacheCleaner`, `HostLabels` and `DiagnosticsMetrics` are Diagnostics'
+own. Feature event **records** live under `Objects/Events/` of the module that owns the object they describe; the shared
+event contract, publisher and queue belong to Application.Shared, and the dispatcher belongs to
+Infrastructure.Shared's `Workers/`. Concrete handlers live in the `Handlers/` folder of the module's Infrastructure project or in the consumer that
+owns them, including `Basil.Infrastructure.Bot`. Host configuration (ports, TLS, data paths) belongs to the hosts. BasilBot commands
+and announcements are server features: a command is an entry point that uses the typist's scoped objects, and the bot
+only replies. Query **records** (the filter a repository applies, with `Parse` for the search syntax) belong to
+Persistence; routes and handlers that answer queries do not. Server settings changed at runtime (`ServerSettings`,
+owned by Application.Shared, with its repository and the `ReadSettings` message) exist only while the server runs and are stored through `ISettingsRepository`; they are
+not Domain and not host configuration.
+
+* Shared projects depend only on Domain and shared external packages. `Users`, `Beatmaps` and `Scores` do not depend on
+  `Multiplayer` objects. Anticheat flags,
+  wherever they arrive (score submission, `lastfm.php`), are reported through `IAnticheatReporter.Report`,
+  the single source of anticheat events; BasilBot turns them into chat warnings.
+* `Chat` references `Multiplayer`, and both reference `Users` and `Sessions` (`Room.Host`, `Channel.Members`, the online
+  `User`); treat them as one cluster. `Users` knows no session: `Sessions` holds a user's open sessions (`UserSessions`), and a session knows its user. Their runtime objects and registries live in Objects;
+  persistent repositories remain in each module's Persistence folder. Objects change their own state through behaviour, with
+  implementation access limited to the owning object and its collaborators. References run from the acted-on
+  object to the actor, never back.
+

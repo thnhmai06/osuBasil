@@ -1,0 +1,362 @@
+# Application design rules
+
+Rules for Domain and Application objects, capabilities, events and naming. Moved out of `AGENTS.md`; the rules are binding. Read this before touching `Basil.Domain`, `Basil.Application.*` or `Basil.Infrastructure.Bot`.
+
+> **Migration status.** The target architecture ([`architecture.md`](../for-developers/architecture.md)) moves handlers and service implementations from `Basil.Application.<Module>` into `Basil.Infrastructure.<Module>` and keeps the object-free logic in `Basil.Application.<Module>/Logic/`, makes hosts send Mediator messages instead of calling `ScopeTo`, and moves BasilBot into its own module. The handlers and the service implementations are already in `Basil.Infrastructure.<Module>`; the contracts and the object-free logic stay in Application. A rule below that mentions `Handlers/` or `Workers/` means the folder of the module's Infrastructure project; `Logic/` means the folder of its Application project. Hosts still call `ScopeTo` for the modules not yet migrated. New code follows the target.
+
+### Scopes and results (decided 2026-10-21; supersedes any older wording)
+
+* **A capability (`ScopedX`, "Cap") is a `readonly struct` valid for one request or command.** `x.ScopeTo(connection)`
+  returns it. It holds the connection (`Actor`) and `Privileges`, the privileges the connection held when it was created (a
+  snapshot taken once, never re-taken), and it never lives in a field or property (checked in review).
+  It exposes the owner as a property named after it (`Channel`, `Room`, `User`, …) and reaches the owner's parts through
+  **forwarding getters** (`room.ScopeTo(actor).Slots`, `.Rounds`, `.Settings`). The owner's raw mutators are `internal` to
+  its Application project, so only a capability, which has checked the privileges, can change the owner. A behaviour states
+  the requirement through `ScopedPrivileges.Lacks(held, required)`: `true` means something required is not held. A `[Flags]`
+  enum is met when every required bit is held; any other enum is ordered levels and is met when the held value is at least
+  the required one. Most capabilities hold the caller's **effective** `UserPrivileges` and answer `XResult.Denied`;
+  `ScopedRoom` holds `RoomPrivileges`, the roles the caller holds in the room, computed once from creator, referee, host and player
+  roles and the global privileges; a role refusal is `Denied`, as is a caller who may not join
+  rooms at all. An implementation never compares privileges itself.
+* **Every behaviour that can be refused returns the outcome enum of its object** (`RoomActionResult`, `ChannelJoinResult`,
+  `UserActionResult`, `SessionActionResult`, `BeatmapsetEditResult`, …), with a tuple such as `(UserActionResult Outcome, T? Data)` when it also returns data.
+  Each enum has `Denied = 0` (the refusal for lack of privileges, which does not say which privileges are lacking, and
+  which a default value can never confuse with success) and `Ok = 1`; the other members are `NotFound` and the object's
+  own reasons. An operation on something that does not exist (an account, a session already closed, a silence nobody
+  imposed, a file never stored) answers `NotFound`, never `Ok`; the console exits with 1 and the API answers 404. There is no shared result wrapper. There is no
+  `NotAuthorized`, `Restricted`, `NoPermission` or `NotPermitted` member and no `bool` or `*Failure`
+  stand-in. Callers compare with `XResult.Ok` or `XResult.Denied`.
+* **A refusal and a business error are different things (decided 2026-11-19; the code is migrated phase by phase, a part
+  not migrated yet is a target).** A **business refusal** is a valid request that the rules do not allow: no privilege,
+  a name taken, a room full, a thing that does not exist, a wrong password, a locked object. It is not a fault, so it
+  is answered with the outcome enum above and never thrown. A **business error** is a request whose data breaks a rule
+  of the domain: a malformed name, a window that ends before it starts, an address that is not HTTP, an undefined enum
+  value, mods that do not fit the mode, an unreadable or oversized image. It is thrown as an exception defined in
+  Domain (a rule of one object on its own) or in Application (a rule that needs several objects), never as the BCL
+  `ArgumentException`, so that a host can tell it from a programming fault. A programming fault (an id that starts at 1,
+  an unknown `switch` arm, a missing error table, the wrong kind of client) stays a BCL exception and is answered with
+  500 and a log line.
+  * The exceptions of one module or category share one file (`Basil.Domain/Content/ContentExceptions.cs`); the name
+    states the broken rule (`InvalidBannerWindowException`) and is unique across modules.
+  * An exception carries a code, a kind and the business values that explain it. It carries no text for a client: the
+    wording belongs to each surface (HTTP, IRC, osu! client, console, BasilBot) and sits outside the domain.
+  * A host never checks these rules itself. It translates the wire into the system's own message, sends it, and
+    answers an outcome or a business error the same way each time: one place per surface maps a business error to its
+    reply. Invalid data is a business error, an exception rather than an enum member (`InvalidUserNameException`,
+    `InvalidCountryException`, `InvalidModsException`, `InvalidRoomSettingsException`, `InvalidMessageException`,
+    `EmptyMessageException`, `InvalidImageException`, `UploadTooLargeException`, `ImageDimensionsTooLargeException`,
+    `InvalidSilenceException`).
+* **Granting uses the actor's privileges, ranking uses the granted ones.** An actor can grant only privileges they hold;
+  the strict-superset hierarchy test compares the privileges the two accounts were granted.
+* **`ConfigureAwait` is not used** anywhere in the project's source (a server has no synchronization context). Review rejects
+  `ConfigureAwait(` in any project. This overrides the `code-principles` skill until the skill
+  is changed.
+
+### Domain and Application
+
+* **Every business operation lives in Domain (decided 2026-11-20).** The Implementation Test: if the member touches
+  only the object's own state (no repository, no event, no live object of another module, no timer, no connection),
+  it is a synchronous Domain operation that answers with the object's outcome enum plus the data its event needs,
+  including the consequences inside the object (`RoomMembers.Kick` vacates the slot, hands the host on and returns the
+  round progress). The Application object of the same name keeps a `State` of that Domain type, holds the lock, calls
+  the operation, publishes the event and does the cross-object step; it never re-derives a rule the Domain already
+  answers. Examples: `RoomSlots.ChangeSlot`, `RoomSettings.Configure`, `RoomMembers.Kick`, `RoomSlots.Leave`,
+  `Room.Close`, `RoomSettings.PasswordMatches` (Domain) against `Room.Join`, the lobby, the score-wait timer and the
+  "manager of any room skips the password" decision (Application); `UserData.IsSilenced` (Domain) against
+  `UserSilence.ImposeAsync` (Application); `CountdownMarks`, `GeneralChannelChange.ApplyTo` (Domain).
+  Players are `UserRecord` in Domain; the Application object keeps the map to the live sessions.
+* **Time-based state is lazy.** A rule that depends on the passage of time (a session silent past its expiry, one
+  that may be replaced, a silence that has run out) is derived from the stored moment when something looks at it
+  (`Session.StatusAt(now)`), and its consequence is applied by the operation that finds it (a heartbeat on an expired
+  session ends it `TimedOut`; a login applies `GiveWay`). No timer decides it. A background pass is allowed only to
+  batch writes to the store or clear old data, never to change what the rule says. The Domain object owns the
+  transition and answers with its outcome enum; Application only does the runtime cleanup (unindex, spectators, events).
+* **Domain holds no lock.** No `Lock`, `Volatile` or `Interlocked` in Domain; the Application object that shares the
+  state owns the lock around each multi-step operation. A collection that is also read outside that lock (views,
+  queries) is a concurrent one (`ConcurrentSet`), so a reader never sees it throw; a concurrent collection never
+  replaces the lock where a check and a change must happen together. A Domain state that can be derived is derived (a room is
+  closed when its match has `EndedAt`). A Domain outcome enum holds only the reasons of that one object; reasons that
+  need another object, a connection or the lobby are an Application enum, one per category of operation (operations
+  that share their reasons share the enum; a different category gets its own), never a flattened copy of the Domain
+  enum; a Domain result is converted with an explicit `switch` (`LobbyResult`, `RoomJoinResult`, `RoomInviteResult`,
+  `RoomTargetResult`, `SessionAuthResult`,
+  `ChannelJoinResult`).
+
+* **Domain** is the system at rest: the durable models (`Match`, `Round`, `MatchSettings`,
+  `User`, `Beatmap`, `Login`, …) and the rules that stay true while the system is offline. A model guarantees that **it is valid**: field values
+  in range, its own text format, values derived purely from its own data. No runtime-only state, no time, connection or
+  I/O, no events. A type that only means something while the server runs (session state, presence, spectator frames, a room in play) is
+  Application, not Domain; a row that carries data to the database is Infrastructure.
+* **Behaviour belongs to the object that owns it, and is reached through that object.** Every concept with state, invariants and
+  privileges is an **Application object** (`User`, `Session`, `Room`, `RoomSlot`, `Lobby`, the
+  channels, `Beatmapset`, and the root `Server`) in the Objects folder of its module (`Basil.Application.<Module>`). It owns its state,
+  keeps its invariants, and offers its behaviour; its state changes only inside its own behaviour. Its persistent
+  value is a Domain record named `XRecord` with the plain value `XData` (`UserRecord`, `BeatmapsetRecord`,
+  `MatchRecord`); the object wraps it. A persistent value that has no live object of its own, such as a
+  restriction, is a plain Domain class named after the concept (`UserRecord`). A part is reached through its owner
+  (`room.Slots[3]`), never through an outside object that takes the owner as a parameter.
+  **`x.ScopeTo(connection)`** returns `ScopedX`, a short-lived capability for one request or command (see "Scopes and
+  results" below). It snapshots the caller's effective privileges once, and each behaviour checks that snapshot through
+  the base class and returns `XResult.Denied` before it takes the object's lock,
+  keeps the invariants, acts and emits the event. The caller never passes `connection`, privileges or an actor into a
+  call. **Anything whose actions
+  depend on privileges or privileges is scoped; only a system that needs no check is not** (the server's own work:
+  Runtime handlers, startup, the bot's announcements, public reads).
+  Internal capability helpers keep only application logic that needs no live object (account checks, beatmapset
+  indexing, score validation and recording); coordination between objects belongs to the object that is acted on
+  (`SessionRegistry` for logins and connections, `Lobby` for what happens across rooms, `ScoreSubmitter` for a
+  game client's score, `AnticheatReporter` for its anticheat flags, `Beatmapsets` for imports). Five
+  anti-patterns to reject in review: a **God Actor** that gathers every behaviour (every former service ending up
+  as `Server.X`); **service-centric procedural
+  design** (a service takes an object and does its behaviour for it); **privilege plumbing** (privileges passed
+  through many layers and methods); **exposing mutable state** (callers change internals past the invariants);
+  **fake scoping** (`ScopeTo` only wraps while behaviour and checks stay in a central service). The shared
+  authority primitives (`Access`, effective privileges, hierarchy, "a block yields to a higher privilege") are a
+  library each `ScopeTo` calls, not a layer to pass through. A domain record and its Application object never
+  share a name.
+* **The service ladder.** Service > Ports > the three stores (Registry | Repository | Storage) > Objects; a level uses only the
+  levels below it. A call across levels is direct (dependency injection); a call between peers is a Mediator message. A
+  Handler is the Mediator listener for one message type, thin and `internal`, in `Infrastructure.<Module>/Handlers`. Hosts do not call `ScopeTo`: they send a message that carries the `Session`
+  and the handler scopes the object.
+* **Each folder of a module owns one kind of type.** The full map is in [`module-layout.md`](module-layout.md). **Persistence/** holds the
+  persistent ports (repositories) and query records; **Storage/** holds the file-storage ports; Application.Shared
+  holds shared paging and search syntax. Live objects (`Room`, `RoomSlot`, `User`, connections and channels), their
+  contexts, their outcome enums and their event records live in **Objects/**; the registries that keep live objects in
+  RAM (`UserRegistry`, `Lobby`, `GeneralChannelRegistry`, the channel registries) live in **Registry/**; the `Scoped*`
+  views live in **Capabilities/** (only those), the ports to external computation in **Ports/**, the object-free logic in **Logic/**; the event handlers and the background runs live in the Infrastructure project (**Handlers/**, **Workers/**). In the
+  Users module the user and its context are in `Objects/`, and its
+  registry in `Registry/`; the Sessions module keeps its sessions in `Objects/` and its registry in `Registry/`. Persistence never decides a business rule, emits an event, calls a service or starts a
+  timer. A state change and its consequences belong to the object that owns the state.
+* **A service the system provides has a contract; the logic behind a capability does not.** What the module offers as
+  a service to the hosts and to other modules lives in **Services/** as a contract and its implementation
+  (`IAnticheatReporter`); a helper that only serves one layer is not a service and stays with what implements it.
+  Internal capability helpers never receive live objects or publish events. A system-facing service normally returns
+  its result without publishing; `IAnticheatReporter` is the explicit exception because reporting a live game's flags
+  is the system operation and it is the single producer of anticheat events. Object-free logic such as account checks,
+  beatmapset indexing and score validation stays `internal` in the folder of the capability or object it serves;
+  objects reach it through `InternalsVisibleTo`.
+  Plain data that both layers use in public signatures (login, registration and score submission inputs, import and
+  scan results) lives in the Persistence folder. Callers reach privilege-dependent behaviour through
+  `ScopeTo(connection)` and the server's own work through labelled system operations.
+* **Object or service?** One question decides it: does the operation have a caller whose privileges it must
+  check? Then it is behaviour of the object it changes, reached through `ScopeTo(connection)`. An operation that
+  has no caller (the server's own work, a handler's reaction, startup) or that coordinates several objects
+  (login, import, score submission) is the behaviour of the object that owns the identity, the collection or the
+  actor, and it calls internal capability logic only for the part that needs no live object. A service in Services/
+  is the explicit system-facing operation described above, not a replacement for that object behaviour.
+* **Objects get their collaborators through a context.** An object takes a `…Context` record of ports (clock,
+  event publisher, repositories, the ports of the objects it works with: `RoomContext`, `UserContext`, `LobbyContext`,
+  `ChannelContext`, `SessionContext`, `BeatmapsetContext`, `ServerContext`) when it is created. The context, the
+  object's constructor are `internal`; the registration builds them in factory lambdas, because the container only
+  sees public constructors (a root object that two others need, such as the user registry for a session, is reached
+  through a deferred port to avoid a construction cycle). A service class that the container creates by itself
+  needs a `public` constructor even when the class is `internal`. An object calls a service for pure logic only; a
+  port is implemented by whoever owns the other object (`Lobby` implements `IRoomLobbyPort`).
+  Because the factories hide dependencies from `ValidateOnBuild`, verify the container by resolving every
+  registration with the external storage ports stubbed (see Commands).
+* **A scope is a snapshot: re-check after waiting.** A `ScopedX` is for one request or command and is never kept.
+  The privilege snapshot is taken once and is not re-taken. A behaviour that awaits between its check and its change
+  (a lookup, a repository call, the room gate) re-checks, inside the object's own scope or lock, the state and roles
+  the wait could have changed (`IsOpen`, a block, the caller's role in the room, a closed room) before it changes
+  anything; a referee removed while waiting for the gate must not act.
+* **A refusal by role is a refusal by privilege.** Privileges that come from a role in one object (creator,
+  referee, host, player in a room) are checked by that object's scope (`ScopedRoom.Require`) and refused with `Denied`, the
+  same outcome as a lack of account privileges, so the refusal does not say which role is missing. An outcome named after a
+  role (`RoomTargetResult.NotReferee`) states a business fact about a target, not a privilege check.
+* **System operations are labelled.** A public method on an object that skips the privilege check (`Lobby.Unwatch`,
+  `Server.SayAsync`, `Server.WhisperAsync`, `Server.OpenChannel`, `Lobby.ReleaseAsync`, `Room.ReceiveScore`, `Server.Notify`) says in its
+  XML summary that the server itself calls it and needs no privileges. A chat command, an API route or any other entry
+  point that acts for a user never calls one; it uses the scope of the user's connection.
+* **Capability ports.** A capability with business meaning whose implementation needs external libraries
+  or resources is a public interface in a module's Ports folder (with the data it exchanges) that the module's Infrastructure project implements
+  (`IBeatmapAnalyser`, `IBeatmapCalculator`, `IBeatmapsetReader`, `IBeatmapAssets`, `IScreenshotInspector`), even
+  when only the hosts use it. Pure plumbing (logging, diagnostics, metrics, SSE hub, update checks,
+  OpenAPI, the response envelope) gets no contract. Whatever kind of file a client sends, trust a known extension
+  and probe the content only when it is unknown or when its size is needed: an image with ImageSharp
+  (header only, never decoded; a screenshot is always identified because its pixel size is capped), audio with
+  libsndfile through NAudio (duration and bytes are read from the content); no part of an uploaded name reaches a
+  temporary file name.
+* **Contract names do not reveal the mechanism.** If the work moved from the file system to the network, or
+  from one library to another, the name would not change: `ScanAsync`, not `ScanFileAsync`;
+  `IBeatmapsetStorage.OpenAsync`, not `ReadFromDiskAsync`.
+* **Registries live in their own folder.** A registry holds live runtime objects, so it is a public class of
+  a module's Registry folder (`UserRegistry`, `Lobby`, `GeneralChannelRegistry`) that also owns the operations on what
+  it holds (`SessionRegistry` opens and closes connections and logs users in). Mutating registry members are `internal`.
+  Persistent repositories, query records and paging belong to the module's Persistence folder, file-storage ports to
+  its Storage folder. Other capability ports describe what lies outside the process: files, network, external
+  computation and the clock (`TimeProvider`).
+* **Outer layers use storage directly.** Infrastructure handlers read, list and search storage, and
+  write persistent records whose write carries no rule or consequence (an admin renames a user, hides a
+  beatmapset), directly through the repository, after the capability has checked the caller's privilege (today the hosts still do this themselves; target: they send a Query or Command). Services are only for actions; a service
+  never wraps a plain read or write (a score service's `GetAsync` forwarding to `IScoreRepository.GetAsync` is
+  wrong). Runtime state changes only through the behaviour of the object that owns that state; runtime setters
+  are `internal`.
+* **Each object enforces its own rules.** An operation keeps the owning object's parts consistent in that same
+  operation (a room keeps its channel in step with its players). A consequence that crosses object boundaries
+  (a closed connection removes memberships in rooms and spectator streams) is announced as an event; Infrastructure
+  handlers call the operations owned by those objects.
+* **Background work.** An object declares one run of a background job (`SessionRegistry.EndSilentAsync()`,
+  `Beatmapsets.ScanAsync()`); Infrastructure owns the loop, the trigger, the
+  period and its configuration. A one-shot timer that is the consequence of an operation (an empty room's
+  closing) belongs to the lobby that owns the room and runs on `TimeProvider`. A room's countdown belongs to
+  BasilBot: it keeps the timer, listens to the room's events to cancel, announces the marks and sends the message that
+  starts the round.
+* **Derive whatever is derivable.** A property a runtime object co-owns with its domain object
+  (truth in Domain) is a forwarding property (`Room.Name => Match.Name`).
+* **A user is one `User`; each place they log in from is a `Session`.**
+  `User` (sealed) represents the account: what is shared (`AwayMessage`, the `Silence`). While the user is online, the
+  Sessions module holds the user's open sessions in `UserSessions`, keyed by
+  `SessionType` (`Stable`, `StableTourney`, `Irc`, `Api`), with typed accessors (`Stable`, `Irc`, `Ircs`, `Tourneys`);
+  one active session per type (Tourney excepted) is a rule the session registry enforces (see
+  [`identity-privileges.md`](identity-privileges.md)).
+  `Session` is an abstract class (`State`, `User`, `Record`, `Token`, `IsOpen`, `Type`) with `StableSession`,
+  `TourneySession`, `IrcSession`, `ApiSession`, `OperatorSession`; each holds only what exists for that kind of client
+  (`StableSession.Status`). Rooms, channels and the lobby hold sessions, not users.
+  Chat keeps a PM channel per online user; it is opened when the user is first needed and closed when they go offline.
+  Spectating is a relation on the spectated osu! client (`StableSession.Spectators`), changed through
+  `host.ScopeTo(actor).SpectateAsync()` (what only an osu! client has lives under `StableSession`:
+  spectating and its presence status). Chat keeps the client's spectator channel in step by reacting to the
+  spectator events (the first spectator brings the host in, the last one out), so membership of that channel is
+  eventually consistent with them; the channel never stands for who is spectating.
+* **Identify by the basis object**, not its id (`Room` by `Match`, `GeneralChannel` by `Name`). Runtime
+  objects that can be recreated with the same user or name compare **by reference**: a connection
+  is one login, a `User` instance is one online period (`UserRegistry` keeps it while the user is online; an offline account gets a transient instance that is never registered), a
+  runtime channel is one opening (`#mp_5` is reused when a room id is reused). Cleanup that carries
+  an old object can never touch its replacement. "Is this user already here?" compares the user
+  and is a separate check from object identity. Ids are for repository lookups only. Choose object vs identifier
+  deliberately (`RoomSettings.Beatmap`, a `BeatmapReference`, or a beatmap checksum as `Md5Hash`); never `string` for an MD5.
+* **Relations are references** in `ConcurrentSet<T>`, never `ConcurrentDictionary<T, byte>`.
+* **`User` or a connection?** If the information is gone once the user goes offline, store the
+  connection (`StableSession` as slot occupant or host); otherwise the `User` (creator, referees,
+  bans).
+* **The acted-on object owns the interaction.** An actor (a user, a session, any active object)
+  only *calls* an action. The relation is stored on the object acted on (`Channel.Members`,
+  `Room.Slots`), and its short-lived scope exposes the operation (`channel.ScopeTo(actor).Join()`,
+  `room.ScopeTo(actor).Members.JoinAsync(password)`). The event belongs to that object's category
+  (`ChannelMemberJoined` is a `ChannelEvent`). The
+  session does **not** keep a `Channels` set, does **not** have a `Join(Channel)` method, and nothing
+  emits events on its behalf. Otherwise every new joinable kind (channel, room, spectator stream, …) forces a
+  new `Join*` method and a new set on the user. "Which channels is X in?" is a query over channels, not state
+  on X. Ask "who is acted on?" for every relation, member and event.
+* **Parts are reached through the owning object's scope.** `room.ScopeTo(actor)` exposes `.Slots`, `.Rounds`,
+  `.Settings`, `.Authority` and `.Members`; `users.Of(record).ScopeTo(actor)` exposes the user's silence,
+  relationships and account operations. Channels, sessions, connections, the lobby, beatmapsets and the server
+  follow the same pattern. There are no child service trees for object behaviour; coordination that spans objects
+  is a method of the object that is acted on (or of the registry that holds them).
+* **Each owner manages its own kind, and reacts to other kinds only through events.** The session registry
+  opens and closes connections and announces `SessionOpened`/`SessionClosed`; its responsibility
+  ends there. Leaving rooms and parting channels when a connection closes is done by Infrastructure handlers
+  that receive the event and call the owning object (`Lobby.ReleaseAsync`, `GeneralChannelRegistry.PartAll`). When a second connection of the same kind arrives
+  for a user an owner still holds, the owner **asks the old connection who it is** (`connection.IsOpen`):
+  still open, refuse the new one; already closed (cleanup not run yet, or failed), remove the old one as an
+  ordinary leave and admit the new one. Cleanup operations must be safe to run again.
+* **Peers talk through events; owners call their parts directly.** Two operations are peers when neither
+  object owns the other and neither's rule depends on the other (scores and rooms, the anticheat and rooms): the
+  acting operation publishes its event, and the shared event queue delivers it to the peer's handler
+  (`ScoreSubmitted` → `ScoreHandler` → `Room.ReceiveScore`, `AnticheatPlayerFlagged` reaches clients that
+  watch it, such as BasilBot). An object calls another directly only for a clear ownership relation or to keep
+  a rule that must hold within the same operation: objects use storage ports; Chat keeps the channel of each open room,
+  of each online user (PM) and of each watched client (spectator); a room tells the lobby when it empties or fills;
+  logging in opens the connection. Deleting a user is not one of these: it publishes `UserDeleted`, and the Sessions
+  handler closes the connections one event-queue step later, while the effective privileges change at once, because a
+  session reads the live `User`.
+* **Application publishes events and handles the ones that concern its own module; Infrastructure only ships them**
+  (the handlers are in `Infrastructure.<Module>/Handlers`; contracts and event records stay in Application). The base event,
+  `IEventPublisher<T>` lives in Application.Shared and `EventQueue` in Infrastructure.Shared; the feature event records live in the Objects
+  folder of their module (`Objects/Events/`) and its handlers in the Handlers folder of its Infrastructure project. An object or the
+  bot's voice publishes an event through `IEventPublisher<T>` (`Publish`): it stamps `Timestamp`, queues the delivery
+  and returns at once. **A notification is never awaited under a lock**: the object enqueues and the dispatcher publishes outside it. A handler is a class implementing `Mediator.INotificationHandler<TEvent>` for one concrete
+  event type (`ConnectionHandler`, `SessionEndHandler`, `ScoreHandler`, the `Room*Recorder` handlers in the Handlers folders of their
+  modules; `AnnounceRoomClosing`, `AnticheatAnnouncer`, `ChatHandler` in `Basil.Infrastructure.Bot`). The shared queue (`EventQueue`) is run by
+  `EventDispatcher` in Infrastructure.Shared's Workers folder and delivers the events of each lane (`Chat`, `Presence`,
+  `Multiplayer`, `General`; declared with `[EventLane]` on the base event of a category) one at a time in the order they
+  were published; across lanes no order is promised ([`architecture.md`](../for-developers/architecture.md#lanes));
+  a failing handler is logged and the others still run. The mediator resolves handlers at
+  first publish, not when the publisher is built (a handler reaches objects that publish). Persistence and internal
+  capability helpers never publish; a system-facing service publishes only when it is the explicitly declared single
+  source of that system event (currently, `IAnticheatReporter`). Other services return what happened and the owning
+  object publishes it. One operation publishes one event
+  carrying its whole consequence. Events are `sealed record`s in a category tree (`Event` <- `RoomEvent` <-
+  `RoomSlotEvent` <- `RoomSlotTeamChanged`), but a handler serves one concrete type. A handler only reacts to an
+  event by calling the owning object's operation; event -> client-notification routing belongs to the hosts.
+* **Handlers are quick; slow work goes to its own queue.** A lane awaits its handlers one after another, so a
+  handler that waits (a lookup, a room, the store) holds up every later event of its lane. A handler that may
+  wait only queues the work on a bounded queue of its own, with a cap per user and a timeout per item, and returns
+  (`CommandWorker` of the bot). A dropped item is logged, never silent.
+* **A consequence reaches everyone, through every path.** What a change does to the people it concerns it does
+  whether they are online or not (removing a referee removes an offline referee from the open rooms too), and every
+  path that grants the same authority applies the same gate (`ScopedRoom` and `ChannelRules.InRoom` agree on
+  `Tournament` and `Player`).
+* **Naming: Domain record `XRecord` (with `XData`), the Application object `X`, the object that holds the live
+  ones `XRegistry`; an internal capability helper is an internal `XService` with no contract, while a system-facing
+  service has a public `IXService` contract and an implementation in Services/.** There is no `*Session`
+  suffix: the Application object is the thing itself, and Domain only stores records. No suffixes such as
+  "Definition". `GeneralChannelRecord` → `GeneralChannel` → `GeneralChannelRegistry` (it holds only general
+  channels); `UserRecord` → `User` → `UserRegistry`. The osu! terms win for matches: `MatchRecord` → `Room` →
+  `Lobby`. The room's channel is named after the room (`RoomChannel`, kept by `RoomChannels`) because the room is where things happen and
+  `MatchRecord` is only the record. `Channel` shares its simple name with the static class
+  `System.Threading.Channels.Channel`: a file that uses both qualifies the .NET one.
+* **Event names are `{Group}{Subject}{PastTenseVerb}`.** The group is the category the event belongs
+  to (`Room`, `Channel`, `User`, `Lobby`); when the subject is the group itself it is written once
+  (`ChannelOpened`, `UserSilenced`). A subject that belongs to another is written `{Parent}{Child}`
+  (`RoomRoundPlayerLoaded`, `RoomSlotTeamChanged`, `SessionOpened`). The abstract category
+  records follow the same rule (`RoomRoundEvent`, `ChannelMembershipEvent`).
+* **Chat channels.** Domain stores only what is persisted: `GeneralChannelRecord` (identity: the name with its
+  `#`) and `GeneralChannelData` (`Topic`, `ReadPrivileges`, `WritePrivileges`, `AutoJoin`, `Visible`); messages
+  are the record `Message`. Application: abstract `Channel` (`Name`, `Topic`, members, IRC convention) with
+  `GeneralChannel` (wraps the record), `RoomChannel`, `SpectatorChannel`, `PmChannel`; each names itself
+  (`#mp_5`, `#spec_7`, the owner's name for a PM channel). **Each channel lives with the object that manages
+  it**: `GeneralChannelRegistry` holds the general channels, `RoomChannels` the channel of each open room, `PmChannels` the PM
+  channel of each online user, `SpectatorChannels` the spectator channel of each watched `StableSession`. Each kind of
+  channel decides who may read and write it. A private message is a post into the recipient's PM channel.
+  Access follows osu!: a user may join a channel (including `/join` over IRC) only if an osu! client doing the
+  matching in-game action would have access. General channels are created, configured and deleted at runtime through
+  `Server` (the `ConfigureGeneralChannel` message); configuring a channel removes the members who may no longer read it.
+* **Assets are referred to by `ContentReference`** (Domain), never by `string` or `Uri`: either the relative path of a
+  file the server stores under its data directory (`Menu/Banners/x.png`, valid on every machine) or an absolute
+  http/https address of an asset hosted elsewhere, kept as given and never copied. The value is canonical (its
+  parsing and normalization live on the type). File storages give out the reference of what they store; the hosts
+  serve stored files under a fixed public path per asset directory (static file provider rooted at each asset
+  directory, never at the whole data directory) and only distribute them. Replays are named
+  `{ScoreId} {Player} - {Artist} - {Title} [{Version}] ({yyyy-MM-dd}) {Mode}.osr`, as osu! names an exported
+  replay, and hold a complete `.osr` (the header is built when the score is stored, with the client version that
+  played it); `osu-getreplay.php` serves only the LZMA frames inside it and the API serves the whole file;
+  screenshots get a UUIDv7 name.
+* **A channel's name tells its kind.** A channel several users take part in (general, room,
+  spectator) is named `#name` (`#osu`, `#lobby`, `#mp_5`, `#spec_7`); a private-message channel is
+  named after its owner, without `#`, as an IRC nick is. This is a naming convention each kind of
+  channel follows when it names itself; nothing else checks it. `#multiplayer`/`#spectator` are
+  aliases the transport resolves to the sender's room or spectator channel.
+* **Setters only assign and validate.** A Domain setter stores the value and throws if it is invalid; a
+  runtime setter is `internal set` and only assigns. A setter never emits an event or changes anything else.
+  A change that has consequences (emits an event, changes other fields, checks authority, groups several
+  fields into one event) is an operation on the object that owns the state. Such an operation is real behaviour, not a
+  `Change*`/`Rename`/`With*` wrapper around a single field.
+* **Name a contract after the object it acts on.** The unit that is imported, stored and read is
+  the beatmapset, so the root object is `Beatmapsets` and the contracts are `IBeatmapsetReader`, `IBeatmapsetStorage`
+  and `BeatmapsetImportResult`. A byte storage is `I{Owner}{Thing}Storage`
+  (`IUserAvatarStorage`, `IMenuBannerStorage`, `IMenuSeasonalsStorage`); medium words (`Image`,
+  `Background`, `Archive`) and redundant qualifiers (`Server` in `ISettingsRepository`) stay out of names.
+* **Knowledge about a Domain value lives on that value.** A fixed set of flags is a member of its `{Enum}Groups`
+  class (`StableFlagsGroups.CheatSigns`, `UserPrivilegesExtensions.Chat`) or of the owning type (`UserPrivilegesExtensions.Default`),
+  never a combination member of the enum itself; a per-mode factory is a static member of its type
+  (`BeatmapObjectCount.NewFrom(mode)`);
+  services use them instead of keeping their own copies.
+  A flag enum's named groups are used whenever they cover the set: room logic writes `RoomPrivileges.Moderators`
+  and `RoomPrivileges.Staff`, never `Referee | Creator` or `Host | Referee | Creator`; only a set no group names is
+  written as an OR (`Player | Moderators`), and no group is added just to avoid one.
+* **One concept, one name.** Use the same name for the same concept in every model, parameter,
+  event and API: the moment something happened is `Timestamp`, a span is `StartedAt`/`EndedAt`, a
+  future window is `StartsAt`/`EndsAt`, a stored record's lifecycle is
+  `CreatedAt`/`UpdatedAt`/`DeletedAt`, the caller of an operation is `actor`. Do not introduce
+  `OccurredAt`, `When`, `Since`, `LoginTime` or similar synonyms.
+
+
+### BasilBot replies
+
+* Everything the bot says is text the operator can edit: one JSON file, `Data/Localizations/bot.json` (the IRC host has `irc.json` the same way), reply names to ICU
+  MessageFormat strings with named placeholders (`{room}`, plural selectors). One language. The defaults are embedded
+  in the assembly and written to the configuration folder when the file does not exist. The file is watched and reloaded
+  while the server runs; an invalid file keeps the last good set and logs a warning; a missing key falls back to its
+  default. Each surface owns a reply enum (`BotReply`, `IrcReply`) whose members declare their default text and argument names with `[Reply]`; `IReplies<TReply>` (Application.Shared) words them and `ReplyCatalog<TReply>` (Infrastructure.Shared) reads the file. Tests reference the enum members, never copy the default text.
+* A reply to a command refused with `Denied` does not name the privileges that were lacking, but names the role that can act (D4).

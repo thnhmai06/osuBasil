@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<RootNamespace>Basil.Tests.Shared.Workload</RootNamespace>
+		<AssemblyName>Basil.Tests.Shared.Workload</AssemblyName>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Basil.Tests.Shared.Clients\Basil.Tests.Shared.Clients.csproj"/>
+		<PackageReference Include="NBomber"/>
+	</ItemGroup>
+</Project>

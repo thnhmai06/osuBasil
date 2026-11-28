@@ -1,0 +1,80 @@
+# Builds the Basil image on mocha inside k3s and loads it into the node's containerd, so no Docker and no root shell
+# are needed. The import container holds the containerd socket, which is root on the node.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: build-image
+  namespace: basil-load
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: mocha
+  restartPolicy: Never
+  hostNetwork: true
+  dnsPolicy: Default
+  initContainers:
+    - name: build
+      image: moby/buildkit:v0.25.1
+      securityContext:
+        privileged: true
+      command: ["buildctl-daemonless.sh"]
+      args:
+        - build
+        - --progress=plain
+        - --frontend=dockerfile.v0
+        - --local=context=/src
+        - --local=dockerfile=/src
+        - --output=type=docker,name=docker.io/library/basil:load,dest=/out/basil-${REVISION}.tar
+      env:
+        - name: BUILDKITD_FLAGS
+          value: --oci-worker-net=host
+      resources:
+        requests:
+          cpu: 200m
+          memory: 1Gi
+      volumeMounts:
+        - name: src
+          mountPath: /src
+          readOnly: true
+        - name: out
+          mountPath: /out
+  containers:
+    - name: import
+      image: busybox:1.36.1
+      securityContext:
+        privileged: true
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          set -eu
+          ctr() { /var/lib/rancher/k3s/data/current/bin/ctr --address /run/k3s/containerd/containerd.sock -n k8s.io "$$@"; }
+          # The image being replaced stays under its own name for a rollback.
+          ctr images tag --force docker.io/library/basil:load docker.io/library/basil:before-${REVISION} || true
+          ctr images import /out/basil-${REVISION}.tar
+          ctr images tag --force docker.io/library/basil:load docker.io/library/basil:${REVISION}
+          ctr images ls | grep library/basil
+      volumeMounts:
+        - name: out
+          mountPath: /out
+          readOnly: true
+        - name: containerd
+          mountPath: /run/k3s/containerd
+        - name: k3s-data
+          mountPath: /var/lib/rancher/k3s/data
+          readOnly: true
+  volumes:
+    - name: src
+      hostPath:
+        path: ${BENCH_DIR}/src-${REVISION}
+        type: Directory
+    - name: out
+      hostPath:
+        path: ${BENCH_DIR}
+        type: Directory
+    - name: containerd
+      hostPath:
+        path: /run/k3s/containerd
+        type: Directory
+    - name: k3s-data
+      hostPath:
+        path: /var/lib/rancher/k3s/data
+        type: Directory

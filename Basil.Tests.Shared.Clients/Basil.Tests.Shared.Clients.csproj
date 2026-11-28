@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<RootNamespace>Basil.Tests.Shared.Clients</RootNamespace>
+		<AssemblyName>Basil.Tests.Shared.Clients</AssemblyName>
+	</PropertyGroup>
+
+	<!-- The wire languages only: these clients are outside clients of Basil and never reference Application, Infrastructure or a Host. -->
+	<ItemGroup>
+		<ProjectReference Include="..\Basil.Protocol.Game.Stable\Basil.Protocol.Game.Stable.csproj"/>
+		<ProjectReference Include="..\Basil.Protocol.Irc\Basil.Protocol.Irc.csproj"/>
+	</ItemGroup>
+</Project>

@@ -1,0 +1,15 @@
+using Basil.Application.Scores.Objects;
+using Basil.Application.Scores.Persistence;
+using Basil.Application.Sessions.Objects;
+using Basil.Domain.Scores;
+using Mediator;
+
+namespace Basil.Application.Scores.Messages;
+
+public sealed record SubmitScore(
+	StableSession Actor,
+	Submission Submission,
+	BeatmapChecksums? Beatmap,
+	SubmittedClient Client,
+	Stream? Replay)
+	: IRequest<(ScoreSubmissionResult Result, SubmissionRejectionReason? Rejection, ScoreReceipt? Receipt)>;

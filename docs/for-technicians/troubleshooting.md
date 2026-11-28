@@ -15,70 +15,44 @@ Check the startup log first.
 Common causes include:
 
 * an invalid configuration value;
-* an invalid TLS certificate or certificate password;
+* `ConnectionStrings__Write` is not set (the server stops with one line that names the variable);
+* the PostgreSQL database named by `ConnectionStrings__Write` (or `Read`) cannot be reached or refuses the role;
 * the configured port is already in use;
-* the process does not have permission to access required files or bind to the configured port.
+* `Data/` has a layout newer than this Basil knows, or the database holds a migration this Basil does not know: an older
+  image was started on the data of a newer one (the line names the module and the migration); start the newer image
+  again, or restore the backup;
+* the process cannot write `Data/`, `Cache/` or `Logs/` (in Docker, give them to user `1654`; see [`docker.md`](docker.md)).
 
-If Basil exits immediately after a configuration change, check the most recent entries in:
+If Basil exits immediately after a configuration change, check the most recent entries of the log file of the day:
 
 ```text
-Logs/latest.log
+docker-data/Logs/basil-YYYYMMDD.log
 ```
 
-For Docker:
-
-```bash
-docker compose logs --no-color
-```
+The `basil` container owns a terminal for the dashboard, so `docker compose logs basil` shows the dashboard, not the
+log. For nginx and PostgreSQL, `docker compose logs nginx postgres` is the log.
 
 ---
 
-## Basil exits immediately with a TLS error
+## nginx does not start after changing the certificate
 
-If Basil exits during startup after changing the certificate configuration, check:
+Basil holds no certificate, so a certificate problem stops nginx, not Basil. Verify that:
 
-```text
-Basil:Server:CertPath
-Basil:Server:CertPassword
-```
-
-Verify that:
-
-1. The PFX file exists.
-2. The path is correct.
-3. The Basil process can read the file.
-4. The PFX password is correct.
-5. The PFX contains the certificate's private key.
-
-Basil logs the certificate path when this fails, but **never logs the certificate password**.
+1. The two mounted files exist and nginx can read them.
+2. The key matches the certificate and is not password protected.
+3. `docker compose logs nginx` names the error.
 
 See [`https.md`](https.md).
 
 ---
 
-## Audio preview returns `503 Service Unavailable`
+## Audio preview returns `404 Not Found`
 
-Basil requires `ffmpeg` to generate beatmap audio previews.
+Basil builds beatmap audio previews with libsndfile through NAudio. A preview that could not be built does not exist,
+so its request answers `404`; the failure is a warning in the system log, and the rest of the server keeps working.
 
-Check that `ffmpeg` is installed and available to the Basil process:
-
-```bash
-ffmpeg -version
-```
-
-Install it if necessary, then restart Basil.
-
-Nothing else on the server requires `ffmpeg`, so the rest of the server can continue operating without it.
-
-### Docker
-
-The official Basil Docker image already includes `ffmpeg`.
-
-If audio previews fail in Docker, check the container logs instead of installing `ffmpeg` on the host:
-
-```bash
-docker compose logs -f
-```
+The Basil image includes `libsndfile1`. Check the system log in `docker-data/Logs/` for the warning "Audio preview build
+failed", which names the beatmapset and the audio file.
 
 ---
 
@@ -87,59 +61,32 @@ docker compose logs -f
 First check whether the beatmapset exists in:
 
 ```text
-Data/Mapsets/
+Data/Beatmapsets/
 ```
 
-Basil supports both local storage and optional external mirrors.
-
-### Local-only mode
-
-If:
-
-```text
-Basil:Mirror:DownloadEndpoint
-```
-
-is not configured, Basil uses local storage.
+Basil serves beatmaps only from local storage, so a beatmapset the server does not hold answers 404.
 
 Check that:
 
-* the `.osz` was added to `Data/Mapsets/`;
+* the `.osz` was added to `Data/Beatmapsets/`;
 * Basil had time to ingest it;
 * the beatmapset appears after restarting Basil if it was added while the server was offline.
 
-Basil watches the mapset directory while running and also performs a full reconciliation during startup.
-
-### Mirror mode
-
-If `Basil:Mirror:DownloadEndpoint` is configured, Basil can redirect requests for missing beatmapsets to the configured mirror.
-
-If you do not want external downloads, clear this setting, set `null` and restart Basil.
+Basil watches the beatmapset directory while running and also performs a full reconciliation during startup.
 
 ---
 
-## Basil reports that it is running in bypass mode
+## Nobody can sign in, or no account can manage the server
 
-A fresh database has no admin key.
+The server never creates an account by itself, so a fresh database has no administrator. Create one with the console,
+which works on the storage whether the server is running or not:
 
-In this state, Basil runs in **bypass mode**:
-
-* admin-protected API operations do not require a key;
-* in-game registration does not require the admin key.
-
-This is expected for a new installation, but it is unsafe for an exposed server.
-
-Set an admin key through:
-
-```text
-PUT /adminkey
+```bash
+./Basil users create --username admin --password change-me --admin
 ```
 
-on the `api.<domain>` host.
-
-The new key takes effect immediately. A restart is not required.
-
-See [`configuration.md`](configuration.md).
+`--admin` gives the account every privilege. If an existing administrator lost their password, set a new one with
+`users <id> set --password <new>` (every session of that account is closed). See [`console.md`](console.md).
 
 ---
 
@@ -164,8 +111,8 @@ Basil:Server:Domain = basil.local
 the client must connect to `basil.local` and its corresponding Basil subdomains.
 
 ```shell
-osu! -devserver basil.local
-````
+osu!.exe -devserver basil.local
+```
 
 If the client is configured to use a different domain, it may fail to connect even when Basil itself is running correctly.
 
@@ -186,6 +133,8 @@ osu.<domain>
 b.<domain>
 a.<domain>
 api.<domain>
+assets.<domain>
+irc.<domain>
 ```
 
 For a self-signed certificate, make sure the certificate is trusted on the client machine.
@@ -202,31 +151,27 @@ A single missing hostname can prevent the osu! client from connecting correctly.
 
 For LAN deployments, check the client's hosts file.
 
-See [`getting-started.md`](../for-client/bancho/getting-started.md).
+See [`getting-started.md`](../for-client/osu-stable/getting-started.md).
 
 ### 4. Check port 443
 
-Make sure TCP port `443` is reachable from the client.
+Make sure TCP port `443` is reachable from the client. nginx publishes it; Basil's own port `8080` is not published.
 
 Check:
 
 * the Basil server's firewall;
 * any network firewall between the client and server;
-* the configured `Basil:Server:Port`.
+* `docker compose ps`: `nginx` is running and lists `0.0.0.0:443->443`.
 
-### 5. Check Basil's connectivity endpoint
+### 5. Check that the server answers
 
 From the client or another machine that can reach the server:
 
 ```bash
-curl -k https://osu.<domain>/web/bancho_connect.php
+curl -k https://api.<domain>/v1/users/1
 ```
 
-A working server should return:
-
-```text
-200 OK
-```
+A working server should return `200 OK` with the account of BasilBot.
 
 If this fails, fix the server/network problem before troubleshooting the osu! client.
 
@@ -234,25 +179,20 @@ If this fails, fix the server/network problem before troubleshooting the osu! cl
 
 ## IRC connection is refused
 
-Basil IRC uses a separate TCP port.
-
-The default is:
-
-```text
-Basil:Irc:Port = 6667
-```
+IRC is TLS only, on port `6697`, ended by nginx. Basil's own IRC port (`6667`) is not published and accepts only
+connections that nginx opens with a PROXY protocol header, so a client cannot reach it directly.
 
 Check:
 
-1. Basil is running.
-2. The configured IRC port is correct.
+1. The client connects to `irc.<domain>` on port `6697` with TLS on. A client or tool that speaks only plaintext IRC
+   cannot connect.
+2. `irc.<domain>` resolves to the server (behind Cloudflare, that record must be DNS only).
 3. The port is allowed through the server firewall.
-4. The client is connecting to the correct hostname or IP.
-5. No other service is already using the configured port.
+4. The client trusts the certificate (see [`https.md`](https.md)).
+5. nginx is running (`docker compose ps`), and Basil is healthy.
 
-IRC does not use HTTPS or the Basil TLS certificate.
-
-There is also no `irc.<domain>` hostname requirement.
+A connection that nginx accepts and Basil closes at once means Basil did not receive the PROXY header from a trusted
+address: check `Basil:Server:TrustedProxies` (the Compose file sets it to the Compose network).
 
 ---
 
@@ -262,10 +202,10 @@ Make sure you use `/join #mp_x` instead of `/chat #mp_x`
 
 Only users who are allowed to participate in the multiplayer match can join its room channel.
 
-If a user receives:
+If a user receives a `473` reply, the text names the reason, for example:
 
 ```text
-Cannot join channel (no permission)
+Cannot join channel (you may not read it)
 ```
 
 the user is not currently permitted to join that match channel.
@@ -282,27 +222,26 @@ See [`irc.md`](../for-developers/irc.md) for multiplayer IRC behaviour.
 
 ---
 
-## In-game registration fails with a key error
+## In-game registration is refused
 
-In-game registration uses the Basil admin key as the **Email** value in osu!'s registration form.
+The registration form of the osu! client sends the username and the password; the email field is not used. A
+registration is refused when:
 
-Check that:
+1. The username is not valid or is already taken.
+2. The **accounts** lock is on: while it is, only an account manager can create accounts (`GET /v1/settings/locks`).
+3. The registration limit of the whole server is reached (`rateLimits` settings), or nginx refused the address for
+   registering too often (`429`).
 
-1. An admin key has been configured.
-2. The key entered in the Email field matches the current key.
-3. The client is connecting to the correct Basil server.
-
-If the server is in bypass mode because no admin key has been configured, the registration key is not required.
-
+Create the account with the console instead if it must exist now: `users create --username <name> --password <word>`.
 See [`configuration.md`](configuration.md).
 
 ---
 
 ## Client repeatedly shows `Unknown token, reconnecting`
 
-Basil session state is stored in memory.
-
-A server restart therefore invalidates existing client sessions. Clients reconnecting after a restart is expected behaviour.
+osu! and IRC sessions end with the server: after a restart the osu! client is told its token is unknown and signs in
+again with its saved password, and IRC clients sign in again with theirs. API sessions survive a restart for up to 8
+hours of silence. This is expected behaviour.
 
 If clients repeatedly reconnect **without a server restart**, check:
 
@@ -317,23 +256,22 @@ If the problem affects only IRC clients, troubleshoot the IRC TCP connection sep
 
 ## Changes to `appsettings.json` have no effect
 
-Basil reads configuration when the process starts.
+Basil reads most deployment configuration when the process starts; only `Logging:LogLevel` and `Basil:Updates` apply
+while it runs.
+Policy settings (locks, rate limits, upload limits and the like) are stored in the database and apply at once when
+changed through the API or the console.
 
-After changing [`appsettings.json`](../../src/Basil.Web/appsettings.json):
+After changing `Data/appsettings.json` (`docker-data/Data/appsettings.json` in the Compose deployment; the shipped
+copy is [`Basil/Data/appsettings.json`](../../Basil/Data/appsettings.json)):
 
 1. Save the file.
-2. Stop Basil.
-3. Start Basil again.
+2. Restart Basil with `docker compose restart basil`.
 
 No rebuild is required.
 
-For Docker:
-
-```bash
-docker compose restart
-```
-
-Basil does not support overriding its application settings through environment variables. Edit `appsettings.json` instead.
+Basil also reads settings from environment variables (`Basil__Server__Domain`, where a double underscore stands for
+`:`) and from command-line arguments (`--Basil:Server:Domain=...`). Both win over `appsettings.json`; edit the file
+instead when you want a persistent change.
 
 See [`configuration.md`](configuration.md).
 
@@ -343,26 +281,23 @@ See [`configuration.md`](configuration.md).
 
 Check that Basil is using the expected `Data/` directory.
 
-The persistent data directory is located next to the executable in a normal deployment.
-
-For Docker, check the host directory mounted to:
+Check the host directory mounted to:
 
 ```text
 /app/Data
 ```
 
-The database is:
+in the `basil` container (`docker-data/Data` in the Compose file), and that nginx mounts the same folder.
 
-```text
-Data/Basil.db
-```
+The database is the PostgreSQL server configured by `ConnectionStrings:Write`. Basil creates its tables and applies
+migrations on startup.
 
-Do not replace or delete this file unless you intentionally want to create a new Basil installation.
+Do not drop or replace that database unless you intentionally want to create a new Basil installation.
 
 For beatmaps, check:
 
 ```text
-Data/Mapsets/
+Data/Beatmapsets/
 ```
 
 For other data locations, see [`configuration.md`](configuration.md).
@@ -374,18 +309,11 @@ For other data locations, see [`configuration.md`](configuration.md).
 Check:
 
 ```text
-Logs/
+docker-data/Logs/
 ```
 
-next to the Basil executable.
-
-For Docker, check:
-
-```bash
-docker compose logs -f
-```
-
-If persistent Docker logs are required, make sure `Logs/` is bind-mounted to the host.
+on the host, which the Compose file mounts to `/app/Logs`. `docker compose logs basil` is not a substitute: the
+container owns a terminal for the dashboard.
 
 See [`logging.md`](logging.md).
 
@@ -397,15 +325,15 @@ Temporarily increase the log level:
 
 ```json
 {
-  "Basil": {
-    "Logging": {
-      "MinimumLevel": "Debug"
+  "Logging": {
+    "LogLevel": {
+      "Default": "Debug"
     }
   }
 }
 ```
 
-Restart Basil, reproduce the problem, and collect the relevant logs.
+The change applies while the server runs. Reproduce the problem and collect the relevant logs.
 
 After troubleshooting, return the setting to:
 
@@ -422,8 +350,8 @@ See [`logging.md`](logging.md).
 ## See also
 
 * [`logging.md`](logging.md): log locations, log levels, and collecting logs
-* [`deployment.md`](deployment.md): complete deployment procedure
+* [`deployment.md`](deployment.md): the steps from an empty machine to a running server
 * [`configuration.md`](configuration.md): configuration and persistent data
 * [`https.md`](https.md): TLS and certificate requirements
 * [`docker.md`](docker.md): Docker deployment
-* [`getting-started.md`](../for-client/bancho/getting-started.md): configuring an osu! client
+* [`getting-started.md`](../for-client/osu-stable/getting-started.md): configuring an osu! client

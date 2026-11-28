@@ -1,0 +1,8 @@
+using Basil.Application.Sessions.Objects;
+using Basil.Domain.Multiplayer.Room;
+using Mediator;
+using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
+
+namespace Basil.Application.Multiplayer.Messages;
+
+public sealed record SetHasMap(Session Actor, Room Room, bool Has) : IRequest<RoomActionResult>;

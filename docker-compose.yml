@@ -1,13 +1,83 @@
 services:
+  nginx:
+    image: nginx:stable-alpine
+    depends_on:
+      basil:
+        condition: service_healthy
+    ports:
+      - "80:80" # redirects to HTTPS
+      - "443:443" # HTTPS: every subdomain of the domain
+      - "6697:6697" # IRC over TLS
+    networks:
+      - basil
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/proxy.conf:/etc/nginx/proxy.conf:ro
+      # Behind Cloudflare, mount docker/nginx/cloudflare.conf here instead.
+      - ./docker/nginx/real-ip.conf:/etc/nginx/real-ip.conf:ro
+      # The default certificate; mount your own files over these two paths.
+      - ./docker/nginx/certs:/etc/nginx/certs:ro
+      # Stored files, served by nginx when Basil names them with X-Accel-Redirect (/_files/Data/ and /_files/Cache/).
+      - ./docker-data/Data:/data:ro
+      - ./docker-data/Cache:/cache:ro
+    restart: on-failure
+
   basil:
     build: .
-    ports:
-      - "443:443" # HTTPS
-      - "6667:6667" # IRC no TLS
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # No published ports: nginx is the only way in. The dashboard needs a terminal (docker attach).
+    tty: true
+    stdin_open: true
+    networks:
+      - basil
     volumes:
+      # The container runs as user 1654 (app): chown -R 1654:1654 docker-data/Data docker-data/Cache docker-data/Logs
+      # Data is the one volume a backup needs besides the database; Cache is rebuilt on demand and Logs only read.
       - ./docker-data/Data:/app/Data
+      - ./docker-data/Cache:/app/Cache
       - ./docker-data/Logs:/app/Logs
-      - ./src/Basil.Web/appsettings.json:/app/appsettings.json:ro
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-    restart: unless-stopped
+      # The host name is the service name below; the password comes from .env.
+      ConnectionStrings__Write: "Host=postgres;Port=5432;Database=basil;Username=basil;Password=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}"
+      ConnectionStrings__Read: "Host=postgres;Port=5432;Database=basil;Username=basil;Password=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}"
+      # The domain clients reach the server by (c., a., api., irc. below it); set BASIL_DOMAIN in .env.
+      Basil__Server__Domain: ${BASIL_DOMAIN:-basil.local}
+      # Only nginx, on the compose network, may tell Basil who the client is.
+      Basil__Server__TrustedProxies__0: 172.28.0.0/24
+      # The nginx location that serves the files under Data and Cache, each below it under its own name.
+      Basil__Server__Files__AccelPrefix: /_files/
+    # The graceful shutdown can take up to 75 s (drain, flush queued writes); Docker's default of 10 s would kill it midway.
+    stop_grace_period: 90s
+    restart: on-failure
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: basil
+      POSTGRES_USER: basil
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    networks:
+      - basil
+    volumes:
+      # A named volume: PostgreSQL owns these files and needs permissions a bind mount may not keep.
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U basil -d basil" ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: on-failure
+
+volumes:
+  postgres:
+
+networks:
+  basil:
+    # IPv4 only: Basil trusts the nginx peer by this subnet, and Docker may otherwise add IPv6 addresses it does not know.
+    enable_ipv6: false
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24

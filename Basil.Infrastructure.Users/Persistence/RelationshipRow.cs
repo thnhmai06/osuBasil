@@ -1,0 +1,27 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Basil.Infrastructure.Users.Persistence;
+
+internal sealed class RelationshipRow
+{
+	public int ActorId { get; set; }
+
+	public int TargetId { get; set; }
+
+	public int Type { get; set; }
+
+	public DateTimeOffset CreatedAt { get; set; }
+}
+
+internal sealed class RelationshipRowConfiguration : IEntityTypeConfiguration<RelationshipRow>
+{
+	public void Configure(EntityTypeBuilder<RelationshipRow> builder)
+	{
+		builder.ToTable("relationships");
+		builder.HasKey(row => new { row.ActorId, row.TargetId });
+		builder.HasIndex(row => new { row.TargetId, row.Type });
+		builder.HasOne<UserRow>().WithMany().HasForeignKey(row => row.ActorId).OnDelete(DeleteBehavior.NoAction);
+		builder.HasOne<UserRow>().WithMany().HasForeignKey(row => row.TargetId).OnDelete(DeleteBehavior.NoAction);
+	}
+}

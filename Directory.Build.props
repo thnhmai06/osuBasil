@@ -6,21 +6,35 @@
 		<Nullable>enable</Nullable>
 		<LangVersion>latest</LangVersion>
 		<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
-		<!--
-			CS1591 (missing XML doc comment) is intentionally not enforced solution-wide: only
-			existing-but-wrong XML docs (CS1574/CS1573/CS1734) are treated as build issues here,
-			not every undocumented public member.
-		-->
-		<NoWarn>$(NoWarn);CS1591</NoWarn>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<!--
-   			AutoMapper 13.0.1 is brought in transitively by ppy.osu.Rulesets.
-   			GHSA-rvv3-g6hj-g44x requires untrusted mapping configuration, which Basil
-   			does not expose. Remove this suppression once upstream updates AutoMapper.
- 		-->
+		<!-- AutoMapper 13.0.1 comes with the ppy rulesets that run from Data/Rulesets; Basil maps no client data with it, so a deeply nested object cannot reach it; drop when ppy updates it. -->
 		<NuGetAuditSuppress Include="https://github.com/advisories/GHSA-rvv3-g6hj-g44x"/>
+		<!-- AutoMapper 13.0.1 comes with the ppy rulesets that run from Data/Rulesets; Basil maps no client data with it, so a deeply nested object cannot reach it; drop when ppy updates it. -->
+		<NuGetAuditSuppress Include="https://github.com/advisories/GHSA-6vhm-j9h7-f9gh"/>
+		<!-- AutoMapper 13.0.1 comes with the ppy rulesets that run from Data/Rulesets; Basil maps no client data with it, so a deeply nested object cannot reach it; drop when ppy updates it. -->
+		<NuGetAuditSuppress Include="https://github.com/advisories/GHSA-gpwp-5797-mjff"/>
+
+		<!-- ImageSharp stays on 3.1.12 (3.2 needs a commercial licence); uploads are probed by header, only PNG and JPEG are decoded and size and pixels are capped first; recheck on each release. -->
+		<NuGetAuditSuppress Include="https://github.com/advisories/GHSA-j3p4-wp97-rph4"/>
+		<!-- ImageSharp stays on 3.1.12 (3.2 needs a commercial licence); uploads are probed by header, only PNG and JPEG are decoded and size and pixels are capped first; recheck on each release. -->
+		<NuGetAuditSuppress Include="https://github.com/advisories/GHSA-j9gm-c75j-xc9q"/>
+		<!-- ImageSharp stays on 3.1.12 (3.2 needs a commercial licence); uploads are probed by header, only PNG and JPEG are decoded and size and pixels are capped first; recheck on each release. -->
+		<NuGetAuditSuppress Include="https://github.com/advisories/GHSA-jjfr-hcj7-qf5w"/>
+		<!-- ImageSharp stays on 3.1.12 (3.2 needs a commercial licence); uploads are probed by header, only PNG and JPEG are decoded and size and pixels are capped first; recheck on each release. -->
+		<NuGetAuditSuppress Include="https://github.com/advisories/GHSA-v76p-62qx-wwq2"/>
+		<!-- ImageSharp stays on 3.1.12 (3.2 needs a commercial licence); uploads are probed by header, only PNG and JPEG are decoded and size and pixels are capped first; recheck on each release. -->
+		<NuGetAuditSuppress Include="https://github.com/advisories/GHSA-gwg2-r3hj-4w44"/>
+		<!-- ImageSharp stays on 3.1.12 (3.2 needs a commercial licence); uploads are probed by header, only PNG and JPEG are decoded and size and pixels are capped first; recheck on each release. -->
+		<NuGetAuditSuppress Include="https://github.com/advisories/GHSA-wmxv-xphr-5c9g"/>
+
+		<!-- Reached only through ppy.osu.Game, which Basil compiles against; it hosts no SignalR hub and reads no MessagePack from a client; drop when ppy updates it. -->
+		<NuGetAuditSuppress Include="https://github.com/advisories/GHSA-qhrr-8q5h-9q3h"/>
+		<!-- Reached only through ppy.osu.Game, which Basil compiles against; it hosts no SignalR hub and reads no MessagePack from a client; drop when ppy updates it. -->
+		<NuGetAuditSuppress Include="https://github.com/advisories/GHSA-334f-vvp4-7g6p"/>
+		<!-- Reached only through ppy.osu.Game, which Basil compiles against; it hosts no SignalR hub and reads no MessagePack from a client; drop when ppy updates it. -->
+		<NuGetAuditSuppress Include="https://github.com/advisories/GHSA-86xp-94pg-8r6r"/>
 	</ItemGroup>
 
 </Project>

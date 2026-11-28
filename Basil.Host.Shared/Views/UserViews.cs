@@ -1,0 +1,55 @@
+using Basil.Application.Users.Messages;
+using Basil.Domain.Sessions;
+using Basil.Domain.Users;
+using Mediator;
+
+namespace Basil.Host.Shared.Views;
+
+public sealed record UserRef(int Id, string Name)
+{
+	public static UserRef Of(UserRecord user)
+	{
+		return new UserRef(user.Id, user.Value.Name);
+	}
+}
+
+public sealed record UserView(
+	int Id,
+	string Name,
+	string Country,
+	UserPrivileges Privileges,
+	UserPrivileges EffectivePrivileges,
+	DateTimeOffset? SilencedUntil)
+{
+	public static async Task<IReadOnlyList<UserView>> OfAsync(ISender sender, IReadOnlyList<UserRecord> records,
+		CancellationToken ct)
+	{
+		return [.. (await sender.Send(new DescribeUsers(records), ct)).Select(Of)];
+	}
+
+	public static UserView Of(UserStanding standing)
+	{
+		var record = standing.Record;
+		return new UserView(record.Id, record.Value.Name, record.Value.Country.ToAcronym().ToLowerInvariant(),
+			record.Value.Privileges, standing.EffectivePrivileges, standing.SilencedUntil);
+	}
+}
+
+public sealed record SessionView(
+	long Id,
+	SessionType Type,
+	string Ip,
+	string? ClientInfo,
+	DateTimeOffset StartedAt,
+	DateTimeOffset LastActiveAt,
+	DateTimeOffset? EndedAt,
+	SessionEndReason? EndReason)
+{
+	public static SessionView Of(SessionRecord record)
+	{
+		var data = record.Value;
+		var device = data.Fingerprint;
+		return new SessionView(record.Id, data.Type, device.Ip.ToString(), device.ClientInformation, data.StartedAt,
+			data.LastActiveAt, data.Ended?.At, data.Ended?.Reason);
+	}
+}

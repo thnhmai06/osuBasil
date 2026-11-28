@@ -1,0 +1,129 @@
+using Basil.Application.Multiplayer.Objects;
+using Basil.Application.Multiplayer.Persistence;
+using Basil.Application.Multiplayer.Registry;
+using Basil.Application.Shared.Paging;
+using Basil.Application.Shared.Privileges;
+using Basil.Application.Sessions.Objects;
+using Basil.Domain.Multiplayer.Report.Matches;
+using Basil.Domain.Multiplayer.Room;
+using Basil.Domain.Users;
+using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
+
+namespace Basil.Application.Multiplayer.Capabilities;
+
+public readonly struct ScopedLobby
+{
+	public Session Actor { get; }
+
+	public UserPrivileges Privileges { get; }
+
+	internal bool Lacks(UserPrivileges required)
+	{
+		return ScopedPrivileges.Lacks(Privileges, required);
+	}
+
+	internal ScopedLobby(Lobby lobby, Session actor)
+	{
+		Actor = actor;
+		Privileges = actor.EffectivePrivileges(lobby.Context.Clock.GetUtcNow());
+		Lobby = lobby;
+	}
+
+	public Lobby Lobby { get; }
+
+	public async Task<(Room? Room, LobbyResult Result)> OpenRoomAsync(
+		string name,
+		string password,
+		RoomSource source,
+		bool isPrivate,
+		MatchSettings? settings = null)
+	{
+		if (source is RoomSource.Game && Actor is not StableSession)
+			throw new ArgumentException("A room opened in game needs the creator's osu! client.");
+
+		if (await OpenRefusalAsync(source) is { } refusal) return (null, refusal);
+
+		var seat = SeatFor(source);
+		return await Lobby.OpenRoomAsync(Actor.Record, seat, source is RoomSource.Game, name, password, isPrivate,
+			settings);
+	}
+
+	private async Task<LobbyResult?> OpenRefusalAsync(RoomSource source, CancellationToken ct = default)
+	{
+		var required = source is RoomSource.Api
+			? UserPrivileges.Player
+			: UserPrivileges.Player | UserPrivileges.Player;
+		if (Lacks(required)) return LobbyResult.Denied;
+
+		if (await Lobby.IsRoomCreationLockedAsync(ct) &&
+		    Lacks(UserPrivileges.Tournament))
+			return LobbyResult.Locked;
+
+		var limited = Lacks(UserPrivileges.Tournament);
+		if (limited && Lobby.TooManyRooms(Actor.Record)) return LobbyResult.TooManyRooms;
+
+		return null;
+	}
+
+	private StableSession? SeatFor(RoomSource source)
+	{
+		// A room opened in game seats its creator; a room opened through the API seats the creator's osu! client when it may join.
+		return source is RoomSource.Api
+			? Actor.Siblings.Stable is { IsOpen: true } stable &&
+			  stable.User.EffectivePrivileges(Lobby.Context.Clock.GetUtcNow()).Allows(UserPrivileges.Player)
+				? stable
+				: null
+			: (StableSession)Actor;
+	}
+
+	public async Task<(RoomActionResult Result, Page<MatchRecord>? Matches)> ListMatchesAsync(
+		MatchQuery query, PageRequest page, CancellationToken ct = default)
+	{
+		return (RoomActionResult.Ok,
+			await Lobby.Context.Matches.ListAsync(query.LimitTo(Privileges, Actor.Record), page, ct));
+	}
+
+	public async Task<bool> CanViewAsync(MatchRecord match, CancellationToken ct = default)
+	{
+		ArgumentNullException.ThrowIfNull(match);
+
+		// An open room is judged by its live privacy: the copy of the flag in a caller's record or in the store can lag
+		// behind a change. Participants who left an open room see it again once it closes.
+		if (Lobby.OpenRoomOf(match) is { } room) return room.CanBeViewedBy(Actor);
+
+		return !match.Value.IsPrivate
+		       || !Lacks(UserPrivileges.Tournament)
+		       || await Lobby.Context.Matches.IsVisibleToAsync(match, Actor.Record, ct);
+	}
+
+	public Page<Room> SearchRooms(RoomQuery query, PageRequest page)
+	{
+		ArgumentNullException.ThrowIfNull(query);
+		ArgumentNullException.ThrowIfNull(page);
+
+		var scope = this;
+		IReadOnlyList<Room> found =
+		[
+			.. Lobby.Rooms.Values.Where(room => !room.IsClosed && room.CanBeViewedBy(scope.Actor) && query.Includes(room))
+				.OrderBy(room => room.Id).Skip(page.Offset).Take(page.Fetch)
+		];
+		var (items, hasNext) = page.Slice(found);
+		return new Page<Room>(items, hasNext);
+	}
+
+	public void Watch()
+	{
+		if (Actor is not StableSession stable)
+			throw new ArgumentException("Only an osu! client can watch the lobby.", nameof(Actor));
+
+		Lobby.Watch(stable);
+	}
+
+	public void Unwatch()
+	{
+		if (Actor is not StableSession stable)
+			throw new ArgumentException("Only an osu! client can watch the lobby.", nameof(Actor));
+
+		Lobby.Unwatch(stable);
+	}
+}

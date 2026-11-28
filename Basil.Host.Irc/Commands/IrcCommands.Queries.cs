@@ -1,0 +1,126 @@
+using Basil.Application.Chat.Objects;
+using Basil.Application.Sessions.Objects;
+using Basil.Domain.Users;
+using Basil.Host.Irc.Clients;
+using Basil.Host.Irc.Support;
+using Basil.Protocol.Irc.Models;
+using User = Basil.Application.Users.Objects.User;
+
+namespace Basil.Host.Irc.Commands;
+
+internal sealed partial class IrcCommands
+{
+	private void Names(IrcSocket session, Session actor, IrcMessage message)
+	{
+		var names = message.Parameters.Count > 0
+			? message.Parameters[0].Split(',', StringSplitOptions.RemoveEmptyEntries)
+			: [.. directory.VisibleTo(actor).Select(channel => channel.Name)];
+		foreach (var name in names)
+			if (Resolve(name) is { } channel &&
+			    (channel.Members.Contains(actor) || directory.VisibleTo(actor).Contains(channel)))
+				IrcChannels.SendNames(session, channel, replies);
+			else
+				session.Numeric(IrcNumericReply.RplEndOfNames, name, replies.Text(IrcReply.EndOfNames));
+	}
+
+	private void List(IrcSocket session, Session actor, IrcMessage message)
+	{
+		session.Numeric(IrcNumericReply.RplListStart, replies.Text(IrcReply.ListChannelColumn), replies.Text(IrcReply.ListHeader));
+		var filter = message.Parameters.Count > 0
+			? message.Parameters[0].Split(',', StringSplitOptions.RemoveEmptyEntries)
+			: null;
+		foreach (var channel in directory.VisibleTo(actor)
+			         .Where(channel =>
+				         filter is null || filter.Contains(channel.Name, StringComparer.OrdinalIgnoreCase)))
+			session.Numeric(IrcNumericReply.RplList, channel.Name, IrcView.UserCount(channel).ToString(),
+				channel.Topic.ReplaceLineEndings(" "));
+		session.Numeric(IrcNumericReply.RplListEnd, replies.Text(IrcReply.EndOfList));
+	}
+
+	private async Task WhoAsync(IrcSocket session, Session actor, IrcMessage message, CancellationToken ct)
+	{
+		var mask = message.Parameters.Count > 0 ? message.Parameters[0] : "*";
+		if (mask.StartsWith('#'))
+		{
+			if (Resolve(mask) is { } channel &&
+			    (channel.Members.Contains(actor) || directory.VisibleTo(actor).Contains(channel)))
+				foreach (var group in channel.Members.GroupBy(member => member.Record)
+					         .OrderBy(group => IrcView.Nick(group.Key), StringComparer.OrdinalIgnoreCase))
+					WhoReply(session, channel.Name, group.First().User,
+						IrcView.Prefix(channel.RoleOf(group.First()), session.Has("multi-prefix")));
+		}
+		else if (await FindUserAsync(mask, ct) is { } user)
+		{
+			WhoReply(session, "*", user, string.Empty);
+		}
+
+		session.Numeric(IrcNumericReply.RplEndOfWho, mask, replies.Text(IrcReply.EndOfWho));
+	}
+
+	private static void WhoReply(IrcSocket session, string channel, User user, string prefix)
+	{
+		var nick = IrcView.Nick(user.Record);
+		session.Numeric(IrcNumericReply.RplWhoReply, channel, nick, session.Domain, session.ServerName, nick,
+			(user.AwayMessage is null ? "H" : "G") + prefix, $"0 {nick}");
+	}
+
+	private async Task WhoisAsync(IrcSocket session, Session actor, IrcMessage message, CancellationToken ct)
+	{
+		if (message.Parameters.Count == 0)
+		{
+			session.Numeric(IrcNumericReply.ErrNoNicknameGiven, replies.Text(IrcReply.NoNicknameGiven));
+			return;
+		}
+
+		var nick = message.Parameters[^1];
+		if (await FindUserAsync(nick, ct) is not { } user)
+		{
+			session.Numeric(IrcNumericReply.ErrNoSuchNick, nick, replies.Text(IrcReply.NoSuchNick));
+			session.Numeric(IrcNumericReply.RplEndOfWhoIs, nick, replies.Text(IrcReply.EndOfWhoIs));
+			return;
+		}
+
+		var shown = IrcView.Nick(user.Record);
+		session.Numeric(IrcNumericReply.RplWhoIsUser, shown, shown, session.Domain, "*", shown);
+		session.Numeric(IrcNumericReply.RplWhoIsServer, shown, session.ServerName, IrcReplies.Network);
+		if (user.AwayMessage is { } away) session.Numeric(IrcNumericReply.RplAway, shown, away.ReplaceLineEndings(" "));
+		session.Numeric(IrcNumericReply.RplWhoIsAccount, shown, shown, replies.Text(IrcReply.IsLoggedInAs));
+		var visible = directory.VisibleTo(actor).ToHashSet();
+		var channels = general.All.Values
+			.Where(channel =>
+				visible.Contains(channel) && channel.Members.Any(member => ReferenceEquals(member.User, user)))
+			.Select(channel => IrcView.Prefix(
+				channel.RoleOf(channel.Members.First(member => ReferenceEquals(member.User, user))), false) +
+			                   channel.Name).ToList();
+		if (channels.Count > 0) session.Numeric(IrcNumericReply.RplWhoIsChannels, shown, string.Join(' ', channels));
+		session.Numeric(IrcNumericReply.RplEndOfWhoIs, shown, replies.Text(IrcReply.EndOfWhoIs));
+	}
+
+	private async Task IsonAsync(IrcSocket session, IrcMessage message, CancellationToken ct)
+	{
+		var online = new List<string>();
+		foreach (var nick in message.Parameters.SelectMany(parameter =>
+			         parameter.Split(' ', StringSplitOptions.RemoveEmptyEntries)))
+			if (await FindUserAsync(nick, ct) is { } user)
+				online.Add(IrcView.Nick(user.Record));
+
+		session.Numeric(IrcNumericReply.RplIson, string.Join(' ', online));
+	}
+
+	private async Task UserHostAsync(IrcSocket session, IrcMessage message, CancellationToken ct)
+	{
+		if (message.Parameters.Count == 0)
+		{
+			NeedMore(session, "USERHOST");
+			return;
+		}
+
+		var replies = new List<string>();
+		foreach (var nick in message.Parameters.Take(5))
+			if (await FindUserAsync(nick, ct) is { } user)
+				replies.Add(
+					$"{IrcView.Nick(user.Record)}={(user.AwayMessage is null ? '+' : '-')}{IrcView.Nick(user.Record)}@{session.Domain}");
+
+		session.Numeric(IrcNumericReply.RplUserHost, string.Join(' ', replies));
+	}
+}

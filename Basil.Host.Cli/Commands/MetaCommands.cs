@@ -1,0 +1,187 @@
+using Basil.Application.Sessions.Registry;
+using System.Diagnostics;
+using System.Reflection;
+using Basil.Application.Multiplayer.Registry;
+using Basil.Domain.Sessions;
+
+namespace Basil.Host.Cli.Commands;
+
+public interface IServerControl
+{
+	void RequestShutdown();
+}
+
+public interface IThemeControl
+{
+	IReadOnlyList<string> Names { get; }
+
+	string Current { get; }
+
+	bool Locked { get; }
+
+	bool Set(string name);
+}
+
+internal static class MetaCommands
+{
+	public static IEnumerable<CommandDef> Create(Func<CommandCatalog> catalog)
+	{
+		yield return new CommandDef
+		{
+			Pattern = "help", Offline = true, NeedsStorage = false, Summary = "Lists the commands.",
+			Run = call => HelpAsync(call, catalog(), [])
+		};
+		yield return new CommandDef
+		{
+			Pattern = "help <topic>", Offline = true, NeedsStorage = false,
+			Summary = "Shows the syntax, options and API route of a command.",
+			Run = call => HelpAsync(call, catalog(), [call.Word("topic")])
+		};
+		yield return new CommandDef
+		{
+			Pattern = "help <topic> <command>", Offline = true, NeedsStorage = false,
+			Summary = "Shows the syntax, options and API route of the commands that start with these words.",
+			Run = call => HelpAsync(call, catalog(), [call.Word("topic"), call.Word("command")])
+		};
+		yield return new CommandDef
+		{
+			Pattern = "status", Summary = "Shows the version, the uptime, the connections online and the rooms.",
+			Run = StatusAsync
+		};
+		yield return new CommandDef
+		{
+			Pattern = "shutdown", Summary = "Shuts the server down gracefully.",
+			Options = [new OptionDef("now", "Do not ask for confirmation.", OptionKind.Bool)],
+			Run = ShutdownAsync
+		};
+
+		yield return new CommandDef
+		{
+			Pattern = "theme", DashboardOnly = true, Summary = "Lists the colour themes.",
+			Run = call => ThemeAsync(call, null)
+		};
+		yield return new CommandDef
+		{
+			Pattern = "theme <scheme>", DashboardOnly = true, Summary = "Changes the dashboard theme and saves it.",
+			Run = call => ThemeAsync(call, call.Word("scheme"))
+		};
+	}
+
+	private static Task<int> HelpAsync(CommandCall call, CommandCatalog catalog, IReadOnlyList<string> topic)
+	{
+		var commands = topic.Count == 0
+			? catalog.All
+			: [.. catalog.All.Where(command => Starts(command, topic))];
+		if (commands.Count == 0)
+		{
+			call.Output.Error("notFound", $"No such command: {string.Join(' ', topic)}.");
+			return Task.FromResult(ExitCodes.Refused);
+		}
+
+		if (topic.Count == 0)
+		{
+			call.Output.Table(["command", "description"],
+			[
+				.. catalog.All.Select(command => (IReadOnlyList<string>)[command.Pattern, command.Summary])
+			]);
+			return Task.FromResult(ExitCodes.Success);
+		}
+
+		foreach (var command in commands)
+		{
+			var options = string.Concat(command.Options.Select(o =>
+				o.Required ? $" --{o.Name} <{o.Kind.ToString().ToLowerInvariant()}>" : $" [--{o.Name}]"));
+			call.Output.Line($"{command.Pattern}{options}");
+			call.Output.Line($"  {command.Summary}");
+			if (command.AllRoutes.Any()) call.Output.Line($"  api: {string.Join(", ", command.AllRoutes)}");
+			foreach (var option in command.Options) call.Output.Line($"  --{option.Name}  {option.Description}");
+		}
+
+		return Task.FromResult(ExitCodes.Success);
+	}
+
+	// A word of the topic matches the same word of the command, or any value where the command takes a parameter.
+	private static bool Starts(CommandDef command, IReadOnlyList<string> topic)
+	{
+		return command.Words.Length >= topic.Count && topic.Select((word, i) =>
+			CommandDef.IsParameter(command.Words[i]) ||
+			command.Words[i].Equals(word, StringComparison.OrdinalIgnoreCase)).All(match => match);
+	}
+
+	private static Task<int> StatusAsync(CommandCall call)
+	{
+		var registry = call.Get<SessionRegistry>();
+		var lobby = call.Get<Lobby>();
+		var now = call.Get<TimeProvider>().GetUtcNow();
+		using var process = Process.GetCurrentProcess();
+		var online = registry.Online.Values.SelectMany(user => user.Connections).Where(c => !c.IsServerOwned)
+			.ToList();
+		var fields = new List<(string, string)>
+		{
+			("version", Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "unknown"),
+			("uptime", (now - process.StartTime.ToUniversalTime()).ToString(@"d\.hh\:mm\:ss")),
+			("users online", registry.Online.Count.ToString())
+		};
+		fields.AddRange(Enum.GetValues<SessionType>().Select(type =>
+			($"{type.ToString().ToLowerInvariant()} connections", online.Count(c => c.Type == type).ToString())));
+		fields.Add(("rooms", lobby.Rooms.Count.ToString()));
+		fields.Add(("rounds in progress", lobby.Rooms.Values.Count(room => room.Rounds.InProgress).ToString()));
+		call.Output.Fields(fields);
+		return Task.FromResult(ExitCodes.Success);
+	}
+
+	private static async Task<int> ShutdownAsync(CommandCall call)
+	{
+		if (call.Bool("now") != true)
+		{
+			if (call.Session.Confirm is null)
+				throw CommandException.Invalid("Confirmation is needed to shut down the server; add --now.");
+
+			if (!await call.Session.Confirm("Really shut down the server?", call.CancellationToken))
+			{
+				call.Output.Line("Cancelled.");
+				return ExitCodes.Declined;
+			}
+		}
+
+		call.Get<IServerControl>().RequestShutdown();
+		call.Output.Ok("The server is shutting down.");
+		return ExitCodes.Success;
+	}
+
+	private static Task<int> ThemeAsync(CommandCall call, string? scheme)
+	{
+		if (call.Services.GetService(typeof(IThemeControl)) is not IThemeControl themes)
+		{
+			call.Output.Error("invalid", "There is no dashboard.");
+			return Task.FromResult(ExitCodes.Invalid);
+		}
+
+		if (scheme is null)
+		{
+			call.Output.Line($"current: {themes.Current}");
+			call.Output.Line(string.Join(", ", themes.Names));
+			return Task.FromResult(ExitCodes.Success);
+		}
+
+		if (themes.Locked)
+		{
+			call.Output.Error("refused", ThemeReplies.Locked);
+			return Task.FromResult(ExitCodes.Refused);
+		}
+
+		if (!themes.Set(scheme))
+		{
+			call.Output.Error("notFound", $"No such theme: {scheme}.");
+			return Task.FromResult(ExitCodes.Refused);
+		}
+
+		call.Output.Ok($"Theme changed to {scheme}.");
+		return Task.FromResult(ExitCodes.Success);
+	}
+}
+
+public static class ThemeReplies
+{
+	public const string Locked = "The theme is fixed to monochrome by --nocolor.";
+}

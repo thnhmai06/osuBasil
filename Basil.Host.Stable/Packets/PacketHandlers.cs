@@ -1,0 +1,200 @@
+using Basil.Application.Beatmaps.Messages;
+using Basil.Application.Multiplayer.Messages;
+using Basil.Application.Multiplayer.Registry;
+using Basil.Application.Scores.Messages;
+using Basil.Application.Sessions.Messages;
+using Basil.Application.Sessions.Registry;
+using Basil.Application.Users;
+using Basil.Application.Users.Messages;
+using Basil.Application.Sessions.Objects;
+using Basil.Domain.Sessions;
+using Basil.Domain.Beatmaps;
+using Basil.Domain.Game;
+using Basil.Domain.Users;
+using Basil.Gateway.Admission;
+using Basil.Gateway.RateLimiting;
+using Basil.Host.Stable.Support;
+using Basil.Host.Stable.Web;
+using Basil.Protocol.Game.Stable.Models.Beatmaps;
+using Basil.Protocol.Game.Stable.Wire.Packets;
+using Basil.Shared.Structures.Cryptography;
+using Mediator;
+using Session = Basil.Application.Sessions.Objects.Session;
+using UserSessions = Basil.Application.Sessions.Objects.UserSessions;
+
+namespace Basil.Host.Stable.Packets;
+
+[AdmissionPolicy]
+internal sealed partial class PacketHandlers(
+	SessionRegistry registry,
+	Lobby lobby,
+	ISender sender,
+	Outbox outbox,
+	Admission admission,
+	TimeProvider clock,
+	ILogger<PacketHandlers> logger)
+{
+	internal const int MaxRequestedIds = 256;
+
+	internal const int MaxRequestedFilenames = 100;
+
+	internal static IReadOnlyList<(string Name, IReadOnlyList<object> Metadata)> EntryPoints { get; } =
+	[
+		.. Enum.GetValues<ClientPacketType>().Select(type => (type.ToString(),
+			(IReadOnlyList<object>)typeof(PacketHandlers).GetCustomAttributes(true)))
+	];
+
+	public Task HandleAsync(Session actor, ClientPacket packet, CancellationToken ct)
+	{
+		var reader = PacketReader.ForPayload(packet.Payload);
+		return packet.Type switch
+		{
+			ClientPacketType.Logout => sender.Send(new CloseSession(actor, SessionEndReason.LoggedOut)).AsTask(),
+			ClientPacketType.ErrorReport => Run(() => LogErrorReport(actor, reader)),
+			ClientPacketType.UserStatsRequest => StatsRequestAsync(actor, reader.ReadInt32List().Take(MaxRequestedIds),
+				ct),
+			ClientPacketType.UserPresenceRequest => PresenceRequestAsync(actor,
+				[.. reader.ReadInt32List().Take(MaxRequestedIds)], ct),
+			ClientPacketType.UserPresenceRequestAll => PresenceRequestAsync(actor,
+				null, ct),
+			ClientPacketType.TournamentMatchInfoRequest => TourneyInfoAsync(actor, reader.ReadInt32(),
+				ct),
+			ClientPacketType.TournamentJoinMatchChannel => TourneyJoinAsync(actor, reader.ReadInt32(),
+				ct),
+			ClientPacketType.TournamentLeaveMatchChannel =>
+				TourneyLeaveAsync(actor, reader.ReadInt32(), ct),
+			_ when actor is StableSession osu => HandleOsuAsync(osu, packet.Type, packet.Payload, reader,
+				ct),
+			_ => Task.CompletedTask
+		};
+	}
+
+	private Task HandleOsuAsync(StableSession osu, ClientPacketType type, byte[] payload, PacketReader reader,
+		CancellationToken ct)
+	{
+		return type switch
+		{
+			ClientPacketType.ChangeAction => ChangeActionAsync(osu, reader, ct),
+			ClientPacketType.ReceiveUpdates => ReceiveUpdatesAsync(osu, reader.ReadInt32(), ct),
+			ClientPacketType.RequestStatusUpdate => StatsRequestAsync(osu, [osu.Record.Id], ct),
+			ClientPacketType.FriendAdd => FriendAsync(osu, reader.ReadInt32(), true, ct),
+			ClientPacketType.FriendRemove => FriendAsync(osu, reader.ReadInt32(), false, ct),
+			ClientPacketType.SetAwayMessage => SetAwayAsync(osu, reader.ReadMessage().Text, ct),
+			ClientPacketType.ToggleBlockNonFriendDms => sender
+				.Send(new SetPmPrivate(osu, reader.ReadInt32() == 1), ct).AsTask(),
+			ClientPacketType.BeatmapInfoRequest => BeatmapInfoAsync(osu, reader.ReadBeatmapInfoRequest(),
+				ct),
+			ClientPacketType.ChannelJoin => JoinChannelAsync(osu, reader.ReadOsuString(), ct),
+			ClientPacketType.ChannelPart => PartChannelAsync(osu, reader.ReadOsuString(), ct),
+			ClientPacketType.SendPublicMessage => PublicMessageAsync(osu, reader.ReadMessage(), ct),
+			ClientPacketType.SendPrivateMessage => PrivateMessageAsync(osu, reader.ReadMessage(), ct),
+			ClientPacketType.JoinLobby => sender.Send(new WatchLobby(osu), ct).AsTask(),
+			ClientPacketType.PartLobby => sender.Send(new UnwatchLobby(osu), ct).AsTask(),
+			ClientPacketType.StartSpectating => StartSpectatingAsync(osu, reader.ReadInt32(), ct),
+			ClientPacketType.StopSpectating => StopSpectatingAsync(osu, ct),
+			ClientPacketType.CantSpectate => ReportSpectatingFailedAsync(osu, ct),
+			ClientPacketType.SpectateFrames => ForwardFramesAsync(osu, payload, ct),
+			_ => HandleRoomAsync(osu, type, reader, ct)
+		};
+	}
+
+	private async Task ReceiveUpdatesAsync(StableSession osu, int wire, CancellationToken ct)
+	{
+		if (WireMap.Known<PresenceFilter>(wire) is { } filter) await sender.Send(new SetPresenceFilter(osu, filter), ct);
+	}
+
+	private void LogErrorReport(Session actor, PacketReader reader)
+	{
+		var report = ErrorReportText.Clean(reader.ReadOsuString());
+		logger.LogInformation("osu! client error report of user {UserId}: {Report}", actor.Record.Id, report);
+	}
+
+	private static Task Run(Action action)
+	{
+		action();
+		return Task.CompletedTask;
+	}
+
+	private async Task ChangeActionAsync(StableSession osu, PacketReader reader,
+		CancellationToken ct)
+	{
+		var action = reader.ReadChangeAction();
+		Md5Hash? hash = null;
+		if (action.MapMd5.Length == 32)
+			try
+			{
+				hash = new Md5Hash(action.MapMd5);
+			}
+			catch (ArgumentException)
+			{
+			}
+
+		if (WireMap.Known<UserActivity>(action.Action) is not { } activity ||
+		    WireMap.Known<GameMode>(action.Mode) is not { } mode) return;
+		var status = new UserStatus
+		{
+			Activity = activity,
+			Detail = hash is { } beatmapHash
+				? new UserStatusDetail(new BeatmapReference(beatmapHash, action.MapId, action.InfoText, null), mode,
+					WireMap.Mods(action.Mods))
+				: null
+		};
+		await sender.Send(new SetPlayerStatus(osu, status), ct);
+	}
+
+	private async Task StatsRequestAsync(Session actor, IEnumerable<int> ids, CancellationToken ct)
+	{
+		var wanted = await sender.Send(new ListOnlineUsers([.. ids]), ct);
+
+		var stats = await sender.Send(new GetUsersStats([
+			.. wanted.Select(user => (user.User, user.Stable?.Status.Detail?.Mode ?? GameMode.Standard))
+		]), ct);
+		outbox.Send(actor, writer =>
+		{
+			for (var index = 0; index < wanted.Count; index++)
+				StableView.WriteStats(writer, wanted[index], stats[index]);
+		});
+	}
+
+	private async Task PresenceRequestAsync(Session actor, IReadOnlyList<int>? ids, CancellationToken ct)
+	{
+		var wanted = await sender.Send(new ListOnlineUsers(ids), ct);
+
+		var now = clock.GetUtcNow();
+		var stats = await sender.Send(new GetUsersStats([
+			.. wanted.Select(user => (user.User, user.Stable?.Status.Detail?.Mode ?? GameMode.Standard))
+		]), ct);
+		outbox.Send(actor, writer =>
+		{
+			for (var index = 0; index < wanted.Count; index++)
+				StableView.WritePresence(writer, wanted[index], stats[index], now);
+		});
+	}
+
+	private async Task FriendAsync(StableSession osu, int id, bool add, CancellationToken ct)
+	{
+		var target = id;
+		if (add) await sender.Send(new AddFriend(osu, osu.Record.Id, target), ct);
+		else await sender.Send(new RemoveFriend(osu, osu.Record.Id, target), ct);
+	}
+
+	private async Task SetAwayAsync(StableSession osu, string text, CancellationToken ct)
+	{
+		await sender.Send(new SetAwayMessage(osu, string.IsNullOrEmpty(text) ? null : text), ct);
+	}
+
+	private async Task BeatmapInfoAsync(StableSession osu, BeatmapInfoRequest request,
+		CancellationToken ct)
+	{
+		var entries = new List<BeatmapInfoResponse>();
+		var maps = await sender.Send(
+			new FindBeatmapsByFileNames([.. request.Filenames.Take(MaxRequestedFilenames)]), ct);
+		for (var index = 0; index < maps.Count; index++)
+			if (maps[index] is { } map)
+				entries.Add(new BeatmapInfoResponse((short)index, map.Id,
+					map.Beatmapset.Id, 0, (byte)map.Beatmapset.Status, -1, -1, -1, -1,
+					map.Hash.ToString()));
+
+		outbox.Send(osu, writer => writer.BeatmapInfoReply(entries));
+	}
+}

@@ -1,0 +1,80 @@
+# The load test bench on one machine (see run-docker.sh): the server stack on its own bridge network, each part pinned
+# to whole hardware threads. CPU pairs sharing a core on this host: (0,4) (1,5) (2,6) (3,7); 0,4 is the generator's.
+name: basil-load
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    cpuset: "3"
+    mem_limit: 2g
+    environment:
+      POSTGRES_DB: basil
+      POSTGRES_USER: basil
+      POSTGRES_PASSWORD: basil-load
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U basil -d basil" ]
+      interval: 3s
+      retries: 40
+    networks:
+      bench:
+        ipv4_address: 172.29.0.4
+
+  basil:
+    image: basil:load
+    cpuset: "${BASIL_CPUSET:-1,2,5,6}"
+    mem_limit: 4g
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Write: Host=postgres;Port=5432;Database=basil;Username=basil;Password=basil-load
+      ConnectionStrings__Read: Host=postgres;Port=5432;Database=basil;Username=basil;Password=basil-load
+      Basil__Server__Domain: basil.local
+      # Only nginx may say who the client is; the generator sits on the same network.
+      Basil__Server__TrustedProxies__0: 172.29.0.5/32
+      Basil__Server__Files__AccelPrefix: /_files/
+    volumes:
+      - ${BENCH_DIR:?}/Data:/app/Data
+      - ${BENCH_DIR:?}/Cache:/app/Cache
+      - ${BENCH_DIR:?}/Logs:/app/Logs
+    healthcheck:
+      test: [ "CMD", "curl", "-sf", "-H", "Host: api.basil.local", "http://127.0.0.1:8080/health" ]
+      interval: 3s
+      retries: 100
+    stop_grace_period: 90s
+    networks:
+      bench:
+        ipv4_address: 172.29.0.10
+
+  nginx:
+    image: nginx:stable-alpine
+    cpuset: "7"
+    mem_limit: 512m
+    ulimits:
+      nofile: 200000
+    volumes:
+      # nginx-load.conf with Basil's address in place of the cluster service name; run-docker.sh writes it.
+      - ${BENCH_DIR:?}/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../nginx/proxy.conf:/etc/nginx/proxy.conf:ro
+      - ../nginx/real-ip.conf:/etc/nginx/real-ip.conf:ro
+      - ../nginx/certs:/etc/nginx/certs:ro
+      - ${BENCH_DIR:?}/Data:/data:ro
+      - ${BENCH_DIR:?}/Cache:/cache:ro
+      - ${BENCH_DIR:?}/nginx-log:/var/log/nginx/load
+    networks:
+      bench:
+        ipv4_address: 172.29.0.5
+
+volumes:
+  postgres:
+
+networks:
+  bench:
+    name: basil-load
+    enable_ipv6: false
+    ipam:
+      config:
+        - subnet: 172.29.0.0/24

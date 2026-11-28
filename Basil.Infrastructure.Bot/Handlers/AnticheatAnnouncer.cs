@@ -1,0 +1,54 @@
+using Basil.Application.Shared.Replies;
+using Basil.Application.Anticheat.Objects.Events;
+using Basil.Application.Bot.Announcements;
+using Basil.Application.Bot.Replies;
+using Basil.Application.Chat.Registry;
+using Basil.Application.Multiplayer.Objects.Rooms;
+using Basil.Application.Multiplayer.Registry;
+using Basil.Application.Servers.Objects;
+using Basil.Application.Sessions.Registry;
+using Basil.Domain.Client;
+using Basil.Domain.Users;
+using Mediator;
+
+namespace Basil.Infrastructure.Bot.Handlers;
+
+internal sealed class AnticheatAnnouncer(
+	Server server,
+	Lobby lobby,
+	RoomChannels channels,
+	SessionRegistry users,
+	IReplies<BotReply> replies)
+	: INotificationHandler<AnticheatPlayerFlagged>
+{
+	public async ValueTask Handle(AnticheatPlayerFlagged flagged, CancellationToken ct)
+	{
+		if (lobby.RoomOf(flagged.Player) is not { } room || room.IsClosed)
+			return;
+
+		var reason = string.Join(", ", flagged.Signs.SignNames());
+		var playerName = flagged.Player.Record.Value.Name;
+		var channelMessage = replies.Text(BotReply.AnnounceAnticheatFlagRoom,
+			new { player = playerName, reason });
+		await server.SayAsync(channels.Of(room), channelMessage, ct: ct);
+
+		var pmMessage = replies.Text(BotReply.AnnounceAnticheatFlagPm,
+			new { room = room.Id, name = room.Settings.Name, player = playerName, reason });
+		await WhisperStaffAsync(room, pmMessage, ct);
+	}
+
+	private async Task WhisperStaffAsync(Room room, string text, CancellationToken ct)
+	{
+		await WhisperIfOnlineAsync(room.Creator);
+
+		foreach (var referee in room.Referees)
+			await WhisperIfOnlineAsync(referee);
+		return;
+
+		async Task WhisperIfOnlineAsync(UserRecord user)
+		{
+			if (users.Online.GetValueOrDefault(user) is { } online)
+				await server.WhisperAsync(online, text, ct: ct);
+		}
+	}
+}

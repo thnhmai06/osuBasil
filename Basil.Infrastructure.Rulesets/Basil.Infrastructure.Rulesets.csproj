@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<RootNamespace>Basil.Infrastructure.Rulesets</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Basil"/>
+		<InternalsVisibleTo Include="RulesetManifest"/>
+		<InternalsVisibleTo Include="Basil.Infrastructure.Rulesets.Tests"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Basil.Application.Shared\Basil.Application.Shared.csproj"/>
+		<ProjectReference Include="..\Basil.Infrastructure.Shared\Basil.Infrastructure.Shared.csproj"/>
+		<ProjectReference Include="..\Basil.Domain\Basil.Domain.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Rulesets\Basil.Application.Rulesets.csproj"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Mediator.Abstractions"/>
+		<PackageReference Include="ppy.osu.Game.Rulesets.Osu" PrivateAssets="all"/>
+		<PackageReference Include="ppy.osu.Game.Rulesets.Taiko" PrivateAssets="all"/>
+		<PackageReference Include="ppy.osu.Game.Rulesets.Catch" PrivateAssets="all"/>
+		<PackageReference Include="ppy.osu.Game.Rulesets.Mania" PrivateAssets="all"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<EmbeddedResource Include="rulesets.manifest.json" LogicalName="rulesets.manifest.json"/>
+	</ItemGroup>
+</Project>

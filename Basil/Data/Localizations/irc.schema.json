@@ -1,0 +1,293 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "./irc.schema.json",
+	"title": "IRC replies",
+	"description": "The wording of each reply related to IRC features can be customized in the localization file. Values use ICU MessageFormat and may reference only the variables listed under Arguments. Replies omitted from the file keep their default wording from the code.",
+	"type": "object",
+	"properties": {
+		"$schema": {
+			"const": "./irc.schema.json"
+		},
+		"AlreadyOnline": {
+			"type": "string",
+			"description": "Reports that sign-in failed because the account already has an active IRC session."
+		},
+		"AlreadyRegistered": {
+			"type": "string",
+			"description": "Rejects a nickname registration request when the connection is already registered."
+		},
+		"BadCredentials": {
+			"type": "string",
+			"description": "Reports that the IRC password or sign-in credentials are invalid."
+		},
+		"CannotJoin": {
+			"type": "string",
+			"description": "Reports that a channel join failed for a reason without a more specific reply."
+		},
+		"CannotJoinNoAccess": {
+			"type": "string",
+			"description": "Reports that the user does not have permission to read the requested channel."
+		},
+		"CannotJoinSpectator": {
+			"type": "string",
+			"description": "Reports that spectator channels are managed by the server and cannot be joined directly."
+		},
+		"CannotSend": {
+			"type": "string",
+			"description": "Reports that a channel message could not be sent for a reason without a more specific reply."
+		},
+		"CannotSendNoAccess": {
+			"type": "string",
+			"description": "Reports that the user does not have permission to write to the channel."
+		},
+		"CannotSendNotMember": {
+			"type": "string",
+			"description": "Reports that the user cannot send to a channel they have not joined."
+		},
+		"ChatTooFast": {
+			"type": "string",
+			"description": "Rejects a message when the sender exceeds the chat rate limit."
+		},
+		"ClosingConnectionLost": {
+			"type": "string",
+			"description": "The IRC disconnect reason shown when the connection is lost."
+		},
+		"ClosingDeleted": {
+			"type": "string",
+			"description": "The IRC disconnect reason shown when the account is deleted and its connection closes."
+		},
+		"ClosingLink": {
+			"type": "string",
+			"description": "The closing-link information sent when the server disconnects a client.\n\nArguments:\n- {domain}: The IRC server domain.\n- {reason}: The reason the connection was closed."
+		},
+		"ClosingOther": {
+			"type": "string",
+			"description": "The default IRC disconnect reason for other connection closures."
+		},
+		"ClosingQuit": {
+			"type": "string",
+			"description": "The IRC disconnect reason shown when the user quits."
+		},
+		"ClosingReplaced": {
+			"type": "string",
+			"description": "The IRC disconnect reason shown when a session is replaced by a new connection."
+		},
+		"ClosingRevoked": {
+			"type": "string",
+			"description": "The IRC disconnect reason shown when a session is revoked."
+		},
+		"ClosingTimedOut": {
+			"type": "string",
+			"description": "The IRC disconnect reason shown when a session expires after inactivity."
+		},
+		"CommandFailed": {
+			"type": "string",
+			"description": "Reports that an IRC command could not be completed and may be retried later."
+		},
+		"ConnectionClosed": {
+			"type": "string",
+			"description": "An IRC message indicating that the connection has closed."
+		},
+		"Created": {
+			"type": "string",
+			"description": "The time when the IRC server was started.\n\nArguments:\n- {startedAt}: The IRC server start time, formatted for display."
+		},
+		"DmBlocked": {
+			"type": "string",
+			"description": "Reports that the recipient does not accept private messages from the sender."
+		},
+		"EndOfBanList": {
+			"type": "string",
+			"description": "The terminating line for a channel ban list."
+		},
+		"EndOfList": {
+			"type": "string",
+			"description": "The terminating line for the IRC LIST response."
+		},
+		"EndOfMotd": {
+			"type": "string",
+			"description": "The terminating line for the message of the day (MOTD)."
+		},
+		"EndOfNames": {
+			"type": "string",
+			"description": "The terminating line for a channel nickname list."
+		},
+		"EndOfWho": {
+			"type": "string",
+			"description": "The terminating line for the WHO response."
+		},
+		"EndOfWhoIs": {
+			"type": "string",
+			"description": "The terminating line for the WHOIS response."
+		},
+		"Flooding": {
+			"type": "string",
+			"description": "Rejects an IRC command when the connection sends data too quickly."
+		},
+		"InputTooLong": {
+			"type": "string",
+			"description": "Reports that an IRC input line exceeds the allowed length."
+		},
+		"IsLoggedInAs": {
+			"type": "string",
+			"description": "The IRC label that identifies which account is signed in."
+		},
+		"KickClosed": {
+			"type": "string",
+			"description": "The IRC kick reason shown when a user is removed because the channel closed."
+		},
+		"KickNoAccess": {
+			"type": "string",
+			"description": "The IRC kick reason shown when a user is removed after losing channel read access."
+		},
+		"KickRemoved": {
+			"type": "string",
+			"description": "The IRC kick reason shown when a channel manager removes a user."
+		},
+		"ListChannelColumn": {
+			"type": "string",
+			"description": "The channel-name column heading in the LIST response."
+		},
+		"ListHeader": {
+			"type": "string",
+			"description": "The column headings in the LIST response."
+		},
+		"LoggedInAs": {
+			"type": "string",
+			"description": "Confirms that the nickname is signed in to the named account.\n\nArguments:\n- {name}: The signed-in account name."
+		},
+		"MotdLine": {
+			"type": "string",
+			"description": "One line in the server message of the day (MOTD).\n\nArguments:\n- {line}: The text of one MOTD line."
+		},
+		"MotdStart": {
+			"type": "string",
+			"description": "The opening line of the server message of the day (MOTD).\n\nArguments:\n- {serverName}: The IRC server name."
+		},
+		"NeedMoreParams": {
+			"type": "string",
+			"description": "Reports that an IRC command is missing a required parameter."
+		},
+		"NoLongerAway": {
+			"type": "string",
+			"description": "Confirms that the user is no longer marked as away."
+		},
+		"NoManagement": {
+			"type": "string",
+			"description": "Explains that channels are managed through the API or BasilBot, not IRC."
+		},
+		"NoMotd": {
+			"type": "string",
+			"description": "Reports that the server has no message of the day (MOTD) configured."
+		},
+		"NoNicknameGiven": {
+			"type": "string",
+			"description": "Reports that a registration or nickname-change command is missing a nickname."
+		},
+		"NoRecipient": {
+			"type": "string",
+			"description": "Reports that a messaging command did not specify a recipient.\n\nArguments:\n- {command}: The IRC command that requires a recipient."
+		},
+		"NoSuchChannel": {
+			"type": "string",
+			"description": "Reports that the specified channel does not exist."
+		},
+		"NoSuchNick": {
+			"type": "string",
+			"description": "Reports that the requested nickname was not found."
+		},
+		"NoTextToSend": {
+			"type": "string",
+			"description": "Reports that a messaging command has no message text."
+		},
+		"NoTopic": {
+			"type": "string",
+			"description": "Reports that the channel has no topic set."
+		},
+		"NotOnChannel": {
+			"type": "string",
+			"description": "Reports that the user has not joined the specified channel."
+		},
+		"NotRegistered": {
+			"type": "string",
+			"description": "Reports that a command requires registration but the connection is not registered yet."
+		},
+		"NowAway": {
+			"type": "string",
+			"description": "Confirms that the user has been marked as away."
+		},
+		"RegistrationTimeout": {
+			"type": "string",
+			"description": "Reports that IRC registration timed out."
+		},
+		"SaslAborted": {
+			"type": "string",
+			"description": "Reports that the user aborted SASL authentication."
+		},
+		"SaslAlready": {
+			"type": "string",
+			"description": "Reports that SASL authentication has already completed on this connection."
+		},
+		"SaslFailed": {
+			"type": "string",
+			"description": "Reports that SASL authentication failed."
+		},
+		"SaslMechanisms": {
+			"type": "string",
+			"description": "The label before the list of SASL mechanisms supported by the server."
+		},
+		"SaslSuccess": {
+			"type": "string",
+			"description": "Confirms that SASL authentication succeeded."
+		},
+		"ServerBusy": {
+			"type": "string",
+			"description": "Reports that the server is busy and asks the user to try again later."
+		},
+		"ServerStopping": {
+			"type": "string",
+			"description": "Notifies the client that the server is restarting and it should reconnect shortly."
+		},
+		"ShuttingDown": {
+			"type": "string",
+			"description": "The disconnect reason used when the server is shutting down."
+		},
+		"ShuttingDownNotice": {
+			"type": "string",
+			"description": "An IRC notice that the server is shutting down."
+		},
+		"Silenced": {
+			"type": "string",
+			"description": "Reports that the sender is not allowed to send chat messages."
+		},
+		"Supported": {
+			"type": "string",
+			"description": "The label before the list of IRC features supported by the server."
+		},
+		"TargetSilenced": {
+			"type": "string",
+			"description": "Reports that the recipient is silenced and cannot receive private messages."
+		},
+		"TooManyAttempts": {
+			"type": "string",
+			"description": "Rejects sign-in after the allowed number of attempts has been exceeded within the time window."
+		},
+		"UnknownCommand": {
+			"type": "string",
+			"description": "Reports that the server does not recognize the IRC command."
+		},
+		"UsersDontMatch": {
+			"type": "string",
+			"description": "Rejects a mode change because the target user is not the command sender."
+		},
+		"Welcome": {
+			"type": "string",
+			"description": "Greets a client after it registers on the IRC network.\n\nArguments:\n- {network}: The IRC network name.\n- {mask}: The connected client’s host mask."
+		},
+		"YourHost": {
+			"type": "string",
+			"description": "The server name and version sent when a client registers.\n\nArguments:\n- {serverName}: The IRC server name.\n- {version}: The server software version."
+		}
+	},
+	"additionalProperties": false
+}

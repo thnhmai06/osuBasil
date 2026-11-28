@@ -1,0 +1,76 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ${JOB_NAME}
+  namespace: basil-load
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: loadtests
+        run: ${JOB_NAME}
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: cappuccino
+      hostNetwork: true
+      restartPolicy: Never
+      # Ubuntu's stacked containerd AppArmor profile denies signals and /proc access inside the pod.
+      securityContext:
+        appArmorProfile:
+          type: Unconfined
+      containers:
+        - name: loadtests
+          image: mcr.microsoft.com/dotnet/runtime-deps:10.0
+          workingDir: /work
+          # A native crash of the generator leaves a dump and its crash report beside the NBomber reports.
+          env:
+            - name: DOTNET_DbgEnableMiniDump
+              value: "1"
+            - name: DOTNET_EnableCrashReport
+              value: "1"
+            - name: DOTNET_DbgMiniDumpType
+              value: "1"
+            - name: DOTNET_DbgMiniDumpName
+              value: /reports/core.%p
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              /bin-host/Basil.Tests.LoadTests ${TEST_ARGS} \
+                --connect 192.168.27.124 \
+                --port 8443 \
+                --irc-port 6697 \
+                --domain basil.local \
+                --accounts /data/accounts.csv \
+                --world /data/world-data.json \
+                --reports /reports
+          resources:
+            requests:
+              cpu: "3"
+              memory: 2Gi
+            limits:
+              cpu: "3"
+              memory: 2Gi
+          volumeMounts:
+            - name: bin
+              mountPath: /bin-host
+              readOnly: true
+            - name: data
+              mountPath: /data
+              readOnly: true
+            - name: reports
+              mountPath: /reports
+      volumes:
+        - name: bin
+          hostPath:
+            path: /var/lib/basil-load/loadtests/bin
+            type: Directory
+        - name: data
+          hostPath:
+            path: /var/lib/basil-load/loadtests/data
+            type: Directory
+        - name: reports
+          hostPath:
+            path: /var/lib/basil-load/loadtests/reports/${RUN_ID}
+            type: DirectoryOrCreate

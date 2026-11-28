@@ -1,0 +1,59 @@
+using Basil.Application.Beatmaps.Persistence;
+using Basil.Application.Beatmaps.Ports;
+using Basil.Application.Beatmaps.Storage;
+using Basil.Application.Rulesets.Services;
+using Microsoft.Extensions.Logging;
+
+namespace Basil.Application.Beatmaps.Logic;
+
+internal sealed class BeatmapsetImporter(
+	IBeatmapsetStorage storage,
+	BeatmapsetPlanner planner,
+	BeatmapsetStorer storer,
+	IRulesetUpdater rulesets,
+	ILogger<BeatmapsetImporter> logger)
+{
+	public async Task<(BeatmapsetImportResult Result, BeatmapsetIndexed? Imported)> ImportAsync(Stream archive,
+		bool replaceExisting, CancellationToken ct = default)
+	{
+		if (rulesets.Version().State != RulesetState.Installed)
+			return (new BeatmapsetImportResult(null, [], BeatmapsetImportFailure.RulesetsMissing), null);
+
+		var uploaded = await storage.SaveAsync(archive, ct);
+		try
+		{
+			var (content, stream) = await planner.ReadAsync(uploaded, ct);
+			if (content is null)
+			{
+				logger.LogWarning("Upload refused: the archive is not a readable beatmapset.");
+				return (new BeatmapsetImportResult(null, [], BeatmapsetImportFailure.Unreadable), null);
+			}
+
+			BeatmapsetPlan item;
+			await using (stream!)
+			await using (content)
+			{
+				item = await planner.PlanAsync(uploaded, null, content, null, ct);
+			}
+
+			if (item.Locked)
+				return (new BeatmapsetImportResult(null, [], BeatmapsetImportFailure.Locked), null);
+
+			if (!replaceExisting && item.Existing is not null)
+				return (new BeatmapsetImportResult(null, [], BeatmapsetImportFailure.AlreadyExists), null);
+
+			// A set whose difficulties repeat one another cannot be stored.
+			if (!new SetClaims().TryClaim(item.Change))
+				return (new BeatmapsetImportResult(null, [], BeatmapsetImportFailure.Unreadable), null);
+
+			// The archive is closed first: it is moved into the set's folder.
+			var imported = await storer.StoreAsync(item);
+			return (new BeatmapsetImportResult(imported.Set, imported.Beatmaps, null), imported);
+		}
+		finally
+		{
+			// Taken in, the archive has moved into its set's folder; rejected, nothing of it is kept.
+			await storage.DeleteAsync(uploaded);
+		}
+	}
+}

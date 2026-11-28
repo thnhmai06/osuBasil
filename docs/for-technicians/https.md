@@ -3,11 +3,15 @@
 This page is the authoritative reference for TLS on Basil. If this document conflicts with another document, **this
 document takes precedence**.
 
-## Requirements
+## Why and how
 
-osu! stable requires HTTPS on port `443`. Plain HTTP connections are rejected before they reach Basil.
+Basil holds no certificate and speaks no TLS: it serves plain HTTP and plain IRC inside the Compose network, and the
+`nginx` service in front of it ends TLS for every HTTP subdomain (port `443`) and for IRC (port `6697`). The
+certificate, the HSTS header and the redirect from port `80` are nginx's; its configuration is in
+[`docker/nginx/`](../../docker/nginx/).
 
-The TLS certificate must cover the Basil domain and all required service subdomains:
+osu! stable requires HTTPS on port `443`. The certificate must cover the Basil domain and every sub-domain the server
+serves:
 
 ```text
 <domain>
@@ -21,315 +25,166 @@ b.<domain>
 a.<domain>
 api.<domain>
 assets.<domain>
+irc.<domain>
 ```
 
-The certificate must therefore contain these names as SANs (Subject Alternative Names).
+The names must be Subject Alternative Names. A certificate for only `localhost` or only the main domain is **not
+sufficient**.
 
-A certificate for only `localhost` or only the main domain is **not sufficient**.
+A self-signed certificate must also carry `basicConstraints` with `CA:TRUE`. A Linux client's trust store (p11-kit, the
+basis of `update-ca-trust` and the browsers) only places certificate authorities into its trust bundles, so a
+self-signed certificate without it cannot become trusted there.
 
 ### Public deployment
 
-For a public domain, use a certificate issued by a trusted certificate authority.
-
-A wildcard certificate can be used if it covers both:
-
-```text
-<domain>
-*.<domain>
-```
-
-The certificate must be trusted by the client machines without installing a custom CA certificate.
+Use a certificate from a trusted certificate authority. A wildcard certificate works when it covers both `<domain>` and
+`*.<domain>`, and clients must trust it without installing a custom CA.
 
 ### LAN-only deployment
 
-For a private LAN deployment where the domain is not publicly resolvable, you can use a self-signed certificate (which
-shipped with the build).
-
-The certificate must still contain SANs for every Basil hostname listed above.
-
-Because a self-signed certificate is not trusted by default, install the certificate or its issuing CA into the trusted
-certificate store on every client machine that connects to Basil.
-
-See [`getting-started.md`](../for-client/bancho/getting-started.md).
+A self-signed certificate is fine on a private network, but it must still carry every SAN above, and every client must
+trust the certificate or its issuing CA. See
+[`getting-started.md`](../for-client/osu-stable/getting-started.md).
 
 ---
 
 ## IRC
 
-**IRC does not require HTTPS.** Basil's IRC gateway is separate from the HTTPS server.
-
-IRC uses plain TCP on:
-
-```text
-Basil:Irc:Port
-```
-
-The default port is:
-
-```text
-6667
-```
-
-IRC **does not** require:
-
-* an `irc.<domain>` subdomain;
-* an IRC-specific TLS certificate;
-* HTTPS configuration.
-
-IRC clients connect directly to the **Basil server's hostname (`<domain>`) or IP address** and the configured IRC port.
+IRC is TLS only, on port `6697`, ended by nginx's `stream` block, which forwards plain TCP to Basil's internal IRC port
+(`Basil:Server:Irc:Port`, default `6667`, never published) behind a PROXY protocol header that carries the real client
+address. Basil closes every IRC connection that does not start with that header from a trusted proxy, so there is no
+plaintext path from outside. The same certificate serves `irc.<domain>`; a client must connect with TLS to port `6697`,
+which tools that only speak plaintext IRC cannot do. A certificate from Cloudflare's Origin CA does not serve IRC, since
+IRC clients reach nginx directly; keep the `irc.` DNS record DNS-only. See
+[`../for-developers/irc.md`](../for-developers/irc.md).
 
 ---
 
-## Bundled development certificate
+## Default certificate
 
-Basil ships with a self-signed certificate for local development and private LAN testing:
+nginx ships with a self-signed certificate for local development and private LANs:
 
 ```text
-Data/basil.local.pfx
+docker/nginx/certs/basil.local.crt
+docker/nginx/certs/basil.local.key
 ```
 
-The shipped certificate covers the required Basil subdomains with:
-- Domain: `basil.local`
-- Password: `your-password`
-
-The shipped [`appsettings.json`](../../src/Basil.Web/appsettings.json) is already configured to use this certificate.
-
-This means a fresh local installation can start with HTTPS without generating a certificate first.
+It covers `basil.local`, `*.basil.local` and `irc.basil.local`, and declares `basicConstraints` `CA:TRUE`, so Linux
+clients can trust it through their system certificate store. If you change `Basil:Server:Domain`, you need a certificate
+for the new domain.
 
 > [!IMPORTANT]
-> **Do not use the bundled certificate for production or a publicly exposed server.**
+> **Do not use the default certificate for production or a publicly exposed server.**
 >
-> The certificate and its password are distributed with Basil and are therefore public. Anyone with the certificate and
-private key can impersonate a server to clients that trust it.
->
-> Use a certificate issued for your own domain for production deployments.
+> Its private key is in the repository and is therefore public. Anyone holding it can impersonate a server to clients
+> that trust it.
 
 ---
 
-## Configure the certificate
+## Use your own certificate
 
-Configure the certificate in `appsettings.json`:
+Mount your certificate and key over the two files nginx reads, in `docker-compose.yml` (a certificate chain goes in
+the `.crt` file; it must cover every name above):
 
-```text
-Basil:Server:CertPath
-Basil:Server:CertPassword
+```yaml
+  nginx:
+    volumes:
+      - /path/to/fullchain.pem:/etc/nginx/certs/basil.local.crt:ro
+      - /path/to/privkey.pem:/etc/nginx/certs/basil.local.key:ro
 ```
 
-For example:
+then run `docker compose restart nginx`. Basil needs no change and no restart. A wildcard certificate for `<domain>` and
+`*.<domain>` from a public authority works, and Basil has no ACME client: obtain and renew the certificate yourself.
 
-```json
-{
-	"Basil": {
-		"Server": {
-			"CertPath": "Data/basil.local.pfx",
-			"CertPassword": "your-password"
-		}
-	}
-}
-```
+### Behind Cloudflare
 
-With:
-
-- `CertPath` is the path to the PFX certificate file available to Basil.
-- `CertPassword` is the password protecting the PFX file.
-
-After changing either value, **restart Basil**. No rebuild is required.
-
-The HTTPS port is controlled by:
-
-```text
-Basil:Server:Port
-```
-
-The default is `443`.
-
-You do not need to pass `--urls` when starting Basil.
-
-### Certificate errors
-
-If Basil cannot load the configured certificate because the path or password is invalid:
-
-* Basil logs the certificate error at `Critical` level;
-* the certificate password is never written to the log;
-* the process exits with code `1`.
-
-Check the startup log first when Basil fails to start after changing certificate configuration.
+Cloudflare may proxy the HTTP records. Mount `docker/nginx/cloudflare.conf` over `/etc/nginx/real-ip.conf` in the
+`nginx` service: nginx then takes the client address from `CF-Connecting-IP` for requests that come from Cloudflare's
+ranges and passes the country from `CF-IPCountry` on to Basil. Without it, nginx ignores those headers and Basil never
+sees them. Keep `irc.<domain>` DNS-only (grey cloud) because Cloudflare does not carry IRC.
 
 ---
 
 ## Generate a certificate for a private LAN
 
-Use this procedure when you need a self-signed certificate for a private deployment.
-
-Replace `basil.local` with the domain used by your server.
+Replace `basil.local` with your domain. The certificate must include every name listed under
+[Why and how](#why-and-how).
 
 ### Windows
 
-1. Run **PowerShell as Administrator**:
+Generate the pair with OpenSSL (for example in WSL or Git Bash) as shown below, or export a PowerShell certificate to
+PEM, then follow [Use your own certificate](#use-your-own-certificate). Trust it on every client:
 
 ```powershell
-$domain = "basil.local"
-$password = ConvertTo-SecureString `
-    -String "your-password" `
-    -Force `
-    -AsPlainText
-
-$dnsNames = @(
-	$domain,
-	"c.$domain",
-	"ce.$domain",
-	"c4.$domain",
-	"c5.$domain",
-	"c6.$domain",
-	"osu.$domain",
-	"b.$domain",
-	"a.$domain",
-	"api.$domain",
-	"assets.$domain"
-)
-
-$cert = New-SelfSignedCertificate `
-    -DnsName $dnsNames `
-    -CertStoreLocation "cert:\LocalMachine\My" `
-    -KeyExportPolicy Exportable
-
-Export-PfxCertificate `
-    -Cert "cert:\LocalMachine\My\$($cert.Thumbprint)" `
-    -FilePath "basil-cert.pfx" `
-    -Password $password
+Import-Certificate -FilePath "basil-cert.pem" -CertStoreLocation "cert:\LocalMachine\Root"
 ```
-
-2. Import the certificate into the trusted root store on the server:
-
-```powershell
-Import-PfxCertificate `
-    -FilePath "basil-cert.pfx" `
-    -CertStoreLocation "cert:\LocalMachine\Root" `
-    -Password $password
-```
-
-The same certificate must also be trusted by every client machine that connects to the server.
-
-3. Finally, configure Basil to use the generated PFX:
-
-```text
-Basil:Server:CertPath
-Basil:Server:CertPassword
-```
-
-and restart Basil.
 
 ### macOS / Linux
 
-1. Generate the certificate and private key:
-
 ```bash
 domain="basil.local"
-password="your-password"
 
 openssl req -new -x509 -days 365 -nodes \
   -out basil-cert.pem \
   -keyout basil-key.pem \
   -subj "/CN=$domain" \
-  -addext "subjectAltName=DNS:$domain,DNS:c.$domain,DNS:ce.$domain,DNS:c4.$domain,DNS:c5.$domain,DNS:c6.$domain,DNS:osu.$domain,DNS:b.$domain,DNS:a.$domain,DNS:api.$domain,DNS:assets.$domain"
+  -addext "basicConstraints=critical,CA:TRUE" \
+  -addext "subjectAltName=DNS:$domain,DNS:c.$domain,DNS:ce.$domain,DNS:c4.$domain,DNS:c5.$domain,DNS:c6.$domain,DNS:osu.$domain,DNS:b.$domain,DNS:a.$domain,DNS:api.$domain,DNS:assets.$domain,DNS:irc.$domain"
 
-openssl pkcs12 -export \
-  -out basil-cert.pfx \
-  -inkey basil-key.pem \
-  -in basil-cert.pem \
-  -passout "pass:$password"
 ```
 
-2. Trust the certificate:
-
-#### Linux:
-
-Install the certificate into the distribution's trusted certificate store.
-
-The certificate must also be trusted on every client machine.
-
-#### MacOS:
+Trust it on the client:
 
 ```bash
-security add-trusted-cert \
-  -d \
-  -r trustRoot \
-  -k ~/Library/Keychains/login.keychain \
-  basil-cert.pem
+# macOS
+security add-trusted-cert -d -r trustRoot -k ~/Library/Keychains/login.keychain basil-cert.pem
+
+# Linux (Debian/Ubuntu)
+sudo cp basil-cert.pem /usr/local/share/ca-certificates/basil.crt
+sudo update-ca-certificates
+
+# Linux (Arch)
+sudo cp basil-cert.pem /etc/ca-certificates/trust-source/anchors/basil.crt
+sudo update-ca-trust extract
 ```
 
-3. Finally, configure Basil to use the generated PFX:
-
-```text
-Basil:Server:CertPath
-Basil:Server:CertPassword
-```
-
-and restart Basil.
+Then mount `basil-cert.pem` and `basil-key.pem` as described in [Use your own certificate](#use-your-own-certificate).
 
 ---
 
-## Reverse proxy deployments
+## Trusting the proxy
 
-Basil can also run behind a reverse proxy that terminates TLS.
-
-In this setup:
-
-```text
-osu! client
-    │
-    │ HTTPS
-    ▼
-Reverse proxy
-    │
-    │ HTTP/HTTPS
-    ▼
-Basil
-```
-
-The reverse proxy is responsible for the public TLS certificate.
-
-Follow the reverse proxy's documentation for certificate configuration and forwarding the original client address.
-
-If Basil is exposed directly without a reverse proxy, it handles the client connection itself.
-
-> [!IMPORTANT]
-> For production deployments, make sure Basil receives the original client IP through the expected proxy headers when a
-reverse proxy is used. Incorrect proxy configuration can cause client IP and geolocation handling to fail.
+Basil believes the forwarded client address only from the addresses in `Basil:Server:TrustedProxies` (the Compose file
+sets it to the compose network). nginx sends the real client in `X-Real-IP` and the scheme in `X-Forwarded-Proto`; Basil
+removes `X-Real-IP`, `X-Forwarded-*`, `CF-*` and `X-Country-Code` from every request that does not come from a trusted
+proxy. See [`configuration.md`](configuration.md#available-settings).
 
 ---
 
 ## Troubleshooting
 
-### Basil does not start after changing the certificate
+### nginx does not start after changing the certificate
 
-Check:
-
-1. `Basil:Server:CertPath` points to the correct file.
-2. The certificate file is accessible by the Basil process.
-3. `Basil:Server:CertPassword` is correct.
-4. The certificate is a valid PFX containing the private key.
-5. The startup log for the `Critical` certificate error.
+1. The two mounted files exist and nginx can read them.
+2. The key matches the certificate and is not password protected.
+3. `docker compose logs nginx` names the error.
 
 ### The client reports a certificate error
 
-Check:
+1. The certificate contains the exact hostname the client uses.
+2. The hostname resolves to this server.
+3. The client trusts the certificate.
+4. It has not expired.
+5. The client connects over HTTPS to port `443` (IRC over TLS to `6697`).
 
-1. The certificate contains the exact hostname the client is connecting to.
-2. The hostname resolves to the correct server.
-3. The certificate is trusted by the client.
-4. The certificate has not expired.
-5. The client is connecting over HTTPS on port `443`.
-
-For LAN deployments using a self-signed certificate, the most common cause is that the certificate has not been
-installed as trusted on the client.
+For LAN deployments the usual cause is a certificate that is not trusted on the client.
 
 ---
 
 ## See also
 
-* [`configuration.md`](configuration.md): `Server:CertPath`, `Server:CertPassword`, and server data
-* [`deployment.md`](deployment.md): complete deployment procedure
-* [`docker.md`](docker.md): Docker deployment and certificate mounts
-* [`getting-started.md`](../for-client/bancho/getting-started.md): configuring an osu! client and trusting a LAN certificate
-* [`troubleshooting.md`](troubleshooting.md): general deployment troubleshooting
+* [`configuration.md`](configuration.md) — deployment settings and data directories
+* [`deployment.md`](deployment.md) — complete deployment procedure
+* [`docker.md`](docker.md) — Docker deployment and certificate mounts
+* [`../for-client/osu-stable/getting-started.md`](../for-client/osu-stable/getting-started.md) — client setup and trusting a LAN certificate
+* [`troubleshooting.md`](troubleshooting.md) — general deployment troubleshooting

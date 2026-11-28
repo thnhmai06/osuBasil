@@ -1,0 +1,566 @@
+using Basil.Application.Sessions.Registry;
+using Basil.Application.Users;
+using Basil.Host.Shared.Errors;
+using Basil.Domain;
+using Basil.Application.Chat.Messages;
+using Basil.Application.Chat.Registry;
+using Basil.Application.Multiplayer.Registry;
+using Basil.Application.Sessions.Objects;
+using Basil.Domain.Chat;
+using Basil.Domain.Users;
+using Basil.Host.Cli.Dashboard.Data;
+using Basil.Host.Cli.Dashboard.Shell;
+using Mediator;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using XenoAtom.Terminal;
+using XenoAtom.Terminal.UI;
+using XenoAtom.Terminal.UI.Commands;
+using XenoAtom.Terminal.UI.Controls;
+using XenoAtom.Terminal.UI.Geometry;
+using XenoAtom.Terminal.UI.Input;
+using XenoAtom.Terminal.UI.Styling;
+using Basil.Application.Chat.Objects;
+
+namespace Basil.Host.Cli.Dashboard.Tabs;
+
+internal sealed record ChannelItem(string Name, int Members);
+
+internal sealed record MemberItem(string Name, string Mark, ulong Mask);
+
+internal interface IJumpable
+{
+	void JumpToEnd();
+}
+
+internal sealed class ChatTab : ITabView, ISelectable, IJumpable
+{
+	private readonly ChannelDetails _channelDetails;
+	private readonly State<string> _channelQuery = new(string.Empty);
+	private readonly TextBox _channelSearch;
+	private readonly SearchBox _channelSearchBox;
+	private readonly GroupedList<ChannelItem> _channels;
+	private readonly DetailPanel _detail;
+	private readonly ChatFeed _feed;
+	private readonly Glyphs _glyphs;
+	private readonly Grid _grid;
+	private readonly PromptEditor _input;
+	private readonly LogControl _log = new LogControl { MaxCapacity = 500 }.WrapText(true);
+	private readonly ILogger _logger;
+	private readonly State<string> _memberQuery = new(string.Empty);
+	private readonly TextBox _memberSearch;
+	private readonly SearchBox _memberSearchBox;
+	private readonly GroupedList<MemberItem> _members;
+	private readonly HashSet<string> _openedDms = new(StringComparer.OrdinalIgnoreCase);
+	private readonly CliOptions _options;
+	private readonly Palette _palette;
+	private readonly IServiceProvider _services;
+	private readonly State<bool> _showCenter = new(true);
+	private readonly State<bool> _showLeft = new(true);
+	private readonly State<bool> _showRight = new(true);
+	private readonly Func<(int Columns, int Rows)> _size;
+	private readonly State<string> _title = new("Chat");
+	private TerminalApp? _app;
+	private string _channelSeen = string.Empty;
+	private string _current = string.Empty;
+	private long _feedRevision = -1;
+	private string _firstChannel = string.Empty;
+	private string _firstMember = string.Empty;
+	private bool _focusInput;
+	private long _lastTick;
+	private string _layoutKey = string.Empty;
+	private string _memberSeen = string.Empty;
+	private bool _membersShown;
+	private bool _open;
+	private Task<OperatorSession>? _operator;
+	private long _refreshedAt;
+	private long _seen;
+	private bool _stripSlash;
+
+	public ChatTab(IServiceProvider services, ChannelDetails channels, ChatFeed feed,
+		CliOptions options, Glyphs glyphs,
+		ShellKit kit, Palette palette, Func<(int Columns, int Rows)> size, TimeProvider clock, Action<Action> post,
+		ILogger logger)
+	{
+		_services = services;
+		_channelDetails = channels;
+		_detail = new DetailPanel("Chat", glyphs, palette, kit.Dialogs, kit.Toasts, post, kit.Changes, logger);
+		_detail.Closed += FocusInput;
+		kit.Changes.Occurred += () => Safely(Refresh);
+		_feed = feed;
+		_options = options;
+		_glyphs = glyphs;
+		_palette = palette;
+		_size = size;
+		_logger = logger;
+		_channels = new GroupedList<ChannelItem>(
+			[
+				new Column<ChannelItem>("Channel", 0, c => c.Name),
+				new Column<ChannelItem>("Users", 5, c => c.Members < 0 ? string.Empty : $"({c.Members})",
+					_ => Ink.Muted) { Right = true }
+			],
+			c => c.Name, glyphs, options.NoColor, clock);
+		_members = new GroupedList<MemberItem>(
+			[
+				new Column<MemberItem>("Member", 0, m => m.Name, m => UserInk.Of((UserPrivileges)m.Mask)),
+				new Column<MemberItem>("", 4, m => m.Mark, _ => Ink.Accent)
+			],
+			m => m.Name, glyphs, options.NoColor, clock);
+		_channelSearchBox = new SearchBox(_channelQuery, "search", glyphs);
+		_memberSearchBox = new SearchBox(_memberQuery, "search", glyphs);
+		_channelSearch = _channelSearchBox.Box;
+		_memberSearch = _memberSearchBox.Box;
+		_channelSearch.IsTabStop = false;
+		_memberSearch.IsTabStop = false;
+		var left = new Group("Channels").Style(glyphs.Frame).Padding(new Thickness(0, 0, 1, 0))
+			.Content(
+				_channelSearchBox.Over(new ScrollViewer(_channels).IsTabStop(false).Stretch()))
+			.Stretch();
+		_input = new PromptEditor().LineMode(PromptEditorLineMode.SingleLine).PromptMarkup(string.Empty)
+			.Placeholder("Chatting as BasilBot").Accepted(Send);
+		_log.IsTabStop = false;
+		var middle = new Grid().Columns(new ColumnDefinition { Width = GridLength.Star() })
+			.Rows(new RowDefinition { Height = GridLength.Star() }, new RowDefinition { Height = GridLength.Auto })
+			.Cell(JumpToEndButton.Over(_log, glyphs, JumpToEnd), 0, 0).Cell(_input, 1, 0);
+		var center = new Group().Style(glyphs.Frame).Content(middle).TopLeftText(() => _title.Value).Stretch();
+		var right = new Group("Members").Style(glyphs.Frame).Padding(new Thickness(0, 0, 1, 0))
+			.Content(_memberSearchBox.Over(new ScrollViewer(_members).IsTabStop(false).Stretch()))
+			.Stretch()
+			.IsVisible(_showRight);
+		// The settings of the channel in view, from the right of the top border of its pane.
+		var manage = new Button("[Channel]").Click(ShowChannel).IsTabStop(false).IsVisible(_showCenter)
+			.HorizontalAlignment(Align.End).VerticalAlignment(Align.Start).Margin(new Thickness(0, 0, 2, 0));
+		left.IsVisible(_showLeft);
+		center.IsVisible(_showCenter);
+		_grid = new Grid()
+			.Columns(new ColumnDefinition { Width = GridLength.Star(3) },
+				new ColumnDefinition { Width = GridLength.Star(6) },
+				new ColumnDefinition { Width = GridLength.Star(3) })
+			.Rows(new RowDefinition { Height = GridLength.Star() })
+			.Cell(left, 0, 0).Cell(new ZStack(center, manage), 0, 1).Cell(right, 0, 2);
+		// The detail frame stands under the three panes, across the whole width, directly above the status bar.
+		View = new Grid()
+			.Columns(new ColumnDefinition { Width = GridLength.Star() })
+			.Rows(new RowDefinition { Height = GridLength.Star() }, new RowDefinition { Height = GridLength.Auto })
+			.Cell(_grid, 0, 0)
+			.Cell(_detail.View, 1, 0);
+		foreach (var gesture in Dialogs.BackGestures)
+			View.AddCommand(new Command
+			{
+				Id = $"chat.detail.back.{gesture}", LabelMarkup = "Back", Gesture = gesture,
+				CanExecute = _ => _detail.IsOpen, Execute = _ => _detail.Back()
+			});
+		_channels.KeyHook = e => ListKey(e, _channelSearch, _channels.Selected?.Name, _firstChannel);
+		_members.KeyHook = e => ListKey(e, _memberSearch, _members.Selected?.Name, _firstMember);
+		_channels.Activated += _ => OpenSelected();
+		_members.Activated += member => Select(member.Name);
+		WheelScroll.Accelerate(_log, clock);
+		AddSearchKeys(_channelSearch, _channelQuery, _channels);
+		AddSearchKeys(_memberSearch, _memberQuery, _members);
+	}
+
+	// Tick runs about ten times a second only while the tab is in view.
+	private bool Active => Environment.TickCount64 - _lastTick < 500;
+
+	private bool Narrow => _size().Columns < 80;
+
+	public void JumpToEnd()
+	{
+		_log.ScrollToTail();
+	}
+
+	public void Select(string id)
+	{
+		if (!id.StartsWith('#')) _openedDms.Add(id);
+		_detail.Close();
+		_channelQuery.Value = string.Empty;
+		Safely(Refresh);
+		_channels.Select(id);
+		_focusInput = true;
+	}
+
+	public Visual View { get; }
+
+	public void Attach(TerminalApp app)
+	{
+		_app = app;
+		_detail.Attach(app);
+		app.AddGlobalCommand(new Command
+		{
+			Id = "chat.back", LabelMarkup = "Back", Gesture = new KeyGesture(TerminalKey.Escape),
+			CanExecute = _ => Narrow && _open && Active, Execute = _ => Back()
+		});
+		app.AddGlobalCommand(new Command
+		{
+			Id = "chat.back.alt", LabelMarkup = "Back",
+			Gesture = new KeyGesture(TerminalKey.Left, TerminalModifiers.Alt),
+			CanExecute = _ => Narrow && _open && Active, Execute = _ => Back()
+		});
+		app.AddGlobalCommand(new Command
+		{
+			Id = "chat.channel", LabelMarkup = "Channel", Gesture = new KeyGesture(TerminalChar.CtrlD, TerminalModifiers.Ctrl),
+			CanExecute = _ => Active && _current.Length > 0, Execute = _ => ShowChannel()
+		});
+		app.AddGlobalCommand(new Command
+		{
+			Id = "chat.members", LabelMarkup = "Members",
+			Gesture = new KeyGesture(TerminalChar.CtrlB, TerminalModifiers.Ctrl),
+			CanExecute = _ => Active, Execute = _ =>
+			{
+				_membersShown = !_membersShown;
+				Arrange();
+			}
+		});
+	}
+
+	public void Activate()
+	{
+		_lastTick = Environment.TickCount64;
+		Safely(Refresh);
+		Arrange();
+		FocusDefault();
+	}
+
+	public void Tick()
+	{
+		_lastTick = Environment.TickCount64;
+		_channelSearchBox.Tick();
+		_memberSearchBox.Tick();
+		_detail.Fit(_size().Columns, _size().Rows);
+		JumpToEndButton.Sync(_log);
+		// Joins and leaves do not reach the feed, so the counts are read again every two seconds.
+		if (_feed.Revision != _feedRevision || _channelQuery.Value != _channelSeen || _lastTick - _refreshedAt >= 2000)
+		{
+			_refreshedAt = _lastTick;
+			Safely(Refresh);
+		}
+
+		if (_stripSlash)
+		{
+			_stripSlash = false;
+			if (_channelQuery.Value.StartsWith('/')) _channelQuery.Value = _channelQuery.Value[1..];
+			if (_memberQuery.Value.StartsWith('/')) _memberQuery.Value = _memberQuery.Value[1..];
+		}
+
+		if (_memberQuery.Value != _memberSeen) Safely(Members);
+		Arrange();
+		var selected = _channels.HasSelection ? _channels.Selected!.Name : string.Empty;
+		if (selected != _current)
+		{
+			_current = selected;
+			_seen = 0;
+			_log.Clear();
+			_title.Value = _current.Length == 0 ? "Chat" : Palette.Plain(_current);
+			Safely(Members);
+		}
+
+		if (_focusInput)
+		{
+			_focusInput = false;
+			if (!Narrow) FocusInput();
+		}
+
+		var fresh = _feed.Since(_current, _seen, out var total);
+		foreach (var line in fresh) _log.AppendMarkupLine(Format(line));
+		_seen = total;
+	}
+
+	public void Refresh()
+	{
+		_feedRevision = _feed.Revision;
+		_channelSeen = _channelQuery.Value;
+		var lobby = _services.GetRequiredService<Lobby>();
+		var general = _services.GetRequiredService<GeneralChannelRegistry>().All;
+		var query = _channelSeen.Trim();
+		var names = _feed.Channels().Union(general.Keys, StringComparer.OrdinalIgnoreCase)
+			.Union(lobby.Rooms.Keys.Select(id => $"#mp_{id}"), StringComparer.OrdinalIgnoreCase)
+			.Union(_openedDms, StringComparer.OrdinalIgnoreCase)
+			.Where(name => query.Length == 0 || name.Contains(query, StringComparison.OrdinalIgnoreCase)).Order()
+			.ToList();
+
+		ChannelItem Item(string name)
+		{
+			return new ChannelItem(name,
+				general.TryGetValue(name, out var channel)
+					? channel.Members.Select(member => member.User).Distinct().Count()
+					: -1);
+		}
+
+		var sections = new List<Section<ChannelItem>>();
+
+		void Add(string title, Func<string, bool> belongs)
+		{
+			var items = names.Where(belongs).Select(Item).ToList();
+			if (items.Count > 0 || query.Length == 0)
+				sections.Add(new Section<ChannelItem>(title, items.Count.ToString(), items));
+		}
+
+		Add("Channels", IsGeneral);
+		Add("Multiplayer", n => n.StartsWith("#mp_"));
+		Add("DMs", n => !n.StartsWith('#'));
+		_firstChannel = sections.FirstOrDefault(s => s.Items.Count > 0)?.Items[0].Name ?? string.Empty;
+		_channels.SetSections(sections, query.Length > 0);
+		Members();
+	}
+
+	// The server changes its channels and rooms from other threads; a read that meets a change is tried again at the next tick.
+	private void Safely(Action read)
+	{
+		try
+		{
+			read();
+		}
+		catch (InvalidOperationException exception)
+		{
+			_logger.LogDebug(exception, "The chat lists changed while they were read");
+		}
+	}
+
+	private void ShowChannel()
+	{
+		_detail.Show(_channelDetails.Of(_current));
+	}
+
+	private void Back()
+	{
+		_open = false;
+		_membersShown = false;
+		Arrange();
+	}
+
+	private void FocusInput()
+	{
+		if (_app is null) return;
+
+		_app.Focus(_input);
+	}
+
+	private void FocusDefault()
+	{
+		if (_app is null) return;
+
+		if (Narrow && !_open) _app.Focus(_channels);
+		else FocusInput();
+	}
+
+	private void OpenSelected()
+	{
+		if (!_channels.HasSelection) return;
+
+		if (Narrow)
+		{
+			_open = true;
+			Arrange();
+		}
+
+		FocusInput();
+	}
+
+	private bool ListKey(KeyEventArgs e, TextBox search, string? selected, string first)
+	{
+		if (e.Char == '/' || (e.Char == 'f' && e.Modifiers.HasFlag(TerminalModifiers.Ctrl)))
+		{
+			// The slash is also delivered as text to the box that takes the focus; Tick removes it.
+			_stripSlash = e.Char == '/';
+			_app?.Focus(search);
+			return true;
+		}
+
+		if (e.Key == TerminalKey.Up && selected is not null && selected == first)
+		{
+			_app?.Focus(search);
+			return true;
+		}
+
+		return false;
+	}
+
+	// Down and Enter go to the list; Esc clears the text, and when there is none goes to the list.
+	private void AddSearchKeys<T>(TextBox search, State<string> query, GroupedList<T> list)
+	{
+		void Add(string name, KeyGesture gesture, Action run)
+		{
+			search.AddCommand(new Command
+			{
+				Id = $"chat.search.{search.GetHashCode()}.{name}", LabelMarkup = name, Gesture = gesture,
+				Execute = _ => run()
+			});
+		}
+
+		Add("down", new KeyGesture(TerminalKey.Down), () => _app?.Focus(list));
+		Add("enter", new KeyGesture(TerminalKey.Enter), () => _app?.Focus(list));
+		foreach (var gesture in Dialogs.BackGestures)
+			Add($"back.{gesture}", gesture, () =>
+			{
+				if (query.Value.Length > 0) query.Value = string.Empty;
+				else _app?.Focus(list);
+			});
+	}
+
+	// Narrow: one pane at a time (channels, then the conversation, or its members); wider: the three panes.
+	private void Arrange()
+	{
+		var narrow = Narrow;
+		var members = narrow ? _open && _membersShown : _membersShown || _size().Columns >= 100;
+		// Below 100 columns the members take the place of the channels.
+		var left = narrow ? !_open : !(_membersShown && _size().Columns < 100);
+		var center = !narrow || (_open && !_membersShown);
+		var key = $"{left}{center}{members}{narrow}{_open}";
+		if (key == _layoutKey) return;
+
+		_layoutKey = key;
+
+		GridLength Width(bool shown, double star)
+		{
+			return shown ? GridLength.Star(star) : GridLength.Fixed(0);
+		}
+
+		_showLeft.Value = left;
+		_showCenter.Value = center;
+		_showRight.Value = members;
+		_grid.Columns(new ColumnDefinition { Width = Width(left, narrow ? 1 : 3) },
+			new ColumnDefinition { Width = Width(center, narrow ? 1 : 6) },
+			new ColumnDefinition { Width = Width(members, narrow ? 1 : 3) });
+		if (_app is null) return;
+
+		if (center) _app.Focus(_input);
+		else if (left) _app.Focus(_channels);
+	}
+
+	private static bool IsGeneral(string name)
+	{
+		return name.StartsWith('#') && !name.StartsWith("#mp_");
+	}
+
+	private string Format(ChatLine line)
+	{
+		var ink = AuthorInk(line.Author);
+		return $"{_palette.Wrap(Ink.Muted, line.Time.ToLocalTime().ToString("H:mm"))} " +
+		       $"{_palette.Wrap(ink, line.Author + ":")} {_palette.Wrap(Ink.Text, line.Text)}";
+	}
+
+	// The bot has its own colour; an author who is online has the colour of the highest privilege.
+	private Ink AuthorInk(string author)
+	{
+		if (author.Equals("BasilBot", StringComparison.OrdinalIgnoreCase)) return Ink.ChatBot;
+
+		var user = _services.GetRequiredService<SessionRegistry>().Online.Keys
+			.FirstOrDefault(record => record.Value.Name.Equals(author, StringComparison.OrdinalIgnoreCase));
+		return user is null ? Ink.Text : UserInk.Of(user.Value.Privileges);
+	}
+
+	private void Members()
+	{
+		_memberSeen = _memberQuery.Value;
+		var referees = new List<MemberItem>();
+		var players = new List<MemberItem>();
+		var others = new List<MemberItem>();
+		if (_current.StartsWith("#mp_") && int.TryParse(_current[4..], out var id) &&
+		    _services.GetRequiredService<Lobby>().Rooms.TryGetValue(id, out var room))
+		{
+			var host = room.State.Members.Host?.Record;
+			referees.Add(new MemberItem(room.Creator.Value.Name, string.Empty,
+				(ulong)room.Creator.Value.Privileges));
+			referees.AddRange(room.Referees.ToArray()
+				.Select(r => new MemberItem(r.Value.Name, string.Empty, (ulong)r.Value.Privileges)));
+			foreach (var slot in room.Slots)
+			{
+				var player = slot.Player;
+				if (player is null) continue;
+
+				players.Add(new MemberItem(player.Value.Name,
+					player.Equals(host) ? "(H)" : room.Rounds.InProgress ? "(P)" : string.Empty,
+					(ulong)player.Value.Privileges));
+			}
+		}
+		else if (_services.GetRequiredService<GeneralChannelRegistry>().Find(_current) is { } channel)
+		{
+			others.AddRange(channel.Members.ToArray().Select(c => new MemberItem(c.User.Record.Value.Name, string.Empty,
+					(ulong)c.User.Record.Value.Privileges))
+				.DistinctBy(m => m.Name).OrderBy(m => m.Name));
+		}
+
+		var query = _memberSeen.Trim();
+
+		List<MemberItem> Match(List<MemberItem> items)
+		{
+			return query.Length == 0
+				? items
+				: [.. items.Where(m => m.Name.Contains(query, StringComparison.OrdinalIgnoreCase))];
+		}
+
+		List<Section<MemberItem>> sections =
+		[
+			.. new[] { ("Referees", Match(referees)), ("Players", Match(players)), ("Others", Match(others)) }
+				.Where(group => group.Item2.Count > 0)
+				.Select(group => new Section<MemberItem>(group.Item1, group.Item2.Count.ToString(), group.Item2))
+		];
+		_firstMember = sections.FirstOrDefault()?.Items[0].Name ?? string.Empty;
+		_members.SetSections(sections, query.Length > 0);
+	}
+
+	private Task<OperatorSession> Operator()
+	{
+		return _operator ??= _services.GetRequiredService<BotSessions>().OperateAsync(CancellationToken.None);
+	}
+
+	private void Send()
+	{
+		var text = _input.Text?.Trim() ?? string.Empty;
+		if (text.Length == 0 || _current.Length == 0) return;
+
+		var channel = _current;
+		_ = Task.Run(async () =>
+		{
+			try
+			{
+				var actor = await Operator();
+				var sender = _services.GetRequiredService<ISender>();
+				ChatTarget target;
+				if (!channel.StartsWith('#'))
+				{
+					var recipient = _services.GetRequiredService<SessionRegistry>().Online.Values
+						.FirstOrDefault(u => u.Record.Value.Name.Equals(channel, StringComparison.OrdinalIgnoreCase));
+					if (recipient is null)
+					{
+						Report(channel, $"{channel} is not online, so the message was not sent.");
+						return;
+					}
+
+					target = new ChatTarget.Private(recipient.Record.Id);
+				}
+				else
+				{
+					target = channel.StartsWith("#mp_") && int.TryParse(channel[4..], out var room)
+						? new ChatTarget.Room(room)
+						: new ChatTarget.General(channel);
+					// The operator speaks as a member of the channel, like any other connection.
+					await sender.Send(new JoinChannel(actor, target));
+				}
+
+				var outcome = await sender.Send(new PostChatMessage(actor, target, text));
+				if (outcome != ChannelJoinResult.Ok)
+					Report(channel, $"The message was not sent ({outcome}).");
+			}
+			catch (BasilException error)
+			{
+				Report(channel, $"The message was not sent ({BusinessErrors.Describe(error).Code}).");
+			}
+			catch (Exception exception)
+			{
+				_logger.LogWarning(exception, "The chat message could not be sent");
+				Report(channel, "The message could not be sent; see the log.");
+			}
+		});
+		_input.Text = string.Empty;
+	}
+
+	// Tells the operator in the conversation that a message did not go out; it is not part of the chat itself.
+	private void Report(string channel, string text)
+	{
+		_app?.Post(() =>
+		{
+			if (channel == _current) _log.AppendMarkupLine(_palette.Wrap(Ink.Error, text));
+		});
+	}
+}

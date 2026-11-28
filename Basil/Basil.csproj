@@ -1,0 +1,115 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+	<PropertyGroup>
+		<RootNamespace>Basil</RootNamespace>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<NoWarn>$(NoWarn);MSG0005</NoWarn>
+		<!-- Self-contained only when publishing, so test projects can reference this executable. -->
+		<SelfContained Condition="'$(_IsPublishing)' == 'true'">true</SelfContained>
+		<!-- The OpenAPI document is generated at build time again once the REST host exists (Phase 3). -->
+		<OpenApiGenerateDocumentsOnBuild>false</OpenApiGenerateDocumentsOnBuild>
+		<Version>1.0.0</Version>
+		<FileVersion>1.0.0</FileVersion>
+		<Product>Basil</Product>
+		<Authors>Mai Thành (thnhmai06)</Authors>
+		<Description>A lightweight, high-performance osu!(stable) backend platform specialized for multiplayer.</Description>
+		<Copyright>Copyright © 2026 Mai Thành. Licensed under the MIT License.</Copyright>
+		<ApplicationIcon>..\assets\icon.ico</ApplicationIcon>
+		<ApplicationManifest>app.manifest</ApplicationManifest>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Basil.Domain\Basil.Domain.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Shared\Basil.Application.Shared.csproj"/>
+		<ProjectReference Include="..\Basil.Infrastructure.Shared\Basil.Infrastructure.Shared.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Sessions\Basil.Application.Sessions.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Beatmaps\Basil.Application.Beatmaps.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Content\Basil.Application.Content.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Users\Basil.Application.Users.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Anticheat\Basil.Application.Anticheat.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Rulesets\Basil.Application.Rulesets.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Scores\Basil.Application.Scores.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Multiplayer\Basil.Application.Multiplayer.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Chat\Basil.Application.Chat.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Servers\Basil.Application.Servers.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Diagnostics\Basil.Application.Diagnostics.csproj"/>
+		<ProjectReference Include="..\Basil.Host.Stable\Basil.Host.Stable.csproj"/>
+		<ProjectReference Include="..\Basil.Host.Irc\Basil.Host.Irc.csproj"/>
+		<ProjectReference Include="..\Basil.Host.Rest\Basil.Host.Rest.csproj"/>
+		<ProjectReference Include="..\Basil.Host.Cli\Basil.Host.Cli.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Bot\Basil.Application.Bot.csproj"/>
+		<ProjectReference Include="..\Basil.Infrastructure.Bot\Basil.Infrastructure.Bot.csproj"/>
+		<ProjectReference Include="..\Basil.Infrastructure.Anticheat\Basil.Infrastructure.Anticheat.csproj"/>
+		<ProjectReference Include="..\Basil.Infrastructure.Sessions\Basil.Infrastructure.Sessions.csproj"/>
+		<ProjectReference Include="..\Basil.Infrastructure.Beatmaps\Basil.Infrastructure.Beatmaps.csproj"/>
+		<ProjectReference Include="..\Basil.Infrastructure.Content\Basil.Infrastructure.Content.csproj"/>
+		<ProjectReference Include="..\Basil.Infrastructure.Users\Basil.Infrastructure.Users.csproj"/>
+		<ProjectReference Include="..\Basil.Infrastructure.Rulesets\Basil.Infrastructure.Rulesets.csproj"/>
+		<ProjectReference Include="..\Basil.Infrastructure.Scores\Basil.Infrastructure.Scores.csproj"/>
+		<ProjectReference Include="..\Basil.Infrastructure.Multiplayer\Basil.Infrastructure.Multiplayer.csproj"/>
+		<ProjectReference Include="..\Basil.Infrastructure.Chat\Basil.Infrastructure.Chat.csproj"/>
+		<ProjectReference Include="..\Basil.Infrastructure.Servers\Basil.Infrastructure.Servers.csproj"/>
+		<ProjectReference Include="..\Basil.Infrastructure.Diagnostics\Basil.Infrastructure.Diagnostics.csproj"/>
+		<ProjectReference Include="..\Basil.Infrastructure.Persistence\Basil.Infrastructure.Persistence.csproj"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Basil.Tests"/>
+		<InternalsVisibleTo Include="Basil.Testing"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<Content Include="..\assets\menu-banner.png" Link="Defaults\Data\Menu\Banners\default-banner@2x.png">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="..\assets\github-banner.png" Link="Defaults\Data\Menu\Seasonals\github-banner.png">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<!-- The shipped files of Data/ go to Defaults/Data/; at start they are copied into Data/ where missing. -->
+		<Content Update="Data\**" Link="Defaults\%(RecursiveDir)%(Filename)%(Extension)"
+		         CopyToOutputDirectory="PreserveNewest"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Mediator.Abstractions"/>
+		<PackageReference Include="Mediator.SourceGenerator" PrivateAssets="all"/>
+		<PackageReference Include="Microsoft.AspNetCore.OpenApi"/>
+		<PackageReference Include="Microsoft.Extensions.ApiDescription.Server">
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+			<PrivateAssets>all</PrivateAssets>
+		</PackageReference>
+		<PackageReference Include="Microsoft.OpenApi"/>
+		<PackageReference Include="Scalar.AspNetCore"/>
+		<PackageReference Include="Serilog.AspNetCore"/>
+		<PackageReference Include="Serilog.Sinks.Async"/>
+		<PackageReference Include="Serilog.Sinks.Console"/>
+		<PackageReference Include="Serilog.Sinks.File"/>
+		<PackageReference Include="Serilog.Sinks.OpenTelemetry"/>
+		<PackageReference Include="OpenTelemetry.Extensions.Hosting"/>
+		<PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol"/>
+		<PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore"/>
+		<PackageReference Include="OpenTelemetry.Instrumentation.Runtime"/>
+		<PackageReference Include="XenoAtom.CommandLine"/>
+	</ItemGroup>
+
+	<!-- Leaves out ASP.NET Core parts of the self-contained runtime that Basil never uses. -->
+	<Target Name="RemoveUnusedFrameworkFiles" AfterTargets="Publish">
+
+		<ItemGroup>
+			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.SignalR.Protocols.Json.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.SignalR.Common.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.SignalR.Core.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.SignalR.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.Http.Connections.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.Http.Connections.Common.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.Identity.dll"/>
+			<_UnusedRuntimeFile Include="$(PublishDir)Microsoft.AspNetCore.Mvc.Razor.dll"/>
+		</ItemGroup>
+
+		<Message Importance="Normal" Text="Removing %(_UnusedRuntimeFile.Identity)"/>
+		<Delete Files="@(_UnusedRuntimeFile)"/>
+
+	</Target>
+
+</Project>

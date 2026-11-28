@@ -2,9 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, develop]
   pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build-and-test:
@@ -23,20 +26,122 @@ jobs:
       - name: Build
         run: dotnet build --no-restore --configuration Release
 
-      - name: Test
-        run: dotnet test --no-build --configuration Release --logger "console;verbosity=minimal"
+      # The upstream name `basil` only has to resolve for the test; the same files are mounted by docker-compose.yml.
+      - name: Check the nginx configurations
+        shell: bash
+        run: |
+          for real_ip in real-ip.conf cloudflare.conf; do
+            docker run --rm --add-host basil:127.0.0.1 \
+              -v "$PWD/docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro" \
+              -v "$PWD/docker/nginx/proxy.conf:/etc/nginx/proxy.conf:ro" \
+              -v "$PWD/docker/nginx/$real_ip:/etc/nginx/real-ip.conf:ro" \
+              -v "$PWD/docker/nginx/certs:/etc/nginx/certs:ro" \
+              nginx:stable-alpine nginx -t
+          done
 
-      # Building the solution already regenerates the 5 OpenAPI documents (Microsoft.Extensions.ApiDescription.Server)
-      # into src/Basil.Web/obj/Basil.Web_{documentName}.json — upload them so deploy-docs doesn't need to rebuild.
-      - name: Upload OpenAPI documents
+      # The calculation stack is not shipped; the manifest Basil downloads it by must match the compiled version.
+      - name: Check the ruleset manifest
+        run: dotnet run --project tools/RulesetManifest --configuration Release -- --check
+
+      # One project at a time: the projects share Docker and ports, so the solution is never passed to dotnet test.
+      - name: Test
+        shell: bash
+        run: |
+          status=0
+          for project in $(find tests -name '*.Tests.csproj' -o -name '*ArchitectureTests.csproj' | sort); do
+            dotnet test "$project" --no-build --configuration Release --logger "console;verbosity=minimal" || status=1
+          done
+          exit $status
+
+  rest-contract:
+    # Checks the HTTP contract of the REST API against a running server with the Postman collection in the repository
+    # (status, envelope, public/token matrix, redirects, error statuses). It needs no Postman API key.
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: pw
+          POSTGRES_DB: basil
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      ConnectionStrings__Write: Host=127.0.0.1;Port=5432;Username=postgres;Password=pw;Database=basil
+      ConnectionStrings__Read: Host=127.0.0.1;Port=5432;Username=postgres;Password=pw;Database=basil
+      Basil__Server__Domain: basil.local
+      Basil__Server__Irc__Port: "0"
+      Kestrel__Endpoints__Http__Url: http://127.0.0.1:5099
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+
+      - name: Build the server
+        run: dotnet build Basil --configuration Release
+
+      - name: Create the administrator
+        run: >-
+          dotnet Basil/bin/Release/net10.0/Basil.dll
+          users create --username ciadmin --password ciadmin-pass --admin
+
+      - name: Start the server
+        run: |
+          nohup dotnet Basil/bin/Release/net10.0/Basil.dll > server.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf -H "Host: api.basil.local" http://127.0.0.1:5099/health && exit 0
+            sleep 1
+          done
+          cat server.log
+          exit 1
+
+      # The server serves its own OpenAPI document; the published documentation is built from this copy, because
+      # generating it at build time would start the application, which needs the database.
+      - name: Save the OpenAPI document
+        run: |
+          mkdir -p openapi
+          curl -sf -H "Host: api.basil.local" http://127.0.0.1:5099/openapi/v1.json -o openapi/v1.json
+          # The pages of the documentation site the server serves.
+          curl -sf -H "Host: api.basil.local" http://127.0.0.1:5099/docs/ -o openapi/index.html
+          for guide in bot irc; do
+            curl -sf -H "Host: api.basil.local" "http://127.0.0.1:5099/docs/$guide/" -o "openapi/$guide.html"
+          done
+
+      # Disabled: the test projects, tests/Hosts/Rest/postman included, were removed; re-enable with them.
+      # # The collection is built from the checked-in document, so the two must describe the document the server serves.
+      # - name: Check the REST contract artifacts are current
+      #   run: |
+      #     python3 -c "import json, sys; served = json.load(open('openapi/v1.json')); checked = json.load(open('tests/Hosts/Rest/postman/openapi.v1.json')); sys.exit('tests/Hosts/Rest/postman/openapi.v1.json is stale') if served != checked else None"
+      #     (cd tests/Hosts/Rest/postman && python3 generate-collection.py)
+      #     git diff --exit-code -- tests/Hosts/Rest/postman
+
+      - name: Upload the OpenAPI document
         uses: actions/upload-artifact@v4
         with:
           name: openapi-documents
-          path: src/Basil.Web/obj/Basil.Web_*.json
+          path: openapi
+
+      # Disabled with the contract check above: the collection was removed with the tests.
+      # - name: Install the Postman CLI
+      #   run: curl -o- "https://dl-cli.pstmn.io/install/linux64.sh" | sh
+
+      # - name: Run the contract collection
+      #   run: >-
+      #     postman collection run tests/Hosts/Rest/postman/basil-rest.postman_collection.json
+      #     -e tests/Hosts/Rest/postman/basil-local.postman_environment.json --ignore-redirects
+
+      - name: Server log
+        if: failure()
+        run: cat server.log
 
   deploy-docs:
-    needs: build-and-test
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: [build-and-test, rest-contract]
+    # The published docs follow main; a push to develop is checked above but not published.
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       pages: write
@@ -54,17 +159,46 @@ jobs:
           name: openapi-documents
           path: openapi
 
+      # Everything is generated by the running server (see the rest-contract job); nothing here is written by hand.
       - name: Assemble static docs site
         run: |
           set -e
           SITE=site
-          rm -rf "$SITE"
-          mkdir -p "$SITE"
-          # docs-site is served from /docs on a running instance, so nest it under docs/
-          # and make the site root a redirect there.
-          cp -r src/Basil.Web/docs-site "$SITE/docs"
-          cp openapi/Basil.Web_basilapi.json "$SITE/docs/basil-api/basilapi.json"
-          cat > "$SITE/index.html" <<'EOF'
+          mkdir -p "$SITE/docs"
+          cp assets/icon.png "$SITE/docs/icon.png"
+          scalar() { # directory, title, document
+            mkdir -p "$SITE/docs/$1"
+            cp "openapi/$3" "$SITE/docs/$1/$3"
+            cat > "$SITE/docs/$1/index.html" <<EOF
+          <!doctype html>
+          <html lang="en">
+          <head>
+          	<meta charset="utf-8">
+          	<meta content="width=device-width, initial-scale=1" name="viewport">
+          	<link href="../icon.png" rel="icon" type="image/png">
+          	<title>$2 | Basil Documentation</title>
+          </head>
+          <body>
+          <div id="app"></div>
+          <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+          <script>
+          	Scalar.createApiReference('#app', {
+          		sources: [{title: '$2', url: '$3'}],
+          		hideTestRequestButton: true
+          	})
+          </script>
+          </body>
+          </html>
+          EOF
+          }
+          scalar api "Basil API" v1.json
+          for guide in bot irc; do
+            mkdir -p "$SITE/docs/$guide"
+            # The guides name the host they were written on; a published page names no host.
+            sed 's/basil\.local/your-domain/g' "openapi/$guide.html" > "$SITE/docs/$guide/index.html"
+          done
+          cp openapi/index.html "$SITE/docs/index.html"
+          cat > "$SITE/index.html" <<EOF
           <!doctype html>
           <html lang="en">
           <head>

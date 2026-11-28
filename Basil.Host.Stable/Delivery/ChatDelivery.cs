@@ -1,0 +1,63 @@
+using Basil.Application.Chat.Objects;
+using Basil.Application.Chat.Objects.Events;
+using Basil.Domain.Sessions;
+using Basil.Host.Stable.Support;
+using Basil.Protocol.Game.Stable.Wire.Chat;
+using Mediator;
+
+namespace Basil.Host.Stable.Delivery;
+
+internal sealed class ChannelJoinedDelivery(Outbox outbox) : INotificationHandler<ChannelMemberJoined>
+{
+	public ValueTask Handle(ChannelMemberJoined notification, CancellationToken ct)
+	{
+		var channel = notification.Channel;
+		if (channel is PmChannel) return ValueTask.CompletedTask;
+		var name = StableView.ChannelName(channel);
+		outbox.Send(notification.Member, writer => writer.ChannelJoin(name));
+		outbox.Send(channel.Members, writer => writer.ChannelInfo(name, channel.Topic, channel.Members.Count));
+		return ValueTask.CompletedTask;
+	}
+}
+
+internal sealed class ChannelPartedDelivery(Outbox outbox) : INotificationHandler<ChannelMemberParted>
+{
+	public ValueTask Handle(ChannelMemberParted notification, CancellationToken ct)
+	{
+		var channel = notification.Channel;
+		if (channel is PmChannel) return ValueTask.CompletedTask;
+		var name = StableView.ChannelName(channel);
+		if (notification.Kicked) outbox.Send(notification.Member, writer => writer.ChannelKick(name));
+		outbox.Send(channel.Members, writer => writer.ChannelInfo(name, channel.Topic, channel.Members.Count));
+		return ValueTask.CompletedTask;
+	}
+}
+
+internal sealed class ChannelClosedDelivery(Outbox outbox) : INotificationHandler<ChannelClosed>
+{
+	public ValueTask Handle(ChannelClosed notification, CancellationToken ct)
+	{
+		if (notification.Channel is PmChannel) return ValueTask.CompletedTask;
+		var name = StableView.ChannelName(notification.Channel);
+		outbox.Send(notification.Members, writer => writer.ChannelKick(name));
+		return ValueTask.CompletedTask;
+	}
+}
+
+internal sealed class MessageDelivery(Outbox outbox) : INotificationHandler<ChannelMessagePosted>
+{
+	public async ValueTask Handle(ChannelMessagePosted notification, CancellationToken ct)
+	{
+		var (channel, message) = (notification.Channel, notification.Message);
+		var author = message.Author;
+		var target = channel is PmChannel pm ? pm.Owner.Record.Value.Name : StableView.ChannelName(channel);
+		var recipients = (await channel.RecipientsAsync(notification, ct))
+			.Where(recipient => !(recipient.Type is SessionType.Stable && recipient.Record.Equals(author)));
+		outbox.Send(recipients, writer =>
+			writer.SendMessage(author.Value.Name, message.IsAction ? ChatAction.Write(message.Content) : message.Content,
+				target, author.Id));
+		if (notification is { AwayReply: { } away, Actor: { } actor })
+			outbox.Send(actor, writer => writer.SendMessage(away.Author.Value.Name, away.Content,
+				author.Value.Name, away.Author.Id));
+	}
+}

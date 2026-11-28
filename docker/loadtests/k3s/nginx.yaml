@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: basil-load
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - image: nginx:stable-alpine
+        imagePullPolicy: IfNotPresent
+        name: nginx
+        readinessProbe:
+          failureThreshold: 3
+          periodSeconds: 5
+          successThreshold: 1
+          tcpSocket:
+            port: 8443
+          timeoutSeconds: 1
+        resources:
+          limits:
+            cpu: "1"
+            memory: 512Mi
+          requests:
+            cpu: "1"
+            memory: 512Mi
+        volumeMounts:
+        - mountPath: /etc/nginx/nginx.conf
+          name: conf
+          subPath: nginx.conf
+        - mountPath: /etc/nginx/proxy.conf
+          name: conf
+          subPath: proxy.conf
+        - mountPath: /etc/nginx/real-ip.conf
+          name: conf
+          subPath: real-ip.conf
+        - mountPath: /etc/nginx/certs
+          name: certs
+        - mountPath: /data
+          name: data
+          readOnly: true
+        - mountPath: /cache
+          name: cache
+          readOnly: true
+        - mountPath: /var/log/nginx/load
+          name: log
+      dnsPolicy: ClusterFirstWithHostNet
+      hostNetwork: true
+      nodeSelector:
+        kubernetes.io/hostname: mocha
+      restartPolicy: Always
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: nginx-load
+        name: conf
+      - name: certs
+        secret:
+          defaultMode: 420
+          secretName: nginx-certs
+      - hostPath:
+          path: /home/haith/basil-load/Data
+          type: Directory
+        name: data
+      - hostPath:
+          path: /home/haith/basil-load/Cache
+          type: Directory
+        name: cache
+      - hostPath:
+          path: /home/haith/basil-load/nginx-log
+          type: Directory
+        name: log

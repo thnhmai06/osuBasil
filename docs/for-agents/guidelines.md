@@ -4,12 +4,12 @@
 
 This folder contains documentation for AI agents and automated development workflows working on Basil.
 
-The repository's root [`CLAUDE.md`](../../CLAUDE.md) is the **authoritative instruction source for agents**. This page
+The repository's root [`AGENTS.md`](../../AGENTS.md) is the **authoritative instruction source for agents**. This page
 does not replace it.
 
 Before making code changes:
 
-1. Read [`CLAUDE.md`](../../CLAUDE.md).
+1. Read [`AGENTS.md`](../../AGENTS.md).
 2. Read the relevant documentation listed below.
 3. Check the existing implementation and tests.
 4. Follow the documented scope and architectural constraints.
@@ -49,7 +49,7 @@ Explains how engineering skills use Basil's domain documentation, including:
 
 * `CONTEXT.md`;
 * domain documentation;
-* architecture decisions under `docs/adr/`;
+* architecture decisions and their plans in `docs/`;
 * the `/domain-modeling` workflow.
 
 Read this when working on domain modelling or making changes that introduce or modify domain concepts.
@@ -74,17 +74,19 @@ corresponding tests and documentation.
 
 ### Dependency direction
 
-The dependency rule is enforced by architecture tests:
+The dependency rule is checked in review:
 
 ```text
-Domain      → nothing
-Protocol    → nothing
-Application → Domain, Protocol
-Infrastructure → Application
-Web         → Domain, Protocol, Application, Infrastructure
+Domain                  → nothing
+Application.<Module>    → Domain, Application.Shared, the modules it uses
+Infrastructure.<Module> → its own Application, Infrastructure.Shared
+Protocol.Game.Stable         → Domain, external libraries
+Protocol.Irc            → external libraries only
+Host.* (transports)     → Host.Shared, their Application and Protocol projects
+Host                    → everything
 ```
 
-`Basil.ArchitectureTests` enforces these boundaries in CI.
+No test in the repository enforces these boundaries yet. The module graph is in [`AGENTS.md`](../../AGENTS.md).
 
 Do not introduce a dependency that points inward across these boundaries simply because it is convenient.
 
@@ -92,10 +94,10 @@ See [`architecture.md`](../for-developers/architecture.md).
 
 ### Multiplayer mutations
 
-Multiplayer state mutations must hold [`MatchSession.Lock`](../../src/Basil.Application/Sessions/Multiplayer/MatchSession.cs).
+Multiplayer state mutations must hold the room's own lock (see [`Room`](../../Basil.Application.Multiplayer/Objects/Rooms/Room.cs)).
 
-Any handler, command, or route that performs a read-then-mutate operation on match slots must hold the per-match
-semaphore across the complete operation:
+Any handler, command, or route that performs a read-then-mutate operation on match slots is a synchronous method of `Room`
+that holds the room's lock across the complete operation and never awaits under it:
 
 ```text
 read → mutate → broadcast
@@ -103,7 +105,7 @@ read → mutate → broadcast
 
 Do not release the lock between these steps.
 
-See [`bancho.md`](../for-developers/bancho.md) and [`multiplayer.md`](../for-developers/multiplayer.md).
+See [`osu-stable.md`](../for-developers/osu-stable.md) and [`multiplayer.md`](../for-developers/multiplayer.md).
 
 ### One source of truth
 
@@ -138,13 +140,12 @@ Do not duplicate the same contract across multiple audience folders.
 
 ## Scope boundaries
 
-### No pp calculation
+### pp is display-only
 
-Basil does **not** calculate performance points.
+The server calculates performance points and a score carries its pp (`null` means "not calculated yet").
 
-Star rating and difficulty values are display-only and must not become gameplay-affecting dependencies.
-
-Do not introduce pp calculation, pp-based gameplay logic, or hidden dependencies on pp calculation.
+pp, star rating and difficulty values are display-only and must not become gameplay-affecting dependencies: never use
+them to rank, order a leaderboard or decide a match win condition.
 
 See [`working-scopes.md`](../for-developers/working-scopes.md) and [
 `beatmap-ingestion.md`](../for-developers/beatmap-ingestion.md).
@@ -165,16 +166,16 @@ This applies to code, documentation, tests, and new APIs.
 
 User-visible replies are centralized.
 
-For multiplayer `!mp` replies, use:
+For BasilBot replies (`!mp` included), use a member of:
 
 ```text
-MpReplies
+BotReply
 ```
 
-For IRC replies, use:
+For IRC replies, use a member of:
 
 ```text
-IrcReplies
+IrcReply
 ```
 
 Do not introduce duplicate string literals for existing user-visible replies.
@@ -209,7 +210,7 @@ than silently weakening the invariant.
 At minimum:
 
 1. Run the tests relevant to the changed behaviour.
-2. Run architecture tests when changing project dependencies or layer boundaries.
+2. Review project dependencies and layer boundaries by hand when changing them, against the module graph in [`AGENTS.md`](../../AGENTS.md).
 3. Update the authoritative documentation when behaviour or scope changes.
 4. Check that no duplicate source of truth was introduced.
 5. Review user-visible strings for consistency with the centralized reply definitions.
@@ -222,7 +223,7 @@ documentation must remain consistent.
 
 ## See also
 
-* [`CLAUDE.md`](../../CLAUDE.md): authoritative agent instructions
+* [`AGENTS.md`](../../AGENTS.md): authoritative agent instructions
 * [`domain.md`](domain.md): domain documentation and modelling workflow
 * [`issue-tracker.md`](issue-tracker.md): GitHub Issues workflow
 * [`architecture.md`](../for-developers/architecture.md): architecture and dependency rules

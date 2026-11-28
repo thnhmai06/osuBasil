@@ -1,0 +1,69 @@
+using Basil.Application.Multiplayer.Persistence;
+using Basil.Application.Scores.Persistence;
+using Basil.Application.Shared.Paging;
+using Basil.Domain.Game;
+using Basil.Domain.Multiplayer.Report.Rounds;
+using Basil.Infrastructure.Shared.Persistence;
+using Microsoft.EntityFrameworkCore;
+
+namespace Basil.Infrastructure.Multiplayer.Persistence;
+
+internal sealed class EfRoundScoreRepository(DatabaseSession database, IScoreRepository scores)
+	: IRoundScoreRepository
+{
+	public async Task<RoundScore> RecordAsync(RoundScore roundScore)
+	{
+		var round = roundScore.Round;
+		var row = new RoundScoreRow
+		{
+			ScoreId = roundScore.Score.Id,
+			MatchId = round.Match.Id,
+			RoundNumber = round.Index,
+			Team = roundScore.Team is { } team ? (int)team : null
+		};
+		await database.WriteAsync((MultiplayerDbContext context) =>
+			context.UpsertAsync(row, stored => stored.ScoreId == row.ScoreId));
+		return roundScore;
+	}
+
+	public async Task<IReadOnlyList<RoundScore>> ListAsync(IReadOnlyCollection<Round> rounds,
+		CancellationToken ct = default)
+	{
+		if (rounds.Count == 0) return [];
+
+		var matchId = rounds.First().Match.Id;
+		var byIndex = rounds.ToDictionary(round => round.Index);
+		var indexes = byIndex.Keys.ToArray();
+		var rows = await database.ReadAsync((MultiplayerDbContext context) => context.RoundScores
+			.Where(rs => rs.MatchId == matchId && indexes.Contains(rs.RoundNumber))
+			.OrderBy(rs => rs.RoundNumber)
+			.ThenBy(rs => rs.ScoreId)
+			.Take(ListLimits.Ceiling)
+			.ToListAsync(ct), ct);
+
+		var found = (await scores.GetManyAsync([.. rows.Select(row => row.ScoreId)], ct))
+			.ToDictionary(score => score.Id);
+		return
+		[
+			.. rows.Where(row => found.ContainsKey(row.ScoreId)).Select(row =>
+				new RoundScore(found[row.ScoreId], byIndex[row.RoundNumber], row.Team is { } team ? (GameTeam)team : null))
+		];
+	}
+
+	public async Task<IReadOnlyList<RoundScore>> ListAsync(Round round, CancellationToken ct = default)
+	{
+		var rows = await database.ReadAsync((MultiplayerDbContext context) => context.RoundScores
+			.Where(rs => rs.MatchId == round.Match.Id && rs.RoundNumber == round.Index)
+			.OrderBy(rs => rs.ScoreId)
+			.Take(ListLimits.Ceiling)
+			.ToListAsync(ct), ct);
+
+		var found = (await scores.GetManyAsync([.. rows.Select(row => row.ScoreId)], ct))
+			.ToDictionary(score => score.Id);
+		return
+		[
+			.. rows.Where(row => found.ContainsKey(row.ScoreId)).Select(row =>
+				new RoundScore(found[row.ScoreId], round, row.Team is { } team ? (GameTeam)team : null))
+		];
+	}
+}

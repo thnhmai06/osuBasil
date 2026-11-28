@@ -1,0 +1,35 @@
+using Basil.Application.Content.Ports;
+using Basil.Application.Shared.Events;
+using Basil.Application.Shared.Settings;
+using Basil.Application.Shared.Storage;
+using Basil.Application.Users.Objects;
+using Basil.Application.Users.Objects.Events;
+using Basil.Application.Users.Persistence;
+using Basil.Application.Users.Registry;
+using Basil.Application.Users.Storage;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Basil.Application.Users;
+
+public static class DependencyInjection
+{
+	public static IServiceCollection AddUsersApplication(this IServiceCollection services)
+	{
+		// The context and the registry refer to each other, so the context resolves the registry at first use.
+		services.AddSingleton<UserContext>(sp => new UserContext(
+			sp.GetRequiredService<TimeProvider>(),
+			sp.GetRequiredService<IEventPublisher<UserEvent>>(),
+			new Lazy<UserRegistry>(sp.GetRequiredService<UserRegistry>),
+			sp.GetRequiredService<IUserRepository>(),
+			sp.GetRequiredService<IModerationLogRepository>(),
+			sp.GetRequiredService<RelationshipRegistry>(),
+			sp.GetRequiredService<IUserAvatarStorage>(),
+			sp.GetRequiredService<IScreenshotInspector>(),
+			sp.GetRequiredService<ISettingsRepository>()));
+		services.AddSingleton<RelationshipRegistry>(sp => new RelationshipRegistry(
+			sp.GetRequiredService<IRelationshipRepository>(),
+			sp.GetRequiredService<TimeProvider>()));
+		services.AddSingleton<UserRegistry>(sp => new UserRegistry(sp.GetRequiredService<UserContext>()));
+		return services;
+	}
+}

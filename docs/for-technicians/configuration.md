@@ -1,246 +1,214 @@
-﻿# Configuration
+# Configuration
 
-This page is the authoritative reference for configuring and maintaining a Basil server. It covers application settings,
-the admin key, and persistent server data.
+This page is the authoritative reference for configuring and maintaining a Basil server. It covers the two
+configuration planes, the folders beside the executable, and how to move an installation.
 
 If this document conflicts with another document, **this document takes precedence**.
 
-## Configuration
+## Two configuration planes
 
-### Configuration file
+Basil separates settings by who owns them and when they may change:
 
-Basil's configuration is stored in [`appsettings.json`](../../src/Basil.Web/appsettings.json), under the `Basil` section.
+| Plane | Lives in | Changed by | Applies |
+|---|---|---|---|
+| Deployment | `Data/appsettings*.json` | the operator, on the machine | at start, or at once for `Logging:LogLevel` and `Basil:Updates` |
+| Policy | `ServerSettings` in the database | the API, the console | at once |
 
-The only setting outside `Basil` is `AllowedHosts`, which is an ASP.NET Core framework setting.
+Deployment settings describe this machine: the domain, ports, trusted proxies, database and log files. Policy describes
+how the running server behaves for users: locks, rate limits, upload limits, session lifetimes, the bot prefix, CORS
+and the time allowed to calculate a score's pp. Policy is edited through the generated API (`GET /v1/settings`, `GET`/`PATCH
+/v1/settings/{category}`) or the console (`settings <category> show`, `settings <category> set --field value`) and needs
+no restart.
 
-### Configuration precedence
+## Deployment configuration
 
-Basil loads configuration from multiple sources. Later sources override earlier ones:
+### Files and precedence
 
-1. `appsettings.json`
-2. `appsettings.{Environment}.json`, if present
+The files sit in `Data/`, the one folder a backup needs besides the database:
 
-This is commonly used in container deployments to override values from a mounted `appsettings.json`.
+```text
+Data/
+├── appsettings.json
+├── appsettings.{Environment}.json   optional overlay
+├── appsettings.schema.json
+├── tuisettings.json                 the dashboard's preferences (its colour theme)
+├── metadata.json                    the layout version of Data/
+└── Localizations/                   bot.json (BasilBot's wording), irc.json (the IRC server's wording)
+```
+
+Basil ships a read-only copy of its own files in `Defaults/Data/`. At every start it copies each file that is missing
+from `Data/` and never overwrites one, so an operator's edit survives an upgrade and a deleted file comes back with its
+default content.
+
+Sources, later winning over earlier: `appsettings.json`, `appsettings.{Environment}.json` (selected by
+`ASPNETCORE_ENVIRONMENT`), environment variables (`ConnectionStrings__Write`, `Basil__Server__Domain`: a double
+underscore stands for `:`), command-line arguments (`--Basil:Server:Domain=...`). The file is strict JSON: no comments and
+no trailing commas. `appsettings.schema.json` describes every key.
+
+Relative paths (`Logging:File:Location`) are relative to the executable. The folders below always sit beside the executable and are not configurable.
 
 ### Available settings
 
-All settings below are under the `Basil` section.
+Kestrel, logging, connection strings and OpenTelemetry use the standard .NET sections; everything Basil-specific is
+under `Basil`.
 
-| Setting                   | Description                                                                                                                                                                                        |
-|---------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `Server:Domain`           | Public hostname of the Basil server. All Basil subdomains are derived from this domain.                                                                                                            |
-| `Server:Port`             | HTTPS port used by Basil. Defaults to `443`. **This is the port that osu! client will connect to, so don't change it unless you are sure you know what you are doing.**                                |
-| `Server:CertPath`         | Path to the HTTPS PFX certificate. Leave unset when TLS is handled by the ASP.NET Core development certificate or a reverse proxy. See [`https.md`](https.md).                                     |
-| `Server:CertPassword`     | Password for the PFX certificate specified by `Server:CertPath`.                                                                                                                                   |
-| `Bot:Name`                | Display name of BasilBot. Changing it after the first startup also renames the seeded `id=0` user.                                                                                                 |
-| `Bot:CommandPrefix`       | Prefix required for BasilBot commands, such as `!help`, `!roll`, and `!mp`.                                                                                                                        |
-| `Bot:Country`             | BasilBot's country code. Defaults to `vn`.                                                                                                                                                         |
-| `Irc:Name`                | IRC server name.                                                                                                                                                                                   |
-| `Irc:Port`                | TCP port used by Basil's embedded IRC gateway. Defaults to `6667`.                                                                                                                                 |
-| `Mirror:DownloadEndpoint` | Optional external `.osz` download mirror. Basil always checks local mapsets first. If a mapset with a valid ppy ID is not available locally, Basil can redirect the download to this mirror.       |
-| `Mirror:SearchEndpoint`   | Optional osu!direct search mirror. Without this setting, searches use local mapsets only. When configured, Basil searches the mirror and falls back to local storage if the mirror is unreachable. |
-| `Logging:MinimumLevel`    | Minimum log level written to stdout and the full log file. Defaults to `Information`. See [`logging.md`](logging.md).                                                                              |
+| Setting | Meaning |
+|---|---|
+| `Kestrel:Endpoints:<name>:Url` | where the web server listens, default `http://0.0.0.0:8080`: plain HTTP behind nginx, which ends TLS (Basil holds no certificate); port `0` picks a free port |
+| `Logging:LogLevel` | lowest level written: `Default`, and one entry per source prefix (the longest prefix wins) |
+| `Logging:File:Enabled`, `Location` | write log files, and the folder (default `Logs`); the system log also goes to standard output when the dashboard is off |
+| `Logging:File:Rolling:Interval`, `MaxSize` | a new file starts after this interval (default `Day`) or at this size (default `100MB`) |
+| `Logging:File:Retention:MaxAge`, `MaxFiles`, `MaxSize` | delete log files older than 14 days, beyond the newest 30, or beyond 1 GB in total; `0` or empty switches a limit off |
+| `Logging:QueueCapacity` | events waiting for the writer before the newest are dropped, default 10000 |
+| `ConnectionStrings:Write` | Npgsql connection string for storing changes and migrations |
+| `ConnectionStrings:Read` | Npgsql connection string for reads (it may point at a replica); empty uses `Write` |
+| `OpenTelemetry:OtlpEndpoint`, `Metrics`, `Traces`, `Logs` | OpenTelemetry export; off by default |
+| `Basil:Server:Name` | the name the server calls itself (the OpenTelemetry service name), default `Basil` |
+| `Basil:Server:Domain` | the public domain; every subdomain is derived from it |
+| `Basil:Server:TrustedProxies` | IPs and CIDR ranges of the reverse proxy: only these may tell Basil the client address (`X-Real-IP`), country and scheme, and open IRC connections (with a PROXY protocol header); defaults to loopback, the Compose file sets the compose network |
+| `Basil:Server:Irc:Port` | internal plain TCP port of IRC, default `6667`, reached only through nginx on `6697`; `0` picks a free port |
+| `Basil:Server:Files:AccelPrefix` | the nginx location that serves the `Data` and `Cache` folders, each below it under its own name (the Compose file sets `/_files/`, so `/_files/Data/` and `/_files/Cache/`); when set, stored files are sent by nginx through `X-Accel-Redirect`, when empty Basil sends them itself (for `dotnet run` without nginx) |
+| `Basil:Assets:CacheDirectory` | the directory for the temporary files made while audio previews are built (default `Cache/Previews` beside the executable) |
+| `Basil:Database:Read:PoolSize`, `Write:PoolSize` | PostgreSQL is the only database; the connection strings are in `ConnectionStrings:Read` and `Write`; migrations run against the write endpoint; `Read:PoolSize` caps the reading pool (`0` keeps the driver's default), `Write:PoolSize` is the number of simultaneous writing connections, default `8` |
+| `Basil:Updates:CheckOnStartup`, `Source` | startup check of the latest release of the GitHub repository in `Source`; it only reports a newer version |
 
-### Applying configuration changes
+The connection strings are deployment values and secrets, so the shipped file has none: set the environment variables
+`ConnectionStrings__Write` and, to read from a replica, `ConnectionStrings__Read` (the Compose file builds both from
+`POSTGRES_PASSWORD` in `.env`). Without `Write`, Basil refuses to start and names the variable. `Basil:Server:Domain`,
+`Basil:Server:TrustedProxies` and `Basil:Server:Files:AccelPrefix` are deployment values too (the Compose file sets the
+last two from the environment). The shipped `appsettings.json` holds only how the application behaves and is safe to
+publish: it never holds a secret, and a deployment value in it is a default that an environment variable overrides. The
+environment variable names (`ConnectionStrings__Write`, `Basil__Server__Domain` and the rest) are as frozen at 1.0 as
+the keys they spell.
 
-For changes made to `appsettings.json`:
+Pool size and timeouts are Npgsql settings and belong in the connection string, from `.env`: `Maximum Pool Size`,
+`Timeout` (seconds to open a connection) and `Command Timeout` (seconds per command), for example
+`Host=postgres;Database=basil;Username=basil;Password=...;Maximum Pool Size=40;Timeout=15;Command Timeout=30`. There is no
+Basil setting for them beyond `Basil:Database:Read:PoolSize` and `Write:PoolSize` above.
 
-1. Stop Basil.
-2. Edit `appsettings.json`.
-3. Start Basil again.
-4. Check the startup log for configuration or certificate errors.
+### Applying changes
+
+The server watches the configuration files.
+
+* `Logging:LogLevel` and `Basil:Updates` apply while the server runs.
+* `Kestrel`, `ConnectionStrings`, `OpenTelemetry`, `Logging:File`, `Basil:Server`, `Basil:Database` and `Basil:Assets`
+  are read once at start. A change is logged as "applied after the server restarts" and takes effect at the next start.
 
 No rebuild is required.
 
-For container deployments, prefer environment variables for deployment-specific values such as the domain, port, or
-certificate settings. See [`docker.md`](docker.md).
-
----
-
-## Admin Key
-
-The admin key protects administrative operations on the `api.<domain>` host and is also used as the secret for in-game
-registration through the osu! client's **Email** field.
-
-The key is:
-
-* stored as a bcrypt hash in the database;
-* sent to the API as `Authorization: Bearer <key>`;
-* managed through the `api.<domain>` `/adminkey` endpoints.
-
-### Set the admin key
-
-A new database has **no admin key** configured.
-
-Before exposing the server to users, set an admin key with:
+### Command line
 
 ```text
-PUT /adminkey
+Basil                 start the server
+Basil --console 1     dashboard and command box (the default)
+Basil --console 0     plain log lines, no dashboard
+Basil --nocolor       monochrome dashboard (also when NO_COLOR is set)
+Basil --ascii         dashboard in ASCII characters only
+Basil <command>       run one console command (in the running server, or offline)
 ```
 
-Once a key is set, administrative requests must provide:
+When stdin or stdout is redirected, the server falls back to `--console 0`. A setting can be overridden per run with
+`--Kestrel:Endpoints:Http:Url=http://0.0.0.0:8081`.
+
+## Name resolution on a LAN
+
+Every client must resolve the domain and each served subdomain to the server:
 
 ```text
-Authorization: Bearer <key>
+<domain>   c.<domain>   ce.<domain>  c4.<domain>  c5.<domain>  c6.<domain>
+osu.<domain>   b.<domain>   a.<domain>   api.<domain>   assets.<domain>   irc.<domain>
 ```
 
-Changing the key does **not** require a restart. The new key is effective on the next request.
+`irc.<domain>` is needed only by IRC clients. Basil does not advertise these names: add them to the hosts file of each
+client (below) or to your DNS.
 
-### No-key / bypass mode
+For the hosts file, add one line per name on each client and on the server, for example:
 
-If no admin key is configured, Basil runs in **bypass mode**.
+```text
+192.168.1.10  basil.local
+192.168.1.10  c.basil.local
+192.168.1.10  api.basil.local
+192.168.1.10  irc.basil.local
+```
 
-In bypass mode:
+See [`https.md`](https.md) for the certificate those names require.
 
-* admin-protected API operations do not require authentication;
-* in-game registration does not require an admin key;
-* Basil logs a warning at startup.
+## Updates
 
-**Do not expose a production server without an admin key.**
+The startup check reports whether a newer release exists. It never downloads or installs anything, gives up after 15
+seconds, and does not delay the server. A feed that cannot be reached is a warning, not a failure. Basil does not
+restart itself: update the image as [`docker.md`](docker.md#updating-a-docker-deployment) describes.
 
-Set one with `PUT /adminkey` to leave bypass mode.
+## Reply text
 
----
+The wording of BasilBot and of the IRC server lives in `Data/Localizations/bot.json` and `Data/Localizations/irc.json`, JSON objects that map a reply name to an ICU MessageFormat
+string with named placeholders such as `{room}`. The server writes the file with the default wording when it is
+missing and reloads it while running. A missing key keeps its default; an unreadable file leaves the last good wording
+in use; one invalid text falls back to its default. See [`basil-bot.md`](../for-client/basil-bot.md).
 
-## Persistent data
+## Folders
 
-Basil creates a `Data/` directory next to the executable on startup if it does not already exist.
+Basil creates these beside the executable (in the container, under `/app`). Only `Data/` needs a backup.
 
-The contents of `Data/` are **server state** and must normally be preserved when moving or upgrading a Basil
-installation.
+| Path | Contents | Safe to delete? |
+|---|---|---|
+| `Data/appsettings.json`, `appsettings.schema.json`, `tuisettings.json` | deployment configuration and the dashboard's preferences | **No**: a deleted shipped file is written again with its default content |
+| `Data/metadata.json` | the layout version of `Data/` | **No** |
+| `Data/Localizations/` | the wording of BasilBot and the IRC server | Optional: the default wording returns |
+| `Data/Rulesets/<version>/` | the osu! calculation stack (installed with `ruleset update`, checked at every start) | Optional: install it again, or copy it from another install |
+| `Data/Replays/` | submitted replays | **No**, unless you mean to lose them |
+| `Data/Avatars/` | user avatars | **No**, unless you mean to lose them |
+| `Data/Beatmapsets/` | one folder per set: archive, difficulties, derived files | **No**, unless you mean to remove beatmaps |
+| `Data/Menu/` | banners, seasonals and the main-menu icon | Optional |
+| `Data/Faqs/` | text used by `!faq <entry>` | Optional |
+| `Data/Screenshots/` | uploaded screenshots | Optional |
+| `Cache/` | covers, difficulty attributes, audio previews: everything rebuilt on demand | **Yes**, while the server is stopped |
+| `Logs/` | the system log and `Sessions/`, one file per connection session | Optional |
+| `Temp/` | the control socket | Not by hand |
 
-| Path                      | Contents                                                                                                                          | Safe to delete?                                            |
-|---------------------------|-----------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------|
-| `Data/Basil.db`           | Main SQLite database. `-wal` and `-shm` files may exist while Basil is running. Database migrations run automatically at startup. | **No**                                                       |
-| `Data/Replays/`           | Submitted score replay files.                                                                                                     | **No**, unless you intentionally want to remove replays.    |
-| `Data/Avatars/`           | User avatar files.                                                                                                                | **No**, unless you intentionally want to remove avatars.    |
-| `Data/Mapsets/`           | Installed beatmapsets. Each set has its own directory containing the original `.osz` contents.                                    | **No**, unless you intentionally want to remove beatmaps.   |
-| `Data/Menu/Seasonals/`    | Seasonal background images used by the client's login screen.                                                                     | Optional                                                     |
-| `Data/Menu/Banners/`      | Main-menu banner images uploaded for `MenuBanners` entries with a local image (as opposed to an external URL).                    | Optional                                                     |
-| `Data/Menu/Icon{ext}`     | Uploaded custom main-menu icon image, when one is configured as a file upload.                                                    | Usually no                                                   |
-| `Data/Faqs/`              | Text files used by `!faq <entry>`.                                                                                                | Optional                                                     |
-| `Data/Cache/`             | Generated thumbnails, cover crops, and transcoded audio previews.                                                                 | **Yes**                                                     |
+### Layout version and refusing to start
 
-`Data/Seasonals/` and `Data/MenuIcon.{ext}` are the pre-`assets.<domain>` locations of the two rows
-above; Basil moves them into place automatically on startup if found (see
-[`assets.md`](../for-developers/assets.md)).
+`Data/metadata.json` holds `{ "layout": 1 }`. At start, before the settings are read, Basil reads it. A `Data/` without
+the file is taken as layout 0 and brought forward by the steps in order; each step can run again without harm, and the
+version is written only after the steps succeed. A failed step stops the start and names the step; the file keeps the old
+version. Layout 0 to 1 deletes what moved to `Cache/` (the covers in the set folders, `Data/Rulesets/Attributes`,
+`Data/Cache`), because it is rebuilt.
+
+Basil refuses to start, with one sentence saying why, when `Data/` has a layout newer than the program knows, or when the
+database has applied a migration the program does not know (the sentence names the module and the migration). Both mean
+an older Basil was started on the data of a newer one; start the newer image again, or restore the backup.
 
 ### Database
 
-`Data/Basil.db` is the primary server database.
+Basil stores its records in PostgreSQL, configured by `ConnectionStrings:Write` and `Read` and by `Basil:Database`. One
+database belongs to one Basil process; nothing else should write to it. Migrations run when the server starts. Back up
+the database with `pg_dump` and `Data/` together, because records and files refer to each other.
 
-**Do not copy, replace, or delete the database while Basil is running.**
+### Beatmapsets
 
-The database may also have:
+Drop a `.osz`, or a folder of loose set files, into `Data/Beatmapsets/` while the server runs; the watcher imports it
+within about two seconds, and a full reconciliation runs at startup. Deleting a set's `archive.osz` removes the set.
+A standalone `.osu` file is not imported. Uploads go through `POST /v1/beatmapsets`. See
+[`beatmap-ingestion.md`](../for-developers/beatmap-ingestion.md).
 
-```text
-Data/Basil.db-wal
-Data/Basil.db-shm
-```
+## Upgrading a server
 
-These are SQLite runtime files. Always stop Basil before copying the database and its associated files.
+Basil migrates the database and `Data/` forward at start and does not back them up first. Before each
+update:
 
-Database migrations are applied automatically when Basil starts.
+1. Dump the database: `docker compose exec postgres pg_dump -U basil basil > basil.sql`.
+2. Copy the `Data/` volume (`docker-data/Data`) while Basil is stopped.
+3. Update the image as [`docker.md`](docker.md#updating-a-docker-deployment) describes and start it, then check the
+   startup log.
 
-### Beatmaps
+To go back, stop Basil, restore both, and start the previous image. `Cache/` and `Logs/` need no backup.
 
-Beatmaps are stored under:
-
-```text
-Data/Mapsets/
-```
-
-Each mapset is stored as a directory containing the extracted contents of the original `.osz` archive, including audio,
-images, video, and `.osu` files.
-
-You can add an `.osz` file directly to the `Data/Mapsets/` directory. Basil automatically extracts it into its mapset
-directory.
-
-A standalone `.osu` file is **not** imported because a difficulty file alone does not provide enough information to
-identify its beatmapset.
-
-Mapset changes are detected automatically while Basil is running. A background watcher normally processes additions,
-changes, and deletions within approximately two seconds. Basil also performs a full reconciliation during startup.
-
-Administrators can upload `.osz` files through:
-
-```text
-POST /beatmaps
-```
-
-on the `api.<domain>` host. This endpoint requires the admin key.
-
-### Cache
-
-`Data/Cache/` contains generated data such as:
-
-* resized beatmap thumbnails and cover crops (`Data/Cache/imagesharp/`, managed by ImageSharp.Web);
-* transcoded audio previews.
-
-Cache files are regenerated automatically when required.
-
-**The cache can be deleted safely while Basil is stopped.** Do not delete other `Data/` directories as a substitute for
-clearing cache.
-
-### Menu icon
-
-A custom menu icon may be stored as:
-
-```text
-Data/Menu/Icon{ext}
-```
-
-This file exists only when the icon was uploaded to Basil.
-
-The icon's enabled/disabled state and click-through URL are stored in the database, not in this file.
-
-Menu icons are managed through the `/menu/icon` and `/menu/icon/image` endpoints on the `api.<domain>` host, and served
-publicly from `assets.<domain>/menu/icon`. See [`assets.md`](../for-developers/assets.md).
-
----
-
-## Moving or upgrading a server
-
-Treat the executable files and `Data/` as separate categories:
-
-* **Executable directory**: application files and default configuration.
-* **`Data/`**: persistent server state.
-* **`Logs/`**: operational history; normally does not need to be migrated.
-
-### Full migration
-
-To move Basil to another server:
-
-1. Stop Basil on the source server.
-2. Copy the entire Basil executable directory to the target.
-3. Make sure `appsettings.json` and the complete `Data/` directory are included.
-4. Do **not** copy `Logs/` unless you specifically need the old log history.
-5. Verify the target's configuration, especially domain, HTTPS certificate, and ports.
-6. Start Basil on the target.
-7. Check the startup log for errors.
-
-### Upgrade an existing installation
-
-If the target already contains the correct Basil executable:
-
-1. Stop Basil.
-2. Replace the executable files with the new version.
-3. Preserve the existing `Data/` directory.
-4. Preserve or update `appsettings.json` as required.
-5. Start Basil.
-6. Check the startup log and verify the server is responding.
-
-**Never replace `Data/` with an empty directory during an upgrade.** It contains the database, beatmaps, avatars,
-replays, and other persistent state.
-
-If you intentionally want to preserve the target's existing configuration and data, copy only the new application files
-and leave `appsettings.json` and `Data/` untouched.
-
----
+**Never replace `Data/` with an empty folder during an upgrade.** It holds the stored files and the configuration.
 
 ## See also
 
-* [`deployment.md`](deployment.md): standard deployment procedure
-* [`https.md`](https.md): HTTPS certificates and `Server:CertPath` / `Server:CertPassword`
-* [`logging.md`](logging.md): log files and `Logging:MinimumLevel`
-* [`docker.md`](docker.md): container configuration and environment variables
+* [`https.md`](https.md) — certificates and TLS names
+* [`logging.md`](logging.md) — log files, levels and retention
+* [`console.md`](console.md) — console commands
+* [`docker.md`](docker.md) — container deployment
+* [`../for-developers/architecture.md`](../for-developers/architecture.md) — where configuration is bound

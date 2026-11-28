@@ -1,0 +1,534 @@
+using Basil.Application.Sessions.Messages;
+using Basil.Host.Shared.Http;
+using Basil.Application.Sessions.Persistence;
+using Basil.Application.Sessions.Registry;
+using Basil.Domain.Users;
+using Basil.Domain.Content;
+using Basil.Domain;
+using System.Globalization;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Basil.Application.Anticheat.Messages;
+using Basil.Application.Beatmaps.Messages;
+using Basil.Application.Beatmaps.Objects;
+using Basil.Application.Beatmaps.Persistence;
+using Basil.Application.Beatmaps.Storage;
+using Basil.Application.Content.Messages;
+using Basil.Application.Rulesets.Messages;
+using Basil.Application.Scores.Messages;
+using Basil.Application.Scores.Objects;
+using Basil.Application.Scores.Persistence;
+using Basil.Application.Servers.Messages.Content;
+using Basil.Application.Servers.Objects;
+using Basil.Application.Shared.Paging;
+using Basil.Application.Shared.Settings;
+using Basil.Application.Users.Messages;
+using Basil.Domain.Beatmaps;
+using Basil.Domain.Client;
+using Basil.Domain.Game;
+using Basil.Domain.Scores;
+using Basil.Gateway.Admission;
+using Basil.Gateway.Limits;
+using Basil.Gateway.RateLimiting;
+using Basil.Host.Stable.Packets;
+using Basil.Host.Stable.Support;
+using Basil.Protocol.Game.Stable.Models.Beatmaps;
+using Basil.Protocol.Game.Stable.Models.Client;
+using Basil.Protocol.Game.Stable.Models.Scores;
+using Basil.Protocol.Game.Stable.Models.Web;
+using Basil.Protocol.Game.Stable.Wire.Web;
+using Basil.Protocol.Game.Stable.Wire.Security;
+using Basil.Shared.Structures.Cryptography;
+using Mediator;
+
+namespace Basil.Host.Stable.Web;
+
+internal static class OsuWebRoutes
+{
+	public static void MapOsuWeb(this IEndpointRouteBuilder app)
+	{
+		var web = app.MapGroup("")
+			.WithMetadata(new AdmissionPolicyAttribute()).AddEndpointFilter<StableAdmission>()
+			.AddEndpointFilter(async (invocation, next) =>
+			{
+				try
+				{
+					return await next(invocation);
+				}
+				catch (BasilException)
+				{
+					return Results.BadRequest();
+				}
+			});
+		web.MapGet("/", () => Results.Redirect("https://github.com/thnhmai06/osuBasil"));
+		web.MapGet("/web/osu-osz2-getscores.php", GetScoresAsync)
+			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Listing });
+		web.MapPost("/web/osu-error.php", ErrorReportAsync);
+		web.MapGet("/web/osu-getfriends.php", GetFriendsAsync);
+		web.MapPost("/web/osu-getbeatmapinfo.php", GetBeatmapInfoAsync);
+		web.MapPost("/web/osu-submit-modular-selector.php", SubmitAsync)
+			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Upload });
+		web.MapGet("/web/osu-getreplay.php", GetReplayAsync);
+		web.MapPost("/web/osu-screenshot.php", ScreenshotAsync)
+			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Upload });
+		web.MapGet("/web/lastfm.php", LastFmAsync);
+		web.MapGet("/web/osu-search.php", SearchAsync)
+			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Listing });
+		web.MapGet("/web/osu-search-set.php", SearchSetAsync)
+			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Listing });
+		web.MapGet("/d/{setId}", DownloadAsync);
+		web.MapGet("/web/maps/{filename}", GetBeatmapFileAsync)
+			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Listing });
+		web.MapPost("/difficulty-rating", GetDifficultyRatingAsync);
+		web.MapGet("/web/osu-getfavourites.php", GetFavouritesAsync);
+		web.MapGet("/web/osu-addfavourite.php", AddFavouriteAsync);
+		web.MapGet("/web/osu-rate.php", RateAsync);
+		web.MapPost("/web/osu-comment.php", CommentAsync);
+		web.MapPost("/users", RegisterAsync);
+		web.MapGet("/web/osu-getseasonal.php", GetSeasonalsAsync);
+		foreach (var stub in new[] { "bancho_connect.php", "check-updates.php", "osu-markasread.php" })
+			web.MapGet("/web/" + stub, () => Results.Text(string.Empty));
+	}
+
+	private static async Task<IResult> ErrorReportAsync(HttpContext context, WebAuthentication auth,
+		ILoggerFactory loggers, CancellationToken ct)
+	{
+		try
+		{
+			if (context.Request.HasFormContentType && auth.OpenClientAt(context) is { } client)
+			{
+				var form = await context.Request.ReadFormAsync(ct);
+				string Field(string name)
+				{
+					return ErrorReportText.Clean(form[name].ToString());
+				}
+
+				loggers.CreateLogger(typeof(OsuWebRoutes).FullName!).LogInformation(
+					"osu! client error report: user {UserId}, version {Version}, mode {Mode}, beatmap {BeatmapId} {BeatmapChecksum}, exception {Exception}, feedback {Feedback}, stack trace {StackTrace}",
+					client.Record.Id, Field("version"), Field("gamemode"), Field("beatmap_id"), Field("beatmap_checksum"),
+					Field("exception"), Field("feedback"), Field("stacktrace"));
+			}
+		}
+		catch (Exception ex) when (ex is InvalidDataException or IOException or BadHttpRequestException)
+		{
+			// A report that cannot be read is dropped; the client is answered all the same.
+		}
+
+		return Text(string.Empty);
+	}
+
+	// The client takes absolute URLs; the images are served by the assets host of the domain it called.
+	private static async Task<IResult> GetSeasonalsAsync(HttpContext context, ISender sender, CancellationToken ct)
+	{
+		var domain = context.Request.Host.Host["osu.".Length..];
+		var seasonals = await sender.Send(new ListSeasonals(), ct);
+		return Results.Json(seasonals.Select(image =>
+			$"https://assets.{domain}/menu/seasonals/{Path.GetFileName(image.Value)}"));
+	}
+
+	private static IResult Text(string text, int status = 200)
+	{
+		return Results.Text(text, "text/html; charset=UTF-8", Encoding.UTF8, status);
+	}
+
+	private static async Task<IResult> GetScoresAsync(HttpContext context, WebAuthentication auth, ISender sender,
+		CancellationToken ct)
+	{
+		var query = context.Request.Query;
+		if (await auth.AuthenticateAsync(context, query["us"], query["ha"], ct) is null)
+			return Results.Unauthorized();
+		if (!Md5Text.TryParse(query["c"], out var hash)) return Text(OsuWebWriter.LeaderboardNotFound);
+		_ = int.TryParse(query["mods"], out var mods);
+		var mode = ParseMode(query["m"]);
+		var rankedType = int.TryParse(query["v"], out var v) ? v : 1;
+		if (await sender.Send(new GetLeaderboard(hash, mode, rankedType == 3 ? WireMap.Mods(mods) : null), ct) is not
+		    { } board)
+			return Text(OsuWebWriter.LeaderboardNotFound);
+		var map = board.Beatmap;
+		var rows = board.Entries.Select((entry, index) => ScoreRow(entry.Score, entry.PlayerName, index)).ToList();
+		return Text(OsuWebWriter.Leaderboard(new LeaderboardReply((int)map.Beatmapset.Status, map.Id,
+			map.Beatmapset.Id, map.FullName, rows)));
+	}
+
+	private static GameMode ParseMode(string? text)
+	{
+		return int.TryParse(text, out var m) && WireMap.Known<GameMode>(m) is { } mode
+			? mode
+			: GameMode.Standard;
+	}
+
+	private static LeaderboardRow ScoreRow(ScoreRecord score, string name, int index)
+	{
+		var hits = score.Value.LastState.HitCounts;
+		return new LeaderboardRow(score.Id, name, score.Value.LastState.TotalScore, score.Value.LastState.MaxCombo,
+			hits.Num50, hits.Num100, hits.Num300, hits.NumMiss, hits.NumKatu, hits.NumGeki,
+			score.Value.LastState.IsFullCombo, (int)score.Value.Mods, score.Value.UserId ?? 0, index + 1,
+			score.Value.Timestamp.ToUnixTimeSeconds());
+	}
+
+	private static async Task<IResult> GetFriendsAsync(HttpContext context, WebAuthentication auth, ISender sender,
+		CancellationToken ct)
+	{
+		var query = context.Request.Query;
+		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is not { } player)
+			return Results.Unauthorized();
+		var (_, friends) = await sender.Send(new GetFriends(player), ct);
+		return Text(OsuWebWriter.Friends(friends.Select(friend => friend.Id)));
+	}
+
+	private static async Task<IResult> GetBeatmapInfoAsync(HttpContext context, WebAuthentication auth,
+		ISender sender, CancellationToken ct)
+	{
+		var query = context.Request.Query;
+		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is null) return Results.Unauthorized();
+		var request =
+			await JsonSerializer.DeserializeAsync<BeatmapInfoBody>(context.Request.Body, cancellationToken: ct)
+			?? new BeatmapInfoBody();
+		var maps = await sender.Send(
+			new FindBeatmapsByFileNames([.. request.Filenames.Take(PacketHandlers.MaxRequestedFilenames)]), ct);
+		var entries = new List<BeatmapInfoResponse>();
+		for (var index = 0; index < maps.Count; index++)
+			if (maps[index] is { } map)
+				entries.Add(new BeatmapInfoResponse((short)index, map.Id, map.Beatmapset.Id, 0,
+					(byte)map.Beatmapset.Status, -1, -1, -1, -1, map.Hash.ToString()));
+
+		return Text(OsuWebWriter.BeatmapInfo(entries));
+	}
+
+	private static async Task<IResult> SubmitAsync(HttpContext context, SessionRegistry registry, ISender sender,
+		WebAuthentication auth, Admission admission,
+		CancellationToken ct)
+	{
+		// A score submission carries a replay, which is far below the screenshot limit.
+		var limit = (await sender.Send(new ReadSettings(), ct)).Uploads.ScreenshotMaxSize;
+		if (!UploadRequest.Accept(context, limit)) return Text(string.Empty, StatusCodes.Status413PayloadTooLarge);
+		if (!admission.HasOpenClient(ClientAddress.Resolve(context))) return Text("error: no");
+
+		return await UploadRequest.GuardAsync(context, "POST /web/osu-submit-modular-selector.php",
+			ClientAddress.Resolve(context).ToString(), async () =>
+			{
+				try
+				{
+					// The scores module needs the replay as a file of known length, so it is kept in a bounded
+					// temporary file while the rest of the form is read.
+					await using var form = await UploadForm.ReadAsync(context, "score", UploadSignature.None, limit,
+						[], true, ct);
+					var version = form.Field("osuver");
+					var iv = form.Field("iv");
+					var data = ScoreSubmission.Parse(ScoreSubmissionCipher.Decrypt(form.Field("score"), iv, version));
+					if (await auth.AuthenticateAsync(context, data.Username.TrimEnd(), form.Field("pass"), ct) is not
+					    { } client)
+						return Text("error: no");
+					var clientHashText = ScoreSubmissionCipher.Decrypt(form.Field("s"), iv, version);
+					var fingerprint = ClientFingerprintExtensions.Parse(clientHashText);
+					var ids = form.Field("c1").Split('|');
+					var beatmapHash = new Md5Hash(data.BeatmapHash);
+					var submittedClient = new SubmittedClient(clientHashText, fingerprint, ids[0],
+						ids.ElementAtOrDefault(1) ?? string.Empty,
+						version[..8], beatmapHash);
+					var known = await sender.Send(new FindBeatmapByHash(beatmapHash), ct);
+					var storyboard = Md5Text.TryParse(form.Field("sbk"), out var sb) ? sb : (Md5Hash?)null;
+					var submission = ToSubmission(data, beatmapHash);
+					await sender.Send(new ReportClientFlags(client, submission.Flags), ct);
+					var (result, _, receipt) = await sender.Send(new SubmitScore(client, submission,
+						known is null ? null : new BeatmapChecksums(known.Hash, storyboard), submittedClient,
+						form.File), ct);
+					return Text(result == ScoreSubmissionResult.Ok && submission.Score.IsPassed
+						? OsuWebWriter.Submission(SubmissionCharts.Build(receipt!, known))
+						: OsuWebReplies.SubmissionRefused);
+				}
+				catch (Exception ex) when (ex is FormatException or ArgumentException or InvalidDataException
+					                           or OverflowException or InvalidOperationException or BasilException)
+				{
+					return Text("error: no");
+				}
+			});
+	}
+
+	private static Submission ToSubmission(ScoreSubmission data, Md5Hash beatmapHash)
+	{
+		var score = new ScoreData(null, beatmapHash, WireMap.Known<GameMode>(data.Mode) ?? throw new FormatException(),
+			WireMap.Mods(data.Mods),
+			new ScoreState(
+				new HitCounts(data.Num300, data.Num100, data.Num50, data.NumGeki, data.NumKatu, data.NumMiss),
+				data.TotalScore, checked((ushort)data.MaxCombo), checked((ushort)data.MaxCombo), data.Perfect),
+			ParseGrade(data.Grade), data.IsPassed, data.Timestamp);
+		return new Submission
+			{ Score = score, Flags = data.ClientFlags, HashByClient = new Md5Hash(data.Checksum) };
+	}
+
+	private static Grade ParseGrade(string grade)
+	{
+		return Enum.TryParse<Grade>(grade, true, out var parsed) && Enum.IsDefined(parsed) ? parsed : throw new FormatException();
+	}
+
+	private static async Task<IResult> GetReplayAsync(HttpContext context, WebAuthentication auth, ISender sender,
+		CancellationToken ct)
+	{
+		var query = context.Request.Query;
+		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is null) return Results.Unauthorized();
+		if (!int.TryParse(query["c"], out var id) ||
+		    await sender.Send(new OpenReplayFrames(id), ct) is not { } stream)
+			return Results.NotFound();
+
+		return StoredFile.Send(context, stream, "application/x-osu-replay");
+	}
+
+	private static async Task<IResult> ScreenshotAsync(HttpContext context, WebAuthentication auth, Admission admission,
+		ISender sender, CancellationToken ct)
+	{
+		var limit = (await sender.Send(new ReadSettings(), ct)).Uploads.ScreenshotMaxSize;
+		if (!UploadRequest.Accept(context, limit)) return Text(string.Empty, StatusCodes.Status413PayloadTooLarge);
+		if (!admission.HasOpenClient(ClientAddress.Resolve(context))) return Results.Unauthorized();
+
+		return await UploadRequest.GuardAsync(context, "POST /web/osu-screenshot.php",
+			ClientAddress.Resolve(context).ToString(), async () =>
+			{
+				await using var form = await UploadForm.ReadAsync(context, "ss", UploadSignature.Image, limit,
+					["u", "p"], false, ct);
+				if (await auth.AuthenticateAsync(context, form.Field("u"), form.Field("p"), ct) is not { } player)
+					return Results.Unauthorized();
+				if (form.File is null) return Results.BadRequest();
+				try
+				{
+					var (reference, result) = await sender.Send(new UploadScreenshot(player, form.File), ct);
+					return result == ServerActionResult.Ok
+						? Text(reference?.ToString() ?? string.Empty)
+						: Text(string.Empty, 400);
+				}
+				catch (ImageDimensionsTooLargeException)
+				{
+					return Text(string.Empty, 413);
+				}
+				catch (BasilException)
+				{
+					return Text(string.Empty, 400);
+				}
+			});
+	}
+
+	private static async Task<IResult> LastFmAsync(HttpContext context, WebAuthentication auth, ISender sender,
+		CancellationToken ct)
+	{
+		var query = context.Request.Query;
+		if (await auth.AuthenticateAsync(context, query["us"], query["ha"], ct) is not { } player)
+			return Results.Unauthorized();
+		var b = query["b"].ToString();
+		// bancho.py: a leading "a" marks the flags the client detected; the rest is the flag bitmask.
+		if (!b.StartsWith('a') || !int.TryParse(b.AsSpan(1), out var flags)) return Text(string.Empty);
+		var flagged = await sender.Send(new ReportClientFlags(player, (ClientFlags)flags), ct);
+		return Text(flagged ? "-3" : string.Empty);
+	}
+
+	private static async Task<IResult> SearchAsync(HttpContext context, WebAuthentication auth, ISender sender,
+		CancellationToken ct)
+	{
+		var query = context.Request.Query;
+		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is not { } player)
+			return Results.Unauthorized();
+		if (!int.TryParse(query["r"], out var status) || status is < 0 or > 8 ||
+		    !int.TryParse(query["m"], out var mode) || mode is < OsuWebReplies.DirectAllModes or > 3 ||
+		    !int.TryParse(query["p"], out var pageNumber) || pageNumber < 0 ||
+		    pageNumber > int.MaxValue / OsuWebReplies.DirectPageSize)
+			return Results.BadRequest();
+
+		var text = query["q"].ToString();
+		var filter = OsuWebReplies.DirectSortTabs.Contains(text.Replace(' ', '+'))
+			? new BeatmapQuery()
+			: BeatmapQuery.Parse(text);
+		filter = filter with
+		{
+			Mode = mode == OsuWebReplies.DirectAllModes ? filter.Mode : (GameMode)mode,
+			Status = status == OsuWebReplies.DirectAllStatuses
+				? filter.Status
+				: BeatmapsetStatusExtensions.FromOsuDirect(status)
+		};
+		var (result, page, details) = await sender.Send(
+			new SearchBeatmapsetsDirect(player,
+				filter,
+				new PageRequest(pageNumber * OsuWebReplies.DirectPageSize, OsuWebReplies.DirectPageSize)), ct);
+		if (result == BeatmapDirectResult.Denied) return Results.StatusCode(StatusCodes.Status403Forbidden);
+		var header = page.Items.Count == OsuWebReplies.DirectPageSize
+			? OsuWebReplies.DirectMorePages
+			: page.Items.Count;
+		return Text(OsuWebWriter.DirectList(header, details.Select(detail => DirectSetOf(detail.Set, detail))));
+	}
+
+	private static DirectSet DirectSetOf(BeatmapsetRecord set, BeatmapsetDetail? detail = null)
+	{
+		var meta = set.Metadata;
+		return new DirectSet(set.Id, meta.Artist, meta.Title, meta.Creator, (int)set.Status, set.UpdatedAt,
+			detail?.Beatmaps.Any(map => map.Assets.VideoFile is not null) ?? false,
+			detail?.Beatmaps.OrderBy(map => map.Metadata.Difficulty?.Star ?? 0).Select(map =>
+			{
+				// The client has no "not calculated yet": it shows zeros.
+				var d = map.Metadata.Difficulty ?? default;
+				return new DirectDifficulty(d.Star, map.Metadata.VersionName, d.Cs, d.Od, d.Ar, d.Hp,
+					(int)map.Metadata.Mode);
+			}).ToList());
+	}
+
+	private static async Task<IResult> SearchSetAsync(HttpContext context, WebAuthentication auth, ISender sender,
+		CancellationToken ct)
+	{
+		var query = context.Request.Query;
+		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is not { } player)
+			return Results.Unauthorized();
+		if (!int.TryParse(query["s"], out var id)) return Text(string.Empty);
+		var (result, detail) = await sender.Send(new GetBeatmapsetDirect(player, id), ct);
+		if (result == BeatmapDirectResult.Denied) return Results.StatusCode(StatusCodes.Status403Forbidden);
+		return detail is null ? Text(string.Empty) : Text(OsuWebWriter.DirectLine(DirectSetOf(detail.Set)));
+	}
+
+	private static async Task<IResult> DownloadAsync(HttpContext context, string setId, WebAuthentication auth,
+		ISender sender, CancellationToken ct)
+	{
+		var query = context.Request.Query;
+		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is not { } player)
+			return Results.Unauthorized();
+		var withVideo = !setId.EndsWith('n');
+		if (!int.TryParse(setId.TrimEnd('n'), out var id)) return Results.NotFound();
+		var (result, archive) = await sender.Send(new OpenBeatmapsetArchiveDirect(player, id, withVideo), ct);
+		if (result == BeatmapDirectResult.Denied) return Results.StatusCode(StatusCodes.Status403Forbidden);
+		if (archive is not null)
+			return StoredFile.Send(context, archive, "application/x-osu-beatmap-archive", $"{id}.osz",
+				enableRangeProcessing: true);
+		return Results.NotFound();
+	}
+
+	private static async Task<IResult> GetBeatmapFileAsync(HttpContext context, string filename, ISender sender,
+		CancellationToken ct)
+	{
+		if (await sender.Send(new FindBeatmapByFileName(filename), ct) is not { } map ||
+		    await sender.Send(new OpenBeatmapFile(null, map.Id, BeatmapsetFileType.Version), ct) is not { } file)
+			return Results.NotFound();
+		return StoredFile.Send(context, file.Content, "application/x-osu-beatmap");
+	}
+
+	private static async Task<IResult> GetDifficultyRatingAsync(HttpContext context, ISender sender,
+		CancellationToken ct)
+	{
+		var query = context.Request.Query;
+		if (!int.TryParse(query["b"], out var id) || !int.TryParse(query["mods"], out var mods))
+			return Results.BadRequest();
+		if (await sender.Send(new GetBeatmap(null, id), ct) is not { } map ||
+		    await sender.Send(new GetBeatmapStars(map.Id, map.Hash, map.Metadata.Mode, (GameMods)mods), ct) is not { } stars)
+			return Results.NotFound();
+		return Results.Text(
+			JsonSerializer.Serialize(new DifficultyRatingBody(map.Id, mods, Math.Round(stars, 2))),
+			"application/json");
+	}
+
+	private static async Task<IResult> GetFavouritesAsync(HttpContext context, WebAuthentication auth,
+		CancellationToken ct)
+	{
+		var query = context.Request.Query;
+		return await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is null
+			? Results.Unauthorized()
+			: Text(string.Empty);
+	}
+
+	private static async Task<IResult> AddFavouriteAsync(HttpContext context, WebAuthentication auth,
+		CancellationToken ct)
+	{
+		return await GetFavouritesAsync(context, auth, ct);
+	}
+
+	private static async Task<IResult> RateAsync(HttpContext context, WebAuthentication auth, CancellationToken ct)
+	{
+		var query = context.Request.Query;
+		return await auth.AuthenticateAsync(context, query["u"], query["p"], ct) is null
+			? Results.Unauthorized()
+			: Text(OsuWebReplies.NotRanked);
+	}
+
+	private static async Task<IResult> CommentAsync(HttpContext context, WebAuthentication auth, CancellationToken ct)
+	{
+		IFormCollection form;
+		try
+		{
+			form = await context.Request.ReadFormAsync(ct);
+		}
+		catch (Exception ex) when (ex is InvalidDataException or InvalidOperationException)
+		{
+			return Results.BadRequest();
+		}
+
+		return await auth.AuthenticateAsync(context, form["u"], form["p"], ct) is null
+			? Results.Unauthorized()
+			: Text(string.Empty);
+	}
+
+	private static async Task<IResult> RegisterAsync(HttpContext context, ISender sender, Admission admission,
+		CancellationToken ct)
+	{
+		IFormCollection form;
+		try
+		{
+			form = await context.Request.ReadFormAsync(ct);
+		}
+		catch (Exception ex) when (ex is InvalidDataException or InvalidOperationException)
+		{
+			return Results.BadRequest();
+		}
+
+		var name = form["user[username]"].ToString();
+		var password = form["user[password]"].ToString();
+		var checkOnly = form["check"] != "0";
+		RegistrationFailure? failure;
+		try
+		{
+			failure = await sender.Send(
+				new CheckRegistration(new RegisterAttempt(name, new Md5Hash(Encoding.UTF8.GetBytes(password)))), ct);
+		}
+		catch (InvalidUserNameException)
+		{
+			return Results.Json(new { form_error = new { user = new { username = new[] { "InvalidName" } } } },
+				statusCode: 400);
+		}
+		if (failure is not null)
+			return Results.Json(new { form_error = new { user = new { username = new[] { failure.ToString() } } } },
+				statusCode: 400);
+		if (checkOnly) return Text("ok");
+		if (!admission.Admit(RateRule.Registration).Allowed)
+			return Results.Json(
+				new { form_error = new { user = new { username = new[] { OsuWebReplies.TooManyRegistrations } } } },
+				statusCode: 429);
+		var (_, error) = await sender.Send(
+			new RegisterAccount(new RegisterAttempt(name, new Md5Hash(Encoding.UTF8.GetBytes(password)))), ct);
+		return error is null
+			? Text("ok")
+			: Results.Json(new { form_error = new { user = new { username = new[] { error.ToString() } } } },
+				statusCode: 400);
+	}
+
+	private sealed record DifficultyRatingBody(
+		[property: JsonPropertyName("beatmap_id")]
+		int BeatmapId,
+		[property: JsonPropertyName("mods")] int Mods,
+		[property: JsonPropertyName("rating")] double Rating);
+
+	private sealed record BeatmapInfoBody
+	{
+		public string[] Filenames { get; init; } = [];
+	}
+}
+
+internal static class Md5Text
+{
+	public static bool TryParse(string? text, out Md5Hash hash)
+	{
+		hash = default;
+		if (text is not { Length: 32 }) return false;
+		try
+		{
+			hash = new Md5Hash(text);
+			return true;
+		}
+		catch (ArgumentException)
+		{
+			return false;
+		}
+	}
+}
